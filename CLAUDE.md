@@ -51,6 +51,31 @@ feature_x/
 
 ---
 
+## Workflow (how we build)
+- **Vertical slices, not layers.** Build one feature end-to-end (entity → DAO → repo → usecase → ViewModel → screen) and verify it runs before starting the next. Don't build five half-finished layers across features.
+- **One concern per change.** Prefer "build the Accounts feature" over bundling multiple features.
+- **Keep the build green.** Run a build after each slice; never let compile errors pile up across features.
+- **Commit after each green slice.** Each working feature = one commit — it's the undo button when an AI edit goes wrong.
+- **Verify UI by running the app**, not by eyeballing the code.
+
+## Testing Policy
+The per-commit gate is: **build compiles green**, and **domain + data logic has unit tests**. UI is verified by running, not unit-tested, until it stabilizes. Keep the unit suite JVM-only and seconds-fast (no emulator) so it actually gets run.
+
+- **Always test (high bug-risk, cheap — pure Kotlin, JVM):** sync / conflict resolution (last-write-wins by `updated_at`, push/pull diffing), money & budget math, analysis aggregations, recurring-rule date math, mappers (Entity↔Domain↔DTO), UseCases.
+- **Test once stable:** ViewModels.
+- **Don't unit-test early:** Composables/UI (churns during design; verify by running). A few Room DAO instrumented tests only for complex queries.
+- Write tier-1 tests alongside the slice that introduces the logic — especially sync and money math.
+- Stack: JUnit + Truth (assertions) + Turbine (Flow/StateFlow) + MockK + kotlinx-coroutines-test.
+
+## Build / Run Commands
+- Build debug APK: `./gradlew assembleDebug`
+- Run unit tests (fast, JVM): `./gradlew testDebugUnitTest`
+- Install on running device/emulator: `./gradlew installDebug`
+- Lint: `./gradlew lintDebug`
+- JDK 21 (Android Studio JBR), `compileSdk = 36` (only platform installed), `targetSdk = 35`.
+
+---
+
 ## Key Conventions
 - Currency: PHP only — no multi-currency
 - Deletes are always soft (`is_deleted = true`) — never hard delete for sync safety
