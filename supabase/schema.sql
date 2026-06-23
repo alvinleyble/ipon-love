@@ -206,12 +206,25 @@ create policy couples_update on couples for update
     using (user1_id = auth.uid() or user2_id = auth.uid())
     with check (user1_id = auth.uid() or user2_id = auth.uid());
 
--- ---- owner-only tables (full CRUD on own rows) -----------------------------
--- accounts, categories, recurring_rules
+-- ---- accounts & categories -------------------------------------------------
+-- Owner: full CRUD. Partner: read access so the combined view can render the
+-- other's transactions with their real account/category names, icons, colors.
 create policy accounts_owner on accounts for all
     using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy accounts_partner_read on accounts for select
+    using (
+        is_deleted = false
+        and user_id in (select id from users where couple_id = auth_couple_id())
+    );
 create policy categories_owner on categories for all
     using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy categories_partner_read on categories for select
+    using (
+        is_deleted = false
+        and user_id in (select id from users where couple_id = auth_couple_id())
+    );
+
+-- ---- recurring_rules (owner-only — partners don't need each other's rules) --
 create policy recurring_owner on recurring_rules for all
     using (user_id = auth.uid()) with check (user_id = auth.uid());
 
