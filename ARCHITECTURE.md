@@ -1,8 +1,9 @@
 # Architecture Document — Ipon, Love
 
-**Version:** 1.0 (Draft)
+**Version:** 1.1
 **Date:** June 2026
 **Companion doc:** PRD.md
+**Status:** Clarified — pre-grilling pass
 
 ---
 
@@ -125,11 +126,13 @@ feature_x/
 
 ## 4. Data Model
 
+> **Sync columns.** Every synced table also carries `server_rev BIGINT` (server-assigned pull cursor, ADR-0002) in addition to `updated_at` (client-set LWW key, ADR-0001) and `is_deleted` (soft delete, ADR-0010). The local Room mirror additionally has a **`pending_sync` boolean — local only, never sent to Supabase** (push outbox flag, ADR-0002). Columns below omit `server_rev` for brevity; see `supabase/schema.sql` for the authoritative DDL. Design rationale lives in `docs/adr/`.
+
 ### users
 ```
 id              UUID        PK (from Supabase Auth)
 display_name    TEXT
-avatar_url      TEXT
+avatar_url      TEXT        nullable — photo upload is post-V1; V1 shows colored initials/monogram
 accent_color    TEXT        hex — used for color-coding in combined view
 couple_id       UUID        FK → couples (nullable)
 created_at      TIMESTAMP
@@ -140,11 +143,14 @@ updated_at      TIMESTAMP
 ```
 id              UUID        PK
 couple_name     TEXT        e.g. "PattyWallet"
-invite_code     TEXT        UNIQUE — generated on couple creation
+invite_code     TEXT        UNIQUE — generated on couple creation (gen_invite_code)
 user1_id        UUID        FK → users
-user2_id        UUID        FK → users (nullable until partner accepts)
+user2_id        UUID        FK → users (nullable until partner redeems invite)
 created_at      TIMESTAMP
+updated_at      TIMESTAMP   client-set LWW key (couples is a synced table)
+is_deleted      BOOLEAN     soft-deleted on unpair
 ```
+Pairing is done via the `redeem_invite` / `create_couple` RPCs, not direct writes (ADR-0006); unpair via the `unpair` RPC (ADR-0008).
 
 ### accounts
 ```
@@ -152,7 +158,7 @@ id              UUID        PK
 user_id         UUID        FK → users
 name            TEXT        e.g. GCash, Card, Wallet
 type            ENUM        CASH | CARD | BANK | EWALLET
-balance         DECIMAL
+opening_balance DECIMAL     current balance is DERIVED (opening + ledger), not stored — ADR-0007
 icon            TEXT
 color           TEXT
 position        INT         sort order
@@ -244,7 +250,10 @@ note_id         UUID        FK → notes
 storage_url     TEXT        Supabase Storage bucket URL
 position        INT
 created_at      TIMESTAMP
+updated_at      TIMESTAMP   synced like everything else
+is_deleted      BOOLEAN     soft delete so image removal propagates
 ```
+Notes un-sharing sets `is_shared = false` but **retains `couple_id`** so the un-share reaches the partner's redacting view (ADR-0005). Partner reads of transactions/accounts/categories/notes/note_images go through redacting views, never the base tables (ADR-0005).
 
 ---
 
@@ -260,7 +269,7 @@ created_at      TIMESTAMP
 
 **Login:**
 1. User enters email + password
-2. Supabase Auth returns session (access token + refresh token)
+2. Supabase Auth returns session (access token + refresh token) — rejected until the email is verified
 3. Session stored in DataStore
 4. App navigates to home (Records tab)
 
@@ -288,21 +297,28 @@ User action
 ```
 
 **On any write:**
-- `updated_at` is set to `now()`
+- `updated_at = max(now() + clockOffset, existing_updated_at + 1ms)` — offset-corrected toward server time, monotonic so a backward clock jump can't lose to the row's own prior version (ADR-0001)
+- `pending_sync = true` (local-only outbox flag)
 - Deletes set `is_deleted = true` and update `updated_at` (soft delete — never hard delete locally)
 
 **Sync triggers:**
 - App comes to foreground
 - Network reconnects (NetworkCallback)
 - User pulls to refresh on Records or Notes screens
+- Single-flight: triggers coalesce via WorkManager unique work (no overlapping syncs)
 
-**Sync logic:**
-- Push: all local records where `updated_at > last_sync_at`
-- Pull: all remote records where `updated_at > last_sync_at`
-- Conflict resolution: last-write-wins by `updated_at`
-- `last_sync_at` stored per user in DataStore
+**Sync logic** (ADR-0002, ADR-0009):
+- **Push (outbox):** send all rows where `pending_sync = true`; clear the flag per row as its upsert is acked. No timestamp math — the dirty flag, not `updated_at`, selects what to push.
+- **Pull (cursor):** for each table, fetch rows where `server_rev > cursor`, ordered by `server_rev`; advance the per-table cursor (in DataStore) to the max `server_rev` received, only after the batch commits to Room. `server_rev` is a server-assigned sequence reflecting *receipt order*, so a partner's late-arriving old edit is still pulled (fixes the "late arrival below the high-water mark" loss).
+- **Ordering:** process tables parent→child both directions (users → couples → accounts → categories → recurring_rules → transactions → budgets → notes → note_images); upserts are idempotent by `id`, so an interrupted sync just resumes.
+- **Conflict resolution:** row-level last-write-wins by `updated_at` (ADR-0003). The one lossy merge case (local dirty + remote newer) discards local edits everywhere *except shared notes*, which fork into a **conflict copy** instead of losing data.
+- **Partner data (combined view):** pulled from the redacting views (`partner_transactions`, etc.); a row arriving flagged private/deleted (note: unshared) means **purge the local copy** (ADR-0005). On unpair, the local `users` row going `couple_id = null` triggers a bulk purge of all replicated non-owned rows (ADR-0008).
+- **Balance:** never synced — derived locally from `opening_balance` + the ledger (ADR-0007).
+- **Tombstones:** kept indefinitely; a fresh device (cursor 0) pulls only `is_deleted = false` (ADR-0010).
 
 **Sync status** is a `StateFlow` in `SyncManager`, shown subtly in the UI (small indicator, not intrusive).
+
+> Full rationale for every decision above is in `docs/adr/0001`–`0011`; domain glossary in `CONTEXT.md`.
 
 ---
 
@@ -340,9 +356,11 @@ Transaction entry → Add / Edit (bottom sheet modal over any tab)
 | Setting | Value |
 |---|---|
 | minSdk | 26 (Android 8.0) — covers ~95%+ of active devices |
+| compileSdk | 37 (android-37.0 stable platform) |
 | targetSdk | 35 (Android 15) |
 | Package name | com.iponlove.app |
 | Language | Kotlin |
+| Build toolchain | AGP 9.2.1 / Gradle 9.6 / Kotlin 2.2.10 (built-in via AGP) / JDK 21 |
 | Supabase region | ap-southeast-1 (Singapore — closest to PH) |
 
 ---

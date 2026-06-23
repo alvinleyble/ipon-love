@@ -1,8 +1,8 @@
 # Product Requirements Document — Ipon, Love
 
-**Version:** 1.0 (Draft)
+**Version:** 1.1
 **Date:** June 2026
-**Status:** Draft
+**Status:** Clarified — pre-grilling pass
 
 ---
 
@@ -55,11 +55,12 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 ### 6.1 Authentication & Onboarding
 
 - Email/password registration and login (Supabase Auth)
+- Email verification required before first login
 - PIN lock on app open
 - Biometric unlock (fingerprint / face)
-- Profile setup: display name, avatar photo, personal accent color
+- Profile setup: display name, personal accent color (avatar shown as colored initials/monogram — photo upload is post-V1)
 - Couple pairing via generated invite code
-- Couple identity: shared couple name (e.g., "PattyWallet"), couple avatar or banner
+- Couple identity: shared couple name (e.g., "PattyWallet"); couple avatar/banner photo is post-V1
 
 ### 6.2 Budget Tracker
 
@@ -117,10 +118,9 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 
 ### 6.5 Customization & Themes
 
-- Multiple color themes — minimum: Light, Dark, plus 2 additional
-- Free tier: Light + Dark themes
-- Premium tier: all themes, custom font styles, custom category icon packs
+- Multiple color themes — minimum: Light, Dark, plus 2 additional — all unlocked for every user (one-time purchase, no tiers)
 - Theme preview before applying
+- Post-V1: custom font styles, custom category icon packs
 
 ### 6.6 Home Screen Widget
 
@@ -169,6 +169,8 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 | iOS version | Evaluate Kotlin Multiplatform or Flutter at that point |
 | CSV / PDF export | For power users and accountants |
 | Shared lists (groceries, trip budgets) | Extension of the shared notes feature |
+| Custom fonts & category icon packs | Theme customization beyond the built-in color themes |
+| Profile & couple photo upload | Avatar / banner images via Supabase Storage |
 
 ---
 
@@ -176,7 +178,7 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 
 - **Platform:** Android only (recommend minSdk API 26 / Android 8.0+)
 - **Currency:** Philippine Peso (PHP) only in v1
-- **Backend:** Supabase (auth, Postgres database, real-time sync)
+- **Backend:** Supabase (auth, Postgres database, background/triggered sync — not real-time)
 - **Local storage:** Room (offline-first)
 - **UI:** Jetpack Compose
 - **DI:** Hilt

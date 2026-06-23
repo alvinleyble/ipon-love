@@ -1,0 +1,7 @@
+# Partner data is replicated into local Room; RLS is the single visibility gate
+
+**Context.** The combined view shows the partner's non-private records, and the app is offline-first with Room as the single source of truth. Either the partner's rows are replicated into each device's Room, or the combined view fetches them live and is online-only.
+
+**Decision.** Replicate. The combined view is a plain Room query over both partners' user-ids; the individual view filters to the local user. Pull stops filtering by `user_id` — the client pulls "every row with `server_rev` past the cursor" and lets **Row Level Security be the one visibility authority** (own rows + the partner's permitted shared/non-private rows). Push only ever touches locally-owned `pending_sync` rows, which RLS re-enforces server-side; partner rows are read-only locally.
+
+**Consequences.** The combined view works offline — the actual couples use case (checking shared spend with no signal). Visibility logic lives only in RLS, not duplicated in client queries. Costs: the partner's non-private data is duplicated onto the device (already implied the moment it is shared; RLS guarantees private rows never leave the server), and Room rows can no longer assume `user_id == me`, so every shared-table query must be explicit about whose rows it wants. **Rejected:** live-fetch (breaks offline-first for the headline feature and forks a second online-only data path).

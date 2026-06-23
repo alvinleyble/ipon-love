@@ -1,0 +1,7 @@
+# Client-set `updated_at`, hardened with a clock offset and local monotonicity
+
+**Context.** The app is offline-first: writes land in Room and sync to Supabase later, so the client must stamp `updated_at` at write time — it cannot ask the server for a timestamp while offline. `updated_at` is the comparison key for last-write-wins, and the schema deliberately forbids a server trigger from overriding it (that would clobber conflict resolution on push). Raw client clocks have two failure modes: skew between partners (a fast phone always wins shared-row conflicts) and backward jumps on one device (a genuinely newer edit gets an older timestamp and loses).
+
+**Decision.** Keep client-set `updated_at` as the LWW key, but harden it: (1) on each successful sync, capture Supabase server time and persist a **clock offset** in DataStore, applied when stamping `updated_at` so skewed devices self-correct toward server time; (2) enforce **local monotonicity** when updating a row — `updated_at = max(now() + offset, existing_updated_at + 1ms)` — so a backward clock jump can never make a row lose to its own prior version.
+
+**Rejected:** server-authoritative timestamps (a DB trigger or RETURNING the server time). It is the obvious correctness fix, but it breaks offline-first — a row can't be stamped, ordered, or conflict-resolved until it reaches the server — and contradicts the no-trigger rule the schema relies on.

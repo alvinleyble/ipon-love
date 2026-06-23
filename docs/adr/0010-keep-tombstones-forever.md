@@ -1,0 +1,7 @@
+# Keep tombstones forever in V1; never naively GC them
+
+**Context.** Deletes are soft (`is_deleted = true`) and tombstones must stay pullable so deletions propagate to other devices and the partner. They accumulate monotonically, but for a two-person finance app the volume is trivial. The real hazard is a future "clean up old tombstones" job: hard-removing a tombstone the server still needs lets a device that was offline longer than the retention window re-push its stale live copy — the deleted row resurrects for everyone.
+
+**Decision.** Keep tombstones indefinitely in V1 — no server-side garbage collection. Optimize only the cold case: a fresh device (sync cursor 0) pulls just `is_deleted = false` rows, since it has nothing local to delete; incremental `server_rev` sync picks up every future delete normally. Room keeps tombstones locally for the same convergence reason but filters them from all UI queries.
+
+**Consequences.** Correctness is free and the resurrection trap is avoided. Recorded explicitly so the monotonic growth is not later "optimized" into a data-corruption bug. **If GC is ever introduced post-V1**, the retention window must exceed the longest plausible offline period, and a long-offline device must fall back to full row-set reconciliation rather than a cursor pull. **Rejected:** building a GC scheme now (more surface area, easy to get the resurrection case wrong, no benefit at this scale).

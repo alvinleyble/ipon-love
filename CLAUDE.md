@@ -56,12 +56,13 @@ feature_x/
 - **One concern per change.** Prefer "build the Accounts feature" over bundling multiple features.
 - **Keep the build green.** Run a build after each slice; never let compile errors pile up across features.
 - **Commit after each green slice.** Each working feature = one commit — it's the undo button when an AI edit goes wrong.
+- **HARD RULE — never commit or push without my explicit permission.** Stage and propose, but do not run `git commit` or `git push` until I say so each time. Permission granted once does not carry over to the next commit/push.
 - **Verify UI by running the app**, not by eyeballing the code.
 
 ## Testing Policy
 The per-commit gate is: **build compiles green**, and **domain + data logic has unit tests**. UI is verified by running, not unit-tested, until it stabilizes. Keep the unit suite JVM-only and seconds-fast (no emulator) so it actually gets run.
 
-- **Always test (high bug-risk, cheap — pure Kotlin, JVM):** sync / conflict resolution (last-write-wins by `updated_at`, push/pull diffing), money & budget math, analysis aggregations, recurring-rule date math, mappers (Entity↔Domain↔DTO), UseCases.
+- **Always test (high bug-risk, cheap — pure Kotlin, JVM):** sync / conflict resolution (row-level LWW by `updated_at`, dirty-flag push selection, `server_rev` pull cursor, partner-row purge/conflict-copy merge cases), money & budget math, derived balance, analysis aggregations, recurring-rule date math, mappers (Entity↔Domain↔DTO), UseCases.
 - **Test once stable:** ViewModels.
 - **Don't unit-test early:** Composables/UI (churns during design; verify by running). A few Room DAO instrumented tests only for complex queries.
 - Write tier-1 tests alongside the slice that introduces the logic — especially sync and money math.
@@ -78,9 +79,12 @@ The per-commit gate is: **build compiles green**, and **domain + data logic has 
 
 ## Key Conventions
 - Currency: PHP only — no multi-currency
-- Deletes are always soft (`is_deleted = true`) — never hard delete for sync safety
-- Every write sets `updated_at = now()`
-- Sync is manual (app foreground, network reconnect, pull-to-refresh) — not real-time
+- Deletes are always soft (`is_deleted = true`) — never hard delete for sync safety; tombstones kept indefinitely (ADR-0010)
+- Every write sets `updated_at = max(now() + clockOffset, prev + 1ms)` (offset-corrected, monotonic LWW key — ADR-0001) and `pending_sync = true` (local-only outbox flag — ADR-0002)
+- Sync is manual (app foreground, network reconnect, pull-to-refresh) — not real-time. Push = dirty `pending_sync` rows; pull = `server_rev > cursor`. Conflict = row-level LWW by `updated_at`, except shared notes (conflict copy). See ADR-0002/0003 and `docs/adr/`.
+- Interactive sync (pull-to-refresh, foreground) runs in-process for immediacy; WorkManager owns background retry/reconnect (ADR-0012)
+- Account balance is derived (opening_balance + ledger), never synced (ADR-0007)
+- Partner data is read via redacting views and replicated into Room; combined view shows shared spending, not partner balances (ADR-0004/0005/0011)
 - Room is always read first; Supabase is background sync only
 - Package name: `com.iponlove.app`
 - minSdk: 26 (Android 8.0)
@@ -89,6 +93,7 @@ The per-commit gate is: **build compiles green**, and **domain + data logic has 
 
 ## Auth
 - Email + password via Supabase Auth only (v1)
+- Email verification required before first login
 - PIN and biometric are local app lock only — not server auth
 - Session stored in DataStore; Supabase SDK handles token refresh
 
@@ -128,6 +133,8 @@ When in doubt: favor thin, composable layers over shortcuts. A feature being out
 - Receipt photo on transactions
 - CSV / PDF export
 - iOS
+- Custom fonts / custom category icon packs (themes are color-only in V1)
+- Profile / couple photo upload (avatars are accent color + initials in V1)
 
 ---
 
@@ -145,4 +152,4 @@ Records | Analysis | Budgets | Accounts | Categories
 ## Supabase Config
 - Region: ap-southeast-1 (Singapore)
 - Auth: email + password
-- Storage: used for note image attachments
+- Storage: note image attachments only (no avatar/profile photo upload in V1)

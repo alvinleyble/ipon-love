@@ -1,0 +1,7 @@
+# Uniform row-level LWW, with conflict-copy for shared notes
+
+**Context.** Last-write-wins needs a conflict unit. Field-level merge means CRDT-style logic over rich-text JSONB — far out of scope for V1 — so the whole row is the unit. Row-level LWW is correct for single-owner rows (transactions, accounts, categories) and for shared budgets (one meaningful field), but it silently destroys a partner's work in exactly one case: a shared note edited by both partners while diverged, then synced. That scenario is on-brand for this app (co-writing a trip budget or grocery list on two phones offline).
+
+**Decision.** Keep one uniform rule — row-level LWW everywhere — and add a single localized safeguard. The merge step classifies each pulled row; the only lossy case is "I have a local **dirty** copy and the remote `updated_at` is newer, so remote wins and my local edits are discarded." For every table except shared notes, discarding is accepted. For a shared note in that case, **fork the local edits into a new note** (same couple, owned by the local editor, title suffixed e.g. "(conflict copy — Alvin)") before accepting remote as canonical. No data is lost, and no new server-side concurrency protocol is needed — detection rides on the dirty flag the merge step already inspects.
+
+**Rejected:** accepting the loss (a couple losing co-written notes is a bad first impression) and per-note edit locking / presence (needs real-time sync, which is explicitly out of scope).
