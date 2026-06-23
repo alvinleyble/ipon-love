@@ -72,7 +72,7 @@ The per-commit gate is: **build compiles green**, and **domain + data logic has 
 - Run unit tests (fast, JVM): `./gradlew testDebugUnitTest`
 - Install on running device/emulator: `./gradlew installDebug`
 - Lint: `./gradlew lintDebug`
-- JDK 21 (Android Studio JBR), `compileSdk = 36` (only platform installed), `targetSdk = 35`.
+- JDK 21 (Android Studio JBR), `compileSdk = 37` (android-37.0 stable platform), `targetSdk = 35`. AGP 9.2.1 / Gradle 9.6 / Kotlin 2.2.10 (built-in via AGP).
 
 ---
 
