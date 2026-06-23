@@ -1,0 +1,185 @@
+# Product Requirements Document — Ipon, Love
+
+**Version:** 1.0 (Draft)
+**Date:** June 2026
+**Status:** Draft
+
+---
+
+## 1. Overview
+
+**Ipon, Love** is an Android personal finance and productivity app designed for couples who want to track individual and shared expenses while staying financially connected. It combines a full-featured budget tracker with a notes system and a couple-sharing layer, wrapped in a clean, aesthetic, highly customizable UI.
+
+The personal instance for the developer is branded **PattyWallet**.
+
+---
+
+## 2. Problem Statement
+
+Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tracking problem but are riddled with ads, lack couple-specific features, and offer limited customization. Couples who want financial transparency have no clean, ad-free, aesthetically pleasing tool that supports both individual and shared views of their finances in one place.
+
+---
+
+## 3. Target Users
+
+**Primary:** Filipino couples (ages 20–35) who are financially open with each other and want a shared view of their spending without sacrificing personal privacy.
+
+**Secondary:** Individual users who want a clean, customizable, offline-first budget tracker.
+
+---
+
+## 4. Goals
+
+- Provide a clean, ad-free alternative to existing budget tracker apps
+- Enable couples to manage individual and shared finances in one place
+- Be offline-first with seamless cloud sync
+- Be extensible — architecture must support future AI, vault, and media features without rewrites
+
+---
+
+## 5. Non-Goals (V1)
+
+- iOS version
+- Multi-currency support
+- AI chatbot or assistant
+- Password vault
+- Voice recording storage
+- Receipt/photo attachment on transactions
+- Web dashboard
+- CSV / PDF data export
+
+---
+
+## 6. V1 Feature Scope
+
+### 6.1 Authentication & Onboarding
+
+- Email/password registration and login (Supabase Auth)
+- PIN lock on app open
+- Biometric unlock (fingerprint / face)
+- Profile setup: display name, avatar photo, personal accent color
+- Couple pairing via generated invite code
+- Couple identity: shared couple name (e.g., "PattyWallet"), couple avatar or banner
+
+### 6.2 Budget Tracker
+
+**Transaction Entry**
+- Entry types: Income, Expense, Transfer
+- Custom numpad for amount input (same feel as MyMoney)
+- Fields: amount, category, account, note/description, date & time
+- Option to mark a transaction as private (hidden from partner in combined view)
+- Recurring transactions: daily, weekly, monthly, or custom interval
+
+**Accounts**
+- Default accounts: Cash / Wallet, Card, Bank, GCash, Maya
+- User can add, rename, reorder, or delete accounts
+- Per-account balance tracking
+
+**Categories**
+- Separate income and expense category lists
+- Default categories provided (Bills, Food, Shopping, Transport, Health, Entertainment, Salary, Business, Lottery, Sale, etc.)
+- User can add, edit, reorder, or delete categories
+- Each category has a customizable icon and color
+
+**Records**
+- Transaction list grouped by date, newest first
+- Summary bar per period: Total Expense, Total Income, Net Total
+- Search transactions by keyword
+- Filter by account, category, entry type, date range
+
+**Analysis Views**
+- Navigate by day / week / month
+- Expense Overview: donut/pie chart by category with percentage breakdown
+- Expense Flow: line graph of cumulative spending over selected period
+- Calendar view: daily net totals per day of the month
+
+**Budgets**
+- Set monthly budget limits per category (e.g., ₱5,000 for Food)
+- Budget progress bar per category
+- Subtle alert notification at 80% and 100% of limit
+- Overall monthly budget overview screen
+
+### 6.3 Couples Features
+
+- **Individual view:** each user sees their own transactions and budgets by default
+- **Combined view:** merged transaction list with color-coded attribution per partner (e.g., Alvin in blue, Patty in pink); private transactions excluded
+- **Shared budget:** a joint monthly budget both partners contribute to and spend from together
+- Couple pairing managed in settings; either partner can unpair
+
+### 6.4 Notes
+
+- Create, edit, delete notes
+- Rich text: bold, italic, headings, bullet and numbered lists
+- Checklist support (to-do style checkboxes)
+- Image attachment per note
+- Private by default; option to share with paired partner
+- Shared notes are visible and editable by both partners
+
+### 6.5 Customization & Themes
+
+- Multiple color themes — minimum: Light, Dark, plus 2 additional
+- Free tier: Light + Dark themes
+- Premium tier: all themes, custom font styles, custom category icon packs
+- Theme preview before applying
+
+### 6.6 Home Screen Widget
+
+- Small: current balance of a selected account
+- Medium: monthly expense / income summary
+- Quick-add shortcut: tapping opens transaction entry directly
+
+### 6.7 Notifications (Minimal)
+
+- Budget limit alerts at 80% and 100% thresholds
+- Recurring transaction reminder
+- No partner activity notifications in v1
+
+---
+
+## 7. Monetization
+
+### Model: One-Time Purchase (Paid App)
+- App is listed on the Play Store with a price tag
+- Purchase unlocks the full app immediately — no tiers, no locked features
+- All features available from first launch after purchase
+
+### Future: AI Add-On
+- User provides their own API key (Claude / OpenAI / etc.)
+- No additional cost on the app side; API usage is the user's own expense
+
+---
+
+## 8. Offline & Sync Behavior
+
+- All data written to local Room database first (offline-first)
+- Synced to Supabase when a connection is available
+- Conflict resolution: last-write-wins per record using timestamp comparison
+- Phone change = log in on new device → full data restores automatically; no manual export needed
+
+---
+
+## 9. Future Enhancements (Post-V1)
+
+| Feature | Notes |
+|---|---|
+| AI financial companion | User's own API key; spending advice, savings trajectory, friendly assistant persona |
+| Receipt / photo attachment on transactions | Requires Supabase Storage integration |
+| Password vault | Encrypted local vault |
+| Voice recording storage | Extension of the notes system |
+| iOS version | Evaluate Kotlin Multiplatform or Flutter at that point |
+| CSV / PDF export | For power users and accountants |
+| Shared lists (groceries, trip budgets) | Extension of the shared notes feature |
+
+---
+
+## 10. Technical Constraints
+
+- **Platform:** Android only (recommend minSdk API 26 / Android 8.0+)
+- **Currency:** Philippine Peso (PHP) only in v1
+- **Backend:** Supabase (auth, Postgres database, real-time sync)
+- **Local storage:** Room (offline-first)
+- **UI:** Jetpack Compose
+- **DI:** Hilt
+- **Async:** Coroutines + StateFlow
+- **Architecture:** MVVM + Clean Architecture, feature-based module structure
+- **Language:** Kotlin

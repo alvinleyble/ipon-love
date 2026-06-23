@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ipon, Love — UI Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --p:#8B5272;--op:#fff;--pc:#FFD7EE;--opc:#380029;
+  --s:#6D5867;--os:#fff;--sc:#F5DAF0;
+  --bg:#FFF8F9;--sv:#EEDCE8;--os2:#1E1A1E;--osv:#4D444C;
+  --out:#7F747C;--outv:#D1C3CE;
+  --err:#B3261E;
+  --inc:#1B5E20;--inc-bg:#E8F5E9;
+  --exp:#B71C1C;--exp-bg:#FFEBEE;
+  --pa:#1565C0;--pb:#C2185B;
+}
+
+.dark{
+  --p:#E8B3D5;--op:#501038;--pc:#6B3659;--opc:#FFD7EE;
+  --bg:#161116;--sv:#2A2230;--os2:#E9E0E6;--osv:#D1C3CE;
+  --out:#9A8D96;--outv:#3D3440;
+  --inc:#A5D6A7;--inc-bg:#1B3620;
+  --exp:#EF9A9A;--exp-bg:#3B1414;
+}
+
+body{font-family:'Inter',sans-serif;background:#120E1A;display:flex;min-height:100vh;color:#fff}
+
+/* SIDEBAR */
+#sidebar{width:210px;min-height:100vh;background:#0E0B14;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sb-head{padding:20px 14px 14px;border-bottom:1px solid rgba(255,255,255,.07)}
+.sb-brand{font-size:15px;font-weight:700;color:#E8B3D5;letter-spacing:-.3px}
+.sb-sub{font-size:10px;color:rgba(255,255,255,.3);margin-top:2px}
+.sb-group{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.25);padding:14px 14px 4px}
+.sb-btn{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;border:none;background:none;color:rgba(255,255,255,.55);font-family:'Inter',sans-serif;font-size:12px;width:100%;text-align:left;transition:all .15s;border-radius:0}
+.sb-btn:hover{background:rgba(255,255,255,.05);color:#fff}
+.sb-btn.active{background:rgba(232,179,213,.12);color:#E8B3D5}
+.sb-btn .material-icons-round{font-size:16px;opacity:.7}
+.sb-btn.active .material-icons-round{opacity:1}
+.sb-foot{margin-top:auto;padding:12px 14px;border-top:1px solid rgba(255,255,255,.07)}
+.theme-btn{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer;color:rgba(255,255,255,.6);font-family:'Inter',sans-serif;font-size:11px;width:100%;transition:all .15s}
+.theme-btn:hover{background:rgba(255,255,255,.09);color:#fff}
+.theme-btn .material-icons-round{font-size:15px}
+
+/* MAIN */
+#main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 32px 60px;gap:12px}
+#screen-label{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:.5px;text-align:center}
+
+/* PHONE FRAME */
+#phone{width:390px;height:844px;background:var(--bg);border-radius:44px;box-shadow:0 0 0 1px rgba(0,0,0,.4),0 0 0 9px #1a1520,0 0 0 11px rgba(255,255,255,.08),0 40px 80px rgba(0,0,0,.7);display:flex;flex-direction:column;overflow:hidden;position:relative;color:var(--os2);transition:background .2s}
+
+/* STATUS BAR */
+#sbar{height:44px;background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:0 26px;flex-shrink:0;position:relative;z-index:10;transition:background .2s}
+.sbar-time{font-size:15px;font-weight:600;color:var(--os2)}
+.sbar-icons{display:flex;align-items:center;gap:4px;color:var(--os2)}
+.sbar-icons .material-icons-round{font-size:15px}
+
+/* SCREENS */
+#scr{flex:1;overflow:hidden;position:relative}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;overflow-y:auto;background:var(--bg);transition:background .2s}
+.screen.active{display:flex}
+
+/* BOTTOM NAV */
+#bnav{height:80px;background:var(--bg);border-top:1px solid var(--outv);display:none;align-items:center;justify-content:space-around;padding:0 4px;flex-shrink:0;transition:background .2s}
+#bnav.visible{display:flex}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 8px;border-radius:16px;flex:1}
+.nav-pill{min-width:64px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center}
+.nav-item.active .nav-pill{background:var(--pc)}
+.nav-item .material-icons-round{font-size:22px;color:var(--osv)}
+.nav-item.active .material-icons-round{color:var(--p)}
+.nav-lbl{font-size:10px;color:var(--osv);font-weight:500}
+.nav-item.active .nav-lbl{color:var(--p);font-weight:700}
+
+/* FAB */
+.fab{position:absolute;bottom:88px;right:18px;width:56px;height:56px;background:var(--pc);border-radius:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.2);cursor:pointer;z-index:20}
+.fab .material-icons-round{color:var(--opc);font-size:28px}
+
+/* TOP BAR */
+.tbar{display:flex;align-items:center;padding:0 8px 0 4px;height:60px;background:var(--bg);flex-shrink:0;gap:4px;transition:background .2s}
+.tbar-title{flex:1;font-size:20px;font-weight:700;color:var(--os2);padding-left:8px}
+.tbar-sub{font-size:11px;color:var(--osv);font-weight:400}
+.iBtn{width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--osv);flex-shrink:0}
+.iBtn .material-icons-round{font-size:22px}
+.iBtn:hover{background:var(--sv)}
+
+/* ── AUTH ── */
+.auth-hero{background:linear-gradient(150deg,var(--pc) 0%,var(--bg) 100%);padding:48px 32px 40px;display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0}
+.auth-logo{width:72px;height:72px;background:var(--p);border-radius:24px;display:flex;align-items:center;justify-content:center}
+.auth-logo .material-icons-round{font-size:36px;color:#fff}
+.auth-name{font-size:28px;font-weight:700;color:var(--os2);letter-spacing:-.5px}
+.auth-tag{font-size:13px;color:var(--osv);text-align:center;line-height:1.5}
+.auth-form{padding:24px 22px;display:flex;flex-direction:column;gap:14px}
+.f-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--osv);margin-bottom:4px}
+.f-row{height:52px;border:1.5px solid var(--outv);border-radius:14px;padding:0 14px;display:flex;align-items:center;gap:10px;background:var(--bg)}
+.f-row .material-icons-round{font-size:18px;color:var(--osv)}
+.f-val{flex:1;font-size:14px;color:var(--os2)}
+.f-ph{flex:1;font-size:14px;color:var(--osv)}
+.btn-pri{height:52px;background:var(--p);color:var(--op);border:none;border-radius:14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:4px}
+.btn-txt{background:none;border:none;color:var(--p);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;padding:6px}
+.auth-foot{display:flex;align-items:center;justify-content:center;gap:4px;padding:0 22px 8px}
+.auth-foot-t{font-size:13px;color:var(--osv)}
+
+/* ── PIN ── */
+.pin-wrap{display:flex;flex-direction:column;align-items:center;padding:56px 24px 24px;background:var(--bg);flex:1}
+.pin-logo{width:64px;height:64px;background:var(--p);border-radius:20px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.pin-logo .material-icons-round{font-size:32px;color:#fff}
+.pin-title{font-size:20px;font-weight:700;color:var(--os2);margin-bottom:6px}
+.pin-sub{font-size:13px;color:var(--osv);margin-bottom:36px}
+.pin-dots{display:flex;gap:18px;margin-bottom:44px}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--out)}
+.pin-dot.fill{background:var(--p);border-color:var(--p)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:270px}
+.pin-key{height:64px;border-radius:16px;background:var(--sv);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:22px;font-weight:500;color:var(--os2);gap:1px}
+.pin-ksub{font-size:8px;font-weight:400;color:var(--osv);letter-spacing:.8px}
+.pin-key.ghost{background:none;font-size:13px;color:var(--p)}
+.pin-key.empty{background:none;cursor:default}
+
+/* ── RECORDS ── */
+.rec-head{padding:8px 16px;display:flex;align-items:center;gap:4px;flex-shrink:0}
+.mon-nav{display:flex;align-items:center;gap:4px;flex:1;justify-content:center}
+.mon-btn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--osv)}
+.mon-btn .material-icons-round{font-size:20px}
+.mon-lbl{font-size:16px;font-weight:700;color:var(--os2);min-width:110px;text-align:center}
+.sum-bar{margin:0 14px 10px;background:var(--pc);border-radius:18px;padding:14px 4px;display:flex;flex-shrink:0}
+.sum-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.sum-item+.sum-item{border-left:1px solid rgba(0,0,0,.1)}
+.sum-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--opc);opacity:.55}
+.sum-amt{font-size:13px;font-weight:800;color:var(--opc)}
+.sum-amt.inc{color:#1B5E20}.sum-amt.exp{color:#B71C1C}
+.chips{display:flex;gap:7px;padding:0 14px 10px;flex-shrink:0;overflow-x:auto}
+.chips::-webkit-scrollbar{display:none}
+.chip{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;background:var(--sv);color:var(--osv);border:1.5px solid transparent;flex-shrink:0}
+.chip.on{background:var(--pc);color:var(--opc);border-color:var(--p)}
+.srch{margin:0 14px 10px;height:44px;background:var(--sv);border-radius:22px;display:flex;align-items:center;padding:0 14px;gap:8px;flex-shrink:0}
+.srch .material-icons-round{font-size:18px;color:var(--osv)}
+.srch-t{font-size:13px;color:var(--osv)}
+.txl{flex:1;overflow-y:auto;padding:0 0 96px}
+.txg-head{padding:8px 14px 4px;display:flex;align-items:center;justify-content:space-between}
+.txg-date{font-size:11px;font-weight:700;color:var(--osv);text-transform:uppercase;letter-spacing:.5px}
+.txg-net{font-size:12px;font-weight:700;color:var(--osv)}
+.txg-net.pos{color:var(--inc)}.txg-net.neg{color:var(--exp)}
+.tx{display:flex;align-items:center;padding:11px 14px;gap:12px;cursor:pointer}
+.tx-ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tx-ic .material-icons-round{font-size:22px;color:#fff}
+.tx-det{flex:1;min-width:0}
+.tx-n{font-size:14px;font-weight:600;color:var(--os2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-m{font-size:11px;color:var(--osv)}
+.tx-amt{font-size:14px;font-weight:700;flex-shrink:0}
+.tx-amt.inc{color:var(--inc)}.tx-amt.exp{color:var(--exp)}.tx-amt.tr{color:var(--osv)}
+.divl{height:1px;background:var(--outv);margin:0 14px;opacity:.4}
+
+/* ── ANALYSIS ── */
+.period-sel{display:flex;margin:10px 14px;background:var(--sv);border-radius:22px;padding:3px;gap:2px;flex-shrink:0}
+.p-btn{flex:1;padding:7px;border-radius:19px;font-size:12px;font-weight:600;text-align:center;cursor:pointer;color:var(--osv)}
+.p-btn.on{background:var(--bg);color:var(--p);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.chart-card{margin:0 14px 14px;background:var(--sv);border-radius:20px;padding:18px;flex-shrink:0}
+.chart-title{font-size:13px;font-weight:700;color:var(--os2);margin-bottom:14px}
+.donut-wrap{display:flex;align-items:center;gap:12px}
+.leg{display:flex;flex-direction:column;gap:8px;flex:1}
+.leg-row{display:flex;align-items:center;gap:7px}
+.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.leg-n{font-size:11px;color:var(--osv);flex:1}
+.leg-p{font-size:11px;font-weight:700;color:var(--os2)}
+.line-wrap{position:relative;width:100%}
+
+/* ── BUDGETS ── */
+.bud-ov{margin:10px 14px;background:var(--p);border-radius:20px;padding:18px;flex-shrink:0;position:relative;overflow:hidden}
+.bud-ov::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:rgba(255,255,255,.07);border-radius:50%}
+.bud-ov-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.55);margin-bottom:4px}
+.bud-ov-amts{display:flex;align-items:baseline;gap:5px;margin-bottom:12px}
+.bud-ov-spent{font-size:28px;font-weight:800;color:#fff}
+.bud-ov-total{font-size:15px;color:rgba(255,255,255,.5)}
+.bud-bar-bg{height:8px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden;margin-bottom:7px}
+.bud-bar-f{height:100%;border-radius:4px;background:rgba(255,255,255,.9)}
+.bud-bar-meta{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.6)}
+.bud-list{flex:1;overflow-y:auto;padding:0 14px 96px}
+.bud-item{padding:14px 0;border-bottom:1px solid var(--outv)}
+.bud-item:last-child{border-bottom:none}
+.bud-item-h{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.bud-ci{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.bud-ci .material-icons-round{font-size:18px;color:#fff}
+.bud-ci-info{flex:1}
+.bud-ci-n{font-size:13px;font-weight:600;color:var(--os2)}
+.bud-ci-a{font-size:11px;color:var(--osv)}
+.bud-pct{font-size:12px;font-weight:700;color:var(--os2)}
+.bud-pct.warn{color:#E65100}.bud-pct.danger{color:var(--err)}
+.bud-pb{height:6px;background:var(--sv);border-radius:3px;overflow:hidden}
+.bud-pbf{height:100%;border-radius:3px}
+
+/* ── ACCOUNTS ── */
+.acc-tot{background:var(--pc);margin:10px 14px;border-radius:18px;padding:18px;flex-shrink:0}
+.acc-tot-lbl{font-size:10px;font-weight:700;color:var(--opc);opacity:.55;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+.acc-tot-amt{font-size:30px;font-weight:800;color:var(--opc)}
+.acc-list{flex:1;overflow-y:auto;padding:0 14px 96px}
+.acc-card{display:flex;align-items:center;gap:12px;padding:14px;background:var(--sv);border-radius:16px;margin-bottom:10px;cursor:pointer}
+.acc-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.acc-ic .material-icons-round{font-size:22px;color:#fff}
+.acc-info{flex:1}
+.acc-n{font-size:15px;font-weight:700;color:var(--os2)}
+.acc-t{font-size:11px;color:var(--osv)}
+.acc-bal{font-size:15px;font-weight:800;color:var(--os2)}
+
+/* ── CATEGORIES ── */
+.cat-tabs-row{display:flex;margin:10px 14px;background:var(--sv);border-radius:22px;padding:3px;flex-shrink:0}
+.ct-tab{flex:1;padding:8px;border-radius:19px;font-size:13px;font-weight:600;text-align:center;cursor:pointer;color:var(--osv)}
+.ct-tab.on{background:var(--bg);color:var(--p);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:4px 14px 96px}
+.cat-item{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer}
+.cat-ic{width:54px;height:54px;border-radius:17px;display:flex;align-items:center;justify-content:center}
+.cat-ic .material-icons-round{font-size:24px;color:#fff}
+.cat-ic.add{border:2px dashed var(--out);background:none}
+.cat-ic.add .material-icons-round{color:var(--out)}
+.cat-lbl{font-size:10px;font-weight:500;color:var(--osv);text-align:center}
+
+/* ── TX ENTRY ── */
+.tx-type-row{display:flex;margin:10px 14px;background:var(--sv);border-radius:22px;padding:3px;flex-shrink:0}
+.tx-type-b{flex:1;padding:9px;border-radius:19px;font-size:12px;font-weight:700;text-align:center;cursor:pointer;color:var(--osv)}
+.tx-type-b.on.exp{background:#FFEBEE;color:#B71C1C}
+.tx-type-b.on.inc{background:#E8F5E9;color:#1B5E20}
+.tx-type-b.on.tr{background:#E3F2FD;color:#1565C0}
+.tx-amtd{display:flex;align-items:center;justify-content:center;padding:12px 24px 16px;flex-shrink:0}
+.tx-cur{font-size:26px;font-weight:300;color:var(--osv);align-self:flex-start;margin-top:10px;margin-right:2px}
+.tx-num{font-size:56px;font-weight:200;color:var(--os2);letter-spacing:-2px;line-height:1}
+.tx-fields{padding:0 14px;display:flex;flex-direction:column;flex-shrink:0}
+.tx-frow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--outv);cursor:pointer}
+.tx-frow:last-child{border-bottom:none}
+.tx-fic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tx-fic .material-icons-round{font-size:18px;color:#fff}
+.tx-fv{flex:1;font-size:14px;font-weight:600;color:var(--os2)}
+.tx-fv.ph{color:var(--osv);font-weight:400}
+.tx-fchev .material-icons-round{font-size:18px;color:var(--osv)}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--outv);border-top:1px solid var(--outv);flex-shrink:0}
+.nk{height:60px;display:flex;align-items:center;justify-content:center;background:var(--bg);cursor:pointer;font-size:22px;font-weight:400;color:var(--os2);transition:background .1s}
+.nk:active{background:var(--sv)}
+.nk .material-icons-round{font-size:22px}
+.nk-save{background:var(--p);color:var(--op);font-size:15px;font-weight:800;grid-column:1/-1;height:56px}
+
+/* ── NOTES ── */
+.notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 14px 96px;align-content:start}
+.note-card{background:var(--sv);border-radius:16px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:7px;min-height:110px}
+.note-card.wide{grid-column:1/-1}
+.nc-head{display:flex;align-items:center;gap:5px}
+.nc-title{font-size:13px;font-weight:700;color:var(--os2);flex:1}
+.nc-badge{background:var(--pc);color:var(--opc);font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px}
+.nc-preview{font-size:11px;color:var(--osv);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.nc-foot{margin-top:auto;font-size:10px;color:var(--out)}
+.nc-checks{display:flex;flex-direction:column;gap:5px}
+.ck-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--osv)}
+.ck-row .material-icons-round{font-size:14px;color:var(--p)}
+.ck-row.done{text-decoration:line-through;opacity:.5}
+
+/* ── NOTE EDITOR ── */
+.ne-title{font-size:22px;font-weight:700;color:var(--os2);padding:10px 14px 6px;border:none;background:transparent;width:100%;outline:none;font-family:'Inter',sans-serif;flex-shrink:0}
+.rich-tb{display:flex;align-items:center;gap:3px;padding:7px 10px;border-top:1px solid var(--outv);border-bottom:1px solid var(--outv);overflow-x:auto;flex-shrink:0}
+.rich-tb::-webkit-scrollbar{display:none}
+.tb-btn{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--osv);flex-shrink:0}
+.tb-btn .material-icons-round{font-size:18px}
+.tb-btn.on{background:var(--pc);color:var(--p)}
+.tb-div{width:1px;height:22px;background:var(--outv);margin:0 3px;flex-shrink:0}
+.ne-body{flex:1;padding:14px;overflow-y:auto}
+.ne-body p{font-size:14px;line-height:1.65;color:var(--os2);margin-bottom:10px}
+.ne-body h2{font-size:17px;font-weight:700;color:var(--os2);margin:14px 0 6px}
+.ne-ck{display:flex;align-items:flex-start;gap:9px;padding:5px 0;font-size:14px;color:var(--os2)}
+.ne-cb{width:20px;height:20px;border-radius:6px;border:2px solid var(--out);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.ne-cb.chk{background:var(--p);border-color:var(--p)}
+.ne-cb.chk .material-icons-round{font-size:13px;color:#fff}
+.ne-ck-t.done{text-decoration:line-through;color:var(--osv)}
+
+/* ── COUPLE VIEW ── */
+.cpl-hdr{margin:10px 14px;background:linear-gradient(135deg,#1565C0,#C2185B);border-radius:20px;padding:18px;flex-shrink:0;position:relative;overflow:hidden}
+.cpl-hdr::before{content:'';position:absolute;top:-25px;right:-25px;width:100px;height:100px;background:rgba(255,255,255,.07);border-radius:50%}
+.cpl-name{font-size:20px;font-weight:800;color:#fff;margin-bottom:3px}
+.cpl-period{font-size:12px;color:rgba(255,255,255,.65);margin-bottom:14px}
+.cpl-partners{display:flex;gap:10px}
+.cpl-chip{flex:1;background:rgba(255,255,255,.15);border-radius:12px;padding:10px 12px}
+.cpl-chip-n{font-size:11px;font-weight:700;color:rgba(255,255,255,.75);margin-bottom:2px}
+.cpl-chip-a{font-size:17px;font-weight:800;color:#fff}
+.cpl-tog{display:flex;margin:0 14px 10px;background:var(--sv);border-radius:22px;padding:3px;flex-shrink:0}
+.cpl-tog-b{flex:1;padding:7px;border-radius:19px;font-size:12px;font-weight:600;text-align:center;cursor:pointer;color:var(--osv)}
+.cpl-tog-b.on{background:var(--bg);color:var(--p);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.cpl-tx{display:flex;align-items:center;padding:11px 14px;gap:10px;cursor:pointer}
+.cpl-bar{width:4px;height:40px;border-radius:2px;flex-shrink:0}
+
+/* ── SETTINGS ── */
+.stg-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--p);padding:18px 14px 6px}
+.stg-item{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer}
+.stg-ic{width:38px;height:38px;border-radius:11px;background:var(--sv);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stg-ic .material-icons-round{font-size:18px;color:var(--osv)}
+.stg-txt{flex:1}
+.stg-lbl{font-size:14px;font-weight:600;color:var(--os2)}
+.stg-sub{font-size:11px;color:var(--osv)}
+.stg-chev .material-icons-round{font-size:18px;color:var(--osv)}
+.stg-div{height:1px;background:var(--outv);margin:0 14px;opacity:.4}
+.prof-hdr{display:flex;align-items:center;gap:14px;padding:18px 14px;background:var(--sv);margin-bottom:6px;flex-shrink:0}
+.prof-av{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0}
+.prof-n{font-size:17px;font-weight:700;color:var(--os2)}
+.prof-e{font-size:12px;color:var(--osv)}
+
+/* ── COLORS ── */
+.ic-food{background:#F06292}.ic-tr{background:#42A5F5}.ic-bills{background:#FFA726}
+.ic-shop{background:#AB47BC}.ic-hlth{background:#EF5350}.ic-ent{background:#66BB6A}
+.ic-sal{background:#2E7D32}.ic-sav{background:#1565C0}.ic-biz{background:#455A64}
+.ic-oth{background:#90A4AE}.ic-gift{background:#EC407A}.ic-lotto{background:#5C6BC0}
+.ic-cash{background:#43A047}.ic-gcash{background:#0066CC}.ic-maya{background:#00BFA5}
+.ic-bdo{background:#B71C1C}.ic-bpi{background:#C62828}.ic-card{background:#37474F}
+.ic-prm{background:#8B5272}
+
+/* Theme swatch row in settings */
+.theme-swatches{display:flex;gap:10px;padding:4px 14px 14px;flex-shrink:0}
+.swatch{width:36px;height:36px;border-radius:50%;cursor:pointer;border:3px solid transparent}
+.swatch.sel{border-color:var(--os2)}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">Ipon, Love</div>
+    <div class="sb-sub">UI Mockup · PattyWallet build</div>
+  </div>
+
+  <div class="sb-group">Auth</div>
+  <button class="sb-btn" onclick="go('login')"><span class="material-icons-round">login</span>Login</button>
+  <button class="sb-btn" onclick="go('register')"><span class="material-icons-round">person_add</span>Register</button>
+  <button class="sb-btn" onclick="go('pin')"><span class="material-icons-round">pin</span>PIN Entry</button>
+
+  <div class="sb-group">Main Tabs</div>
+  <button class="sb-btn active" id="sb-records" onclick="go('records')"><span class="material-icons-round">receipt_long</span>Records</button>
+  <button class="sb-btn" id="sb-analysis" onclick="go('analysis')"><span class="material-icons-round">bar_chart</span>Analysis</button>
+  <button class="sb-btn" id="sb-budgets" onclick="go('budgets')"><span class="material-icons-round">savings</span>Budgets</button>
+  <button class="sb-btn" id="sb-accounts" onclick="go('accounts')"><span class="material-icons-round">account_balance_wallet</span>Accounts</button>
+  <button class="sb-btn" id="sb-categories" onclick="go('categories')"><span class="material-icons-round">category</span>Categories</button>
+
+  <div class="sb-group">Features</div>
+  <button class="sb-btn" onclick="go('txentry')"><span class="material-icons-round">add_circle</span>Transaction Entry</button>
+  <button class="sb-btn" onclick="go('notes')"><span class="material-icons-round">sticky_note_2</span>Notes</button>
+  <button class="sb-btn" onclick="go('noteeditor')"><span class="material-icons-round">edit_note</span>Note Editor</button>
+  <button class="sb-btn" onclick="go('couple')"><span class="material-icons-round">favorite</span>Couple View</button>
+  <button class="sb-btn" onclick="go('settings')"><span class="material-icons-round">settings</span>Settings</button>
+
+  <div class="sb-foot">
+    <button class="theme-btn" onclick="toggleDark()">
+      <span class="material-icons-round" id="theme-icon">dark_mode</span>
+      <span id="theme-lbl">Dark Mode</span>
+    </button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="phone">
+    <!-- Status Bar -->
+    <div id="sbar">
+      <span class="sbar-time">9:41</span>
+      <div class="sbar-icons">
+        <span class="material-icons-round">signal_cellular_alt</span>
+        <span class="material-icons-round">wifi</span>
+        <span class="material-icons-round">battery_full</span>
+      </div>
+    </div>
+
+    <!-- Screens -->
+    <div id="scr">
+
+      <!-- ══════════════════════════════════════
+           SCREEN: LOGIN
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-login">
+        <div class="auth-hero">
+          <div class="auth-logo"><span class="material-icons-round">favorite</span></div>
+          <div class="auth-name">Ipon, Love</div>
+          <div class="auth-tag">Smart budgeting for couples,<br>made for the Philippines</div>
+        </div>
+        <div class="auth-form">
+          <div>
+            <div class="f-label">Email Address</div>
+            <div class="f-row">
+              <span class="material-icons-round">email</span>
+              <span class="f-val">patty@example.com</span>
+            </div>
+          </div>
+          <div>
+            <div class="f-label">Password</div>
+            <div class="f-row">
+              <span class="material-icons-round">lock</span>
+              <span class="f-val">••••••••</span>
+              <span class="material-icons-round">visibility_off</span>
+            </div>
+          </div>
+          <div style="text-align:right;margin-top:-6px">
+            <button class="btn-txt">Forgot password?</button>
+          </div>
+          <button class="btn-pri" onclick="go('records')">Log In</button>
+          <div class="auth-foot">
+            <span class="auth-foot-t">Don't have an account?</span>
+            <button class="btn-txt" onclick="go('register')">Register</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: REGISTER
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-register">
+        <div class="tbar">
+          <div class="iBtn" onclick="go('login')"><span class="material-icons-round">arrow_back</span></div>
+          <div class="tbar-title">Create Account</div>
+        </div>
+        <div class="auth-form" style="padding-top:8px">
+          <div>
+            <div class="f-label">Display Name</div>
+            <div class="f-row">
+              <span class="material-icons-round">badge</span>
+              <span class="f-ph">e.g. Patty</span>
+            </div>
+          </div>
+          <div>
+            <div class="f-label">Email Address</div>
+            <div class="f-row">
+              <span class="material-icons-round">email</span>
+              <span class="f-ph">you@example.com</span>
+            </div>
+          </div>
+          <div>
+            <div class="f-label">Password</div>
+            <div class="f-row">
+              <span class="material-icons-round">lock</span>
+              <span class="f-ph">At least 8 characters</span>
+              <span class="material-icons-round">visibility_off</span>
+            </div>
+          </div>
+          <div>
+            <div class="f-label">Confirm Password</div>
+            <div class="f-row">
+              <span class="material-icons-round">lock_reset</span>
+              <span class="f-ph">Repeat password</span>
+              <span class="material-icons-round">visibility_off</span>
+            </div>
+          </div>
+          <button class="btn-pri" style="margin-top:8px">Create Account</button>
+          <div class="auth-foot">
+            <span class="auth-foot-t">Already have an account?</span>
+            <button class="btn-txt" onclick="go('login')">Log In</button>
+          </div>
+          <div style="font-size:11px;color:var(--osv);text-align:center;line-height:1.5;padding:0 8px">
+            By registering, you agree to our Terms of Service and Privacy Policy.
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: PIN ENTRY
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-pin">
+        <div class="pin-wrap">
+          <div class="pin-logo"><span class="material-icons-round">favorite</span></div>
+          <div class="pin-title">Welcome back, Patty</div>
+          <div class="pin-sub">Enter your PIN to continue</div>
+          <div class="pin-dots">
+            <div class="pin-dot fill"></div>
+            <div class="pin-dot fill"></div>
+            <div class="pin-dot fill"></div>
+            <div class="pin-dot"></div>
+          </div>
+          <div class="pin-pad">
+            <div class="pin-key">1<span class="pin-ksub"></span></div>
+            <div class="pin-key">2<span class="pin-ksub">ABC</span></div>
+            <div class="pin-key">3<span class="pin-ksub">DEF</span></div>
+            <div class="pin-key">4<span class="pin-ksub">GHI</span></div>
+            <div class="pin-key">5<span class="pin-ksub">JKL</span></div>
+            <div class="pin-key">6<span class="pin-ksub">MNO</span></div>
+            <div class="pin-key">7<span class="pin-ksub">PQRS</span></div>
+            <div class="pin-key">8<span class="pin-ksub">TUV</span></div>
+            <div class="pin-key">9<span class="pin-ksub">WXYZ</span></div>
+            <div class="pin-key empty">
+              <span class="material-icons-round" style="font-size:32px;color:var(--p)">fingerprint</span>
+            </div>
+            <div class="pin-key">0</div>
+            <div class="pin-key ghost">
+              <span class="material-icons-round">backspace</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: RECORDS
+      ══════════════════════════════════════ -->
+      <div class="screen active" id="s-records">
+        <!-- Top Bar -->
+        <div class="tbar">
+          <div class="iBtn"><span class="material-icons-round">menu</span></div>
+          <div class="tbar-title">Records</div>
+          <div class="iBtn" onclick="go('couple')"><span class="material-icons-round">favorite</span></div>
+          <div class="iBtn"><span class="material-icons-round">search</span></div>
+          <div class="iBtn" onclick="go('settings')"><span class="material-icons-round">settings</span></div>
+        </div>
+        <!-- Month Nav -->
+        <div class="rec-head">
+          <div class="mon-nav">
+            <div class="mon-btn"><span class="material-icons-round">chevron_left</span></div>
+            <div class="mon-lbl">June 2026</div>
+            <div class="mon-btn"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+        </div>
+        <!-- Summary -->
+        <div class="sum-bar">
+          <div class="sum-item">
+            <div class="sum-lbl">Expense</div>
+            <div class="sum-amt exp">₱12,450</div>
+          </div>
+          <div class="sum-item">
+            <div class="sum-lbl">Income</div>
+            <div class="sum-amt inc">₱35,000</div>
+          </div>
+          <div class="sum-item">
+            <div class="sum-lbl">Total</div>
+            <div class="sum-amt">+₱22,550</div>
+          </div>
+        </div>
+        <!-- Search -->
+        <div class="srch">
+          <span class="material-icons-round">search</span>
+          <span class="srch-t">Search transactions…</span>
+        </div>
+        <!-- Filter Chips -->
+        <div class="chips">
+          <div class="chip on">All</div>
+          <div class="chip">Income</div>
+          <div class="chip">Expense</div>
+          <div class="chip">Transfer</div>
+        </div>
+        <!-- Transaction List -->
+        <div class="txl">
+          <!-- TODAY -->
+          <div class="txg-head">
+            <span class="txg-date">Today · Jun 23</span>
+            <span class="txg-net neg">–₱435</span>
+          </div>
+          <div class="tx">
+            <div class="tx-ic ic-food"><span class="material-icons-round">restaurant</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Jollibee</div>
+              <div class="tx-m">Food · GCash · 8:30 AM</div>
+            </div>
+            <div class="tx-amt exp">–₱285</div>
+          </div>
+          <div class="divl"></div>
+          <div class="tx">
+            <div class="tx-ic ic-tr"><span class="material-icons-round">directions_car</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Grab</div>
+              <div class="tx-m">Transport · GCash · 7:15 AM</div>
+            </div>
+            <div class="tx-amt exp">–₱150</div>
+          </div>
+          <!-- YESTERDAY -->
+          <div class="txg-head" style="margin-top:8px">
+            <span class="txg-date">Yesterday · Jun 22</span>
+            <span class="txg-net neg">–₱2,800</span>
+          </div>
+          <div class="tx">
+            <div class="tx-ic ic-bills"><span class="material-icons-round">receipt_long</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Meralco</div>
+              <div class="tx-m">Bills · BDO Savings · 6:00 PM</div>
+            </div>
+            <div class="tx-amt exp">–₱2,800</div>
+          </div>
+          <!-- JUN 21 -->
+          <div class="txg-head" style="margin-top:8px">
+            <span class="txg-date">Sat · Jun 21</span>
+            <span class="txg-net pos">+₱31,800</span>
+          </div>
+          <div class="tx">
+            <div class="tx-ic ic-sal"><span class="material-icons-round">payments</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Monthly Salary</div>
+              <div class="tx-m">Salary · BDO Savings · 2:00 PM</div>
+            </div>
+            <div class="tx-amt inc">+₱35,000</div>
+          </div>
+          <div class="divl"></div>
+          <div class="tx">
+            <div class="tx-ic ic-shop"><span class="material-icons-round">shopping_bag</span></div>
+            <div class="tx-det">
+              <div class="tx-n">SM Department Store</div>
+              <div class="tx-m">Shopping · BPI Credit · 3:45 PM</div>
+            </div>
+            <div class="tx-amt exp">–₱3,200</div>
+          </div>
+          <!-- JUN 20 -->
+          <div class="txg-head" style="margin-top:8px">
+            <span class="txg-date">Fri · Jun 20</span>
+            <span class="txg-net neg">–₱740</span>
+          </div>
+          <div class="tx">
+            <div class="tx-ic ic-food"><span class="material-icons-round">restaurant</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Pizza Hut Delivery</div>
+              <div class="tx-m">Food · GCash · 7:30 PM</div>
+            </div>
+            <div class="tx-amt exp">–₱680</div>
+          </div>
+          <div class="divl"></div>
+          <div class="tx">
+            <div class="tx-ic ic-tr"><span class="material-icons-round">train</span></div>
+            <div class="tx-det">
+              <div class="tx-n">MRT / Beep Card</div>
+              <div class="tx-m">Transport · Cash · 8:00 AM</div>
+            </div>
+            <div class="tx-amt exp">–₱60</div>
+          </div>
+          <!-- JUN 18 -->
+          <div class="txg-head" style="margin-top:8px">
+            <span class="txg-date">Wed · Jun 18</span>
+            <span class="txg-net neg">–₱680</span>
+          </div>
+          <div class="tx">
+            <div class="tx-ic ic-hlth"><span class="material-icons-round">local_pharmacy</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Mercury Drug</div>
+              <div class="tx-m">Health · Cash · 11:00 AM</div>
+            </div>
+            <div class="tx-amt exp">–₱680</div>
+          </div>
+        </div>
+        <!-- FAB -->
+        <div class="fab" onclick="go('txentry')">
+          <span class="material-icons-round">add</span>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: ANALYSIS
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-analysis">
+        <div class="tbar">
+          <div class="tbar-title" style="padding-left:14px">Analysis</div>
+          <div class="mon-btn"><span class="material-icons-round">chevron_left</span></div>
+          <div class="mon-lbl" style="font-size:14px;font-weight:600;color:var(--os2)">Jun 2026</div>
+          <div class="mon-btn"><span class="material-icons-round">chevron_right</span></div>
+        </div>
+        <div class="period-sel">
+          <div class="p-btn">Day</div>
+          <div class="p-btn">Week</div>
+          <div class="p-btn on">Month</div>
+        </div>
+        <!-- Expense Overview -->
+        <div class="chart-card">
+          <div class="chart-title">Expense Overview</div>
+          <div class="donut-wrap">
+            <svg viewBox="0 0 150 150" width="140" height="140" style="flex-shrink:0">
+              <circle cx="75" cy="75" r="55" fill="none" stroke="var(--sv)" stroke-width="20"/>
+              <!-- Food 32% -->
+              <circle cx="75" cy="75" r="55" fill="none" stroke="#F06292" stroke-width="20"
+                stroke-dasharray="110.6 235" stroke-dashoffset="0" transform="rotate(-90 75 75)"/>
+              <!-- Bills 22% -->
+              <circle cx="75" cy="75" r="55" fill="none" stroke="#FFA726" stroke-width="20"
+                stroke-dasharray="76 270" stroke-dashoffset="-110.6" transform="rotate(-90 75 75)"/>
+              <!-- Shopping 18% -->
+              <circle cx="75" cy="75" r="55" fill="none" stroke="#AB47BC" stroke-width="20"
+                stroke-dasharray="62.2 283.4" stroke-dashoffset="-186.6" transform="rotate(-90 75 75)"/>
+              <!-- Transport 15% -->
+              <circle cx="75" cy="75" r="55" fill="none" stroke="#42A5F5" stroke-width="20"
+                stroke-dasharray="51.8 293.8" stroke-dashoffset="-248.8" transform="rotate(-90 75 75)"/>
+              <!-- Health 8% -->
+              <circle cx="75" cy="75" r="55" fill="none" stroke="#EF5350" stroke-width="20"
+                stroke-dasharray="27.6 318" stroke-dashoffset="-300.6" transform="rotate(-90 75 75)"/>
+              <!-- Others 5% -->
+              <circle cx="75" cy="75" r="55" fill="none" stroke="#90A4AE" stroke-width="20"
+                stroke-dasharray="17.3 328.3" stroke-dashoffset="-328.2" transform="rotate(-90 75 75)"/>
+              <text x="75" y="70" text-anchor="middle" font-size="9.5" fill="var(--osv)" font-family="Inter,sans-serif">Expenses</text>
+              <text x="75" y="84" text-anchor="middle" font-size="13" font-weight="700" fill="var(--os2)" font-family="Inter,sans-serif">₱12,450</text>
+            </svg>
+            <div class="leg">
+              <div class="leg-row"><div class="leg-dot" style="background:#F06292"></div><span class="leg-n">Food</span><span class="leg-p">32%</span></div>
+              <div class="leg-row"><div class="leg-dot" style="background:#FFA726"></div><span class="leg-n">Bills</span><span class="leg-p">22%</span></div>
+              <div class="leg-row"><div class="leg-dot" style="background:#AB47BC"></div><span class="leg-n">Shopping</span><span class="leg-p">18%</span></div>
+              <div class="leg-row"><div class="leg-dot" style="background:#42A5F5"></div><span class="leg-n">Transport</span><span class="leg-p">15%</span></div>
+              <div class="leg-row"><div class="leg-dot" style="background:#EF5350"></div><span class="leg-n">Health</span><span class="leg-p">8%</span></div>
+              <div class="leg-row"><div class="leg-dot" style="background:#90A4AE"></div><span class="leg-n">Others</span><span class="leg-p">5%</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- Expense Flow -->
+        <div class="chart-card">
+          <div class="chart-title">Expense Flow</div>
+          <div class="line-wrap">
+            <svg viewBox="0 0 310 120" width="100%" height="110">
+              <!-- Grid lines -->
+              <line x1="10" y1="20" x2="300" y2="20" stroke="var(--outv)" stroke-width=".8" stroke-dasharray="4,4"/>
+              <line x1="10" y1="60" x2="300" y2="60" stroke="var(--outv)" stroke-width=".8" stroke-dasharray="4,4"/>
+              <line x1="10" y1="100" x2="300" y2="100" stroke="var(--outv)" stroke-width=".8" stroke-dasharray="4,4"/>
+              <!-- Y labels -->
+              <text x="5" y="23" font-size="8" fill="var(--osv)" font-family="Inter" text-anchor="end">14K</text>
+              <text x="5" y="63" font-size="8" fill="var(--osv)" font-family="Inter" text-anchor="end">7K</text>
+              <text x="5" y="103" font-size="8" fill="var(--osv)" font-family="Inter" text-anchor="end">0</text>
+              <!-- Area fill -->
+              <path d="M10,100 L36,99 L63,96 L89,96 L102,95 L129,93 L155,90 L181,90 L195,84 L221,80 L247,80 L261,72 L274,51 L287,32 L300,30 L300,100 Z"
+                fill="var(--pc)" opacity=".5"/>
+              <!-- Line -->
+              <polyline points="10,100 36,99 63,96 89,96 102,95 129,93 155,90 181,90 195,84 221,80 247,80 261,72 274,51 287,32 300,30"
+                fill="none" stroke="var(--p)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+              <!-- End dot -->
+              <circle cx="300" cy="30" r="4" fill="var(--p)"/>
+              <!-- X labels -->
+              <text x="10" y="115" font-size="8" fill="var(--osv)" font-family="Inter" text-anchor="middle">1</text>
+              <text x="89" y="115" font-size="8" fill="var(--osv)" font-family="Inter" text-anchor="middle">7</text>
+              <text x="181" y="115" font-size="8" fill="var(--osv)" font-family="Inter" text-anchor="middle">14</text>
+              <text x="261" y="115" font-size="8" fill="var(--osv)" font-family="Inter" text-anchor="middle">20</text>
+              <text x="300" y="115" font-size="8" fill="var(--p)" font-family="Inter" text-anchor="middle" font-weight="700">23</text>
+            </svg>
+          </div>
+        </div>
+        <!-- Calendar hint -->
+        <div style="padding:0 14px 96px">
+          <div class="chart-card" style="margin:0">
+            <div class="chart-title">Calendar View</div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center">
+              <div style="font-size:9px;color:var(--osv);font-weight:700;padding:4px 0">S</div>
+              <div style="font-size:9px;color:var(--osv);font-weight:700;padding:4px 0">M</div>
+              <div style="font-size:9px;color:var(--osv);font-weight:700;padding:4px 0">T</div>
+              <div style="font-size:9px;color:var(--osv);font-weight:700;padding:4px 0">W</div>
+              <div style="font-size:9px;color:var(--osv);font-weight:700;padding:4px 0">T</div>
+              <div style="font-size:9px;color:var(--osv);font-weight:700;padding:4px 0">F</div>
+              <div style="font-size:9px;color:var(--osv);font-weight:700;padding:4px 0">S</div>
+              <div></div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">2<br><span style="font-size:8px;color:var(--exp)">0</span></div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">3<br><span style="font-size:8px;color:var(--exp)">–285</span></div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">4</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">5<br><span style="font-size:8px;color:var(--exp)">–680</span></div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">6</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">7</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">8</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">9<br><span style="font-size:8px;color:var(--exp)">–235</span></div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">10</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">11</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">12</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">13</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">14<br><span style="font-size:8px;color:var(--exp)">–520</span></div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">15</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">16</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">17</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">18<br><span style="font-size:8px;color:var(--exp)">–680</span></div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">19</div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">20<br><span style="font-size:8px;color:var(--exp)">–740</span></div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">21<br><span style="font-size:8px;color:var(--inc)">+31.8K</span></div>
+              <div style="font-size:10px;color:var(--os2);padding:4px 2px">22<br><span style="font-size:8px;color:var(--exp)">–2.8K</span></div>
+              <div style="font-size:10px;background:var(--p);color:#fff;border-radius:8px;padding:4px 2px">23<br><span style="font-size:8px;color:rgba(255,255,255,.75)">–435</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: BUDGETS
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-budgets">
+        <div class="tbar">
+          <div class="tbar-title" style="padding-left:14px">Budgets</div>
+          <div class="mon-btn"><span class="material-icons-round">chevron_left</span></div>
+          <div class="mon-lbl" style="font-size:14px;font-weight:600;color:var(--os2)">Jun 2026</div>
+          <div class="mon-btn"><span class="material-icons-round">chevron_right</span></div>
+        </div>
+        <!-- Overall Budget -->
+        <div class="bud-ov">
+          <div class="bud-ov-lbl">Monthly Budget</div>
+          <div class="bud-ov-amts">
+            <div class="bud-ov-spent">₱12,450</div>
+            <div class="bud-ov-total">/ ₱40,000</div>
+          </div>
+          <div class="bud-bar-bg"><div class="bud-bar-f" style="width:31%"></div></div>
+          <div class="bud-bar-meta"><span>31% used</span><span>₱27,550 remaining</span></div>
+        </div>
+        <!-- Category Budgets -->
+        <div class="bud-list">
+          <!-- Food -->
+          <div class="bud-item">
+            <div class="bud-item-h">
+              <div class="bud-ci ic-food"><span class="material-icons-round">restaurant</span></div>
+              <div class="bud-ci-info">
+                <div class="bud-ci-n">Food</div>
+                <div class="bud-ci-a">₱3,980 of ₱5,000</div>
+              </div>
+              <div class="bud-pct warn">80%</div>
+            </div>
+            <div class="bud-pb"><div class="bud-pbf" style="width:80%;background:#FFA726"></div></div>
+          </div>
+          <!-- Bills -->
+          <div class="bud-item">
+            <div class="bud-item-h">
+              <div class="bud-ci ic-bills"><span class="material-icons-round">receipt_long</span></div>
+              <div class="bud-ci-info">
+                <div class="bud-ci-n">Bills</div>
+                <div class="bud-ci-a">₱2,800 of ₱5,000</div>
+              </div>
+              <div class="bud-pct">56%</div>
+            </div>
+            <div class="bud-pb"><div class="bud-pbf" style="width:56%;background:#FFA726"></div></div>
+          </div>
+          <!-- Shopping -->
+          <div class="bud-item">
+            <div class="bud-item-h">
+              <div class="bud-ci ic-shop"><span class="material-icons-round">shopping_bag</span></div>
+              <div class="bud-ci-info">
+                <div class="bud-ci-n">Shopping</div>
+                <div class="bud-ci-a">₱3,200 of ₱4,000</div>
+              </div>
+              <div class="bud-pct warn">80%</div>
+            </div>
+            <div class="bud-pb"><div class="bud-pbf" style="width:80%;background:#FFA726"></div></div>
+          </div>
+          <!-- Transport -->
+          <div class="bud-item">
+            <div class="bud-item-h">
+              <div class="bud-ci ic-tr"><span class="material-icons-round">directions_car</span></div>
+              <div class="bud-ci-info">
+                <div class="bud-ci-n">Transport</div>
+                <div class="bud-ci-a">₱870 of ₱3,000</div>
+              </div>
+              <div class="bud-pct">29%</div>
+            </div>
+            <div class="bud-pb"><div class="bud-pbf" style="width:29%;background:#42A5F5"></div></div>
+          </div>
+          <!-- Health -->
+          <div class="bud-item">
+            <div class="bud-item-h">
+              <div class="bud-ci ic-hlth"><span class="material-icons-round">favorite</span></div>
+              <div class="bud-ci-info">
+                <div class="bud-ci-n">Health</div>
+                <div class="bud-ci-a">₱680 of ₱2,000</div>
+              </div>
+              <div class="bud-pct">34%</div>
+            </div>
+            <div class="bud-pb"><div class="bud-pbf" style="width:34%;background:#EF5350"></div></div>
+          </div>
+          <!-- Entertainment -->
+          <div class="bud-item">
+            <div class="bud-item-h">
+              <div class="bud-ci ic-ent"><span class="material-icons-round">movie</span></div>
+              <div class="bud-ci-info">
+                <div class="bud-ci-n">Entertainment</div>
+                <div class="bud-ci-a">₱920 of ₱1,500</div>
+              </div>
+              <div class="bud-pct warn">61%</div>
+            </div>
+            <div class="bud-pb"><div class="bud-pbf" style="width:61%;background:#66BB6A"></div></div>
+          </div>
+        </div>
+        <div class="fab">
+          <span class="material-icons-round">add</span>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: ACCOUNTS
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-accounts">
+        <div class="tbar">
+          <div class="tbar-title" style="padding-left:14px">Accounts</div>
+          <div class="iBtn"><span class="material-icons-round">more_vert</span></div>
+        </div>
+        <div class="acc-tot">
+          <div class="acc-tot-lbl">Total Balance</div>
+          <div class="acc-tot-amt">₱52,550</div>
+        </div>
+        <div class="acc-list">
+          <div class="acc-card">
+            <div class="acc-ic ic-gcash"><span class="material-icons-round">phone_android</span></div>
+            <div class="acc-info">
+              <div class="acc-n">GCash</div>
+              <div class="acc-t">E-Wallet</div>
+            </div>
+            <div class="acc-bal">₱8,250</div>
+          </div>
+          <div class="acc-card">
+            <div class="acc-ic ic-bdo"><span class="material-icons-round">account_balance</span></div>
+            <div class="acc-info">
+              <div class="acc-n">BDO Savings</div>
+              <div class="acc-t">Bank Account</div>
+            </div>
+            <div class="acc-bal">₱35,800</div>
+          </div>
+          <div class="acc-card">
+            <div class="acc-ic ic-card"><span class="material-icons-round">credit_card</span></div>
+            <div class="acc-info">
+              <div class="acc-n">BPI Credit Card</div>
+              <div class="acc-t">Credit Card</div>
+            </div>
+            <div class="acc-bal">₱0</div>
+          </div>
+          <div class="acc-card">
+            <div class="acc-ic ic-maya"><span class="material-icons-round">phone_android</span></div>
+            <div class="acc-info">
+              <div class="acc-n">Maya</div>
+              <div class="acc-t">E-Wallet</div>
+            </div>
+            <div class="acc-bal">₱6,000</div>
+          </div>
+          <div class="acc-card">
+            <div class="acc-ic ic-cash"><span class="material-icons-round">account_balance_wallet</span></div>
+            <div class="acc-info">
+              <div class="acc-n">Cash / Wallet</div>
+              <div class="acc-t">Cash</div>
+            </div>
+            <div class="acc-bal">₱2,500</div>
+          </div>
+        </div>
+        <div class="fab"><span class="material-icons-round">add</span></div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: CATEGORIES
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-categories">
+        <div class="tbar">
+          <div class="tbar-title" style="padding-left:14px">Categories</div>
+          <div class="iBtn"><span class="material-icons-round">more_vert</span></div>
+        </div>
+        <div class="cat-tabs-row">
+          <div class="ct-tab on">Expense</div>
+          <div class="ct-tab">Income</div>
+        </div>
+        <div class="cat-grid">
+          <div class="cat-item"><div class="cat-ic ic-food"><span class="material-icons-round">restaurant</span></div><span class="cat-lbl">Food</span></div>
+          <div class="cat-item"><div class="cat-ic ic-tr"><span class="material-icons-round">directions_car</span></div><span class="cat-lbl">Transport</span></div>
+          <div class="cat-item"><div class="cat-ic ic-bills"><span class="material-icons-round">receipt_long</span></div><span class="cat-lbl">Bills</span></div>
+          <div class="cat-item"><div class="cat-ic ic-shop"><span class="material-icons-round">shopping_bag</span></div><span class="cat-lbl">Shopping</span></div>
+          <div class="cat-item"><div class="cat-ic ic-hlth"><span class="material-icons-round">local_pharmacy</span></div><span class="cat-lbl">Health</span></div>
+          <div class="cat-item"><div class="cat-ic ic-ent"><span class="material-icons-round">movie</span></div><span class="cat-lbl">Entertainment</span></div>
+          <div class="cat-item"><div class="cat-ic ic-gift"><span class="material-icons-round">card_giftcard</span></div><span class="cat-lbl">Gifts</span></div>
+          <div class="cat-item"><div class="cat-ic ic-oth"><span class="material-icons-round">more_horiz</span></div><span class="cat-lbl">Others</span></div>
+          <div class="cat-item"><div class="cat-ic add"><span class="material-icons-round">add</span></div><span class="cat-lbl">Add</span></div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: TRANSACTION ENTRY
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-txentry">
+        <div class="tbar">
+          <div class="iBtn" onclick="go('records')"><span class="material-icons-round">close</span></div>
+          <div class="tbar-title">New Transaction</div>
+          <div class="iBtn"><span class="material-icons-round">more_vert</span></div>
+        </div>
+        <div class="tx-type-row">
+          <div class="tx-type-b">Income</div>
+          <div class="tx-type-b on exp">Expense</div>
+          <div class="tx-type-b">Transfer</div>
+        </div>
+        <div class="tx-amtd">
+          <span class="tx-cur">₱</span>
+          <span class="tx-num">0<span style="color:var(--osv)">.00</span></span>
+        </div>
+        <div class="tx-fields">
+          <div class="tx-frow">
+            <div class="tx-fic ic-food"><span class="material-icons-round">restaurant</span></div>
+            <span class="tx-fv">Food</span>
+            <div class="tx-fchev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+          <div class="tx-frow">
+            <div class="tx-fic ic-gcash"><span class="material-icons-round">phone_android</span></div>
+            <span class="tx-fv">GCash</span>
+            <div class="tx-fchev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+          <div class="tx-frow">
+            <div class="tx-fic" style="background:var(--sv)"><span class="material-icons-round" style="color:var(--osv)">notes</span></div>
+            <span class="tx-fv ph">Add a note…</span>
+            <div class="tx-fchev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+          <div class="tx-frow">
+            <div class="tx-fic" style="background:var(--sv)"><span class="material-icons-round" style="color:var(--osv)">event</span></div>
+            <span class="tx-fv">Today, 9:41 AM</span>
+            <div class="tx-fchev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+          <div class="tx-frow">
+            <div class="tx-fic" style="background:var(--sv)"><span class="material-icons-round" style="color:var(--osv)">repeat</span></div>
+            <span class="tx-fv ph">No recurrence</span>
+            <div class="tx-fchev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+          <div class="tx-frow">
+            <div class="tx-fic" style="background:var(--sv)"><span class="material-icons-round" style="color:var(--osv)">lock_open</span></div>
+            <span class="tx-fv ph">Visible to partner</span>
+            <div class="tx-fchev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+        </div>
+        <div class="numpad">
+          <div class="nk">7</div><div class="nk">8</div><div class="nk">9</div>
+          <div class="nk">4</div><div class="nk">5</div><div class="nk">6</div>
+          <div class="nk">1</div><div class="nk">2</div><div class="nk">3</div>
+          <div class="nk">.</div><div class="nk">0</div>
+          <div class="nk"><span class="material-icons-round">backspace</span></div>
+          <div class="nk nk-save">Save</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: NOTES LIST
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-notes">
+        <div class="tbar">
+          <div class="iBtn" onclick="go('records')"><span class="material-icons-round">arrow_back</span></div>
+          <div class="tbar-title">Notes</div>
+          <div class="iBtn"><span class="material-icons-round">search</span></div>
+          <div class="iBtn"><span class="material-icons-round">more_vert</span></div>
+        </div>
+        <div class="srch" style="margin:4px 14px 12px">
+          <span class="material-icons-round">search</span>
+          <span class="srch-t">Search notes…</span>
+        </div>
+        <div class="notes-grid">
+          <!-- Grocery list (shared, wide) -->
+          <div class="note-card wide" onclick="go('noteeditor')">
+            <div class="nc-head">
+              <span class="material-icons-round" style="font-size:16px;color:var(--osv)">checklist</span>
+              <div class="nc-title">Weekly Grocery List</div>
+              <div class="nc-badge">Shared</div>
+            </div>
+            <div class="nc-checks">
+              <div class="ck-row"><span class="material-icons-round">check_box</span>Rice (5kg)</div>
+              <div class="ck-row"><span class="material-icons-round">check_box</span>Eggs (1 tray)</div>
+              <div class="ck-row done"><span class="material-icons-round" style="color:var(--out)">check_box_outline_blank</span>Cooking oil</div>
+              <div class="ck-row done"><span class="material-icons-round" style="color:var(--out)">check_box_outline_blank</span>Laundry detergent</div>
+            </div>
+            <div class="nc-foot">Updated 2 hours ago</div>
+          </div>
+          <!-- Budget goals -->
+          <div class="note-card">
+            <div class="nc-head">
+              <span class="material-icons-round" style="font-size:14px;color:var(--osv)">text_snippet</span>
+              <div class="nc-title">2026 Goals</div>
+            </div>
+            <div class="nc-preview">Emergency fund ₱100K by Dec. Vacation fund for Palawan trip in November. Pay off credit card by Q3.</div>
+            <div class="nc-foot">Jun 20</div>
+          </div>
+          <!-- Cebu trip (shared) -->
+          <div class="note-card">
+            <div class="nc-head">
+              <span class="material-icons-round" style="font-size:14px;color:var(--osv)">image</span>
+              <div class="nc-title">Palawan Trip</div>
+              <div class="nc-badge">Shared</div>
+            </div>
+            <div class="nc-preview">Budget: ₱15,000/person. Hotel, flights, activities. Check Puerto Princesa packages.</div>
+            <div class="nc-foot">Jun 18</div>
+          </div>
+          <!-- Password reminder (private) -->
+          <div class="note-card">
+            <div class="nc-head">
+              <span class="material-icons-round" style="font-size:14px;color:var(--osv)">text_snippet</span>
+              <div class="nc-title">Reminders</div>
+            </div>
+            <div class="nc-preview">Pay Pag-IBIG on the 15th. Submit SSS contribution update form. Call BDO re: account.</div>
+            <div class="nc-foot">Jun 15</div>
+          </div>
+        </div>
+        <div class="fab"><span class="material-icons-round">add</span></div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: NOTE EDITOR
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-noteeditor">
+        <div class="tbar">
+          <div class="iBtn" onclick="go('notes')"><span class="material-icons-round">arrow_back</span></div>
+          <div class="tbar-title" style="font-size:15px;font-weight:600">Weekly Grocery List</div>
+          <div class="nc-badge" style="margin-right:4px">Shared</div>
+          <div class="iBtn"><span class="material-icons-round">more_vert</span></div>
+        </div>
+        <div class="rich-tb">
+          <div class="tb-btn on"><span class="material-icons-round">format_bold</span></div>
+          <div class="tb-btn"><span class="material-icons-round">format_italic</span></div>
+          <div class="tb-btn"><span class="material-icons-round">format_underlined</span></div>
+          <div class="tb-div"></div>
+          <div class="tb-btn"><span class="material-icons-round">format_list_bulleted</span></div>
+          <div class="tb-btn"><span class="material-icons-round">format_list_numbered</span></div>
+          <div class="tb-btn on"><span class="material-icons-round">checklist</span></div>
+          <div class="tb-div"></div>
+          <div class="tb-btn"><span class="material-icons-round">title</span></div>
+          <div class="tb-btn"><span class="material-icons-round">image</span></div>
+          <div class="tb-btn"><span class="material-icons-round">link</span></div>
+        </div>
+        <div class="ne-body">
+          <div class="ne-ck">
+            <div class="ne-cb chk"><span class="material-icons-round">check</span></div>
+            <span class="ne-ck-t done">Rice (5kg) — Puregold</span>
+          </div>
+          <div class="ne-ck">
+            <div class="ne-cb chk"><span class="material-icons-round">check</span></div>
+            <span class="ne-ck-t done">Eggs (1 tray)</span>
+          </div>
+          <div class="ne-ck">
+            <div class="ne-cb"></div>
+            <span class="ne-ck-t">Cooking oil (2L)</span>
+          </div>
+          <div class="ne-ck">
+            <div class="ne-cb"></div>
+            <span class="ne-ck-t">Laundry detergent</span>
+          </div>
+          <div class="ne-ck">
+            <div class="ne-cb"></div>
+            <span class="ne-ck-t">Dishwashing liquid</span>
+          </div>
+          <div class="ne-ck">
+            <div class="ne-cb"></div>
+            <span class="ne-ck-t">Chicken breast (1kg)</span>
+          </div>
+          <div class="ne-ck">
+            <div class="ne-cb"></div>
+            <span class="ne-ck-t">Vegetables (mixed)</span>
+          </div>
+          <div class="ne-ck">
+            <div class="ne-cb"></div>
+            <span class="ne-ck-t">Instant noodles (12pcs)</span>
+          </div>
+          <div class="ne-ck">
+            <div class="ne-cb"></div>
+            <span class="ne-ck-t">Shampoo + Conditioner</span>
+          </div>
+          <h2 style="font-size:14px;font-weight:700;color:var(--osv);margin-top:16px;margin-bottom:4px">Estimated total: ₱1,200</h2>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: COUPLE VIEW
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-couple">
+        <div class="tbar">
+          <div class="iBtn" onclick="go('records')"><span class="material-icons-round">arrow_back</span></div>
+          <div class="tbar-title">PattyWallet</div>
+          <div class="iBtn"><span class="material-icons-round">more_vert</span></div>
+        </div>
+        <!-- Couple Header -->
+        <div class="cpl-hdr">
+          <div class="cpl-name">PattyWallet</div>
+          <div class="cpl-period">June 2026 · Combined View</div>
+          <div class="cpl-partners">
+            <div class="cpl-chip">
+              <div class="cpl-chip-n" style="color:rgba(255,255,255,.7)">
+                <span style="width:8px;height:8px;background:#90CAF9;border-radius:50%;display:inline-block;margin-right:4px"></span>Alvin
+              </div>
+              <div class="cpl-chip-a">₱8,200</div>
+            </div>
+            <div class="cpl-chip">
+              <div class="cpl-chip-n" style="color:rgba(255,255,255,.7)">
+                <span style="width:8px;height:8px;background:#F48FB1;border-radius:50%;display:inline-block;margin-right:4px"></span>Patty
+              </div>
+              <div class="cpl-chip-a">₱12,450</div>
+            </div>
+          </div>
+        </div>
+        <!-- Toggle -->
+        <div class="cpl-tog">
+          <div class="cpl-tog-b">Individual</div>
+          <div class="cpl-tog-b on">Combined</div>
+        </div>
+        <!-- Combined Transactions -->
+        <div style="flex:1;overflow-y:auto;padding-bottom:80px">
+          <div class="txg-head">
+            <span class="txg-date">Today · Jun 23</span>
+          </div>
+          <div class="cpl-tx">
+            <div class="cpl-bar" style="background:#F48FB1"></div>
+            <div class="tx-ic ic-food"><span class="material-icons-round">restaurant</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Jollibee</div>
+              <div class="tx-m">Patty · Food · GCash</div>
+            </div>
+            <div class="tx-amt exp">–₱285</div>
+          </div>
+          <div class="divl"></div>
+          <div class="cpl-tx">
+            <div class="cpl-bar" style="background:#90CAF9"></div>
+            <div class="tx-ic ic-tr"><span class="material-icons-round">directions_car</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Grab</div>
+              <div class="tx-m">Alvin · Transport · GCash</div>
+            </div>
+            <div class="tx-amt exp">–₱180</div>
+          </div>
+          <div class="txg-head" style="margin-top:8px">
+            <span class="txg-date">Yesterday · Jun 22</span>
+          </div>
+          <div class="cpl-tx">
+            <div class="cpl-bar" style="background:#F48FB1"></div>
+            <div class="tx-ic ic-bills"><span class="material-icons-round">receipt_long</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Meralco Bill</div>
+              <div class="tx-m">Patty · Bills · BDO</div>
+            </div>
+            <div class="tx-amt exp">–₱2,800</div>
+          </div>
+          <div class="divl"></div>
+          <div class="cpl-tx">
+            <div class="cpl-bar" style="background:#90CAF9"></div>
+            <div class="tx-ic ic-food"><span class="material-icons-round">local_cafe</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Serenitea</div>
+              <div class="tx-m">Alvin · Food · Maya</div>
+            </div>
+            <div class="tx-amt exp">–₱180</div>
+          </div>
+          <div class="txg-head" style="margin-top:8px">
+            <span class="txg-date">Sat · Jun 21</span>
+          </div>
+          <div class="cpl-tx">
+            <div class="cpl-bar" style="background:#F48FB1"></div>
+            <div class="tx-ic ic-sal"><span class="material-icons-round">payments</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Monthly Salary</div>
+              <div class="tx-m">Patty · Salary · BDO</div>
+            </div>
+            <div class="tx-amt inc">+₱35,000</div>
+          </div>
+          <div class="divl"></div>
+          <div class="cpl-tx">
+            <div class="cpl-bar" style="background:#90CAF9"></div>
+            <div class="tx-ic ic-sal"><span class="material-icons-round">payments</span></div>
+            <div class="tx-det">
+              <div class="tx-n">Freelance Income</div>
+              <div class="tx-m">Alvin · Business · GCash</div>
+            </div>
+            <div class="tx-amt inc">+₱12,000</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           SCREEN: SETTINGS
+      ══════════════════════════════════════ -->
+      <div class="screen" id="s-settings">
+        <div class="tbar">
+          <div class="iBtn" onclick="go('records')"><span class="material-icons-round">arrow_back</span></div>
+          <div class="tbar-title">Settings</div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding-bottom:40px">
+          <!-- Profile -->
+          <div class="prof-hdr">
+            <div class="prof-av" style="background:var(--p)">P</div>
+            <div>
+              <div class="prof-n">Patty DLT</div>
+              <div class="prof-e">patty@example.com</div>
+            </div>
+            <div class="iBtn"><span class="material-icons-round">edit</span></div>
+          </div>
+
+          <div class="stg-section">Couple</div>
+          <div class="stg-item">
+            <div class="stg-ic" style="background:#FCE4EC"><span class="material-icons-round" style="color:#C2185B">favorite</span></div>
+            <div class="stg-txt">
+              <div class="stg-lbl">PattyWallet</div>
+              <div class="stg-sub">Paired with Alvin · Active</div>
+            </div>
+            <div class="stg-chev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+          <div class="stg-div"></div>
+          <div class="stg-item">
+            <div class="stg-ic"><span class="material-icons-round">link</span></div>
+            <div class="stg-txt">
+              <div class="stg-lbl">Invite Code</div>
+              <div class="stg-sub">Share to pair a partner</div>
+            </div>
+            <div class="stg-chev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+
+          <div class="stg-section">Appearance</div>
+          <div class="stg-item">
+            <div class="stg-ic"><span class="material-icons-round">palette</span></div>
+            <div class="stg-txt">
+              <div class="stg-lbl">Theme</div>
+              <div class="stg-sub">Rose Mauve · Light</div>
+            </div>
+            <div class="stg-chev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+          <div class="theme-swatches">
+            <div class="swatch sel" style="background:#8B5272"></div>
+            <div class="swatch" style="background:#1565C0"></div>
+            <div class="swatch" style="background:#2E7D32"></div>
+            <div class="swatch" style="background:#4A148C"></div>
+            <div class="swatch" style="background:#E65100"></div>
+          </div>
+
+          <div class="stg-section">Security</div>
+          <div class="stg-item">
+            <div class="stg-ic"><span class="material-icons-round">pin</span></div>
+            <div class="stg-txt">
+              <div class="stg-lbl">PIN Lock</div>
+              <div class="stg-sub">Enabled · 4-digit PIN</div>
+            </div>
+            <div class="stg-chev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+          <div class="stg-div"></div>
+          <div class="stg-item">
+            <div class="stg-ic"><span class="material-icons-round">fingerprint</span></div>
+            <div class="stg-txt">
+              <div class="stg-lbl">Biometric Unlock</div>
+              <div class="stg-sub">Fingerprint enabled</div>
+            </div>
+            <div class="stg-chev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+
+          <div class="stg-section">Notifications</div>
+          <div class="stg-item">
+            <div class="stg-ic"><span class="material-icons-round">notifications</span></div>
+            <div class="stg-txt">
+              <div class="stg-lbl">Budget Alerts</div>
+              <div class="stg-sub">At 80% and 100% of limit</div>
+            </div>
+            <div class="stg-chev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+
+          <div class="stg-section">Data</div>
+          <div class="stg-item">
+            <div class="stg-ic"><span class="material-icons-round">sync</span></div>
+            <div class="stg-txt">
+              <div class="stg-lbl">Sync</div>
+              <div class="stg-sub">Last synced: Jun 23, 9:38 AM</div>
+            </div>
+            <div class="stg-chev"><span class="material-icons-round">chevron_right</span></div>
+          </div>
+
+          <div class="stg-section">About</div>
+          <div class="stg-item">
+            <div class="stg-ic"><span class="material-icons-round">info</span></div>
+            <div class="stg-txt">
+              <div class="stg-lbl">Version</div>
+              <div class="stg-sub">Ipon, Love v1.0.0 · PattyWallet build</div>
+            </div>
+          </div>
+          <div class="stg-div"></div>
+          <div class="stg-item">
+            <div class="stg-ic" style="background:#FFEBEE"><span class="material-icons-round" style="color:#B71C1C">logout</span></div>
+            <div class="stg-txt">
+              <div class="stg-lbl" style="color:#B71C1C">Log Out</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /scr -->
+
+    <!-- Bottom Nav -->
+    <div id="bnav">
+      <div class="nav-item active" id="nav-records" onclick="go('records')">
+        <div class="nav-pill"><span class="material-icons-round">receipt_long</span></div>
+        <span class="nav-lbl">Records</span>
+      </div>
+      <div class="nav-item" id="nav-analysis" onclick="go('analysis')">
+        <div class="nav-pill"><span class="material-icons-round">bar_chart</span></div>
+        <span class="nav-lbl">Analysis</span>
+      </div>
+      <div class="nav-item" id="nav-budgets" onclick="go('budgets')">
+        <div class="nav-pill"><span class="material-icons-round">savings</span></div>
+        <span class="nav-lbl">Budgets</span>
+      </div>
+      <div class="nav-item" id="nav-accounts" onclick="go('accounts')">
+        <div class="nav-pill"><span class="material-icons-round">account_balance_wallet</span></div>
+        <span class="nav-lbl">Accounts</span>
+      </div>
+      <div class="nav-item" id="nav-categories" onclick="go('categories')">
+        <div class="nav-pill"><span class="material-icons-round">category</span></div>
+        <span class="nav-lbl">Categories</span>
+      </div>
+    </div>
+
+  </div><!-- /phone -->
+  <div id="screen-label">Records · Main Tab</div>
+</div><!-- /main -->
+
+<script>
+const TABS = ['records','analysis','budgets','accounts','categories'];
+const LABELS = {
+  login:'Login · Auth',register:'Register · Auth',pin:'PIN Entry · Auth',
+  records:'Records · Main Tab',analysis:'Analysis · Main Tab',budgets:'Budgets · Main Tab',
+  accounts:'Accounts · Main Tab',categories:'Categories · Main Tab',
+  txentry:'Transaction Entry · Feature',notes:'Notes List · Feature',
+  noteeditor:'Note Editor · Feature',couple:'Couple View · Feature',
+  settings:'Settings'
+};
+
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('s-' + id).classList.add('active');
+
+  // Bottom nav
+  const isTab = TABS.includes(id);
+  document.getElementById('bnav').classList.toggle('visible', isTab);
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (isTab) document.getElementById('nav-' + id)?.classList.add('active');
+
+  // Sidebar
+  document.querySelectorAll('.sb-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sb-' + id)?.classList.add('active');
+
+  document.getElementById('screen-label').textContent = LABELS[id] || id;
+}
+
+function toggleDark() {
+  const phone = document.getElementById('phone');
+  const sbar = document.getElementById('sbar');
+  const bnav = document.getElementById('bnav');
+  const isDark = phone.classList.toggle('dark');
+  sbar.classList.toggle('dark', isDark);
+  bnav.classList.toggle('dark', isDark);
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('dark', isDark));
+  document.getElementById('theme-icon').textContent = isDark ? 'light_mode' : 'dark_mode';
+  document.getElementById('theme-lbl').textContent = isDark ? 'Light Mode' : 'Dark Mode';
+}
+
+// Init
+go('records');
+</script>
+</body>
+</html>
