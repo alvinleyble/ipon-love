@@ -1,11 +1,23 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
+
+// Supabase URL + anon key come from local.properties (gitignored). The anon key is a
+// public client key protected by RLS, so it ships in the APK; we still keep it out of
+// version control. Empty defaults keep the build green before the project is set up.
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val supabaseUrl: String = localProps.getProperty("SUPABASE_URL", "")
+val supabaseAnonKey: String = localProps.getProperty("SUPABASE_ANON_KEY", "")
 
 android {
     namespace = "com.iponlove.app"
@@ -20,6 +32,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
     }
 
     buildTypes {
@@ -39,6 +54,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
@@ -90,6 +106,12 @@ dependencies {
 
     // Rich text editor for Notes (HTML-serialized; Compose Multiplatform lib)
     implementation(libs.richeditor.compose)
+
+    // Supabase (Auth + Postgrest) + Ktor engine — the cloud backend
+    implementation(platform(libs.supabase.bom))
+    implementation(libs.supabase.auth)
+    implementation(libs.supabase.postgrest)
+    implementation(libs.ktor.client.cio)
 
     // Unit tests (JVM, fast — the per-commit gate)
     testImplementation(libs.junit)

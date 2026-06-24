@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
@@ -66,6 +67,7 @@ private val IncomeColor = Color(0xFF2E7D32)
 fun TransactionsScreen(
     onOpenRecurring: () -> Unit,
     onOpenNotes: () -> Unit,
+    onSignOut: () -> Unit,
     viewModel: TransactionsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -73,6 +75,7 @@ fun TransactionsScreen(
         state = state,
         onOpenRecurring = onOpenRecurring,
         onOpenNotes = onOpenNotes,
+        onSignOut = onSignOut,
         onAdd = viewModel::startCreate,
         onEdit = viewModel::startEdit,
         onDelete = viewModel::delete,
@@ -94,6 +97,7 @@ private fun TransactionsContent(
     state: TransactionsUiState,
     onOpenRecurring: () -> Unit,
     onOpenNotes: () -> Unit,
+    onSignOut: () -> Unit,
     onAdd: () -> Unit,
     onEdit: (String) -> Unit,
     onDelete: (String) -> Unit,
@@ -117,6 +121,9 @@ private fun TransactionsContent(
                     }
                     IconButton(onClick = onOpenRecurring) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Recurring rules")
+                    }
+                    IconButton(onClick = onSignOut) {
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Sign out")
                     }
                 },
             )

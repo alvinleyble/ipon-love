@@ -1,7 +1,7 @@
 package com.iponlove.app.core.di
 
 import com.iponlove.app.core.session.CurrentUserProvider
-import com.iponlove.app.core.session.DevCurrentUserProvider
+import com.iponlove.app.core.session.SupabaseCurrentUserProvider
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -14,5 +14,5 @@ interface SessionModule {
 
     @Binds
     @Singleton
-    fun currentUserProvider(impl: DevCurrentUserProvider): CurrentUserProvider
+    fun currentUserProvider(impl: SupabaseCurrentUserProvider): CurrentUserProvider
 }

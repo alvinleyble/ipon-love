@@ -36,7 +36,7 @@ private const val NOTE_EDITOR_ROUTE = "note_editor"
  * the [NavHost].
  */
 @Composable
-fun IponApp() {
+fun IponApp(onSignOut: () -> Unit) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -73,6 +73,7 @@ fun IponApp() {
                 TransactionsScreen(
                     onOpenRecurring = { navController.navigate(RECURRING_ROUTE) },
                     onOpenNotes = { navController.navigate(NOTES_ROUTE) },
+                    onSignOut = onSignOut,
                 )
             }
             composable(TopLevelDestination.ANALYSIS.route) { AnalysisScreen() }
