@@ -8,6 +8,12 @@ interface UserRepository {
     fun observeCurrentUser(): Flow<User?>
 
     /**
+     * Observe the partner's replicated row within [coupleId] (the other member), or null
+     * until it has synced in. Excludes the current user.
+     */
+    fun observePartner(coupleId: String): Flow<User?>
+
+    /**
      * Create the local users row for [userId] if it does not already exist, stamped
      * pending_sync so the outbox pushes it on next sync (ADR-0013).
      */

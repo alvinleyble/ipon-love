@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
@@ -68,6 +69,7 @@ private val IncomeColor = Color(0xFF2E7D32)
 fun TransactionsScreen(
     onOpenRecurring: () -> Unit,
     onOpenNotes: () -> Unit,
+    onOpenCouple: () -> Unit,
     onSignOut: () -> Unit,
     viewModel: TransactionsViewModel = hiltViewModel(),
 ) {
@@ -76,6 +78,7 @@ fun TransactionsScreen(
         state = state,
         onOpenRecurring = onOpenRecurring,
         onOpenNotes = onOpenNotes,
+        onOpenCouple = onOpenCouple,
         onSignOut = onSignOut,
         onSync = viewModel::sync,
         onAdd = viewModel::startCreate,
@@ -99,6 +102,7 @@ private fun TransactionsContent(
     state: TransactionsUiState,
     onOpenRecurring: () -> Unit,
     onOpenNotes: () -> Unit,
+    onOpenCouple: () -> Unit,
     onSignOut: () -> Unit,
     onSync: () -> Unit,
     onAdd: () -> Unit,
@@ -119,6 +123,9 @@ private fun TransactionsContent(
             TopAppBar(
                 title = { Text("Records") },
                 actions = {
+                    IconButton(onClick = onOpenCouple) {
+                        Icon(Icons.Filled.Favorite, contentDescription = "Couple")
+                    }
                     IconButton(onClick = onOpenNotes) {
                         Icon(Icons.Filled.Edit, contentDescription = "Notes")
                     }

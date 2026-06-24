@@ -20,6 +20,10 @@ interface UserDao {
     @Query("SELECT * FROM users WHERE id = :id")
     fun observeById(id: String): Flow<UserEntity?>
 
+    /** The other member of [coupleId] — the partner's replicated row, once it arrives. */
+    @Query("SELECT * FROM users WHERE coupleId = :coupleId AND id != :selfId LIMIT 1")
+    fun observePartner(coupleId: String, selfId: String): Flow<UserEntity?>
+
     @Query("SELECT * FROM users WHERE pendingSync = 1")
     suspend fun dirtyRows(): List<UserEntity>
 

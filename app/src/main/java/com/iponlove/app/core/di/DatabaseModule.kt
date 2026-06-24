@@ -6,6 +6,7 @@ import com.iponlove.app.core.database.IponDatabase
 import com.iponlove.app.feature.accounts.data.local.AccountDao
 import com.iponlove.app.feature.budgets.data.local.BudgetDao
 import com.iponlove.app.feature.categories.data.local.CategoryDao
+import com.iponlove.app.feature.couple.data.local.CoupleDao
 import com.iponlove.app.feature.notes.data.local.NoteDao
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleDao
 import com.iponlove.app.feature.transactions.data.local.TransactionDao
@@ -31,6 +32,9 @@ object DatabaseModule {
 
     @Provides
     fun userDao(database: IponDatabase): UserDao = database.userDao()
+
+    @Provides
+    fun coupleDao(database: IponDatabase): CoupleDao = database.coupleDao()
 
     @Provides
     fun accountDao(database: IponDatabase): AccountDao = database.accountDao()

@@ -10,6 +10,8 @@ import com.iponlove.app.feature.budgets.data.local.BudgetDao
 import com.iponlove.app.feature.budgets.data.local.BudgetEntity
 import com.iponlove.app.feature.categories.data.local.CategoryDao
 import com.iponlove.app.feature.categories.data.local.CategoryEntity
+import com.iponlove.app.feature.couple.data.local.CoupleDao
+import com.iponlove.app.feature.couple.data.local.CoupleEntity
 import com.iponlove.app.feature.notes.data.local.NoteDao
 import com.iponlove.app.feature.notes.data.local.NoteEntity
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleDao
@@ -29,6 +31,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
 @Database(
     entities = [
         UserEntity::class,
+        CoupleEntity::class,
         AccountEntity::class,
         CategoryEntity::class,
         TransactionEntity::class,
@@ -36,12 +39,13 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         RecurringRuleEntity::class,
         NoteEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 @TypeConverters(IponConverters::class)
 abstract class IponDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
+    abstract fun coupleDao(): CoupleDao
     abstract fun accountDao(): AccountDao
     abstract fun categoryDao(): CategoryDao
     abstract fun transactionDao(): TransactionDao

@@ -21,6 +21,9 @@ class UserRepositoryImpl @Inject constructor(
     override fun observeCurrentUser(): Flow<User?> =
         dao.observeById(currentUserProvider.userId()).map { it?.toDomain() }
 
+    override fun observePartner(coupleId: String): Flow<User?> =
+        dao.observePartner(coupleId, currentUserProvider.userId()).map { it?.toDomain() }
+
     override suspend fun ensureLocalRow(userId: String) {
         if (dao.getById(userId) != null) return
         val now = clock.stamp()
