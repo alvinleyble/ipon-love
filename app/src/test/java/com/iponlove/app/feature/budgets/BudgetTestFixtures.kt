@@ -16,12 +16,20 @@ class FakeBudgetDao : BudgetDao {
     private val changes = MutableStateFlow(0)
 
     override fun observeBudgets(): Flow<List<BudgetEntity>> =
-        changes.map { store.values.filter { !it.isDeleted } }
+        changes.map { store.values.filter { !it.isDeleted && it.coupleId == null } }
+
+    override fun observeSharedBudgets(coupleId: String): Flow<List<BudgetEntity>> =
+        changes.map { store.values.filter { !it.isDeleted && it.coupleId == coupleId } }
 
     override suspend fun getById(id: String): BudgetEntity? = store[id]
 
     override suspend fun upsert(budget: BudgetEntity) {
         store[budget.id] = budget
+        changes.value++
+    }
+
+    override suspend fun deleteCoupleBudgets() {
+        store.values.removeAll { it.coupleId != null }
         changes.value++
     }
 

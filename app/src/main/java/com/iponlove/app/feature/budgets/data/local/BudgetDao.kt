@@ -10,14 +10,32 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface BudgetDao {
 
-    @Query("SELECT * FROM budgets WHERE isDeleted = 0 ORDER BY yearMonth DESC, createdAt ASC")
+    /**
+     * Personal budgets only (`coupleId IS NULL`). Shared couple budgets live in the same
+     * table once pulled, so the personal Budgets tab must exclude them — same individual-view
+     * isolation the transaction/account/category DAOs apply (ADR-0011).
+     */
+    @Query("SELECT * FROM budgets WHERE isDeleted = 0 AND coupleId IS NULL ORDER BY yearMonth DESC, createdAt ASC")
     fun observeBudgets(): Flow<List<BudgetEntity>>
+
+    /** The couple's shared budgets (`couple_id` set, owned jointly per ADR; no redaction). */
+    @Query("SELECT * FROM budgets WHERE isDeleted = 0 AND coupleId = :coupleId ORDER BY yearMonth DESC, createdAt ASC")
+    fun observeSharedBudgets(coupleId: String): Flow<List<BudgetEntity>>
 
     @Query("SELECT * FROM budgets WHERE id = :id")
     suspend fun getById(id: String): BudgetEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(budget: BudgetEntity)
+
+    /**
+     * Hard-delete every shared (couple-owned) budget on unpair (ADR-0008). RLS stops
+     * returning these the moment `couple_id` clears, so the server tombstone can never reach
+     * the device — it purges locally off the same signal as partner replicas. Personal
+     * budgets (`coupleId IS NULL`) are untouched.
+     */
+    @Query("DELETE FROM budgets WHERE coupleId IS NOT NULL")
+    suspend fun deleteCoupleBudgets()
 
     // ---- sync engine plumbing ----
 

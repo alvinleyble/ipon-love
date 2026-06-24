@@ -2,6 +2,8 @@ package com.iponlove.app.feature.couple
 
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.repository.AccountRepository
+import com.iponlove.app.feature.budgets.domain.model.Budget
+import com.iponlove.app.feature.budgets.domain.repository.BudgetRepository
 import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import com.iponlove.app.feature.notes.domain.model.Note
@@ -56,6 +58,17 @@ internal class CountingNoteRepo : NoteRepository {
     override suspend fun upsertNote(note: Note) = Unit
     override suspend fun deleteNote(id: String) = Unit
     override suspend fun purgePartnerData() { purgeCount++ }
+}
+
+internal class CountingBudgetRepo : BudgetRepository {
+    var purgeCount = 0
+    override fun observeBudgets(): Flow<List<Budget>> = emptyFlow()
+    override fun observeSharedBudgets(coupleId: String): Flow<List<Budget>> = emptyFlow()
+    override suspend fun getBudget(id: String): Budget? = null
+    override suspend fun upsertBudget(budget: Budget) = Unit
+    override suspend fun upsertSharedBudget(budget: Budget, coupleId: String) = Unit
+    override suspend fun deleteBudget(id: String) = Unit
+    override suspend fun purgeSharedBudgets() { purgeCount++ }
 }
 
 /** A [UserRepository] whose current-user emissions the test drives via [currentUser]. */

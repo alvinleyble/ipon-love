@@ -13,8 +13,10 @@ class PurgePartnerReplicaUseCaseTest {
     private val categories = CountingCategoryRepo()
     private val transactions = CountingTransactionRepo()
     private val notes = CountingNoteRepo()
+    private val budgets = CountingBudgetRepo()
     private val cursors = InMemoryCursorStore()
-    private val useCase = PurgePartnerReplicaUseCase(accounts, categories, transactions, notes, cursors)
+    private val useCase =
+        PurgePartnerReplicaUseCase(accounts, categories, transactions, notes, budgets, cursors)
 
     @Test
     fun purges_everyPartnerTable_once() = runTest {
@@ -24,6 +26,7 @@ class PurgePartnerReplicaUseCaseTest {
         assertThat(categories.purgeCount).isEqualTo(1)
         assertThat(transactions.purgeCount).isEqualTo(1)
         assertThat(notes.purgeCount).isEqualTo(1)
+        assertThat(budgets.purgeCount).isEqualTo(1)
     }
 
     @Test

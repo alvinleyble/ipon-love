@@ -16,16 +16,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -35,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -88,6 +94,14 @@ fun CombinedScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         item {
+                            CoupleBudgetCard(
+                                budget = state.coupleBudget,
+                                monthLabel = state.monthLabel,
+                                onSet = viewModel::startEditBudget,
+                                onClear = viewModel::clearBudget,
+                            )
+                        }
+                        item {
                             SpendingChips(state.monthLabel, state.members)
                         }
                         if (state.entries.isEmpty()) {
@@ -108,6 +122,106 @@ fun CombinedScreen(
             }
         }
     }
+
+    state.budgetEditor?.let { editor ->
+        BudgetEditorDialog(
+            editor = editor,
+            onAmountChange = viewModel::onBudgetAmountChange,
+            onSave = viewModel::saveBudget,
+            onCancel = viewModel::cancelBudgetEdit,
+        )
+    }
+}
+
+@Composable
+private fun CoupleBudgetCard(
+    budget: CoupleBudgetUi?,
+    monthLabel: String,
+    onSet: () -> Unit,
+    onClear: () -> Unit,
+) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Couple budget · $monthLabel",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onSet) { Text(if (budget == null) "Set" else "Edit") }
+            }
+            if (budget == null) {
+                Text(
+                    text = "Set a joint monthly limit. Both of your expenses count toward it.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                LinearProgressIndicator(
+                    progress = { budget.fraction },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = if (budget.isOverBudget) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "${formatPhp(budget.spent)} of ${formatPhp(budget.limit)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = if (budget.isOverBudget) {
+                            "Over by ${formatPhp(budget.spent - budget.limit)}"
+                        } else {
+                            "${formatPhp(budget.remaining)} left"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (budget.isOverBudget) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+                TextButton(onClick = onClear) { Text("Remove budget") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BudgetEditorDialog(
+    editor: BudgetEditorState,
+    onAmountChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(if (editor.isEditing) "Edit couple budget" else "Set couple budget") },
+        text = {
+            OutlinedTextField(
+                value = editor.amountText,
+                onValueChange = onAmountChange,
+                label = { Text("Monthly limit (₱)") },
+                singleLine = true,
+                isError = editor.amountError,
+                supportingText = if (editor.amountError) {
+                    { Text("Enter an amount greater than zero") }
+                } else {
+                    null
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+    )
 }
 
 @Composable

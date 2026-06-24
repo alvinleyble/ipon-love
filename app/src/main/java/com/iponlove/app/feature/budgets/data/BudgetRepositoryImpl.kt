@@ -25,6 +25,9 @@ class BudgetRepositoryImpl @Inject constructor(
     override fun observeBudgets(): Flow<List<Budget>> =
         dao.observeBudgets().map { rows -> rows.map { it.toDomain() } }
 
+    override fun observeSharedBudgets(coupleId: String): Flow<List<Budget>> =
+        dao.observeSharedBudgets(coupleId).map { rows -> rows.map { it.toDomain() } }
+
     override suspend fun getBudget(id: String): Budget? = dao.getById(id)?.toDomain()
 
     override suspend fun upsertBudget(budget: Budget) {
@@ -47,6 +50,27 @@ class BudgetRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun upsertSharedBudget(budget: Budget, coupleId: String) {
+        val existing = dao.getById(budget.id)
+        val updatedAt = clock.stamp(existing?.updatedAt)
+        dao.upsert(
+            BudgetEntity(
+                id = budget.id,
+                // Couple-owned: schema's owner check requires user_id null when couple_id set.
+                userId = null,
+                coupleId = existing?.coupleId ?: coupleId,
+                categoryId = budget.categoryId,
+                amount = budget.amount,
+                yearMonth = budget.yearMonth,
+                createdAt = existing?.createdAt ?: updatedAt,
+                updatedAt = updatedAt,
+                isDeleted = existing?.isDeleted ?: false,
+                serverRev = existing?.serverRev,
+                pendingSync = true,
+            ),
+        )
+    }
+
     override suspend fun deleteBudget(id: String) {
         val existing = dao.getById(id) ?: return
         dao.upsert(
@@ -57,4 +81,6 @@ class BudgetRepositoryImpl @Inject constructor(
             ),
         )
     }
+
+    override suspend fun purgeSharedBudgets() = dao.deleteCoupleBudgets()
 }
