@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.transactions.domain.repository
 
+import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import kotlinx.coroutines.flow.Flow
 
@@ -13,6 +14,12 @@ interface TransactionRepository {
 
     /** Active (non-deleted) transactions, most recent first. */
     fun observeTransactions(): Flow<List<Transaction>>
+
+    /**
+     * The couple's shared ledger: both members' active, non-private transactions tagged
+     * with their owner, most recent first. Drives the combined view (ADR-0011).
+     */
+    fun observeCombinedTransactions(): Flow<List<OwnedTransaction>>
 
     suspend fun getTransaction(id: String): Transaction?
 

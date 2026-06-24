@@ -41,6 +41,7 @@ import com.iponlove.app.feature.couple.domain.model.PairingState
 @Composable
 fun CoupleScreen(
     onBack: () -> Unit,
+    onOpenCombined: () -> Unit,
     viewModel: CoupleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -72,7 +73,7 @@ fun CoupleScreen(
 
                 PairingState.NotPaired -> NotPairedContent(state, viewModel)
 
-                is PairingState.Paired -> PairedContent(pairing, state, viewModel)
+                is PairingState.Paired -> PairedContent(pairing, state, viewModel, onOpenCombined)
             }
         }
     }
@@ -134,6 +135,7 @@ private fun PairedContent(
     paired: PairingState.Paired,
     state: CoupleUiState,
     viewModel: CoupleViewModel,
+    onOpenCombined: () -> Unit,
 ) {
     var confirmUnpair by remember { mutableStateOf(false) }
     val couple = paired.couple
@@ -151,6 +153,15 @@ private fun PairedContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+
+    // The combined view needs a partner to attribute against; offer it only once joined.
+    if (!couple.isAwaitingPartner) {
+        Button(
+            onClick = onOpenCombined,
+            enabled = !state.isWorking,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("View combined spending") }
     }
 
     // The invite code is only useful until someone redeems it.

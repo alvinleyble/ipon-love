@@ -4,6 +4,7 @@ import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.feature.transactions.data.local.TransactionDao
 import com.iponlove.app.feature.transactions.data.local.TransactionEntity
+import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +26,10 @@ class TransactionRepositoryImpl @Inject constructor(
     override fun observeTransactions(): Flow<List<Transaction>> =
         dao.observeTransactions(currentUser.userId())
             .map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeCombinedTransactions(): Flow<List<OwnedTransaction>> =
+        dao.observeCombined()
+            .map { rows -> rows.map { OwnedTransaction(ownerId = it.userId, transaction = it.toDomain()) } }
 
     override suspend fun getTransaction(id: String): Transaction? = dao.getById(id)?.toDomain()
 

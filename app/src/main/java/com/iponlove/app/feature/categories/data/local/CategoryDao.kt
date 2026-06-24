@@ -21,6 +21,14 @@ interface CategoryDao {
     )
     fun observeCategories(userId: String, includeArchived: Boolean): Flow<List<CategoryEntity>>
 
+    /**
+     * Every member's non-deleted categories (both owners). Used only to resolve category
+     * names for the combined view (ADR-0011), where a partner transaction's category must
+     * still render by name; archived included so historical rows keep their label.
+     */
+    @Query("SELECT * FROM categories WHERE isDeleted = 0")
+    fun observeAll(): Flow<List<CategoryEntity>>
+
     @Query("SELECT * FROM categories WHERE id = :id")
     suspend fun getById(id: String): CategoryEntity?
 

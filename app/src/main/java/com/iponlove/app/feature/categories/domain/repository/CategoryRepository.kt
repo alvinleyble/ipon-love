@@ -13,6 +13,12 @@ interface CategoryRepository {
     /** Active (non-deleted) categories, ordered by position; archived included only if asked. */
     fun observeCategories(includeArchived: Boolean = false): Flow<List<Category>>
 
+    /**
+     * Every member's non-deleted categories (both owners) — used only to resolve category
+     * names for the combined couple view (ADR-0011).
+     */
+    fun observeAllCategories(): Flow<List<Category>>
+
     suspend fun getCategory(id: String): Category?
 
     suspend fun upsertCategory(category: Category)

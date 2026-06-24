@@ -25,6 +25,9 @@ class CategoryRepositoryImpl @Inject constructor(
         dao.observeCategories(currentUser.userId(), includeArchived)
             .map { rows -> rows.map { it.toDomain() } }
 
+    override fun observeAllCategories(): Flow<List<Category>> =
+        dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+
     override suspend fun getCategory(id: String): Category? = dao.getById(id)?.toDomain()
 
     override suspend fun upsertCategory(category: Category) {

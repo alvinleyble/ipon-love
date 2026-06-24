@@ -6,6 +6,7 @@ import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import com.iponlove.app.feature.notes.domain.model.Note
 import com.iponlove.app.feature.notes.domain.repository.NoteRepository
+import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import com.iponlove.app.feature.user.domain.model.User
@@ -29,6 +30,7 @@ internal class CountingAccountRepo : AccountRepository {
 internal class CountingCategoryRepo : CategoryRepository {
     var purgeCount = 0
     override fun observeCategories(includeArchived: Boolean): Flow<List<Category>> = emptyFlow()
+    override fun observeAllCategories(): Flow<List<Category>> = emptyFlow()
     override suspend fun getCategory(id: String): Category? = null
     override suspend fun upsertCategory(category: Category) = Unit
     override suspend fun setArchived(id: String, archived: Boolean) = Unit
@@ -39,6 +41,7 @@ internal class CountingCategoryRepo : CategoryRepository {
 internal class CountingTransactionRepo : TransactionRepository {
     var purgeCount = 0
     override fun observeTransactions(): Flow<List<Transaction>> = emptyFlow()
+    override fun observeCombinedTransactions(): Flow<List<OwnedTransaction>> = emptyFlow()
     override suspend fun getTransaction(id: String): Transaction? = null
     override suspend fun upsertTransaction(transaction: Transaction) = Unit
     override suspend fun deleteTransaction(id: String) = Unit

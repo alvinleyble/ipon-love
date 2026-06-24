@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.analysis.presentation.components
 
 import androidx.compose.ui.graphics.Color
+import com.iponlove.app.core.ui.parseHexColor
 
 /**
  * Fallback palette for chart slices when a category has no stored color (the V1 category
@@ -19,11 +20,6 @@ private val ChartPalette = listOf(
     Color(0xFF7986CB),
     Color(0xFFA1887F),
 )
-
-/** Parses "#RRGGBB" / "#AARRGGBB" (or named colors); null/blank/invalid -> null. */
-fun parseHexColor(hex: String?): Color? =
-    hex?.takeIf { it.isNotBlank() }
-        ?.let { runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull() }
 
 /** A slice's color: its category's stored color if usable, else a palette color by index. */
 fun sliceColor(colorHex: String?, index: Int): Color =

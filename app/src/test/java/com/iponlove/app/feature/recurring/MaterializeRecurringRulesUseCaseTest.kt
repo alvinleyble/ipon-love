@@ -125,6 +125,8 @@ class MaterializeRecurringRulesUseCaseTest {
         override fun observeCategories(includeArchived: Boolean): Flow<List<Category>> =
             flowOf(supply())
 
+        override fun observeAllCategories(): Flow<List<Category>> = flowOf(supply())
+
         override suspend fun getCategory(id: String): Category? = supply().firstOrNull { it.id == id }
         override suspend fun upsertCategory(category: Category) = error("unused")
         override suspend fun setArchived(id: String, archived: Boolean) = error("unused")

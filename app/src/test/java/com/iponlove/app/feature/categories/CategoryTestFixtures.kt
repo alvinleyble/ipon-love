@@ -21,6 +21,9 @@ class FakeCategoryDao : CategoryDao {
                 .sortedWith(compareBy({ it.position }, { it.createdAt }))
         }
 
+    override fun observeAll(): Flow<List<CategoryEntity>> =
+        changes.map { store.values.filter { !it.isDeleted } }
+
     override suspend fun getById(id: String): CategoryEntity? = store[id]
 
     override suspend fun deleteById(id: String) {
