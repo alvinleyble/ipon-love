@@ -3,7 +3,7 @@ package com.iponlove.app.feature.budgets.di
 import com.iponlove.app.core.sync.TableSyncer
 import com.iponlove.app.feature.budgets.data.BudgetRepositoryImpl
 import com.iponlove.app.feature.budgets.data.remote.BudgetRemoteSource
-import com.iponlove.app.feature.budgets.data.remote.StubBudgetRemoteSource
+import com.iponlove.app.feature.budgets.data.remote.SupabaseBudgetRemoteSource
 import com.iponlove.app.feature.budgets.data.sync.BudgetTableSyncer
 import com.iponlove.app.feature.budgets.domain.repository.BudgetRepository
 import dagger.Binds
@@ -23,7 +23,7 @@ interface BudgetModule {
     // No-op stub until the Supabase backend slice provides the real remote source.
     @Binds
     @Singleton
-    fun budgetRemoteSource(impl: StubBudgetRemoteSource): BudgetRemoteSource
+    fun budgetRemoteSource(impl: SupabaseBudgetRemoteSource): BudgetRemoteSource
 
     /** Contributes budgets to the sync engine's table set; engine sorts into FK order. */
     @Binds

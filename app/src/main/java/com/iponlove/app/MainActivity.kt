@@ -15,6 +15,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.work.ExistingWorkPolicy
+import androidx.work.WorkManager
+import com.iponlove.app.core.sync.SyncWorker
 import com.iponlove.app.core.ui.theme.IponTheme
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.presentation.AuthScreen
@@ -42,7 +45,16 @@ class MainActivity : ComponentActivity() {
                 val status by authViewModel.status.collectAsState()
                 when (val current = status) {
                     is AuthStatus.Authenticated -> {
-                        LaunchedEffect(current.userId) { materializeRecurringRules() }
+                        LaunchedEffect(current.userId) {
+                            materializeRecurringRules()
+                            // Enqueue a background sync on network reconnect (ADR-0012).
+                            // KEEP_EXISTING so simultaneous triggers coalesce to one worker.
+                            WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+                                SyncWorker.WORK_NAME,
+                                ExistingWorkPolicy.KEEP,
+                                SyncWorker.buildRequest(),
+                            )
+                        }
                         IponApp(onSignOut = authViewModel::signOut)
                     }
 
