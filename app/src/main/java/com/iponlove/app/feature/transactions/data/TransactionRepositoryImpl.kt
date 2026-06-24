@@ -62,4 +62,35 @@ class TransactionRepositoryImpl @Inject constructor(
             ),
         )
     }
+
+    override suspend fun materializeTransaction(
+        transaction: Transaction,
+        recurringRuleId: String,
+    ): Boolean {
+        // Insert-if-absent on the deterministic id: an existing row — active or tombstoned —
+        // means this occurrence was already materialized (or deleted), so do nothing.
+        if (dao.getById(transaction.id) != null) return false
+        val updatedAt = clock.stamp(null)
+        dao.upsert(
+            TransactionEntity(
+                id = transaction.id,
+                userId = currentUser.userId(),
+                type = transaction.type,
+                amount = transaction.amount,
+                accountId = transaction.accountId,
+                toAccountId = null,
+                categoryId = transaction.categoryId,
+                note = transaction.note,
+                date = transaction.date,
+                isPrivate = transaction.isPrivate,
+                recurringRuleId = recurringRuleId,
+                createdAt = updatedAt,
+                updatedAt = updatedAt,
+                isDeleted = false,
+                serverRev = null,
+                pendingSync = true,
+            ),
+        )
+        return true
+    }
 }

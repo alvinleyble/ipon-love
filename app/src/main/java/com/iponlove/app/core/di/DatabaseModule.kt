@@ -6,6 +6,7 @@ import com.iponlove.app.core.database.IponDatabase
 import com.iponlove.app.feature.accounts.data.local.AccountDao
 import com.iponlove.app.feature.budgets.data.local.BudgetDao
 import com.iponlove.app.feature.categories.data.local.CategoryDao
+import com.iponlove.app.feature.recurring.data.local.RecurringRuleDao
 import com.iponlove.app.feature.transactions.data.local.TransactionDao
 import dagger.Module
 import dagger.Provides
@@ -37,4 +38,7 @@ object DatabaseModule {
 
     @Provides
     fun budgetDao(database: IponDatabase): BudgetDao = database.budgetDao()
+
+    @Provides
+    fun recurringRuleDao(database: IponDatabase): RecurringRuleDao = database.recurringRuleDao()
 }

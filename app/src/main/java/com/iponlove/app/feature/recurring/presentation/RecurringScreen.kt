@@ -1,4 +1,4 @@
-package com.iponlove.app.feature.transactions.presentation
+package com.iponlove.app.feature.recurring.presentation
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -19,12 +19,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,12 +35,13 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,70 +57,39 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.formatPhp
-import com.iponlove.app.core.ui.formatShortDate
-import com.iponlove.app.feature.categories.domain.model.CategoryType
+import com.iponlove.app.feature.recurring.domain.model.RecurringFrequency
+import com.iponlove.app.feature.recurring.domain.usecase.RecurringError
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
-import com.iponlove.app.feature.transactions.domain.usecase.TransactionError
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 private val IncomeColor = Color(0xFF2E7D32)
-
-@Composable
-fun TransactionsScreen(
-    onOpenRecurring: () -> Unit,
-    viewModel: TransactionsViewModel = hiltViewModel(),
-) {
-    val state by viewModel.uiState.collectAsState()
-    TransactionsContent(
-        state = state,
-        onOpenRecurring = onOpenRecurring,
-        onAdd = viewModel::startCreate,
-        onEdit = viewModel::startEdit,
-        onDelete = viewModel::delete,
-        onTypeChange = viewModel::onTypeChange,
-        onAmountChange = viewModel::onAmountChange,
-        onAccountChange = viewModel::onAccountChange,
-        onToAccountChange = viewModel::onToAccountChange,
-        onCategoryChange = viewModel::onCategoryChange,
-        onNoteChange = viewModel::onNoteChange,
-        onPrivateChange = viewModel::onPrivateChange,
-        onSave = viewModel::save,
-        onCancel = viewModel::cancelEdit,
-    )
-}
+private val DATE_LABEL: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TransactionsContent(
-    state: TransactionsUiState,
-    onOpenRecurring: () -> Unit,
-    onAdd: () -> Unit,
-    onEdit: (String) -> Unit,
-    onDelete: (String) -> Unit,
-    onTypeChange: (TransactionType) -> Unit,
-    onAmountChange: (String) -> Unit,
-    onAccountChange: (String) -> Unit,
-    onToAccountChange: (String) -> Unit,
-    onCategoryChange: (String) -> Unit,
-    onNoteChange: (String) -> Unit,
-    onPrivateChange: (Boolean) -> Unit,
-    onSave: () -> Unit,
-    onCancel: () -> Unit,
+fun RecurringScreen(
+    onBack: () -> Unit,
+    viewModel: RecurringViewModel = hiltViewModel(),
 ) {
+    val state by viewModel.uiState.collectAsState()
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Records") },
-                actions = {
-                    IconButton(onClick = onOpenRecurring) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Recurring rules")
+                title = { Text("Recurring") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
             )
         },
         floatingActionButton = {
             if (state.canAdd) {
-                FloatingActionButton(onClick = onAdd) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add transaction")
+                FloatingActionButton(onClick = viewModel::startCreate) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add recurring rule")
                 }
             }
         },
@@ -129,15 +101,15 @@ private fun TransactionsContent(
 
                 !state.canAdd ->
                     EmptyState(
-                        title = "Create an account first",
-                        body = "Transactions need an account. Add one on the Accounts tab.",
+                        title = "Set up an account and category first",
+                        body = "Recurring rules need an account to charge and a category to file under.",
                         modifier = Modifier.align(Alignment.Center),
                     )
 
                 state.items.isEmpty() ->
                     EmptyState(
-                        title = "No transactions yet",
-                        body = "Tap + to record income, an expense, or a transfer.",
+                        title = "No recurring rules yet",
+                        body = "Tap + to automate a salary, bill, or subscription.",
                         modifier = Modifier.align(Alignment.Center),
                     )
 
@@ -147,10 +119,10 @@ private fun TransactionsContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(state.items, key = { it.id }) { item ->
-                        TransactionRow(
+                        RecurringRow(
                             item = item,
-                            onClick = { onEdit(item.id) },
-                            onDelete = { onDelete(item.id) },
+                            onClick = { viewModel.startEdit(item.id) },
+                            onDelete = { viewModel.delete(item.id) },
                         )
                     }
                 }
@@ -159,25 +131,26 @@ private fun TransactionsContent(
     }
 
     state.editor?.let { editor ->
-        TransactionEditorDialog(
+        RecurringEditorDialog(
             editor = editor,
             state = state,
-            onTypeChange = onTypeChange,
-            onAmountChange = onAmountChange,
-            onAccountChange = onAccountChange,
-            onToAccountChange = onToAccountChange,
-            onCategoryChange = onCategoryChange,
-            onNoteChange = onNoteChange,
-            onPrivateChange = onPrivateChange,
-            onSave = onSave,
-            onCancel = onCancel,
+            onAmountChange = viewModel::onAmountChange,
+            onAccountChange = viewModel::onAccountChange,
+            onCategoryChange = viewModel::onCategoryChange,
+            onFrequencyChange = viewModel::onFrequencyChange,
+            onIntervalChange = viewModel::onIntervalChange,
+            onStartDateChange = viewModel::onStartDateChange,
+            onEndDateChange = viewModel::onEndDateChange,
+            onNoteChange = viewModel::onNoteChange,
+            onSave = viewModel::save,
+            onCancel = viewModel::cancelEdit,
         )
     }
 }
 
 @Composable
-private fun TransactionRow(
-    item: TransactionListItem,
+private fun RecurringRow(
+    item: RecurringRuleListItem,
     onClick: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -190,12 +163,12 @@ private fun TransactionRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(item.title, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = item.subtitle,
+                    text = item.scheduleLabel,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = formatShortDate(item.date),
+                    text = item.nextLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -222,42 +195,34 @@ private fun TransactionRow(
 }
 
 @Composable
-private fun TransactionEditorDialog(
-    editor: TransactionEditorState,
-    state: TransactionsUiState,
-    onTypeChange: (TransactionType) -> Unit,
+private fun RecurringEditorDialog(
+    editor: RecurringEditorState,
+    state: RecurringUiState,
     onAmountChange: (String) -> Unit,
     onAccountChange: (String) -> Unit,
-    onToAccountChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
+    onFrequencyChange: (RecurringFrequency) -> Unit,
+    onIntervalChange: (String) -> Unit,
+    onStartDateChange: (LocalDate) -> Unit,
+    onEndDateChange: (LocalDate?) -> Unit,
     onNoteChange: (String) -> Unit,
-    onPrivateChange: (Boolean) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
     val accountOptions = state.accounts.map { PickerOption(it.id, it.name) }
-    val categoryOptions = state.categories
-        .filter { it.type == editor.type.matchingCategoryType() }
-        .map { PickerOption(it.id, it.name) }
+    val categoryOptions = state.categories.map { PickerOption(it.id, it.name) }
 
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text(if (editor.isEditing) "Edit transaction" else "New transaction") },
+        title = { Text(if (editor.isEditing) "Edit recurring rule" else "New recurring rule") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                ChipRow(
-                    label = "Type",
-                    options = TransactionType.entries.map { PickerOption(it.name, it.label()) },
-                    selectedId = editor.type.name,
-                    onSelect = { onTypeChange(TransactionType.valueOf(it)) },
-                )
-                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = editor.amountText,
                     onValueChange = onAmountChange,
                     label = { Text("Amount (₱)") },
                     singleLine = true,
-                    isError = TransactionError.AMOUNT_NOT_POSITIVE in editor.errors,
+                    isError = RecurringError.AMOUNT_NOT_POSITIVE in editor.errors,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -269,21 +234,43 @@ private fun TransactionEditorDialog(
                     onSelect = onAccountChange,
                 )
                 Spacer(Modifier.height(12.dp))
-                if (editor.type == TransactionType.TRANSFER) {
-                    ChipRow(
-                        label = "To account",
-                        options = accountOptions.filter { it.id != editor.accountId },
-                        selectedId = editor.toAccountId,
-                        onSelect = onToAccountChange,
-                    )
-                } else {
-                    ChipRow(
-                        label = "Category",
-                        options = categoryOptions,
-                        selectedId = editor.categoryId,
-                        onSelect = onCategoryChange,
-                    )
-                }
+                ChipRow(
+                    label = "Category",
+                    options = categoryOptions,
+                    selectedId = editor.categoryId,
+                    onSelect = onCategoryChange,
+                )
+                Spacer(Modifier.height(12.dp))
+                ChipRow(
+                    label = "Repeats",
+                    options = RecurringFrequency.entries.map { PickerOption(it.name, it.label()) },
+                    selectedId = editor.frequency.name,
+                    onSelect = { onFrequencyChange(RecurringFrequency.valueOf(it)) },
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = editor.intervalText,
+                    onValueChange = onIntervalChange,
+                    label = { Text("Every N ${editor.frequency.unit()}") },
+                    singleLine = true,
+                    isError = RecurringError.INTERVAL_INVALID in editor.errors,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                DateField(
+                    label = "Starts",
+                    date = editor.startDate,
+                    onPick = onStartDateChange,
+                )
+                Spacer(Modifier.height(12.dp))
+                DateField(
+                    label = "Ends",
+                    date = editor.endDate,
+                    placeholder = "No end date",
+                    onPick = onEndDateChange,
+                    onClear = { onEndDateChange(null) },
+                )
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = editor.note,
@@ -292,11 +279,6 @@ private fun TransactionEditorDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Private", modifier = Modifier.weight(1f))
-                    Switch(checked = editor.isPrivate, onCheckedChange = onPrivateChange)
-                }
                 if (editor.errors.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     editor.errors.forEach { error ->
@@ -347,6 +329,49 @@ private fun ChipRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DateField(
+    label: String,
+    date: LocalDate?,
+    onPick: (LocalDate) -> Unit,
+    placeholder: String = "Pick a date",
+    onClear: (() -> Unit)? = null,
+) {
+    var open by remember { mutableStateOf(false) }
+    Column {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(onClick = { open = true }) {
+                Text(date?.format(DATE_LABEL) ?: placeholder)
+            }
+            if (onClear != null && date != null) {
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = onClear) { Text("Clear") }
+            }
+        }
+    }
+
+    if (open) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = date?.toUtcMillis(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { open = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { onPick(it.toLocalDate()) }
+                    open = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
+}
+
 @Composable
 private fun EmptyState(title: String, body: String, modifier: Modifier = Modifier) {
     Column(
@@ -364,38 +389,37 @@ private fun EmptyState(title: String, body: String, modifier: Modifier = Modifie
     }
 }
 
+// DatePicker speaks UTC-midnight millis; convert through UTC so the calendar day is exact.
+private fun LocalDate.toUtcMillis(): Long = atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+private fun Long.toLocalDate(): LocalDate = Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
+
 @Composable
-private fun TransactionListItem.signedAmount(): String {
-    val prefix = when (type) {
-        TransactionType.INCOME -> "+"
-        TransactionType.EXPENSE -> "−"
-        TransactionType.TRANSFER -> ""
-    }
+private fun RecurringRuleListItem.signedAmount(): String {
+    val prefix = if (type == TransactionType.INCOME) "+" else "−"
     return prefix + formatPhp(amount)
 }
 
 @Composable
-private fun TransactionListItem.amountColor(): Color = when (type) {
-    TransactionType.INCOME -> IncomeColor
-    TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
-    TransactionType.TRANSFER -> MaterialTheme.colorScheme.onSurfaceVariant
+private fun RecurringRuleListItem.amountColor(): Color =
+    if (type == TransactionType.INCOME) IncomeColor else MaterialTheme.colorScheme.error
+
+private fun RecurringFrequency.label(): String = when (this) {
+    RecurringFrequency.DAILY -> "Daily"
+    RecurringFrequency.WEEKLY -> "Weekly"
+    RecurringFrequency.MONTHLY -> "Monthly"
 }
 
-private fun TransactionType.label(): String = when (this) {
-    TransactionType.INCOME -> "Income"
-    TransactionType.EXPENSE -> "Expense"
-    TransactionType.TRANSFER -> "Transfer"
+private fun RecurringFrequency.unit(): String = when (this) {
+    RecurringFrequency.DAILY -> "days"
+    RecurringFrequency.WEEKLY -> "weeks"
+    RecurringFrequency.MONTHLY -> "months"
 }
 
-private fun TransactionType.matchingCategoryType(): CategoryType = when (this) {
-    TransactionType.INCOME -> CategoryType.INCOME
-    else -> CategoryType.EXPENSE
-}
-
-private fun TransactionError.message(): String = when (this) {
-    TransactionError.AMOUNT_NOT_POSITIVE -> "Enter an amount greater than zero"
-    TransactionError.ACCOUNT_REQUIRED -> "Choose an account"
-    TransactionError.CATEGORY_REQUIRED -> "Choose a category"
-    TransactionError.DESTINATION_REQUIRED -> "Choose a destination account"
-    TransactionError.DESTINATION_SAME_AS_SOURCE -> "Destination must differ from the source"
+private fun RecurringError.message(): String = when (this) {
+    RecurringError.AMOUNT_NOT_POSITIVE -> "Enter an amount greater than zero"
+    RecurringError.ACCOUNT_REQUIRED -> "Choose an account"
+    RecurringError.CATEGORY_REQUIRED -> "Choose a category"
+    RecurringError.INTERVAL_INVALID -> "Repeat interval must be at least 1"
+    RecurringError.END_BEFORE_START -> "End date must be on or after the start date"
 }

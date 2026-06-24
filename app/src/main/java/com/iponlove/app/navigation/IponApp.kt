@@ -18,7 +18,10 @@ import com.iponlove.app.feature.accounts.presentation.AccountsScreen
 import com.iponlove.app.feature.analysis.presentation.AnalysisScreen
 import com.iponlove.app.feature.budgets.presentation.BudgetsScreen
 import com.iponlove.app.feature.categories.presentation.CategoriesScreen
+import com.iponlove.app.feature.recurring.presentation.RecurringScreen
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
+
+private const val RECURRING_ROUTE = "recurring"
 
 /**
  * App root: a bottom-nav [Scaffold] hosting one composable per [TopLevelDestination].
@@ -59,11 +62,16 @@ fun IponApp() {
             startDestination = TopLevelDestination.RECORDS.route,
             modifier = Modifier.padding(padding),
         ) {
-            composable(TopLevelDestination.RECORDS.route) { TransactionsScreen() }
+            composable(TopLevelDestination.RECORDS.route) {
+                TransactionsScreen(onOpenRecurring = { navController.navigate(RECURRING_ROUTE) })
+            }
             composable(TopLevelDestination.ANALYSIS.route) { AnalysisScreen() }
             composable(TopLevelDestination.BUDGETS.route) { BudgetsScreen() }
             composable(TopLevelDestination.ACCOUNTS.route) { AccountsScreen() }
             composable(TopLevelDestination.CATEGORIES.route) { CategoriesScreen() }
+            composable(RECURRING_ROUTE) {
+                RecurringScreen(onBack = { navController.popBackStack() })
+            }
         }
     }
 }

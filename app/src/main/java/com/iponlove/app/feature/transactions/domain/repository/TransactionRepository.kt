@@ -20,4 +20,13 @@ interface TransactionRepository {
 
     /** Soft delete — sets `is_deleted = true`; never a hard delete (ADR-0010). */
     suspend fun deleteTransaction(id: String)
+
+    /**
+     * Insert a recurring-rule-generated transaction, idempotently. Returns false WITHOUT
+     * writing if a row with [transaction.id] already exists — active OR tombstoned — so a
+     * deleted occurrence is never resurrected and a repeated materialization pass can't
+     * duplicate. [transaction.id] must be the rule's deterministic occurrence id and
+     * [recurringRuleId] is stamped as the row's provenance.
+     */
+    suspend fun materializeTransaction(transaction: Transaction, recurringRuleId: String): Boolean
 }
