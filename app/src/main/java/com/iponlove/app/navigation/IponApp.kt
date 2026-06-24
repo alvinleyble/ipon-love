@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.iponlove.app.feature.accounts.presentation.AccountsScreen
+import com.iponlove.app.feature.analysis.presentation.AnalysisScreen
 import com.iponlove.app.feature.budgets.presentation.BudgetsScreen
 import com.iponlove.app.feature.categories.presentation.CategoriesScreen
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
@@ -59,6 +60,7 @@ fun IponApp() {
             modifier = Modifier.padding(padding),
         ) {
             composable(TopLevelDestination.RECORDS.route) { TransactionsScreen() }
+            composable(TopLevelDestination.ANALYSIS.route) { AnalysisScreen() }
             composable(TopLevelDestination.BUDGETS.route) { BudgetsScreen() }
             composable(TopLevelDestination.ACCOUNTS.route) { AccountsScreen() }
             composable(TopLevelDestination.CATEGORIES.route) { CategoriesScreen() }

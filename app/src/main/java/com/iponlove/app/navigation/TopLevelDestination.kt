@@ -3,6 +3,7 @@ package com.iponlove.app.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -18,6 +19,7 @@ enum class TopLevelDestination(
     val icon: ImageVector,
 ) {
     RECORDS("records", "Records", Icons.Filled.Home),
+    ANALYSIS("analysis", "Analysis", Icons.Filled.Info),
     BUDGETS("budgets", "Budgets", Icons.Filled.DateRange),
     ACCOUNTS("accounts", "Accounts", Icons.Filled.List),
     CATEGORIES("categories", "Categories", Icons.Filled.ShoppingCart),
