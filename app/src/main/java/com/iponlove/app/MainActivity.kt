@@ -23,6 +23,7 @@ import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.presentation.AuthScreen
 import com.iponlove.app.feature.auth.presentation.AuthViewModel
 import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRulesUseCase
+import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
 import com.iponlove.app.navigation.IponApp
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -33,8 +34,8 @@ class MainActivity : ComponentActivity() {
     /** Generates any recurring transactions that came due while the app was closed (ADR-0012:
      *  interactive catch-up runs in-process; WorkManager owns background retry later). Only run
      *  once authenticated — it writes owned rows that need the signed-in user's id. */
-    @Inject
-    lateinit var materializeRecurringRules: MaterializeRecurringRulesUseCase
+    @Inject lateinit var materializeRecurringRules: MaterializeRecurringRulesUseCase
+    @Inject lateinit var ensureCurrentUserRow: EnsureCurrentUserRowUseCase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +47,7 @@ class MainActivity : ComponentActivity() {
                 when (val current = status) {
                     is AuthStatus.Authenticated -> {
                         LaunchedEffect(current.userId) {
+                            ensureCurrentUserRow()
                             materializeRecurringRules()
                             // Enqueue a background sync on network reconnect (ADR-0012).
                             // KEEP_EXISTING so simultaneous triggers coalesce to one worker.

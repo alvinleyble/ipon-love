@@ -564,27 +564,6 @@ $$;
 -- Dissolve the caller's couple: both leave, shared budgets soft-deleted, shared
 -- notes revert to private-to-owner, couple soft-deleted. Each client then bulk-
 -- purges replicated non-owned rows on seeing its own couple_id go null.       [ADR-0008]
--- Auto-create a public.users row when a new auth user is created.
--- Required because accounts/categories/etc have FK → users.id; without this
--- trigger every table upsert on first sync fails with a FK constraint violation.
-create or replace function handle_new_auth_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-    insert into public.users (id, created_at, updated_at)
-    values (new.id, now(), now())
-    on conflict (id) do nothing;
-    return new;
-end;
-$$;
-
-create or replace trigger on_auth_user_created
-    after insert on auth.users
-    for each row execute function handle_new_auth_user();
-
 create or replace function unpair()
 returns void
 language plpgsql

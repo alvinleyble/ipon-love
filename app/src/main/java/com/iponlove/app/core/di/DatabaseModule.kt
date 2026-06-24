@@ -9,6 +9,7 @@ import com.iponlove.app.feature.categories.data.local.CategoryDao
 import com.iponlove.app.feature.notes.data.local.NoteDao
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleDao
 import com.iponlove.app.feature.transactions.data.local.TransactionDao
+import com.iponlove.app.feature.user.data.local.UserDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,6 +28,9 @@ object DatabaseModule {
             // Pre-release: schema churns, so drop-and-recreate instead of migrating.
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
+
+    @Provides
+    fun userDao(database: IponDatabase): UserDao = database.userDao()
 
     @Provides
     fun accountDao(database: IponDatabase): AccountDao = database.accountDao()

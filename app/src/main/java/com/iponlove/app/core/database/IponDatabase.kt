@@ -16,6 +16,8 @@ import com.iponlove.app.feature.recurring.data.local.RecurringRuleDao
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleEntity
 import com.iponlove.app.feature.transactions.data.local.TransactionDao
 import com.iponlove.app.feature.transactions.data.local.TransactionEntity
+import com.iponlove.app.feature.user.data.local.UserDao
+import com.iponlove.app.feature.user.data.local.UserEntity
 
 /**
  * The single offline-first Room database — source of truth for the whole app
@@ -26,6 +28,7 @@ import com.iponlove.app.feature.transactions.data.local.TransactionEntity
  */
 @Database(
     entities = [
+        UserEntity::class,
         AccountEntity::class,
         CategoryEntity::class,
         TransactionEntity::class,
@@ -33,11 +36,12 @@ import com.iponlove.app.feature.transactions.data.local.TransactionEntity
         RecurringRuleEntity::class,
         NoteEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 @TypeConverters(IponConverters::class)
 abstract class IponDatabase : RoomDatabase() {
+    abstract fun userDao(): UserDao
     abstract fun accountDao(): AccountDao
     abstract fun categoryDao(): CategoryDao
     abstract fun transactionDao(): TransactionDao
