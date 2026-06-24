@@ -13,6 +13,25 @@
 
 ---
 
+## Which Model to Use
+
+The rule: **Sonnet by default, Opus when the design is genuinely novel or architecturally risky.**
+
+**Use Sonnet for:**
+- Standard feature slices where the per-feature pattern is already established (accounts, categories, transactions, budgets, recurring, notes were all pattern-following after the first one)
+- Settings/Themes — purely additive, low design risk
+- Glance widget — self-contained, no cross-feature entanglement
+- Auth + Supabase backend slice — mostly swapping stubs for real SDK calls, pattern is clear
+
+**Use Opus for:**
+- **Couples/pairing** — the most complex remaining V1 feature: invite codes, partner data replication into Room, redacting views, shared-note conflict-copy path, shared budget, Partner Debt Tracker sub-feature, and ADR-0004/0005/0011 all interact. Build this on Opus.
+- Any slice where you're unsure how the design fits together before writing code (run `/grilling` first, then build on Opus)
+- Debugging a subtle sync or concurrency bug — Opus reasons through multi-step state better
+
+**General principle:** If the next slice is "copy the pattern and adapt it," use Sonnet. If it involves design decisions that span multiple ADRs, shared state between users, or non-obvious cross-feature interactions, use Opus. Sonnet is faster and cheaper for mechanical work; the saving pays for Opus where it actually matters.
+
+---
+
 ## What This App Is
 A couples personal finance + notes Android app for the Philippine market. Users track individual expenses and share a combined financial view with their partner. Clean, aesthetic UI. Offline-first with Supabase cloud sync.
 
