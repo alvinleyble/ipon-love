@@ -10,6 +10,7 @@ import java.time.Instant
 /** Screen state for the Records tab. */
 data class TransactionsUiState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val items: List<TransactionListItem> = emptyList(),
     /** Picker sources for the editor. */
     val accounts: List<Account> = emptyList(),

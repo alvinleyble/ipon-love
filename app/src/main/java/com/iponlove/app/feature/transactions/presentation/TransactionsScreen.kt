@@ -41,6 +41,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -76,6 +77,7 @@ fun TransactionsScreen(
         onOpenRecurring = onOpenRecurring,
         onOpenNotes = onOpenNotes,
         onSignOut = onSignOut,
+        onSync = viewModel::sync,
         onAdd = viewModel::startCreate,
         onEdit = viewModel::startEdit,
         onDelete = viewModel::delete,
@@ -98,6 +100,7 @@ private fun TransactionsContent(
     onOpenRecurring: () -> Unit,
     onOpenNotes: () -> Unit,
     onSignOut: () -> Unit,
+    onSync: () -> Unit,
     onAdd: () -> Unit,
     onEdit: (String) -> Unit,
     onDelete: (String) -> Unit,
@@ -136,7 +139,11 @@ private fun TransactionsContent(
             }
         },
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = onSync,
+            modifier = Modifier.padding(padding).fillMaxSize(),
+        ) {
             when {
                 state.isLoading ->
                     CircularProgressIndicator(Modifier.align(Alignment.Center))

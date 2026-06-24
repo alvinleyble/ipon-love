@@ -2,6 +2,7 @@ package com.iponlove.app.feature.transactions.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.transactions.domain.model.Transaction
@@ -30,9 +31,11 @@ class TransactionsViewModel @Inject constructor(
     observeCategories: ObserveCategoriesUseCase,
     private val upsertTransaction: UpsertTransactionUseCase,
     private val deleteTransaction: DeleteTransactionUseCase,
+    private val syncEngine: SyncEngine,
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<TransactionEditorState?>(null)
+    private val isRefreshing = MutableStateFlow(false)
 
     // Latest domain values, captured so the editor and saves can read full transactions
     // (the list exposes display models only).
@@ -45,7 +48,8 @@ class TransactionsViewModel @Inject constructor(
             observeAccounts(),
             observeCategories(),
             editor,
-        ) { transactions, accounts, categories, editorState ->
+            isRefreshing,
+        ) { transactions, accounts, categories, editorState, refreshing ->
             latestTransactions = transactions
             firstAccountId = accounts.firstOrNull()?.id
 
@@ -54,6 +58,7 @@ class TransactionsViewModel @Inject constructor(
 
             TransactionsUiState(
                 isLoading = false,
+                isRefreshing = refreshing,
                 items = transactions.map { it.toListItem(accountNames, categoryNames) },
                 accounts = accounts,
                 categories = categories,
@@ -87,6 +92,20 @@ class TransactionsViewModel @Inject constructor(
 
     fun cancelEdit() {
         editor.value = null
+    }
+
+    fun sync() {
+        viewModelScope.launch {
+            isRefreshing.value = true
+            try {
+                syncEngine.sync()
+            } catch (_: Exception) {
+                // SyncEngine already surfaces the error via SyncState.Error;
+                // swallow here so an uncaught exception doesn't crash the app.
+            } finally {
+                isRefreshing.value = false
+            }
+        }
     }
 
     fun onTypeChange(type: TransactionType) = editor.update { e ->
