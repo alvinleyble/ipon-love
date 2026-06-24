@@ -1,5 +1,18 @@
 # Ipon, Love — Claude Code Context
 
+## How to Start Each Conversation
+
+**Read exactly these, then start coding — nothing else:**
+1. `memory/project-build-progress.md` — current build state, what's built, what's next, the per-feature pattern
+2. One reference feature folder (e.g. `app/src/main/java/com/iponlove/app/feature/budgets/`) — for copy-paste pattern
+3. The relevant table(s) in `supabase/schema.sql` — for the new entity/DTO shape
+
+**Do NOT read:** `PRD.md`, `ARCHITECTURE.md`, `CONTEXT.md`, or browse the folder tree. `CLAUDE.md` (this file) already covers everything needed. `memory/project-build-progress.md` covers build state.
+
+**After each feature slice is committed:** update `memory/project-build-progress.md` — add the new slice to the committed list, bump Room version if changed, update the "V1 still to build" list. This file is the single source of truth for orientation in the next conversation.
+
+---
+
 ## What This App Is
 A couples personal finance + notes Android app for the Philippine market. Users track individual expenses and share a combined financial view with their partner. Clean, aesthetic UI. Offline-first with Supabase cloud sync.
 

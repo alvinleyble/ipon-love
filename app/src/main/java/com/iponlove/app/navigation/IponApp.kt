@@ -10,18 +10,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.iponlove.app.feature.accounts.presentation.AccountsScreen
 import com.iponlove.app.feature.analysis.presentation.AnalysisScreen
 import com.iponlove.app.feature.budgets.presentation.BudgetsScreen
 import com.iponlove.app.feature.categories.presentation.CategoriesScreen
+import com.iponlove.app.feature.notes.presentation.NoteEditorScreen
+import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion.NOTE_ID_KEY
+import com.iponlove.app.feature.notes.presentation.NotesScreen
 import com.iponlove.app.feature.recurring.presentation.RecurringScreen
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
 
 private const val RECURRING_ROUTE = "recurring"
+private const val NOTES_ROUTE = "notes"
+private const val NOTE_EDITOR_ROUTE = "note_editor"
 
 /**
  * App root: a bottom-nav [Scaffold] hosting one composable per [TopLevelDestination].
@@ -63,7 +70,10 @@ fun IponApp() {
             modifier = Modifier.padding(padding),
         ) {
             composable(TopLevelDestination.RECORDS.route) {
-                TransactionsScreen(onOpenRecurring = { navController.navigate(RECURRING_ROUTE) })
+                TransactionsScreen(
+                    onOpenRecurring = { navController.navigate(RECURRING_ROUTE) },
+                    onOpenNotes = { navController.navigate(NOTES_ROUTE) },
+                )
             }
             composable(TopLevelDestination.ANALYSIS.route) { AnalysisScreen() }
             composable(TopLevelDestination.BUDGETS.route) { BudgetsScreen() }
@@ -71,6 +81,18 @@ fun IponApp() {
             composable(TopLevelDestination.CATEGORIES.route) { CategoriesScreen() }
             composable(RECURRING_ROUTE) {
                 RecurringScreen(onBack = { navController.popBackStack() })
+            }
+            composable(NOTES_ROUTE) {
+                NotesScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenNote = { noteId -> navController.navigate("$NOTE_EDITOR_ROUTE/$noteId") },
+                )
+            }
+            composable(
+                route = "$NOTE_EDITOR_ROUTE/{$NOTE_ID_KEY}",
+                arguments = listOf(navArgument(NOTE_ID_KEY) { type = NavType.StringType }),
+            ) {
+                NoteEditorScreen(onBack = { navController.popBackStack() })
             }
         }
     }

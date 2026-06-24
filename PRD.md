@@ -1,6 +1,6 @@
 # Product Requirements Document — Ipon, Love
 
-**Version:** 1.1
+**Version:** 1.2
 **Date:** June 2026
 **Status:** Clarified — pre-grilling pass
 
@@ -106,6 +106,14 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 - **Combined view:** merged transaction list with color-coded attribution per partner (e.g., Alvin in blue, Patty in pink); private transactions excluded
 - **Shared budget:** a joint monthly budget both partners contribute to and spend from together
 - Couple pairing managed in settings; either partner can unpair
+
+**Partner Debt Tracker** (couples-only; hidden until paired)
+- Track informal IOUs between the two partners — e.g., "Alvin borrowed ₱1,000 from Patty"
+- Either partner can create a debt record (borrower, lender, original amount, description)
+- Partial repayments: log one or more payments against a debt; remaining balance is derived (original − sum of payments)
+- A debt is fully settled when remaining balance reaches zero; archived debts can still be reviewed
+- Shown as a dedicated Debts section within the Couples view; not visible until paired
+- On unpair, all debt records are soft-deleted (same as shared budgets)
 
 ### 6.4 Notes
 

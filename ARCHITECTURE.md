@@ -1,6 +1,6 @@
 # Architecture Document — Ipon, Love
 
-**Version:** 1.1
+**Version:** 1.2
 **Date:** June 2026
 **Companion doc:** PRD.md
 **Status:** Clarified — pre-grilling pass
@@ -229,6 +229,33 @@ is_deleted      BOOLEAN
 ```
 Personal budget: `user_id` set, `couple_id` null.
 Shared budget: `couple_id` set, `user_id` null.
+
+### partner_debts
+```
+id              UUID        PK
+couple_id       UUID        FK → couples (scoped to the couple — both partners read/write)
+borrower_id     UUID        FK → users (the partner who owes)
+lender_id       UUID        FK → users (the partner who is owed)
+amount          DECIMAL     original amount at debt creation
+description     TEXT        what the debt is for
+created_at      TIMESTAMP
+updated_at      TIMESTAMP
+is_deleted      BOOLEAN     soft-deleted on unpair (same as shared budgets)
+```
+Remaining balance is derived (amount − sum of non-deleted payments); never stored.
+Only enabled in the UI when the user is paired. Either partner may create or settle a debt.
+
+### partner_debt_payments
+```
+id         UUID        PK
+debt_id    UUID        FK → partner_debts
+amount     DECIMAL     this instalment's payment amount
+note       TEXT        optional description
+date       TIMESTAMP   when the payment was made
+created_at TIMESTAMP
+updated_at TIMESTAMP
+is_deleted BOOLEAN
+```
 
 ### notes
 ```

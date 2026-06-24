@@ -79,3 +79,15 @@ _Avoid_: joint record, couple record (use "shared")
 **Conflict copy**:
 A new note auto-created when a partner's local edits to a shared note would otherwise be discarded by LWW — the local edits are forked off (title suffixed "(conflict copy — Name)") instead of lost. See ADR-0003.
 _Avoid_: conflicted copy, fork, duplicate
+
+**Partner debt**:
+A record of money informally owed between the two partners of a Couple — one borrower and one lender. Scoped to the couple (`couple_id`), not owned by a single user. Both partners can create, view, and repay debts. Only exists and is visible when paired; soft-deleted on unpair.
+_Avoid_: couple loan, IOU, shared debt
+
+**Partner debt payment**:
+A single (partial or full) repayment recorded against a partner debt. Multiple payments accumulate; remaining balance is derived as original amount − sum of non-deleted payments.
+_Avoid_: debt repayment, instalment
+
+**Remaining balance (debt)**:
+Derived figure = `partner_debt.amount` − `sum(partner_debt_payments.amount)` for non-deleted payments. Never stored — always computed at read time by `PartnerDebtBalanceCalculator` (same derivation pattern as account balance, ADR-0007).
+_Avoid_: outstanding amount, balance due

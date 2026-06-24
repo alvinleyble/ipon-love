@@ -88,6 +88,9 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.coil.compose)
 
+    // Rich text editor for Notes (HTML-serialized; Compose Multiplatform lib)
+    implementation(libs.richeditor.compose)
+
     // Unit tests (JVM, fast — the per-commit gate)
     testImplementation(libs.junit)
     testImplementation(libs.truth)

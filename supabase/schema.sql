@@ -178,6 +178,38 @@ create table notes (
     server_rev bigint
 );
 
+-- ---------- partner_debts ---------------------------------------------------
+-- Informal IOUs between the two partners. Scoped to the couple; both members
+-- read/write (no redacting view needed — debts are inherently shared data).
+-- remaining_balance = amount - sum(partner_debt_payments.amount) — never stored.
+-- Soft-deleted on unpair (unpair() function below handles this).
+create table partner_debts (
+    id          uuid primary key default gen_random_uuid(),
+    couple_id   uuid not null references couples(id) on delete cascade,
+    borrower_id uuid not null references users(id) on delete cascade,
+    lender_id   uuid not null references users(id) on delete cascade,
+    amount      numeric(14,2) not null,
+    description text,
+    created_at  timestamptz not null default now(),
+    updated_at  timestamptz not null default now(),
+    is_deleted  boolean not null default false,
+    server_rev  bigint
+);
+
+-- ---------- partner_debt_payments -------------------------------------------
+-- Each row is one (partial or full) repayment against a partner_debt.
+create table partner_debt_payments (
+    id         uuid primary key default gen_random_uuid(),
+    debt_id    uuid not null references partner_debts(id) on delete cascade,
+    amount     numeric(14,2) not null,
+    note       text,
+    date       timestamptz not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    is_deleted boolean not null default false,
+    server_rev bigint
+);
+
 -- ---------- note_images -----------------------------------------------------
 -- Now soft-deletable + synced so image add/remove propagates like everything else.
 create table note_images (
@@ -192,15 +224,17 @@ create table note_images (
 );
 
 -- ---------- server_rev triggers (one per synced table) ----------------------
-create trigger trg_rev_couples         before insert or update on couples         for each row execute function set_server_rev();
-create trigger trg_rev_users           before insert or update on users           for each row execute function set_server_rev();
-create trigger trg_rev_accounts        before insert or update on accounts        for each row execute function set_server_rev();
-create trigger trg_rev_categories      before insert or update on categories      for each row execute function set_server_rev();
-create trigger trg_rev_recurring       before insert or update on recurring_rules for each row execute function set_server_rev();
-create trigger trg_rev_transactions    before insert or update on transactions    for each row execute function set_server_rev();
-create trigger trg_rev_budgets         before insert or update on budgets         for each row execute function set_server_rev();
-create trigger trg_rev_notes           before insert or update on notes           for each row execute function set_server_rev();
-create trigger trg_rev_note_images     before insert or update on note_images     for each row execute function set_server_rev();
+create trigger trg_rev_couples            before insert or update on couples              for each row execute function set_server_rev();
+create trigger trg_rev_users              before insert or update on users               for each row execute function set_server_rev();
+create trigger trg_rev_accounts           before insert or update on accounts            for each row execute function set_server_rev();
+create trigger trg_rev_categories         before insert or update on categories          for each row execute function set_server_rev();
+create trigger trg_rev_recurring          before insert or update on recurring_rules     for each row execute function set_server_rev();
+create trigger trg_rev_transactions       before insert or update on transactions        for each row execute function set_server_rev();
+create trigger trg_rev_budgets            before insert or update on budgets             for each row execute function set_server_rev();
+create trigger trg_rev_partner_debts      before insert or update on partner_debts       for each row execute function set_server_rev();
+create trigger trg_rev_debt_payments      before insert or update on partner_debt_payments for each row execute function set_server_rev();
+create trigger trg_rev_notes              before insert or update on notes               for each row execute function set_server_rev();
+create trigger trg_rev_note_images        before insert or update on note_images         for each row execute function set_server_rev();
 
 -- ---------- Indexes (sync cursor + common queries) --------------------------
 -- Pull is "where server_rev > cursor order by server_rev", so every synced
@@ -212,6 +246,8 @@ create index idx_categories_rev       on categories(server_rev);
 create index idx_recurring_rev        on recurring_rules(server_rev);
 create index idx_transactions_rev     on transactions(server_rev);
 create index idx_budgets_rev          on budgets(server_rev);
+create index idx_partner_debts_rev    on partner_debts(server_rev);
+create index idx_debt_payments_rev    on partner_debt_payments(server_rev);
 create index idx_notes_rev            on notes(server_rev);
 create index idx_note_images_rev      on note_images(server_rev);
 
@@ -222,6 +258,8 @@ create index idx_transactions_date    on transactions(date);
 create index idx_recurring_user       on recurring_rules(user_id);
 create index idx_budgets_user         on budgets(user_id);
 create index idx_budgets_couple       on budgets(couple_id);
+create index idx_partner_debts_couple on partner_debts(couple_id);
+create index idx_debt_payments_debt   on partner_debt_payments(debt_id);
 create index idx_notes_user           on notes(user_id);
 create index idx_notes_couple         on notes(couple_id);
 create index idx_note_images_note     on note_images(note_id);
@@ -243,15 +281,17 @@ as $$
     select couple_id from users where id = auth.uid();
 $$;
 
-alter table users           enable row level security;
-alter table couples         enable row level security;
-alter table accounts        enable row level security;
-alter table categories      enable row level security;
-alter table transactions    enable row level security;
-alter table recurring_rules enable row level security;
-alter table budgets         enable row level security;
-alter table notes           enable row level security;
-alter table note_images     enable row level security;
+alter table users                   enable row level security;
+alter table couples                 enable row level security;
+alter table accounts                enable row level security;
+alter table categories              enable row level security;
+alter table transactions            enable row level security;
+alter table recurring_rules         enable row level security;
+alter table budgets                 enable row level security;
+alter table partner_debts           enable row level security;
+alter table partner_debt_payments   enable row level security;
+alter table notes                   enable row level security;
+alter table note_images             enable row level security;
 
 -- ---- users -----------------------------------------------------------------
 -- Same-couple read is fine: users rows carry no private content (just name +
@@ -295,6 +335,19 @@ create policy budgets_owner on budgets for all
 create policy budgets_couple on budgets for all
     using (couple_id = auth_couple_id())
     with check (couple_id = auth_couple_id());
+
+-- ---- partner_debts ---------------------------------------------------------
+-- Both couple members have full access. No redacting view needed — debts are
+-- inherently shared data with no per-row privacy concept.
+create policy partner_debts_couple on partner_debts for all
+    using (couple_id = auth_couple_id())
+    with check (couple_id = auth_couple_id());
+
+-- ---- partner_debt_payments -------------------------------------------------
+-- Access gated via debt → couple membership.
+create policy debt_payments_couple on partner_debt_payments for all
+    using  (debt_id in (select id from partner_debts where couple_id = auth_couple_id()))
+    with check (debt_id in (select id from partner_debts where couple_id = auth_couple_id()));
 
 -- ---- note_images -----------------------------------------------------------
 -- Owner full access. Partner reads happen via partner_note_images (below).
@@ -532,6 +585,9 @@ begin
     end if;
 
     update budgets set is_deleted = true, updated_at = now()
+        where couple_id = v_couple_id and is_deleted = false;
+
+    update partner_debts set is_deleted = true, updated_at = now()
         where couple_id = v_couple_id and is_deleted = false;
 
     update notes set is_shared = false, couple_id = null, updated_at = now()

@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
@@ -64,12 +65,14 @@ private val IncomeColor = Color(0xFF2E7D32)
 @Composable
 fun TransactionsScreen(
     onOpenRecurring: () -> Unit,
+    onOpenNotes: () -> Unit,
     viewModel: TransactionsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     TransactionsContent(
         state = state,
         onOpenRecurring = onOpenRecurring,
+        onOpenNotes = onOpenNotes,
         onAdd = viewModel::startCreate,
         onEdit = viewModel::startEdit,
         onDelete = viewModel::delete,
@@ -90,6 +93,7 @@ fun TransactionsScreen(
 private fun TransactionsContent(
     state: TransactionsUiState,
     onOpenRecurring: () -> Unit,
+    onOpenNotes: () -> Unit,
     onAdd: () -> Unit,
     onEdit: (String) -> Unit,
     onDelete: (String) -> Unit,
@@ -108,6 +112,9 @@ private fun TransactionsContent(
             TopAppBar(
                 title = { Text("Records") },
                 actions = {
+                    IconButton(onClick = onOpenNotes) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Notes")
+                    }
                     IconButton(onClick = onOpenRecurring) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Recurring rules")
                     }
