@@ -22,4 +22,11 @@ class SupabaseTransactionRemoteSource @Inject constructor(
             order("server_rev", Order.ASCENDING)
             limit(count = limit.toLong())
         }.decodeList()
+
+    override suspend fun pullPartner(cursor: Long, limit: Int): List<PartnerTransactionDto> =
+        client.from("partner_transactions").select {
+            filter { gt("server_rev", cursor) }
+            order("server_rev", Order.ASCENDING)
+            limit(count = limit.toLong())
+        }.decodeList()
 }

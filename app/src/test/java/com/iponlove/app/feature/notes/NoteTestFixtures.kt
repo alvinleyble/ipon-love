@@ -14,14 +14,24 @@ class FakeNoteDao : NoteDao {
     val store = linkedMapOf<String, NoteEntity>()
     private val changes = MutableStateFlow(0)
 
-    override fun observeNotes(): Flow<List<NoteEntity>> =
+    override fun observeNotes(userId: String): Flow<List<NoteEntity>> =
         changes.map {
             store.values
-                .filter { !it.isDeleted }
+                .filter { it.userId == userId && !it.isDeleted }
                 .sortedByDescending { it.updatedAt }
         }
 
     override suspend fun getById(id: String): NoteEntity? = store[id]
+
+    override suspend fun deleteById(id: String) {
+        store.remove(id)
+        changes.value++
+    }
+
+    override suspend fun deleteNotOwnedBy(userId: String) {
+        store.values.removeAll { it.userId != userId }
+        changes.value++
+    }
 
     override suspend fun upsert(note: NoteEntity) {
         store[note.id] = note

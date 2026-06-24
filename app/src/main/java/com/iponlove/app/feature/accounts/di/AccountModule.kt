@@ -5,6 +5,7 @@ import com.iponlove.app.feature.accounts.data.AccountRepositoryImpl
 import com.iponlove.app.feature.accounts.data.remote.AccountRemoteSource
 import com.iponlove.app.feature.accounts.data.remote.SupabaseAccountRemoteSource
 import com.iponlove.app.feature.accounts.data.sync.AccountTableSyncer
+import com.iponlove.app.feature.accounts.data.sync.PartnerAccountTableSyncer
 import com.iponlove.app.feature.accounts.domain.repository.AccountRepository
 import dagger.Binds
 import dagger.Module
@@ -29,4 +30,9 @@ interface AccountModule {
     @Binds
     @IntoSet
     fun accountTableSyncer(impl: AccountTableSyncer): TableSyncer
+
+    /** Contributes the partner-accounts replica pull (ADR-0004/0005). */
+    @Binds
+    @IntoSet
+    fun partnerAccountTableSyncer(impl: PartnerAccountTableSyncer): TableSyncer
 }

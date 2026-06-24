@@ -10,21 +10,33 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TransactionDao {
 
-    /** Active (non-deleted) transactions, most recent first. */
+    /**
+     * The current user's own active transactions, most recent first. Filtered to [userId]
+     * so replicated partner transactions (ADR-0004) never leak into the individual view —
+     * the combined couple view is a separate, deliberately-merged query.
+     */
     @Query(
         """
         SELECT * FROM transactions
-        WHERE isDeleted = 0
+        WHERE userId = :userId AND isDeleted = 0
         ORDER BY date DESC, createdAt DESC
         """,
     )
-    fun observeTransactions(): Flow<List<TransactionEntity>>
+    fun observeTransactions(userId: String): Flow<List<TransactionEntity>>
 
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getById(id: String): TransactionEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(transaction: TransactionEntity)
+
+    /** Hard-delete one row — used to purge a redacted partner row (ADR-0005). */
+    @Query("DELETE FROM transactions WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+    /** Hard-delete every replicated partner row on unpair (ADR-0008). */
+    @Query("DELETE FROM transactions WHERE userId <> :userId")
+    suspend fun deleteNotOwnedBy(userId: String)
 
     // ---- sync engine plumbing ----
 

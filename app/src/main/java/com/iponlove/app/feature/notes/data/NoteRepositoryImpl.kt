@@ -26,7 +26,7 @@ class NoteRepositoryImpl @Inject constructor(
 ) : NoteRepository {
 
     override fun observeNotes(): Flow<List<Note>> =
-        dao.observeNotes().map { rows -> rows.map { it.toDomain() } }
+        dao.observeNotes(currentUser.userId()).map { rows -> rows.map { it.toDomain() } }
 
     override suspend fun getNote(id: String): Note? = dao.getById(id)?.toDomain()
 
@@ -61,4 +61,6 @@ class NoteRepositoryImpl @Inject constructor(
             ),
         )
     }
+
+    override suspend fun purgePartnerData() = dao.deleteNotOwnedBy(currentUser.userId())
 }

@@ -23,7 +23,8 @@ class TransactionRepositoryImpl @Inject constructor(
 ) : TransactionRepository {
 
     override fun observeTransactions(): Flow<List<Transaction>> =
-        dao.observeTransactions().map { rows -> rows.map { it.toDomain() } }
+        dao.observeTransactions(currentUser.userId())
+            .map { rows -> rows.map { it.toDomain() } }
 
     override suspend fun getTransaction(id: String): Transaction? = dao.getById(id)?.toDomain()
 
@@ -93,4 +94,6 @@ class TransactionRepositoryImpl @Inject constructor(
         )
         return true
     }
+
+    override suspend fun purgePartnerData() = dao.deleteNotOwnedBy(currentUser.userId())
 }

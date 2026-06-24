@@ -22,7 +22,8 @@ class CategoryRepositoryImpl @Inject constructor(
 ) : CategoryRepository {
 
     override fun observeCategories(includeArchived: Boolean): Flow<List<Category>> =
-        dao.observeCategories(includeArchived).map { rows -> rows.map { it.toDomain() } }
+        dao.observeCategories(currentUser.userId(), includeArchived)
+            .map { rows -> rows.map { it.toDomain() } }
 
     override suspend fun getCategory(id: String): Category? = dao.getById(id)?.toDomain()
 
@@ -69,4 +70,6 @@ class CategoryRepositoryImpl @Inject constructor(
             ),
         )
     }
+
+    override suspend fun purgePartnerData() = dao.deleteNotOwnedBy(currentUser.userId())
 }

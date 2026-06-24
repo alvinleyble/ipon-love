@@ -6,6 +6,7 @@ import com.iponlove.app.core.sync.InMemoryCursorStore
 import com.iponlove.app.core.sync.SyncTable
 import com.iponlove.app.feature.notes.data.remote.NoteDto
 import com.iponlove.app.feature.notes.data.remote.NoteRemoteSource
+import com.iponlove.app.feature.notes.data.remote.PartnerNoteDto
 import com.iponlove.app.feature.notes.data.sync.NoteTableSyncer
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -23,6 +24,8 @@ class NoteTableSyncerTest {
 
         override suspend fun pull(cursor: Long, limit: Int): List<NoteDto> =
             serverRows.filter { (it.serverRev ?: 0L) > cursor }.sortedBy { it.serverRev }.take(limit)
+
+        override suspend fun pullPartner(cursor: Long, limit: Int): List<PartnerNoteDto> = emptyList()
     }
 
     private val dao = FakeNoteDao()

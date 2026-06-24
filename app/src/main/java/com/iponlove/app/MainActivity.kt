@@ -22,6 +22,7 @@ import com.iponlove.app.core.ui.theme.IponTheme
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.presentation.AuthScreen
 import com.iponlove.app.feature.auth.presentation.AuthViewModel
+import com.iponlove.app.feature.couple.domain.usecase.WatchUnpairUseCase
 import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRulesUseCase
 import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
 import com.iponlove.app.navigation.IponApp
@@ -36,6 +37,9 @@ class MainActivity : ComponentActivity() {
      *  once authenticated — it writes owned rows that need the signed-in user's id. */
     @Inject lateinit var materializeRecurringRules: MaterializeRecurringRulesUseCase
     @Inject lateinit var ensureCurrentUserRow: EnsureCurrentUserRowUseCase
+
+    /** Purges the partner replica when this user's couple dissolves, on either side (ADR-0008). */
+    @Inject lateinit var watchUnpair: WatchUnpairUseCase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +61,9 @@ class MainActivity : ComponentActivity() {
                                 SyncWorker.buildRequest(),
                             )
                         }
+                        // Separate collector: runs for the whole session, purging the partner
+                        // replica if the couple is dissolved from either side (ADR-0008).
+                        LaunchedEffect(current.userId) { watchUnpair() }
                         IponApp(onSignOut = authViewModel::signOut)
                     }
 

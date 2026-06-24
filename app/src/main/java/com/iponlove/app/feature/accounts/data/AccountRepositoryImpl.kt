@@ -22,7 +22,8 @@ class AccountRepositoryImpl @Inject constructor(
 ) : AccountRepository {
 
     override fun observeAccounts(includeArchived: Boolean): Flow<List<Account>> =
-        dao.observeAccounts(includeArchived).map { rows -> rows.map { it.toDomain() } }
+        dao.observeAccounts(currentUser.userId(), includeArchived)
+            .map { rows -> rows.map { it.toDomain() } }
 
     override suspend fun getAccount(id: String): Account? = dao.getById(id)?.toDomain()
 
@@ -70,4 +71,6 @@ class AccountRepositoryImpl @Inject constructor(
             ),
         )
     }
+
+    override suspend fun purgePartnerData() = dao.deleteNotOwnedBy(currentUser.userId())
 }

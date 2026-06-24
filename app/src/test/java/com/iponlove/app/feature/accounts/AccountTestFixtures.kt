@@ -15,14 +15,24 @@ class FakeAccountDao : AccountDao {
     val store = linkedMapOf<String, AccountEntity>()
     private val changes = MutableStateFlow(0)
 
-    override fun observeAccounts(includeArchived: Boolean): Flow<List<AccountEntity>> =
+    override fun observeAccounts(userId: String, includeArchived: Boolean): Flow<List<AccountEntity>> =
         changes.map {
             store.values
-                .filter { !it.isDeleted && (includeArchived || !it.isArchived) }
+                .filter { it.userId == userId && !it.isDeleted && (includeArchived || !it.isArchived) }
                 .sortedWith(compareBy({ it.position }, { it.createdAt }))
         }
 
     override suspend fun getById(id: String): AccountEntity? = store[id]
+
+    override suspend fun deleteById(id: String) {
+        store.remove(id)
+        changes.value++
+    }
+
+    override suspend fun deleteNotOwnedBy(userId: String) {
+        store.values.removeAll { it.userId != userId }
+        changes.value++
+    }
 
     override suspend fun upsert(account: AccountEntity) {
         store[account.id] = account

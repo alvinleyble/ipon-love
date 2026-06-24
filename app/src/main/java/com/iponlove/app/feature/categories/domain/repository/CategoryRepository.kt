@@ -21,4 +21,7 @@ interface CategoryRepository {
 
     /** Soft delete — sets `is_deleted = true`; never a hard delete (ADR-0010). */
     suspend fun deleteCategory(id: String)
+
+    /** Hard-delete all replicated partner categories on unpair (ADR-0008). */
+    suspend fun purgePartnerData()
 }

@@ -6,6 +6,7 @@ import com.iponlove.app.core.sync.InMemoryCursorStore
 import com.iponlove.app.core.sync.SyncTable
 import com.iponlove.app.feature.categories.data.remote.CategoryDto
 import com.iponlove.app.feature.categories.data.remote.CategoryRemoteSource
+import com.iponlove.app.feature.categories.data.remote.PartnerCategoryDto
 import com.iponlove.app.feature.categories.data.sync.CategoryTableSyncer
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -26,6 +27,8 @@ class CategoryTableSyncerTest {
             serverRows.filter { (it.serverRev ?: 0L) > cursor }
                 .sortedBy { it.serverRev }
                 .take(limit)
+
+        override suspend fun pullPartner(cursor: Long, limit: Int): List<PartnerCategoryDto> = emptyList()
     }
 
     private val dao = FakeCategoryDao()

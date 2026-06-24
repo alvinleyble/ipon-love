@@ -10,20 +10,30 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface NoteDao {
 
+    /** The current user's own active notes — filtered to [userId] so replicated partner
+     *  notes (ADR-0004) never leak into the individual list. */
     @Query(
         """
         SELECT * FROM notes
-        WHERE isDeleted = 0
+        WHERE userId = :userId AND isDeleted = 0
         ORDER BY updatedAt DESC, createdAt DESC
         """,
     )
-    fun observeNotes(): Flow<List<NoteEntity>>
+    fun observeNotes(userId: String): Flow<List<NoteEntity>>
 
     @Query("SELECT * FROM notes WHERE id = :id")
     suspend fun getById(id: String): NoteEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(note: NoteEntity)
+
+    /** Hard-delete one row — used to purge a redacted partner row (ADR-0005). */
+    @Query("DELETE FROM notes WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+    /** Hard-delete every replicated partner row on unpair (ADR-0008). */
+    @Query("DELETE FROM notes WHERE userId <> :userId")
+    suspend fun deleteNotOwnedBy(userId: String)
 
     // ---- sync engine plumbing ----
 

@@ -5,6 +5,7 @@ import com.iponlove.app.core.sync.ConflictResolver
 import com.iponlove.app.core.sync.InMemoryCursorStore
 import com.iponlove.app.core.sync.SyncTable
 import com.iponlove.app.feature.transactions.data.remote.TransactionDto
+import com.iponlove.app.feature.transactions.data.remote.PartnerTransactionDto
 import com.iponlove.app.feature.transactions.data.remote.TransactionRemoteSource
 import com.iponlove.app.feature.transactions.data.sync.TransactionTableSyncer
 import kotlinx.coroutines.test.runTest
@@ -26,6 +27,8 @@ class TransactionTableSyncerTest {
             serverRows.filter { (it.serverRev ?: 0L) > cursor }
                 .sortedBy { it.serverRev }
                 .take(limit)
+
+        override suspend fun pullPartner(cursor: Long, limit: Int): List<PartnerTransactionDto> = emptyList()
     }
 
     private val dao = FakeTransactionDao()

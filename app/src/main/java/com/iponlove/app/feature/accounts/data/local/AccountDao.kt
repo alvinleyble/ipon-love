@@ -10,21 +10,33 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface AccountDao {
 
-    /** Active accounts (not soft-deleted), optionally including archived ones. */
+    /**
+     * The current user's own active accounts (not soft-deleted), optionally including
+     * archived ones. Filtered to [userId] so replicated partner accounts (ADR-0004) never
+     * leak into the individual view.
+     */
     @Query(
         """
         SELECT * FROM accounts
-        WHERE isDeleted = 0 AND (:includeArchived = 1 OR isArchived = 0)
+        WHERE userId = :userId AND isDeleted = 0 AND (:includeArchived = 1 OR isArchived = 0)
         ORDER BY position ASC, createdAt ASC
         """,
     )
-    fun observeAccounts(includeArchived: Boolean): Flow<List<AccountEntity>>
+    fun observeAccounts(userId: String, includeArchived: Boolean): Flow<List<AccountEntity>>
 
     @Query("SELECT * FROM accounts WHERE id = :id")
     suspend fun getById(id: String): AccountEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(account: AccountEntity)
+
+    /** Hard-delete one row — used to purge a redacted partner row (ADR-0005). */
+    @Query("DELETE FROM accounts WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+    /** Hard-delete every replicated partner row on unpair (ADR-0008). */
+    @Query("DELETE FROM accounts WHERE userId <> :userId")
+    suspend fun deleteNotOwnedBy(userId: String)
 
     // ---- sync engine plumbing ----
 

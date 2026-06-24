@@ -22,4 +22,11 @@ class SupabaseNoteRemoteSource @Inject constructor(
             order("server_rev", Order.ASCENDING)
             limit(count = limit.toLong())
         }.decodeList()
+
+    override suspend fun pullPartner(cursor: Long, limit: Int): List<PartnerNoteDto> =
+        client.from("partner_notes").select {
+            filter { gt("server_rev", cursor) }
+            order("server_rev", Order.ASCENDING)
+            limit(count = limit.toLong())
+        }.decodeList()
 }

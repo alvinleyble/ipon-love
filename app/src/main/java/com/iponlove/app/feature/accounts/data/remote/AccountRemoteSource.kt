@@ -14,6 +14,9 @@ interface AccountRemoteSource {
 
     /** Fetch up to [limit] rows with `server_rev > cursor`, ordered by `server_rev`. */
     suspend fun pull(cursor: Long, limit: Int): List<AccountDto>
+
+    /** Pull the partner's accounts from the `partner_accounts` redacting view (ADR-0005). */
+    suspend fun pullPartner(cursor: Long, limit: Int): List<PartnerAccountDto>
 }
 
 /**
@@ -24,4 +27,5 @@ interface AccountRemoteSource {
 class StubAccountRemoteSource @Inject constructor() : AccountRemoteSource {
     override suspend fun push(rows: List<AccountDto>): List<String> = emptyList()
     override suspend fun pull(cursor: Long, limit: Int): List<AccountDto> = emptyList()
+    override suspend fun pullPartner(cursor: Long, limit: Int): List<PartnerAccountDto> = emptyList()
 }

@@ -16,6 +16,7 @@ class UpsertNoteUseCaseTest {
         override suspend fun getNote(id: String): Note? = null
         override suspend fun upsertNote(note: Note) { saved = note }
         override suspend fun deleteNote(id: String) = Unit
+        override suspend fun purgePartnerData() = Unit
     }
 
     private val repository = RecordingRepository()

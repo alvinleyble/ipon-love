@@ -20,4 +20,9 @@ enum class SyncTable {
     BUDGETS,
     NOTES,
     NOTE_IMAGES,
+    // Partner views pull after the matching owned tables so FK parents are already present.
+    PARTNER_ACCOUNTS,
+    PARTNER_CATEGORIES,
+    PARTNER_TRANSACTIONS,
+    PARTNER_NOTES,
 }

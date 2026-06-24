@@ -4,6 +4,7 @@ import com.iponlove.app.core.sync.TableSyncer
 import com.iponlove.app.feature.transactions.data.TransactionRepositoryImpl
 import com.iponlove.app.feature.transactions.data.remote.SupabaseTransactionRemoteSource
 import com.iponlove.app.feature.transactions.data.remote.TransactionRemoteSource
+import com.iponlove.app.feature.transactions.data.sync.PartnerTransactionTableSyncer
 import com.iponlove.app.feature.transactions.data.sync.TransactionTableSyncer
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import dagger.Binds
@@ -29,4 +30,9 @@ interface TransactionModule {
     @Binds
     @IntoSet
     fun transactionTableSyncer(impl: TransactionTableSyncer): TableSyncer
+
+    /** Contributes the partner-transactions replica pull (ADR-0004/0005). */
+    @Binds
+    @IntoSet
+    fun partnerTransactionTableSyncer(impl: PartnerTransactionTableSyncer): TableSyncer
 }

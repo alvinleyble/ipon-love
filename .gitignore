@@ -27,8 +27,11 @@ keystore.properties
 secrets.properties
 *.env
 .env*
-secrets.md
 
 # OS / misc
 .DS_Store
 *.log
+
+# personal dev files
+dev-installgradle.md
+dev-secrets.md

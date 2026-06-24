@@ -22,4 +22,7 @@ interface AccountRepository {
 
     /** Soft delete — sets `is_deleted = true`; never a hard delete (ADR-0010). */
     suspend fun deleteAccount(id: String)
+
+    /** Hard-delete all replicated partner accounts on unpair (ADR-0008). */
+    suspend fun purgePartnerData()
 }

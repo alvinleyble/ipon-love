@@ -29,4 +29,7 @@ interface TransactionRepository {
      * [recurringRuleId] is stamped as the row's provenance.
      */
     suspend fun materializeTransaction(transaction: Transaction, recurringRuleId: String): Boolean
+
+    /** Hard-delete all replicated partner transactions on unpair (ADR-0008). */
+    suspend fun purgePartnerData()
 }

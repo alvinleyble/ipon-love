@@ -22,4 +22,11 @@ class SupabaseAccountRemoteSource @Inject constructor(
             order("server_rev", Order.ASCENDING)
             limit(count = limit.toLong())
         }.decodeList()
+
+    override suspend fun pullPartner(cursor: Long, limit: Int): List<PartnerAccountDto> =
+        client.from("partner_accounts").select {
+            filter { gt("server_rev", cursor) }
+            order("server_rev", Order.ASCENDING)
+            limit(count = limit.toLong())
+        }.decodeList()
 }

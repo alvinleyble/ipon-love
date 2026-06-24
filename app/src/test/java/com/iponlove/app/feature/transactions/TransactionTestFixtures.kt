@@ -16,14 +16,24 @@ class FakeTransactionDao : TransactionDao {
     val store = linkedMapOf<String, TransactionEntity>()
     private val changes = MutableStateFlow(0)
 
-    override fun observeTransactions(): Flow<List<TransactionEntity>> =
+    override fun observeTransactions(userId: String): Flow<List<TransactionEntity>> =
         changes.map {
             store.values
-                .filter { !it.isDeleted }
+                .filter { it.userId == userId && !it.isDeleted }
                 .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
         }
 
     override suspend fun getById(id: String): TransactionEntity? = store[id]
+
+    override suspend fun deleteById(id: String) {
+        store.remove(id)
+        changes.value++
+    }
+
+    override suspend fun deleteNotOwnedBy(userId: String) {
+        store.values.removeAll { it.userId != userId }
+        changes.value++
+    }
 
     override suspend fun upsert(transaction: TransactionEntity) {
         store[transaction.id] = transaction

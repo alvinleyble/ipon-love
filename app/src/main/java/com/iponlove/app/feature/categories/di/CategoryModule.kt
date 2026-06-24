@@ -5,6 +5,7 @@ import com.iponlove.app.feature.categories.data.CategoryRepositoryImpl
 import com.iponlove.app.feature.categories.data.remote.CategoryRemoteSource
 import com.iponlove.app.feature.categories.data.remote.SupabaseCategoryRemoteSource
 import com.iponlove.app.feature.categories.data.sync.CategoryTableSyncer
+import com.iponlove.app.feature.categories.data.sync.PartnerCategoryTableSyncer
 import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import dagger.Binds
 import dagger.Module
@@ -29,4 +30,9 @@ interface CategoryModule {
     @Binds
     @IntoSet
     fun categoryTableSyncer(impl: CategoryTableSyncer): TableSyncer
+
+    /** Contributes the partner-categories replica pull (ADR-0004/0005). */
+    @Binds
+    @IntoSet
+    fun partnerCategoryTableSyncer(impl: PartnerCategoryTableSyncer): TableSyncer
 }

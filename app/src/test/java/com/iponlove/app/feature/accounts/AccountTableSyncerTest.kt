@@ -6,6 +6,7 @@ import com.iponlove.app.core.sync.InMemoryCursorStore
 import com.iponlove.app.core.sync.SyncTable
 import com.iponlove.app.feature.accounts.data.remote.AccountDto
 import com.iponlove.app.feature.accounts.data.remote.AccountRemoteSource
+import com.iponlove.app.feature.accounts.data.remote.PartnerAccountDto
 import com.iponlove.app.feature.accounts.data.sync.AccountTableSyncer
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -28,6 +29,8 @@ class AccountTableSyncerTest {
             serverRows.filter { (it.serverRev ?: 0L) > cursor }
                 .sortedBy { it.serverRev }
                 .take(limit)
+
+        override suspend fun pullPartner(cursor: Long, limit: Int): List<PartnerAccountDto> = emptyList()
     }
 
     private val dao = FakeAccountDao()

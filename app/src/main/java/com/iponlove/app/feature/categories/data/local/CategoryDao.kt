@@ -10,20 +10,30 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface CategoryDao {
 
+    /** The current user's own categories — filtered to [userId] so replicated partner
+     *  categories (ADR-0004) never leak into the individual view. */
     @Query(
         """
         SELECT * FROM categories
-        WHERE isDeleted = 0 AND (:includeArchived = 1 OR isArchived = 0)
+        WHERE userId = :userId AND isDeleted = 0 AND (:includeArchived = 1 OR isArchived = 0)
         ORDER BY position ASC, createdAt ASC
         """,
     )
-    fun observeCategories(includeArchived: Boolean): Flow<List<CategoryEntity>>
+    fun observeCategories(userId: String, includeArchived: Boolean): Flow<List<CategoryEntity>>
 
     @Query("SELECT * FROM categories WHERE id = :id")
     suspend fun getById(id: String): CategoryEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(category: CategoryEntity)
+
+    /** Hard-delete one row — used to purge a redacted partner row (ADR-0005). */
+    @Query("DELETE FROM categories WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+    /** Hard-delete every replicated partner row on unpair (ADR-0008). */
+    @Query("DELETE FROM categories WHERE userId <> :userId")
+    suspend fun deleteNotOwnedBy(userId: String)
 
     // ---- sync engine plumbing ----
 

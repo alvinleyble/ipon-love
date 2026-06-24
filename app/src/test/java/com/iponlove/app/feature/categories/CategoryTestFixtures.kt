@@ -14,14 +14,24 @@ class FakeCategoryDao : CategoryDao {
     val store = linkedMapOf<String, CategoryEntity>()
     private val changes = MutableStateFlow(0)
 
-    override fun observeCategories(includeArchived: Boolean): Flow<List<CategoryEntity>> =
+    override fun observeCategories(userId: String, includeArchived: Boolean): Flow<List<CategoryEntity>> =
         changes.map {
             store.values
-                .filter { !it.isDeleted && (includeArchived || !it.isArchived) }
+                .filter { it.userId == userId && !it.isDeleted && (includeArchived || !it.isArchived) }
                 .sortedWith(compareBy({ it.position }, { it.createdAt }))
         }
 
     override suspend fun getById(id: String): CategoryEntity? = store[id]
+
+    override suspend fun deleteById(id: String) {
+        store.remove(id)
+        changes.value++
+    }
+
+    override suspend fun deleteNotOwnedBy(userId: String) {
+        store.values.removeAll { it.userId != userId }
+        changes.value++
+    }
 
     override suspend fun upsert(category: CategoryEntity) {
         store[category.id] = category
