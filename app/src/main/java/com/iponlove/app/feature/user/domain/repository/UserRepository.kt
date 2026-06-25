@@ -18,4 +18,10 @@ interface UserRepository {
      * pending_sync so the outbox pushes it on next sync (ADR-0013).
      */
     suspend fun ensureLocalRow(userId: String)
+
+    /**
+     * Persist [color] (hex string, e.g. "#1565C0") as the current user's couple attribution
+     * color and mark the row pending_sync so it pushes on next sync.
+     */
+    suspend fun updateAccentColor(color: String)
 }

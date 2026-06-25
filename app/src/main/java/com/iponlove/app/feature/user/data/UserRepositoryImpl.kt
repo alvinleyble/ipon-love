@@ -26,6 +26,13 @@ class UserRepositoryImpl @Inject constructor(
     override fun observePartner(coupleId: String): Flow<User?> =
         dao.observePartner(coupleId, currentUserProvider.userId()).map { it?.toDomain() }
 
+    override suspend fun updateAccentColor(color: String) {
+        val userId = currentUserProvider.userId()
+        val existing = dao.getById(userId) ?: return
+        val now = clock.stamp()
+        dao.upsert(existing.copy(accentColor = color, updatedAt = now, pendingSync = true))
+    }
+
     override suspend fun ensureLocalRow(userId: String) {
         if (dao.getById(userId) != null) return
 

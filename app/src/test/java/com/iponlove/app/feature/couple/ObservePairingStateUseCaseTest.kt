@@ -108,6 +108,7 @@ private class FakeUserRepository : UserRepository {
     override fun observeCurrentUser(): Flow<User?> = currentUser
     override fun observePartner(coupleId: String): Flow<User?> = partner
     override suspend fun ensureLocalRow(userId: String) = Unit
+    override suspend fun updateAccentColor(color: String) = Unit
 }
 
 private class FakeCoupleRepository : CoupleRepository {

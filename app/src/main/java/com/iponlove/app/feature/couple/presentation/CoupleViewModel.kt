@@ -8,6 +8,7 @@ import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.couple.domain.usecase.RedeemInviteUseCase
 import com.iponlove.app.feature.couple.domain.usecase.RotateInviteCodeUseCase
 import com.iponlove.app.feature.couple.domain.usecase.UnpairUseCase
+import com.iponlove.app.feature.user.domain.usecase.UpdateAccentColorUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,9 +26,9 @@ class CoupleViewModel @Inject constructor(
     private val redeemInviteUseCase: RedeemInviteUseCase,
     private val rotateInviteCodeUseCase: RotateInviteCodeUseCase,
     private val unpairUseCase: UnpairUseCase,
+    private val updateAccentColorUseCase: UpdateAccentColorUseCase,
 ) : ViewModel() {
 
-    /** Transient form/operation state; the pairing situation streams in separately. */
     private val local = MutableStateFlow(CoupleUiState())
 
     val state: StateFlow<CoupleUiState> =
@@ -43,11 +44,19 @@ class CoupleViewModel @Inject constructor(
 
     fun onCodeChange(value: String) = local.update { it.copy(codeInput = value, error = null) }
 
+    fun onColorSelected(hex: String) = local.update { it.copy(selectedColor = hex) }
+
     fun dismissError() = local.update { it.copy(error = null) }
 
-    fun createCouple() = mutate(clearInput = Input.NAME) { createCoupleUseCase(local.value.nameInput) }
+    fun createCouple() = mutate(clearInput = Input.NAME) {
+        createCoupleUseCase(local.value.nameInput)
+        local.value.selectedColor?.let { updateAccentColorUseCase(it) }
+    }
 
-    fun redeemInvite() = mutate(clearInput = Input.CODE) { redeemInviteUseCase(local.value.codeInput) }
+    fun redeemInvite() = mutate(clearInput = Input.CODE) {
+        redeemInviteUseCase(local.value.codeInput)
+        local.value.selectedColor?.let { updateAccentColorUseCase(it) }
+    }
 
     fun rotateInviteCode() = mutate(clearInput = null) { rotateInviteCodeUseCase() }
 
@@ -55,11 +64,6 @@ class CoupleViewModel @Inject constructor(
 
     private enum class Input { NAME, CODE }
 
-    /**
-     * Run a pairing mutation: flip [CoupleUiState.isWorking], surface a [PairingException]
-     * as a typed error, and clear the named input on success. The observed pairing flow
-     * refreshes the screen once the sync inside the mutation completes.
-     */
     private fun mutate(clearInput: Input?, block: suspend () -> Unit) {
         if (local.value.isWorking) return
         local.update { it.copy(isWorking = true, error = null) }
