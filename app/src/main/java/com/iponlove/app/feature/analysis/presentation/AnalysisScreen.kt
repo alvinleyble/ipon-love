@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.feature.analysis.domain.model.AnalysisPeriod
+import com.iponlove.app.feature.analysis.presentation.components.DailyNetCalendarChart
 import com.iponlove.app.feature.analysis.presentation.components.DonutChart
 import com.iponlove.app.feature.analysis.presentation.components.DonutSlice
 import com.iponlove.app.feature.analysis.presentation.components.ExpenseFlowChart
@@ -88,6 +89,10 @@ private fun AnalysisContent(
 
             state.expenseFlow?.let { flow ->
                 ExpenseFlowSection(flow)
+            }
+
+            state.calendarNet?.let { cal ->
+                CalendarNetSection(cal)
             }
 
             if (state.hasExpenses) {
@@ -269,6 +274,17 @@ private fun ExpenseFlowSection(flow: ExpenseFlowUi) {
             }
             Spacer(Modifier.height(12.dp))
             ExpenseFlowChart(flow = flow)
+        }
+    }
+}
+
+@Composable
+private fun CalendarNetSection(calendarNet: CalendarNetUi) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Daily Net", style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(12.dp))
+            DailyNetCalendarChart(calendarNet = calendarNet)
         }
     }
 }

@@ -16,6 +16,8 @@ data class AnalysisUiState(
     val slices: List<CategorySliceUi> = emptyList(),
     /** Cumulative expense curve for MONTH view; null for DAY/WEEK. */
     val expenseFlow: ExpenseFlowUi? = null,
+    /** Daily-net calendar grid for MONTH view; null for DAY/WEEK. */
+    val calendarNet: CalendarNetUi? = null,
 ) {
     val hasExpenses: Boolean get() = totalExpense.signum() > 0
 }
@@ -46,4 +48,24 @@ data class CategorySliceUi(
     val amount: BigDecimal,
     val fraction: Float,
     val percentLabel: String,
+)
+
+/**
+ * Calendar grid data for the daily-net view (MONTH only). Pre-converted to Float so Canvas
+ * drawing never touches BigDecimal.
+ *
+ * [firstWeekdayOffset]: 0=Monday … 6=Sunday. Cells before day 1 are rendered empty.
+ */
+data class CalendarNetUi(
+    val days: List<CalendarDayUi>,
+    val daysInMonth: Int,
+    val firstWeekdayOffset: Int,
+    val todayDayOfMonth: Int?,
+)
+
+/** One day cell in the calendar. [netFloat] positive = net income; negative = net expense. */
+data class CalendarDayUi(
+    val dayOfMonth: Int,
+    val netFloat: Float,
+    val isToday: Boolean,
 )

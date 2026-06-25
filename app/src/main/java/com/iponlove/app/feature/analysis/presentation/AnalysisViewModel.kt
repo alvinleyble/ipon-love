@@ -6,6 +6,7 @@ import com.iponlove.app.feature.analysis.domain.model.AnalysisPeriod
 import com.iponlove.app.feature.analysis.domain.model.AnalysisWindow
 import com.iponlove.app.feature.analysis.domain.usecase.AnalysisCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.AnalysisPeriodRange
+import com.iponlove.app.feature.analysis.domain.usecase.DailyNetCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.ExpenseFlowCalculator
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveBudgetsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
@@ -56,20 +57,38 @@ class AnalysisViewModel @Inject constructor(
             val names = categories.associateBy({ it.id }, { it.name })
             val colors = categories.associateBy({ it.id }, { it.color })
 
-            val expenseFlow = if (selectedPeriod == AnalysisPeriod.MONTH) {
+            val expenseFlow: ExpenseFlowUi?
+            val calendarNet: CalendarNetUi?
+            if (selectedPeriod == AnalysisPeriod.MONTH) {
                 val startDate = window.startInclusive.atZone(zone).toLocalDate()
                 val yearMonthStr = YearMonth.of(startDate.year, startDate.month).toString()
                 val budgetTotal = budgets
                     .filter { it.yearMonth == yearMonthStr }
                     .fold(BigDecimal.ZERO) { acc, b -> acc + b.amount }
                 val flowData = ExpenseFlowCalculator.calculate(transactions, window, zone)
-                ExpenseFlowUi(
+                expenseFlow = ExpenseFlowUi(
                     cumulativeByDay = flowData.cumulativeByDay.map { it.toFloat() },
                     budgetTotal = budgetTotal.toFloat(),
                     daysInMonth = flowData.daysInMonth,
                     todayDayOfMonth = flowData.todayDayOfMonth,
                 )
-            } else null
+                val dailyNet = DailyNetCalculator.calculate(transactions, window, zone)
+                calendarNet = CalendarNetUi(
+                    days = dailyNet.netByDay.mapIndexed { idx, net ->
+                        CalendarDayUi(
+                            dayOfMonth = idx + 1,
+                            netFloat = net.toFloat(),
+                            isToday = dailyNet.todayDayOfMonth == idx + 1,
+                        )
+                    },
+                    daysInMonth = dailyNet.daysInMonth,
+                    firstWeekdayOffset = dailyNet.firstWeekdayOffset,
+                    todayDayOfMonth = dailyNet.todayDayOfMonth,
+                )
+            } else {
+                expenseFlow = null
+                calendarNet = null
+            }
 
             AnalysisUiState(
                 isLoading = false,
@@ -89,6 +108,7 @@ class AnalysisViewModel @Inject constructor(
                     )
                 },
                 expenseFlow = expenseFlow,
+                calendarNet = calendarNet,
             )
         }.stateIn(
             scope = viewModelScope,
