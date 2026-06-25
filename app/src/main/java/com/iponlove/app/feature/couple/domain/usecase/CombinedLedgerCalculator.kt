@@ -30,7 +30,7 @@ object CombinedLedgerCalculator {
         monthStartInclusive: Instant,
         monthEndExclusive: Instant,
     ): CombinedLedger {
-        val entries = transactions.map { owned ->
+        val entries = transactions.filter { it.transaction.type != TransactionType.TRANSFER }.map { owned ->
             val t = owned.transaction
             CombinedEntry(
                 id = t.id,

@@ -1,8 +1,12 @@
 package com.iponlove.app.feature.transactions.presentation
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.glance.appwidget.updateAll
 import com.iponlove.app.core.sync.SyncEngine
+import com.iponlove.app.feature.widget.presentation.BalanceWidget
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.transactions.domain.model.Transaction
@@ -26,6 +30,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TransactionsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     observeTransactions: ObserveTransactionsUseCase,
     observeAccounts: ObserveAccountsUseCase,
     observeCategories: ObserveCategoriesUseCase,
@@ -163,11 +168,15 @@ class TransactionsViewModel @Inject constructor(
         viewModelScope.launch {
             upsertTransaction(transaction)
             editor.value = null
+            BalanceWidget().updateAll(context)
         }
     }
 
     fun delete(id: String) {
-        viewModelScope.launch { deleteTransaction(id) }
+        viewModelScope.launch {
+            deleteTransaction(id)
+            BalanceWidget().updateAll(context)
+        }
     }
 
     private fun Transaction.toListItem(

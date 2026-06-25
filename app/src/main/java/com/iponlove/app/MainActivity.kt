@@ -3,9 +3,13 @@ package com.iponlove.app
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.handleDeeplinks
 import androidx.activity.compose.setContent
+import kotlinx.coroutines.launch
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +19,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,6 +57,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleAuthDeepLink(intent)
+        lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                lifecycleScope.launch { materializeRecurringRules() }
+            }
+        })
         enableEdgeToEdge()
         setContent {
             val themePreferences by observeThemePreferences()
@@ -60,12 +72,14 @@ class MainActivity : ComponentActivity() {
                 val status by authViewModel.status.collectAsState()
                 when (val current = status) {
                     is AuthStatus.Authenticated -> {
+                        var initialSyncDone by remember(current.userId) { mutableStateOf(false) }
                         LaunchedEffect(current.userId) {
                             ensureCurrentUserRow()
                             // In-process foreground sync on login — ensures Room is
                             // populated immediately on fresh install without waiting
                             // for WorkManager to schedule (ADR-0012).
                             runCatching { syncEngine.sync() }
+                            initialSyncDone = true
                             materializeRecurringRules()
                             WorkManager.getInstance(applicationContext).enqueueUniqueWork(
                                 SyncWorker.WORK_NAME,
@@ -75,7 +89,11 @@ class MainActivity : ComponentActivity() {
                             BalanceWidget().updateAll(applicationContext)
                         }
                         LaunchedEffect(current.userId) { watchUnpair() }
-                        IponApp(onSignOut = authViewModel::signOut)
+                        if (initialSyncDone) {
+                            IponApp(onSignOut = authViewModel::signOut)
+                        } else {
+                            SplashScreen()
+                        }
                     }
 
                     AuthStatus.Unauthenticated -> AuthScreen(viewModel = authViewModel)

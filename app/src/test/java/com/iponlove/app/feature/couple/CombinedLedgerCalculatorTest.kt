@@ -45,12 +45,11 @@ class CombinedLedgerCalculatorTest {
             monthEndExclusive = monthEnd,
         )
 
-        // Input order is preserved (the query already sorted by date desc).
-        assertThat(ledger.entries.map { it.id }).containsExactly("t1", "t2", "t3", "t4").inOrder()
-        assertThat(ledger.entries.map { it.isMine }).containsExactly(true, false, false, true).inOrder()
-        // Titles: category name, transfer label, and the uncategorized fallback.
+        // TRANSFER (t3) is filtered — internal account moves are noise in the shared view.
+        assertThat(ledger.entries.map { it.id }).containsExactly("t1", "t2", "t4").inOrder()
+        assertThat(ledger.entries.map { it.isMine }).containsExactly(true, false, true).inOrder()
         assertThat(ledger.entries.map { it.title })
-            .containsExactly("Food", "Gas", "Transfer", "Uncategorized").inOrder()
+            .containsExactly("Food", "Gas", "Uncategorized").inOrder()
         assertThat(ledger.entries[1].ownerId).isEqualTo("you")
     }
 

@@ -1,7 +1,10 @@
 package com.iponlove.app.feature.auth.presentation
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkManager
+import com.iponlove.app.core.sync.SyncWorker
 import com.iponlove.app.feature.auth.domain.model.AuthException
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.domain.repository.SignUpResult
@@ -10,6 +13,7 @@ import com.iponlove.app.feature.auth.domain.usecase.SignInUseCase
 import com.iponlove.app.feature.auth.domain.usecase.SignOutUseCase
 import com.iponlove.app.feature.auth.domain.usecase.SignUpUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +29,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AuthViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     observeAuthStatus: ObserveAuthStatusUseCase,
     private val signIn: SignInUseCase,
     private val signUp: SignUpUseCase,
@@ -80,6 +85,7 @@ class AuthViewModel @Inject constructor(
 
     fun signOut() {
         viewModelScope.launch {
+            WorkManager.getInstance(context).cancelUniqueWork(SyncWorker.WORK_NAME)
             try {
                 signOutUseCase()
             } catch (_: AuthException) {
