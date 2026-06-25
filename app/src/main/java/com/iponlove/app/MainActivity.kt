@@ -1,7 +1,10 @@
 package com.iponlove.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.handleDeeplinks
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -37,6 +40,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    @Inject lateinit var supabaseClient: SupabaseClient
     @Inject lateinit var materializeRecurringRules: MaterializeRecurringRulesUseCase
     @Inject lateinit var ensureCurrentUserRow: EnsureCurrentUserRowUseCase
     @Inject lateinit var watchUnpair: WatchUnpairUseCase
@@ -45,6 +49,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleAuthDeepLink(intent)
         enableEdgeToEdge()
         setContent {
             val themePreferences by observeThemePreferences()
@@ -78,6 +83,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleAuthDeepLink(intent)
+    }
+
+    private fun handleAuthDeepLink(intent: Intent) {
+        supabaseClient.handleDeeplinks(intent)
     }
 }
 

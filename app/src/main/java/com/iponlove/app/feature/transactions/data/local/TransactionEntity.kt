@@ -32,7 +32,7 @@ data class TransactionEntity(
     val date: Instant,
     val isPrivate: Boolean,
     val recurringRuleId: String?,
-    val attachmentUrl: String?,
+    val attachmentUrl: String? = null,
     val createdAt: Instant,
     override val updatedAt: Instant,
     override val isDeleted: Boolean,

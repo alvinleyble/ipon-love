@@ -24,7 +24,7 @@ data class PartnerTransactionDto(
     @SerialName("category_id") val categoryId: String?,
     val note: String?,
     @Serializable(with = InstantSerializer::class) val date: Instant?,
-    @SerialName("attachment_url") val attachmentUrl: String?,
+    @SerialName("attachment_url") val attachmentUrl: String? = null,
     @SerialName("is_private") val isPrivate: Boolean,
     @SerialName("is_deleted") val isDeleted: Boolean,
     @SerialName("updated_at")
