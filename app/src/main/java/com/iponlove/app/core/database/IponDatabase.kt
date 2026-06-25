@@ -44,7 +44,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         PartnerDebtEntity::class,
         DebtPaymentEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 @TypeConverters(IponConverters::class)

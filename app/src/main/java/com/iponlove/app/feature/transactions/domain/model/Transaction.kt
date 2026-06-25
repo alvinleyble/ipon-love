@@ -25,4 +25,5 @@ data class Transaction(
     val note: String? = null,
     val date: Instant,
     val isPrivate: Boolean = false,
+    val attachmentUrl: String? = null,
 )

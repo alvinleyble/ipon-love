@@ -22,6 +22,7 @@ fun PartnerTransactionDto.toEntity(): TransactionEntity = TransactionEntity(
     date = date ?: updatedAt,
     isPrivate = isPrivate,
     recurringRuleId = null,
+    attachmentUrl = attachmentUrl,
     createdAt = updatedAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,

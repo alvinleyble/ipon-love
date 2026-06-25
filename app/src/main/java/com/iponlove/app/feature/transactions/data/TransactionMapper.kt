@@ -16,6 +16,7 @@ fun TransactionEntity.toDomain(): Transaction = Transaction(
     note = note,
     date = date,
     isPrivate = isPrivate,
+    attachmentUrl = attachmentUrl,
 )
 
 /** Entity → DTO for push. Drops `pendingSync` (local-only, ADR-0002). */
@@ -31,6 +32,7 @@ fun TransactionEntity.toDto(): TransactionDto = TransactionDto(
     date = date,
     isPrivate = isPrivate,
     recurringRuleId = recurringRuleId,
+    attachmentUrl = attachmentUrl,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,
@@ -53,6 +55,7 @@ fun TransactionDto.toEntity(): TransactionEntity = TransactionEntity(
     date = date,
     isPrivate = isPrivate,
     recurringRuleId = recurringRuleId,
+    attachmentUrl = attachmentUrl,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,

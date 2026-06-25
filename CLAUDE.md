@@ -152,6 +152,8 @@ Planned post-V1 enhancements to keep in mind:
 - **iOS / Kotlin Multiplatform** — keep the domain layer free of Android imports (already a rule); avoid Android-only types leaking into domain models
 - **CSV / PDF export** — keep data access in UseCases, not scattered across ViewModels, so an export UseCase can reuse the same queries
 - **Shared lists (groceries, trip budgets)** — the couple-sharing and notes infrastructure built in V1 is the foundation; don't hard-code sharing logic to notes only
+- **Quick-add transaction widget** — a Glance widget that launches a lightweight Activity/bottom sheet for fast transaction entry from the home screen (tap → bottom sheet → save → dismiss); fully possible with Glance's tap-to-Intent pattern; no architectural changes needed post-V1 since transaction domain and UseCases are already in place
+- **Richer theme influence on backgrounds** — currently light mode = white, dark mode = near-black regardless of palette; post-V1 the selected palette color should tint surface/background tokens (e.g. a warm rose-tinted white in light, a deep rose-tinted dark in dark) so the theme feels pervasive, not just accent-deep; achievable by tuning `surface`, `surfaceVariant`, and `background` in `IponPalettes.kt` per palette instead of using neutral M3 defaults
 
 When in doubt: favor thin, composable layers over shortcuts. A feature being out of scope for V1 does not mean we design against it.
 

@@ -135,6 +135,7 @@ create table transactions (
     date              timestamptz not null,
     is_private        boolean not null default false,                      -- hidden from partner
     recurring_rule_id uuid references recurring_rules(id) on delete set null,
+    attachment_url    text,                                                -- Supabase Storage URL for receipt photo (post-V1)
     created_at        timestamptz not null default now(),
     updated_at        timestamptz not null default now(),
     is_deleted        boolean not null default false,
