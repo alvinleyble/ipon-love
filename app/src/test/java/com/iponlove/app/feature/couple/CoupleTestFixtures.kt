@@ -8,6 +8,9 @@ import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import com.iponlove.app.feature.notes.domain.model.Note
 import com.iponlove.app.feature.notes.domain.repository.NoteRepository
+import com.iponlove.app.feature.partnerdebt.domain.model.DebtPayment
+import com.iponlove.app.feature.partnerdebt.domain.model.PartnerDebt
+import com.iponlove.app.feature.partnerdebt.domain.repository.PartnerDebtRepository
 import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
@@ -69,6 +72,17 @@ internal class CountingBudgetRepo : BudgetRepository {
     override suspend fun upsertSharedBudget(budget: Budget, coupleId: String) = Unit
     override suspend fun deleteBudget(id: String) = Unit
     override suspend fun purgeSharedBudgets() { purgeCount++ }
+}
+
+internal class CountingPartnerDebtRepo : PartnerDebtRepository {
+    var purgeCount = 0
+    override fun observeDebts(coupleId: String): Flow<List<PartnerDebt>> = emptyFlow()
+    override fun observePayments(): Flow<List<DebtPayment>> = emptyFlow()
+    override suspend fun getDebt(id: String): PartnerDebt? = null
+    override suspend fun upsertDebt(debt: PartnerDebt, coupleId: String) = Unit
+    override suspend fun deleteDebt(id: String) = Unit
+    override suspend fun upsertPayment(payment: DebtPayment) = Unit
+    override suspend fun purgeCoupleDebts() { purgeCount++ }
 }
 
 /** A [UserRepository] whose current-user emissions the test drives via [currentUser]. */

@@ -25,6 +25,7 @@ import com.iponlove.app.feature.couple.presentation.CoupleScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion.NOTE_ID_KEY
 import com.iponlove.app.feature.notes.presentation.NotesScreen
+import com.iponlove.app.feature.partnerdebt.presentation.PartnerDebtScreen
 import com.iponlove.app.feature.recurring.presentation.RecurringScreen
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
 
@@ -33,6 +34,7 @@ private const val NOTES_ROUTE = "notes"
 private const val NOTE_EDITOR_ROUTE = "note_editor"
 private const val COUPLE_ROUTE = "couple"
 private const val COMBINED_ROUTE = "combined"
+private const val PARTNER_DEBT_ROUTE = "partner_debt"
 
 /**
  * App root: a bottom-nav [Scaffold] hosting one composable per [TopLevelDestination].
@@ -98,10 +100,14 @@ fun IponApp(onSignOut: () -> Unit) {
                 CoupleScreen(
                     onBack = { navController.popBackStack() },
                     onOpenCombined = { navController.navigate(COMBINED_ROUTE) },
+                    onOpenDebts = { navController.navigate(PARTNER_DEBT_ROUTE) },
                 )
             }
             composable(COMBINED_ROUTE) {
                 CombinedScreen(onBack = { navController.popBackStack() })
+            }
+            composable(PARTNER_DEBT_ROUTE) {
+                PartnerDebtScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 route = "$NOTE_EDITOR_ROUTE/{$NOTE_ID_KEY}",

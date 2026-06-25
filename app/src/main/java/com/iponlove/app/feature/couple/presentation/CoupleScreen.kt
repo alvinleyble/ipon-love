@@ -42,6 +42,7 @@ import com.iponlove.app.feature.couple.domain.model.PairingState
 fun CoupleScreen(
     onBack: () -> Unit,
     onOpenCombined: () -> Unit,
+    onOpenDebts: () -> Unit,
     viewModel: CoupleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -73,7 +74,8 @@ fun CoupleScreen(
 
                 PairingState.NotPaired -> NotPairedContent(state, viewModel)
 
-                is PairingState.Paired -> PairedContent(pairing, state, viewModel, onOpenCombined)
+                is PairingState.Paired ->
+                    PairedContent(pairing, state, viewModel, onOpenCombined, onOpenDebts)
             }
         }
     }
@@ -136,6 +138,7 @@ private fun PairedContent(
     state: CoupleUiState,
     viewModel: CoupleViewModel,
     onOpenCombined: () -> Unit,
+    onOpenDebts: () -> Unit,
 ) {
     var confirmUnpair by remember { mutableStateOf(false) }
     val couple = paired.couple
@@ -155,13 +158,19 @@ private fun PairedContent(
         }
     }
 
-    // The combined view needs a partner to attribute against; offer it only once joined.
+    // The combined view and debt tracker both need a joined partner to attribute against;
+    // offer them only once the invite has been redeemed.
     if (!couple.isAwaitingPartner) {
         Button(
             onClick = onOpenCombined,
             enabled = !state.isWorking,
             modifier = Modifier.fillMaxWidth(),
         ) { Text("View combined spending") }
+        OutlinedButton(
+            onClick = onOpenDebts,
+            enabled = !state.isWorking,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Partner debts") }
     }
 
     // The invite code is only useful until someone redeems it.

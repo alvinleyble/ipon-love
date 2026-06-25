@@ -6,6 +6,7 @@ import com.iponlove.app.feature.accounts.domain.repository.AccountRepository
 import com.iponlove.app.feature.budgets.domain.repository.BudgetRepository
 import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import com.iponlove.app.feature.notes.domain.repository.NoteRepository
+import com.iponlove.app.feature.partnerdebt.domain.repository.PartnerDebtRepository
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import javax.inject.Inject
 
@@ -19,10 +20,10 @@ import javax.inject.Inject
  * partner's full history, whose `server_rev` values sit *below* the cursor left behind by
  * the previous couple — without a reset those rows would be skipped.
  *
- * Shared budgets ride the same one-way removal: they live in the local `budgets` table and
- * RLS hides them the instant the couple dissolves, so they're purged here too. No cursor
- * reset for them — they share the `BUDGETS` cursor with personal budgets (which keeps
- * advancing), and a re-pairing's new shared budgets carry fresh, higher `server_rev`.
+ * Shared budgets and partner debts ride the same one-way removal: they live in local tables
+ * and RLS hides them the instant the couple dissolves, so they're purged here too. No cursor
+ * reset for them — the global `server_rev` sequence means a re-pairing's fresh shared budgets
+ * and debts always carry higher `server_rev` than the cursor left behind, so they pull anyway.
  */
 class PurgePartnerReplicaUseCase @Inject constructor(
     private val accountRepository: AccountRepository,
@@ -30,6 +31,7 @@ class PurgePartnerReplicaUseCase @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val noteRepository: NoteRepository,
     private val budgetRepository: BudgetRepository,
+    private val partnerDebtRepository: PartnerDebtRepository,
     private val cursors: SyncCursorStore,
 ) {
     suspend operator fun invoke() {
@@ -38,6 +40,7 @@ class PurgePartnerReplicaUseCase @Inject constructor(
         transactionRepository.purgePartnerData()
         noteRepository.purgePartnerData()
         budgetRepository.purgeSharedBudgets()
+        partnerDebtRepository.purgeCoupleDebts()
 
         cursors.setCursor(SyncTable.PARTNER_ACCOUNTS, 0)
         cursors.setCursor(SyncTable.PARTNER_CATEGORIES, 0)

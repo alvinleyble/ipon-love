@@ -18,6 +18,11 @@ enum class SyncTable {
     RECURRING_RULES,
     TRANSACTIONS,
     BUDGETS,
+    // Couple-shared, read/write by both partners (not redacted views) — FK children of
+    // couples+users, and payments of debts. Named for the `partner_debts` tables, distinct
+    // from the redacted PARTNER_* views below.
+    PARTNER_DEBTS,
+    DEBT_PAYMENTS,
     NOTES,
     NOTE_IMAGES,
     // Partner views pull after the matching owned tables so FK parents are already present.
