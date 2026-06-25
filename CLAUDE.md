@@ -1,4 +1,4 @@
-# Ipon, Love — Claude Code Context
+# Love, Ipon — Claude Code Context
 
 ## How to Start Each Conversation
 
@@ -35,7 +35,7 @@ The rule: **Sonnet by default, Opus when the design is genuinely novel or archit
 ## What This App Is
 A couples personal finance + notes Android app for the Philippine market. Users track individual expenses and share a combined financial view with their partner. Clean, aesthetic UI. Offline-first with Supabase cloud sync.
 
-Personal instance is branded **PattyWallet**. Public Play Store name is **Ipon, Love**.
+Personal instance is branded **PattyWallet**. Public Play Store name is **Love, Ipon**.
 
 Full specs: see PRD.md and ARCHITECTURE.md.
 

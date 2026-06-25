@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 01 — Sonnet or Opus? The Core Decision</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header>
+  <span class="lesson-num">Lesson 01</span>
+  <h1>Sonnet or Opus?<br><span class="subtitle">The One Decision That Changes Everything</span></h1>
+  <p class="mission-note">Mission: Make model decisions automatically on <em>Ipon, Love</em> — without consulting CLAUDE.md every time.</p>
+</header>
+
+<main>
+
+  <!-- ── Knowledge ── -->
+  <section>
+    <h2>The Framework</h2>
+
+    <p>Every task in Ipon, Love falls into one of two categories. Knowing which category a task belongs to tells you which model to use.</p>
+
+    <dl class="framework">
+      <dt>Pattern task → Sonnet</dt>
+      <dd>You have already solved this class of problem. At least one reference feature exists in the codebase. The work is: copy the pattern, adapt the names and schema, wire it up. Sonnet executes this reliably and cheaply.</dd>
+
+      <dt>Design task → Opus</dt>
+      <dd>The design itself is unsolved. Multiple architectural decision records (ADRs) interact. Shared state between users is involved. Or you can't clearly picture the answer before writing the first line of code. Opus reasons through multi-step uncertainty better; Sonnet will pattern-match its way to the wrong design.</dd>
+    </dl>
+
+    <h3>The signal checklist</h3>
+
+    <p>Ask these questions before starting any slice. The first "yes" in the Opus column stops you — reach for Opus.</p>
+
+    <ul class="signals">
+      <li>
+        <span class="tag sonnet">Sonnet</span>
+        A reference feature already exists in the codebase that I can copy from
+      </li>
+      <li>
+        <span class="tag sonnet">Sonnet</span>
+        The task is additive to an existing screen or flow — nothing is redesigned
+      </li>
+      <li>
+        <span class="tag sonnet">Sonnet</span>
+        CLAUDE.md explicitly calls this feature "low design risk"
+      </li>
+      <li>
+        <span class="tag opus">Opus</span>
+        The design spans 3 or more ADRs simultaneously
+      </li>
+      <li>
+        <span class="tag opus">Opus</span>
+        Shared state between partners is involved (replication, combined view, conflict resolution)
+      </li>
+      <li>
+        <span class="tag opus">Opus</span>
+        A subtle concurrency or sync bug needs multi-step reasoning to diagnose
+      </li>
+      <li>
+        <span class="tag opus">Opus</span>
+        I cannot picture what "done" looks like before writing the first line
+      </li>
+    </ul>
+
+    <h3>One more rule: when to run <code>/grilling</code> first</h3>
+
+    <p>The model choice and the pre-build investment are separate decisions. If you are reaching for Opus, run <code>/grilling</code> first — stress-test the design before writing code. If you are reaching for Sonnet but something feels slightly off, a quick <code>/grilling</code> still costs less than rework.</p>
+
+    <p>A design task that skips <code>/grilling</code> is the most common source of rework in this project.</p>
+  </section>
+
+
+  <!-- ── Skill (Quiz) ── -->
+  <section>
+    <div class="quiz-header">
+      <h2>Practice: Eight Ipon, Love Scenarios</h2>
+      <p>For each task below, choose the model you would reach for first. Feedback is immediate.</p>
+    </div>
+
+    <div id="quiz-container"></div>
+    <div id="score" hidden></div>
+  </section>
+
+</main>
+
+<footer>
+  <p>
+    Primary source: <a href="./CLAUDE.md" target="_blank">CLAUDE.md — "Which Model to Use"</a> ·
+    Model reference: <a href="https://docs.anthropic.com/en/docs/about-claude/models/overview" target="_blank">Anthropic model overview</a>
+  </p>
+  <p class="ask-me">Something unclear? Ask your agent — it is your teacher and can clarify any part of this lesson.</p>
+</footer>
+
+<script src="../assets/quiz.js"></script>
+<script>
+new Quiz({
+  containerId: 'quiz-container',
+  scoreId: 'score',
+  questions: [
+    {
+      context: 'Ipon, Love — new feature slice',
+      scenario: 'Implement recurring transactions: the recurrence rule entity, DAO, repository, use cases, ViewModel, and screen. The Budgets feature already has the full stack done and in the codebase.',
+      options: ['Sonnet', 'Opus'],
+      answer: 'Sonnet',
+      explanation: 'One clean reference feature exists (Budgets). The shape is identical: entity → DAO → repo → use case → ViewModel → screen. This is a pattern task — adapt the names, change the schema fields, wire it up. Sonnet handles this reliably.'
+    },
+    {
+      context: 'Ipon, Love — couples pairing',
+      scenario: 'Design how partner data gets replicated into Room after an invite-code pairing: replication schema, redacting views, combined-view query, and partner-row purge on unpair. ADR-0004, ADR-0005, and ADR-0011 all interact.',
+      options: ['Sonnet', 'Opus'],
+      answer: 'Opus',
+      explanation: 'Three ADRs interact. Shared state between partners is the core problem. The design is unsolved — no reference feature exists for this in the codebase. This is the definition of a design task. Use Opus, and run /grilling before writing a line.'
+    },
+    {
+      context: 'Ipon, Love — incremental improvement',
+      scenario: 'Add pull-to-refresh to the Accounts screen. The sync infrastructure (SyncManager, WorkManager, repository sync() method) already exists and works.',
+      options: ['Sonnet', 'Opus'],
+      answer: 'Sonnet',
+      explanation: 'This is purely additive. The sync infrastructure is already built. Wiring pull-to-refresh into it is a handful of Compose lines and a ViewModel state flag. One of the clearest pattern tasks possible.'
+    },
+    {
+      context: 'Ipon, Love — sync bug',
+      scenario: 'Investigate and fix: the combined-view account balance is occasionally wrong when both partners modify the same account offline simultaneously before either syncs.',
+      options: ['Sonnet', 'Opus'],
+      answer: 'Opus',
+      explanation: 'This is a multi-step concurrency reasoning problem involving LWW conflict resolution, the combined-view query, and partner data replication — all interacting. Sonnet will pattern-match to a surface fix and miss the real cause. Use Opus to trace the state machine.'
+    },
+    {
+      context: 'Ipon, Love — Glance widget',
+      scenario: 'Build the quick-add transaction home screen widget: a Glance widget that opens a bottom sheet for fast transaction entry, saves via the existing AddTransactionUseCase, then dismisses.',
+      options: ['Sonnet', 'Opus'],
+      answer: 'Sonnet',
+      explanation: 'CLAUDE.md explicitly calls this "self-contained, no cross-feature entanglement" and flags it as low design risk. The transaction domain and use cases already exist. Glance tap-to-Intent is a well-known pattern. Sonnet.'
+    },
+    {
+      context: 'Ipon, Love — shared notes',
+      scenario: 'Design the conflict-copy merge strategy for shared notes: when both partners edit a shared note offline, the sync must produce a conflict copy rather than silently overwriting. ADR-0003 and ADR-0011 interact.',
+      options: ['Sonnet', 'Opus'],
+      answer: 'Opus',
+      explanation: 'Conflict-copy is an exception to the standard LWW rule. It requires reasoning about what "conflict" means for rich text notes vs simple scalar fields, how to surface the copy in the UI, and how this interacts with partner replication. Multiple ADRs, novel design — Opus.'
+    },
+    {
+      context: 'Ipon, Love — Settings screen',
+      scenario: 'Build the Settings screen: theme picker (palette + mode), PIN toggle, notification preferences toggle. All preferences live in DataStore; the ThemeManager and PinManager already exist.',
+      options: ['Sonnet', 'Opus'],
+      answer: 'Sonnet',
+      explanation: 'CLAUDE.md calls Settings "purely additive, low design risk." The infrastructure (ThemeManager, PinManager, DataStore) is already built. This screen reads preferences and writes them back. Pattern task, clear reference shape — Sonnet.'
+    },
+    {
+      context: 'Ipon, Love — Partner Debt Tracker',
+      scenario: 'Design the Partner Debt Tracker sub-feature: tracking who owes whom across shared expenses, settlement flow, and how the running balance integrates with the combined view. Referenced in ADR-0011.',
+      options: ['Sonnet', 'Opus'],
+      answer: 'Opus',
+      explanation: 'No reference feature exists for this. The design touches shared-expense attribution, running balances, settlement events, and the combined view — all involving shared partner state. You cannot picture what "done" looks like before designing. Opus, with /grilling before coding.'
+    }
+  ]
+});
+</script>
+</body>
+</html>

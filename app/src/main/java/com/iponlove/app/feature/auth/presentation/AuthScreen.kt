@@ -60,7 +60,7 @@ private fun AuthContent(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Ipon, Love", style = MaterialTheme.typography.headlineMedium)
+            Text("Love, Ipon", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(4.dp))
             Text(
                 text = if (state.mode == AuthMode.SIGN_IN) "Welcome back" else "Create your account",
