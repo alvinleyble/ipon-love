@@ -26,6 +26,7 @@ import com.iponlove.app.feature.couple.domain.usecase.WatchUnpairUseCase
 import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRulesUseCase
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
+import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
 import androidx.glance.appwidget.updateAll
 import com.iponlove.app.feature.widget.presentation.BalanceWidget
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var ensureCurrentUserRow: EnsureCurrentUserRowUseCase
     @Inject lateinit var watchUnpair: WatchUnpairUseCase
     @Inject lateinit var observeThemePreferences: ObserveThemePreferencesUseCase
+    @Inject lateinit var syncEngine: SyncEngine
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,6 +57,10 @@ class MainActivity : ComponentActivity() {
                     is AuthStatus.Authenticated -> {
                         LaunchedEffect(current.userId) {
                             ensureCurrentUserRow()
+                            // In-process foreground sync on login — ensures Room is
+                            // populated immediately on fresh install without waiting
+                            // for WorkManager to schedule (ADR-0012).
+                            runCatching { syncEngine.sync() }
                             materializeRecurringRules()
                             WorkManager.getInstance(applicationContext).enqueueUniqueWork(
                                 SyncWorker.WORK_NAME,
