@@ -23,4 +23,10 @@ class SupabaseUserRemoteSource @Inject constructor(
             order("server_rev", Order.ASCENDING)
             limit(count = limit.toLong())
         }.decodeList()
+
+    override suspend fun fetchSelf(userId: String): UserDto? =
+        client.from("users").select {
+            filter { eq("id", userId) }
+            limit(1)
+        }.decodeList<UserDto>().firstOrNull()
 }

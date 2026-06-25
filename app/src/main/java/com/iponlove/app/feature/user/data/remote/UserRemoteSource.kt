@@ -6,9 +6,12 @@ import javax.inject.Inject
 interface UserRemoteSource {
     suspend fun push(rows: List<UserDto>): List<String>
     suspend fun pull(cursor: Long, limit: Int): List<UserDto>
+    /** Fetch a single user row by id, or null if not yet on the server (genuine new signup). */
+    suspend fun fetchSelf(userId: String): UserDto?
 }
 
 class StubUserRemoteSource @Inject constructor() : UserRemoteSource {
     override suspend fun push(rows: List<UserDto>): List<String> = emptyList()
     override suspend fun pull(cursor: Long, limit: Int): List<UserDto> = emptyList()
+    override suspend fun fetchSelf(userId: String): UserDto? = null
 }
