@@ -87,18 +87,18 @@ private fun AnalysisContent(
 
             SummaryCard(income = state.totalIncome, expense = state.totalExpense, net = state.net)
 
+            if (state.hasExpenses) {
+                BreakdownSection(state)
+            } else {
+                EmptyState()
+            }
+
             state.expenseFlow?.let { flow ->
                 ExpenseFlowSection(flow)
             }
 
             state.calendarNet?.let { cal ->
                 CalendarNetSection(cal)
-            }
-
-            if (state.hasExpenses) {
-                BreakdownSection(state)
-            } else {
-                EmptyState()
             }
         }
     }
