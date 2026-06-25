@@ -107,6 +107,9 @@ dependencies {
     // Rich text editor for Notes (HTML-serialized; Compose Multiplatform lib)
     implementation(libs.richeditor.compose)
 
+    // Glance home screen widget
+    implementation(libs.androidx.glance.appwidget)
+
     // Supabase (Auth + Postgrest) + Ktor engine — the cloud backend
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth)

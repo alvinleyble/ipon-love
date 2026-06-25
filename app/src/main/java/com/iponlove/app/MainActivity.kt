@@ -27,6 +27,8 @@ import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRul
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
 import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
+import androidx.glance.appwidget.updateAll
+import com.iponlove.app.feature.widget.presentation.BalanceWidget
 import com.iponlove.app.navigation.IponApp
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -59,6 +61,7 @@ class MainActivity : ComponentActivity() {
                                 ExistingWorkPolicy.KEEP,
                                 SyncWorker.buildRequest(),
                             )
+                            BalanceWidget().updateAll(applicationContext)
                         }
                         LaunchedEffect(current.userId) { watchUnpair() }
                         IponApp(onSignOut = authViewModel::signOut)
