@@ -6,6 +6,8 @@ import com.iponlove.app.feature.analysis.domain.model.AnalysisPeriod
 import com.iponlove.app.feature.analysis.domain.model.AnalysisWindow
 import com.iponlove.app.feature.analysis.domain.usecase.AnalysisCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.AnalysisPeriodRange
+import com.iponlove.app.feature.analysis.domain.usecase.ExpenseFlowCalculator
+import com.iponlove.app.feature.budgets.domain.usecase.ObserveBudgetsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,7 +16,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -29,6 +33,7 @@ import kotlin.math.roundToInt
 class AnalysisViewModel @Inject constructor(
     observeTransactions: ObserveTransactionsUseCase,
     observeCategories: ObserveCategoriesUseCase,
+    observeBudgets: ObserveBudgetsUseCase,
 ) : ViewModel() {
 
     private val anchor = MutableStateFlow(LocalDate.now())
@@ -40,15 +45,31 @@ class AnalysisViewModel @Inject constructor(
             // Include archived so historical transactions under a since-archived category
             // still show its name in the breakdown.
             observeCategories(includeArchived = true),
+            observeBudgets(),
             anchor,
             period,
-        ) { transactions, categories, anchorDate, selectedPeriod ->
+        ) { transactions, categories, budgets, anchorDate, selectedPeriod ->
             val zone = ZoneId.systemDefault()
             val window = AnalysisPeriodRange.windowFor(anchorDate, selectedPeriod, zone)
             val result = AnalysisCalculator.analyze(transactions, window)
 
             val names = categories.associateBy({ it.id }, { it.name })
             val colors = categories.associateBy({ it.id }, { it.color })
+
+            val expenseFlow = if (selectedPeriod == AnalysisPeriod.MONTH) {
+                val startDate = window.startInclusive.atZone(zone).toLocalDate()
+                val yearMonthStr = YearMonth.of(startDate.year, startDate.month).toString()
+                val budgetTotal = budgets
+                    .filter { it.yearMonth == yearMonthStr }
+                    .fold(BigDecimal.ZERO) { acc, b -> acc + b.amount }
+                val flowData = ExpenseFlowCalculator.calculate(transactions, window, zone)
+                ExpenseFlowUi(
+                    cumulativeByDay = flowData.cumulativeByDay.map { it.toFloat() },
+                    budgetTotal = budgetTotal.toFloat(),
+                    daysInMonth = flowData.daysInMonth,
+                    todayDayOfMonth = flowData.todayDayOfMonth,
+                )
+            } else null
 
             AnalysisUiState(
                 isLoading = false,
@@ -67,6 +88,7 @@ class AnalysisViewModel @Inject constructor(
                         percentLabel = "${(slice.fraction * 100).roundToInt()}%",
                     )
                 },
+                expenseFlow = expenseFlow,
             )
         }.stateIn(
             scope = viewModelScope,

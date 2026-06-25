@@ -42,6 +42,7 @@ import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.feature.analysis.domain.model.AnalysisPeriod
 import com.iponlove.app.feature.analysis.presentation.components.DonutChart
 import com.iponlove.app.feature.analysis.presentation.components.DonutSlice
+import com.iponlove.app.feature.analysis.presentation.components.ExpenseFlowChart
 import com.iponlove.app.feature.analysis.presentation.components.sliceColor
 import java.math.BigDecimal
 
@@ -84,6 +85,10 @@ private fun AnalysisContent(
             }
 
             SummaryCard(income = state.totalIncome, expense = state.totalExpense, net = state.net)
+
+            state.expenseFlow?.let { flow ->
+                ExpenseFlowSection(flow)
+            }
 
             if (state.hasExpenses) {
                 BreakdownSection(state)
@@ -241,6 +246,30 @@ private fun EmptyState() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Composable
+private fun ExpenseFlowSection(flow: ExpenseFlowUi) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Expense Flow", style = MaterialTheme.typography.titleSmall)
+                if (flow.budgetTotal > 0f) {
+                    Text(
+                        text = "Budget ${formatPhp(flow.budgetTotal.toBigDecimal())}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            ExpenseFlowChart(flow = flow)
+        }
     }
 }
 

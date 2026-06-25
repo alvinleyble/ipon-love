@@ -14,9 +14,26 @@ data class AnalysisUiState(
     val net: BigDecimal = BigDecimal.ZERO,
     /** Expense breakdown, largest first; drives both the donut and its legend. */
     val slices: List<CategorySliceUi> = emptyList(),
+    /** Cumulative expense curve for MONTH view; null for DAY/WEEK. */
+    val expenseFlow: ExpenseFlowUi? = null,
 ) {
     val hasExpenses: Boolean get() = totalExpense.signum() > 0
 }
+
+/**
+ * Chart data for the Expense Flow composable. Values are pre-converted to Float so the
+ * Canvas drawing code never touches BigDecimal.
+ *
+ * [cumulativeByDay]: index 0 = day 1, length = [daysInMonth]. Running expense total each day.
+ * [budgetTotal]: sum of personal monthly budgets for this month; 0f if none are set.
+ * [todayDayOfMonth]: null when viewing a past or future month.
+ */
+data class ExpenseFlowUi(
+    val cumulativeByDay: List<Float>,
+    val budgetTotal: Float,
+    val daysInMonth: Int,
+    val todayDayOfMonth: Int?,
+)
 
 /**
  * One expense slice for display. [colorHex] is the category's stored color (may be null —
