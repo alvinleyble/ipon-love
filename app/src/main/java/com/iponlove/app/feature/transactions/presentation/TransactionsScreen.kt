@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
@@ -29,6 +30,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -63,6 +67,8 @@ import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.TransactionError
+import java.time.Instant
+import java.time.ZoneOffset
 
 private val IncomeColor = Color(0xFF2E7D32)
 
@@ -94,6 +100,7 @@ fun TransactionsScreen(
         onCategoryChange = viewModel::onCategoryChange,
         onNoteChange = viewModel::onNoteChange,
         onPrivateChange = viewModel::onPrivateChange,
+        onDateChange = viewModel::onDateChange,
         onSave = viewModel::save,
         onCancel = viewModel::cancelEdit,
     )
@@ -119,6 +126,7 @@ private fun TransactionsContent(
     onCategoryChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onPrivateChange: (Boolean) -> Unit,
+    onDateChange: (Instant) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -204,6 +212,7 @@ private fun TransactionsContent(
             onCategoryChange = onCategoryChange,
             onNoteChange = onNoteChange,
             onPrivateChange = onPrivateChange,
+            onDateChange = onDateChange,
             onSave = onSave,
             onCancel = onCancel,
         )
@@ -267,6 +276,7 @@ private fun TransactionEditorDialog(
     onCategoryChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onPrivateChange: (Boolean) -> Unit,
+    onDateChange: (Instant) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -274,6 +284,8 @@ private fun TransactionEditorDialog(
     val categoryOptions = state.categories
         .filter { it.type == editor.type.matchingCategoryType() }
         .map { PickerOption(it.id, it.name) }
+
+    var showDatePicker by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onCancel,
@@ -327,6 +339,26 @@ private fun TransactionEditorDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Date", style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            text = formatShortDate(editor.date),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Filled.DateRange,
+                        contentDescription = "Pick date",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Private", modifier = Modifier.weight(1f))
@@ -347,6 +379,26 @@ private fun TransactionEditorDialog(
         confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )
+
+    if (showDatePicker) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = editor.date.toUtcDayMillis(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { onDateChange(Instant.ofEpochMilli(it)) }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            },
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
 }
 
 private data class PickerOption(val id: String, val label: String)
@@ -434,3 +486,7 @@ private fun TransactionError.message(): String = when (this) {
     TransactionError.DESTINATION_REQUIRED -> "Choose a destination account"
     TransactionError.DESTINATION_SAME_AS_SOURCE -> "Destination must differ from the source"
 }
+
+// DatePicker speaks UTC-midnight millis; convert through UTC so the calendar day is exact.
+private fun Instant.toUtcDayMillis(): Long =
+    atZone(ZoneOffset.UTC).toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()

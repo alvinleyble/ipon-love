@@ -129,6 +129,8 @@ class TransactionsViewModel @Inject constructor(
 
     fun onPrivateChange(value: Boolean) = editor.update { it?.copy(isPrivate = value) }
 
+    fun onDateChange(date: Instant) = editor.update { it?.copy(date = date) }
+
     fun save() {
         val s = editor.value ?: return
         val amount = s.amountText.trim().toBigDecimalOrNull() ?: BigDecimal.ZERO

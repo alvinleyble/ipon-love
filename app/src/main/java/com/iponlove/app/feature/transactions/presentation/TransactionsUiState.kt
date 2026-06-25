@@ -30,10 +30,7 @@ data class TransactionListItem(
     val date: Instant,
 )
 
-/**
- * Editor form state. [id] null means a new transaction; [date] is captured when the
- * editor opens (no date picker yet) and preserved on edit.
- */
+/** Editor form state. [id] null means a new transaction; non-null means editing. */
 data class TransactionEditorState(
     val id: String? = null,
     val type: TransactionType = TransactionType.EXPENSE,
