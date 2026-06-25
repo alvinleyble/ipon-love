@@ -45,7 +45,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         DebtPaymentEntity::class,
     ],
     version = 10,
-    exportSchema = false,
+    exportSchema = true,
 )
 @TypeConverters(IponConverters::class)
 abstract class IponDatabase : RoomDatabase() {

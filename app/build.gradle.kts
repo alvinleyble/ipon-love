@@ -69,6 +69,10 @@ kotlin {
     }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     // Core / lifecycle
     implementation(libs.androidx.core.ktx)

@@ -27,8 +27,6 @@ object DatabaseModule {
     @Singleton
     fun database(@ApplicationContext context: Context): IponDatabase =
         Room.databaseBuilder(context, IponDatabase::class.java, "ipon.db")
-            // Pre-release: schema churns, so drop-and-recreate instead of migrating.
-            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 
     @Provides
