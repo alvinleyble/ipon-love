@@ -18,8 +18,10 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
@@ -97,6 +99,22 @@ private fun BalanceWidgetContent(data: WidgetData?) {
                     style = TextStyle(
                         color = androidx.glance.unit.ColorProvider(Color(0xFF9F3758)),
                         fontSize = 12.sp,
+                    ),
+                )
+            }
+            Spacer(GlanceModifier.defaultWeight())
+            Row(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .clickable(actionStartActivity(Intent(context, QuickAddActivity::class.java))),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "+ Quick add",
+                    style = TextStyle(
+                        color = androidx.glance.unit.ColorProvider(Color(0xFF9F3758)),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
                     ),
                 )
             }

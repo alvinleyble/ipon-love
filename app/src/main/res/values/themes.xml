@@ -5,4 +5,12 @@
     <style name="Theme.IponLove" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/seed_background</item>
     </style>
+
+    <!-- Transparent window for the quick-add overlay activity. The ModalBottomSheet
+         provides its own scrim; the activity window itself must be fully transparent. -->
+    <style name="Theme.IponLove.Transparent" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

@@ -49,6 +49,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".feature.widget.presentation.QuickAddActivity"
+            android:exported="false"
+            android:theme="@style/Theme.IponLove.Transparent" />
+
         <receiver
             android:name=".feature.widget.presentation.BalanceWidgetReceiver"
             android:exported="true">
