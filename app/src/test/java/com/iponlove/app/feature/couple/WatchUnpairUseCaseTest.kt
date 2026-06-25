@@ -18,7 +18,8 @@ class WatchUnpairUseCaseTest {
     private val accounts = CountingAccountRepo()
     private val purge = PurgePartnerReplicaUseCase(
         accounts, CountingCategoryRepo(), CountingTransactionRepo(), CountingNoteRepo(),
-        CountingBudgetRepo(), CountingPartnerDebtRepo(), InMemoryCursorStore(),
+        CountingNoteAttachmentRepo(), CountingBudgetRepo(), CountingPartnerDebtRepo(),
+        InMemoryCursorStore(),
     )
 
     @Test

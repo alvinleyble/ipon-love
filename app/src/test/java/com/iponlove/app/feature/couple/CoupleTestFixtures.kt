@@ -7,6 +7,8 @@ import com.iponlove.app.feature.budgets.domain.repository.BudgetRepository
 import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import com.iponlove.app.feature.notes.domain.model.Note
+import com.iponlove.app.feature.notes.domain.model.NoteAttachment
+import com.iponlove.app.feature.notes.domain.repository.NoteAttachmentRepository
 import com.iponlove.app.feature.notes.domain.repository.NoteRepository
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtPayment
 import com.iponlove.app.feature.partnerdebt.domain.model.PartnerDebt
@@ -61,6 +63,16 @@ internal class CountingNoteRepo : NoteRepository {
     override suspend fun upsertNote(note: Note) = Unit
     override suspend fun deleteNote(id: String) = Unit
     override suspend fun purgePartnerData() { purgeCount++ }
+}
+
+internal class CountingNoteAttachmentRepo : NoteAttachmentRepository {
+    var purgeCount = 0
+    override fun observeByNote(noteId: String): Flow<List<NoteAttachment>> = emptyFlow()
+    override suspend fun addAttachment(noteId: String, localPath: String): NoteAttachment =
+        NoteAttachment(id = "stub", noteId = noteId, localPath = localPath, url = null, position = 0)
+    override suspend fun deleteAttachment(id: String) = Unit
+    override suspend fun softDeleteAllForNote(noteId: String) = Unit
+    override suspend fun purgePartnerData(userId: String) { purgeCount++ }
 }
 
 internal class CountingBudgetRepo : BudgetRepository {

@@ -1,17 +1,26 @@
 package com.iponlove.app.feature.notes.presentation
 
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -32,14 +42,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.iponlove.app.feature.notes.domain.model.NoteAttachment
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.ui.material3.OutlinedRichTextEditor
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +67,10 @@ fun NoteEditorScreen(
     var title by remember { mutableStateOf("") }
     var seeded by remember { mutableStateOf(false) }
 
-    // Seed the title field and editor once the note has loaded (existing notes load async).
+    val pickMedia = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri -> uri?.let { viewModel.addImage(it) } }
+
     LaunchedEffect(state.loaded) {
         if (state.loaded && !seeded) {
             title = state.initialTitle
@@ -62,7 +80,6 @@ fun NoteEditorScreen(
     }
 
     val saveAndExit: () -> Unit = { viewModel.save(title, richTextState.toHtml(), onBack) }
-    BackHandler(onBack = saveAndExit)
 
     Scaffold(
         topBar = {
@@ -71,6 +88,17 @@ fun NoteEditorScreen(
                 navigationIcon = {
                     IconButton(onClick = saveAndExit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Save and close")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            pickMedia.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                            )
+                        },
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "Add image")
                     }
                 },
             )
@@ -97,10 +125,61 @@ fun NoteEditorScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (state.attachments.isNotEmpty()) {
+                        AttachmentStrip(
+                            attachments = state.attachments,
+                            onDelete = { viewModel.removeAttachment(it) },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        )
+                    }
                     FormattingToolbar(richTextState)
                     OutlinedRichTextEditor(
                         state = richTextState,
                         modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AttachmentStrip(
+    attachments: List<NoteAttachment>,
+    onDelete: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp),
+    ) {
+        items(attachments, key = { it.id }) { attachment ->
+            Box {
+                AsyncImage(
+                    model = if (attachment.url != null) {
+                        attachment.url
+                    } else {
+                        attachment.localPath?.let { File(it) }
+                    },
+                    contentDescription = "Attached image",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                )
+                SmallFloatingActionButton(
+                    onClick = { onDelete(attachment.id) },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(2.dp)
+                        .size(20.dp),
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Remove image",
+                        modifier = Modifier.size(12.dp),
                     )
                 }
             }

@@ -33,6 +33,7 @@ sealed interface SyncState {
  */
 class SyncEngine(
     syncers: Set<TableSyncer>,
+    private val preSyncSteps: Set<PreSyncStep> = emptySet(),
     private val clock: SyncClock? = null,
     private val clockOffsetStore: ClockOffsetStore? = null,
     private val serverTimeFetcher: (suspend () -> Instant)? = null,
@@ -54,6 +55,8 @@ class SyncEngine(
         if (!inFlight.tryLock()) return false
         try {
             _state.value = SyncState.Syncing
+            // Upload pending files before pushing rows so rows carry the Storage URL.
+            for (step in preSyncSteps) step.run()
             // Push parent→child so a parent gets a lower server_rev than its child...
             for (syncer in ordered) syncer.push()
             // ...then pull parent→child so a child's parent is already present.

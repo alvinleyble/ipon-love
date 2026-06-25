@@ -22,7 +22,7 @@ class WatchUnpairUseCase @Inject constructor(
             if (user == null) return@collect
             val current = user.coupleId
             if (hadUser && previousCoupleId != null && current == null) {
-                purgePartnerReplica()
+                purgePartnerReplica(user.id)
             }
             hadUser = true
             previousCoupleId = current

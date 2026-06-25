@@ -7,6 +7,7 @@ import com.iponlove.app.feature.accounts.data.local.AccountDao
 import com.iponlove.app.feature.budgets.data.local.BudgetDao
 import com.iponlove.app.feature.categories.data.local.CategoryDao
 import com.iponlove.app.feature.couple.data.local.CoupleDao
+import com.iponlove.app.feature.notes.data.local.NoteAttachmentDao
 import com.iponlove.app.feature.notes.data.local.NoteDao
 import com.iponlove.app.feature.partnerdebt.data.local.PartnerDebtDao
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleDao
@@ -52,6 +53,9 @@ object DatabaseModule {
 
     @Provides
     fun noteDao(database: IponDatabase): NoteDao = database.noteDao()
+
+    @Provides
+    fun noteAttachmentDao(database: IponDatabase): NoteAttachmentDao = database.noteAttachmentDao()
 
     @Provides
     fun partnerDebtDao(database: IponDatabase): PartnerDebtDao = database.partnerDebtDao()

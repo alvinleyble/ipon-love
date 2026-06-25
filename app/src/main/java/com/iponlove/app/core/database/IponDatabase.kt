@@ -1,5 +1,6 @@
 package com.iponlove.app.core.database
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
@@ -12,6 +13,8 @@ import com.iponlove.app.feature.categories.data.local.CategoryDao
 import com.iponlove.app.feature.categories.data.local.CategoryEntity
 import com.iponlove.app.feature.couple.data.local.CoupleDao
 import com.iponlove.app.feature.couple.data.local.CoupleEntity
+import com.iponlove.app.feature.notes.data.local.NoteAttachmentDao
+import com.iponlove.app.feature.notes.data.local.NoteAttachmentEntity
 import com.iponlove.app.feature.notes.data.local.NoteDao
 import com.iponlove.app.feature.notes.data.local.NoteEntity
 import com.iponlove.app.feature.partnerdebt.data.local.DebtPaymentEntity
@@ -41,11 +44,15 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         BudgetEntity::class,
         RecurringRuleEntity::class,
         NoteEntity::class,
+        NoteAttachmentEntity::class,
         PartnerDebtEntity::class,
         DebtPaymentEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
+    autoMigrations = [
+        AutoMigration(from = 10, to = 11),
+    ],
 )
 @TypeConverters(IponConverters::class)
 abstract class IponDatabase : RoomDatabase() {
@@ -57,5 +64,6 @@ abstract class IponDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun recurringRuleDao(): RecurringRuleDao
     abstract fun noteDao(): NoteDao
+    abstract fun noteAttachmentDao(): NoteAttachmentDao
     abstract fun partnerDebtDao(): PartnerDebtDao
 }

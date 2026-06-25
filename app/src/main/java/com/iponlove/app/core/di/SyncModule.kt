@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.iponlove.app.core.sync.PreSyncStep
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncCursorStore
 import com.iponlove.app.core.sync.SyncEngine
@@ -56,11 +57,13 @@ object SyncModule {
     @Singleton
     fun syncEngine(
         syncers: Set<@JvmSuppressWildcards TableSyncer>,
+        preSyncSteps: Set<@JvmSuppressWildcards PreSyncStep>,
         clock: SyncClock,
         clockOffsetStore: ClockOffsetStore,
         client: SupabaseClient,
     ): SyncEngine = SyncEngine(
         syncers = syncers,
+        preSyncSteps = preSyncSteps,
         clock = clock,
         clockOffsetStore = clockOffsetStore,
         serverTimeFetcher = {
@@ -70,10 +73,13 @@ object SyncModule {
     )
 }
 
-/** Declares the [TableSyncer] multibinding set so it resolves even with zero contributions. */
+/** Declares multibinding sets so they resolve even with zero contributions. */
 @Module
 @InstallIn(SingletonComponent::class)
 interface SyncMultibindsModule {
     @Multibinds
     fun tableSyncers(): Set<TableSyncer>
+
+    @Multibinds
+    fun preSyncSteps(): Set<PreSyncStep>
 }
