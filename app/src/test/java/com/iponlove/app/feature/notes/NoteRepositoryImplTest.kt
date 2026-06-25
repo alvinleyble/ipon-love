@@ -77,4 +77,28 @@ class NoteRepositoryImplTest {
         assertThat(row.isDeleted).isTrue()
         assertThat(row.pendingSync).isTrue()
     }
+
+    @Test
+    fun shareNote_setsSharedFlagAndCoupleId_marksDirty() = runTest {
+        dao.store["n"] = noteEntity(id = "n", isShared = false, coupleId = null)
+
+        repository.shareNote("n", "couple-1")
+
+        val row = dao.store.getValue("n")
+        assertThat(row.isShared).isTrue()
+        assertThat(row.coupleId).isEqualTo("couple-1")
+        assertThat(row.pendingSync).isTrue()
+    }
+
+    @Test
+    fun unshareNote_clearsSharedFlag_retainsCoupleId_marksDirty() = runTest {
+        dao.store["n"] = noteEntity(id = "n", isShared = true, coupleId = "couple-1")
+
+        repository.unshareNote("n")
+
+        val row = dao.store.getValue("n")
+        assertThat(row.isShared).isFalse()
+        assertThat(row.coupleId).isEqualTo("couple-1") // retained so partner sees the un-share
+        assertThat(row.pendingSync).isTrue()
+    }
 }

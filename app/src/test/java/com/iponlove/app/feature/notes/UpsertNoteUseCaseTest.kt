@@ -16,6 +16,8 @@ class UpsertNoteUseCaseTest {
         override suspend fun getNote(id: String): Note? = null
         override suspend fun upsertNote(note: Note) { saved = note }
         override suspend fun deleteNote(id: String) = Unit
+        override suspend fun shareNote(id: String, coupleId: String) = Unit
+        override suspend fun unshareNote(id: String) = Unit
         override suspend fun purgePartnerData() = Unit
     }
 

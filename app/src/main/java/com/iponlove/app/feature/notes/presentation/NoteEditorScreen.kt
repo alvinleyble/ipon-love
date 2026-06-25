@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -91,6 +93,15 @@ fun NoteEditorScreen(
                     }
                 },
                 actions = {
+                    if (!state.isNew && state.isPaired) {
+                        IconButton(onClick = { viewModel.toggleShared() }) {
+                            Icon(
+                                imageVector = if (state.isShared) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                contentDescription = if (state.isShared) "Unshare note" else "Share note with partner",
+                                tint = if (state.isShared) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = {
                             pickMedia.launch(

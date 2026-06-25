@@ -42,6 +42,7 @@ class NoteRepositoryImpl @Inject constructor(
                 content = note.contentHtml.ifEmpty { null },
                 isShared = existing?.isShared ?: false,
                 coupleId = existing?.coupleId,
+                isConflictCopy = existing?.isConflictCopy ?: false,
                 createdAt = existing?.createdAt ?: updatedAt,
                 updatedAt = updatedAt,
                 isDeleted = existing?.isDeleted ?: false,
@@ -56,6 +57,30 @@ class NoteRepositoryImpl @Inject constructor(
         dao.upsert(
             existing.copy(
                 isDeleted = true,
+                updatedAt = clock.stamp(existing.updatedAt),
+                pendingSync = true,
+            ),
+        )
+    }
+
+    override suspend fun shareNote(id: String, coupleId: String) {
+        val existing = dao.getById(id) ?: return
+        dao.upsert(
+            existing.copy(
+                isShared = true,
+                coupleId = coupleId,
+                updatedAt = clock.stamp(existing.updatedAt),
+                pendingSync = true,
+            ),
+        )
+    }
+
+    override suspend fun unshareNote(id: String) {
+        val existing = dao.getById(id) ?: return
+        // Retain coupleId so the un-share crosses the partner's redacting view (ADR-0005).
+        dao.upsert(
+            existing.copy(
+                isShared = false,
                 updatedAt = clock.stamp(existing.updatedAt),
                 pendingSync = true,
             ),

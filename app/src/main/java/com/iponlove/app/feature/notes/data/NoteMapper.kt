@@ -12,6 +12,7 @@ fun NoteEntity.toDomain(): Note = Note(
     title = title.orEmpty(),
     contentHtml = content.orEmpty(),
     isShared = isShared,
+    isConflictCopy = isConflictCopy,
     updatedAt = updatedAt,
 )
 
@@ -23,6 +24,7 @@ fun NoteEntity.toDto(): NoteDto = NoteDto(
     content = content,
     isShared = isShared,
     coupleId = coupleId,
+    isConflictCopy = isConflictCopy,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,
@@ -40,6 +42,7 @@ fun NoteDto.toEntity(): NoteEntity = NoteEntity(
     content = content,
     isShared = isShared,
     coupleId = coupleId,
+    isConflictCopy = isConflictCopy,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,

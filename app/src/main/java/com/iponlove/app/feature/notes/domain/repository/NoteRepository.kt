@@ -21,6 +21,15 @@ interface NoteRepository {
     /** Soft delete — sets `is_deleted = true`; never a hard delete (ADR-0010). */
     suspend fun deleteNote(id: String)
 
+    /** Mark note as shared with the couple; partner will see it after next sync. */
+    suspend fun shareNote(id: String, coupleId: String)
+
+    /**
+     * Unshare a note. Sets `is_shared = false` but RETAINS `couple_id` so the un-share
+     * transition still reaches the partner's redacting view (ADR-0005).
+     */
+    suspend fun unshareNote(id: String)
+
     /** Hard-delete all replicated partner notes on unpair (ADR-0008). */
     suspend fun purgePartnerData()
 }

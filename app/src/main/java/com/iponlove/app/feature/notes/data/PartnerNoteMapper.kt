@@ -15,6 +15,7 @@ fun PartnerNoteDto.toEntity(): NoteEntity = NoteEntity(
     content = content,
     isShared = isShared,
     coupleId = coupleId,
+    isConflictCopy = false,
     createdAt = updatedAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,

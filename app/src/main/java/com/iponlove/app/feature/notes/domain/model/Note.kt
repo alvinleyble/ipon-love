@@ -21,5 +21,6 @@ data class Note(
     val title: String,
     val contentHtml: String,
     val isShared: Boolean = false,
+    val isConflictCopy: Boolean = false,
     val updatedAt: Instant = Instant.EPOCH,
 )

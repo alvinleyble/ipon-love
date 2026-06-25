@@ -15,4 +15,10 @@ data class NoteEditorUiState(
     val initialTitle: String = "",
     val initialHtml: String = "",
     val attachments: List<NoteAttachment> = emptyList(),
+    /** Current sharing state of this note. */
+    val isShared: Boolean = false,
+    /** True when the user is paired — share toggle is only shown in this state. */
+    val isPaired: Boolean = false,
+    /** The couple id, populated when [isPaired] is true. Used for shareNote calls. */
+    val coupleId: String? = null,
 )

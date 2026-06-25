@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.notes.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.iponlove.app.core.sync.SyncMeta
@@ -23,6 +24,7 @@ data class NoteEntity(
     val content: String?,
     val isShared: Boolean,
     val coupleId: String?,
+    @ColumnInfo(defaultValue = "0") val isConflictCopy: Boolean,
     val createdAt: Instant,
     override val updatedAt: Instant,
     override val isDeleted: Boolean,

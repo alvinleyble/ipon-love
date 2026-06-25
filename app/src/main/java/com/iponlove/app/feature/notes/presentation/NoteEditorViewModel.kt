@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.feature.couple.domain.model.PairingState
+import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.notes.domain.model.Note
 import com.iponlove.app.feature.notes.domain.usecase.AddNoteImageUseCase
 import com.iponlove.app.feature.notes.domain.usecase.DeleteNoteAttachmentUseCase
@@ -11,6 +13,8 @@ import com.iponlove.app.feature.notes.domain.usecase.DeleteNoteUseCase
 import com.iponlove.app.feature.notes.domain.usecase.GetNoteUseCase
 import com.iponlove.app.feature.notes.domain.usecase.NoteContentText
 import com.iponlove.app.feature.notes.domain.usecase.ObserveNoteAttachmentsUseCase
+import com.iponlove.app.feature.notes.domain.usecase.ShareNoteUseCase
+import com.iponlove.app.feature.notes.domain.usecase.UnshareNoteUseCase
 import com.iponlove.app.feature.notes.domain.usecase.UpsertNoteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +34,9 @@ class NoteEditorViewModel @Inject constructor(
     private val observeAttachments: ObserveNoteAttachmentsUseCase,
     private val addNoteImage: AddNoteImageUseCase,
     private val deleteAttachment: DeleteNoteAttachmentUseCase,
+    private val shareNote: ShareNoteUseCase,
+    private val unshareNote: UnshareNoteUseCase,
+    observePairingState: ObservePairingStateUseCase,
 ) : ViewModel() {
 
     private val argId: String = savedStateHandle[NOTE_ID_KEY] ?: NEW_NOTE
@@ -55,10 +62,19 @@ class NoteEditorViewModel @Inject constructor(
                             noteId = note.id,
                             initialTitle = note.title,
                             initialHtml = note.contentHtml,
+                            isShared = note.isShared,
                         )
                     }
                 }
                 if (note != null) collectAttachments(argId)
+            }
+        }
+
+        viewModelScope.launch {
+            observePairingState().collect { state ->
+                val paired = state is PairingState.Paired
+                val coupleId = (state as? PairingState.Paired)?.couple?.id
+                _uiState.update { it.copy(isPaired = paired, coupleId = coupleId) }
             }
         }
     }
@@ -85,6 +101,25 @@ class NoteEditorViewModel @Inject constructor(
                 else -> upsertNote(Note(id = id, title = title, contentHtml = html))
             }
             onDone()
+        }
+    }
+
+    /**
+     * Toggle sharing for the current note. Only valid for existing (non-new) notes when the
+     * user is paired — the share icon is hidden otherwise.
+     */
+    fun toggleShared() {
+        val id = _uiState.value.noteId ?: return
+        if (isNew) return
+        val coupleId = _uiState.value.coupleId ?: return
+        val nowShared = _uiState.value.isShared
+        viewModelScope.launch {
+            if (nowShared) {
+                unshareNote(id)
+            } else {
+                shareNote(id, coupleId)
+            }
+            _uiState.update { it.copy(isShared = !nowShared) }
         }
     }
 

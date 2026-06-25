@@ -167,16 +167,17 @@ create table budgets (
 -- transition still reaches the partner's redacting view to trigger a purge.
 -- (Only unpair nulls couple_id, where a bulk local purge handles cleanup.)  [ADR-0005, 0008]
 create table notes (
-    id         uuid primary key default gen_random_uuid(),
-    user_id    uuid not null references users(id) on delete cascade,
-    title      text,
-    content    jsonb,                                   -- rich text delta
-    is_shared  boolean not null default false,
-    couple_id  uuid references couples(id) on delete set null,
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now(),
-    is_deleted boolean not null default false,
-    server_rev bigint
+    id               uuid primary key default gen_random_uuid(),
+    user_id          uuid not null references users(id) on delete cascade,
+    title            text,
+    content          jsonb,                             -- rich text delta
+    is_shared        boolean not null default false,
+    couple_id        uuid references couples(id) on delete set null,
+    is_conflict_copy boolean not null default false,
+    created_at       timestamptz not null default now(),
+    updated_at       timestamptz not null default now(),
+    is_deleted       boolean not null default false,
+    server_rev       bigint
 );
 
 -- ---------- partner_debts ---------------------------------------------------

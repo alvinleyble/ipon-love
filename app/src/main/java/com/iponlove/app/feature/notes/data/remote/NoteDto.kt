@@ -14,6 +14,7 @@ data class NoteDto(
     val content: String?,
     @SerialName("is_shared") val isShared: Boolean,
     @SerialName("couple_id") val coupleId: String?,
+    @SerialName("is_conflict_copy") val isConflictCopy: Boolean = false,
     @SerialName("created_at")
     @Serializable(with = InstantSerializer::class) val createdAt: Instant,
     @SerialName("updated_at")
