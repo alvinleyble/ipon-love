@@ -24,7 +24,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import com.iponlove.app.core.ui.IponFilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -136,7 +136,7 @@ private fun FilterRow(selected: CategoryFilter, onSelect: (CategoryFilter) -> Un
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         CategoryFilter.entries.forEach { filter ->
-            FilterChip(
+            IponFilterChip(
                 selected = filter == selected,
                 onClick = { onSelect(filter) },
                 label = { Text(filter.label()) },
@@ -229,7 +229,7 @@ private fun CategoryEditorDialog(
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CategoryType.entries.forEach { type ->
-                        FilterChip(
+                        IponFilterChip(
                             selected = type == editor.type,
                             onClick = { onTypeChange(type) },
                             label = { Text(type.label()) },

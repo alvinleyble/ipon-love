@@ -50,7 +50,7 @@ fun DailyNetCalendarChart(
     val headerHeightDp = 22
     val totalHeightDp = headerHeightDp + rowCount * cellHeightDp
 
-    val dayHeaders = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    val dayHeaders = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
     Canvas(
         modifier = modifier

@@ -26,7 +26,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import com.iponlove.app.core.ui.IponFilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -208,17 +208,17 @@ private fun FormattingToolbar(state: com.mohamedrejeb.richeditor.model.RichTextS
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        FilterChip(
+        IponFilterChip(
             selected = span.fontWeight == FontWeight.Bold,
             onClick = { state.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold)) },
             label = { Text("B", fontWeight = FontWeight.Bold) },
         )
-        FilterChip(
+        IponFilterChip(
             selected = span.fontStyle == FontStyle.Italic,
             onClick = { state.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic)) },
             label = { Text("I", fontStyle = FontStyle.Italic) },
         )
-        FilterChip(
+        IponFilterChip(
             selected = span.textDecoration == TextDecoration.Underline,
             onClick = { state.toggleSpanStyle(SpanStyle(textDecoration = TextDecoration.Underline)) },
             label = { Text("U", textDecoration = TextDecoration.Underline) },

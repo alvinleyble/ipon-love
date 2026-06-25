@@ -19,7 +19,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
+import com.iponlove.app.core.ui.IponFilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -111,7 +111,7 @@ private fun PeriodSelector(selected: AnalysisPeriod, onSelect: (AnalysisPeriod) 
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         AnalysisPeriod.entries.forEach { period ->
-            FilterChip(
+            IponFilterChip(
                 selected = selected == period,
                 onClick = { onSelect(period) },
                 label = { Text(period.label()) },

@@ -24,8 +24,8 @@ object DailyNetCalculator {
     ): DailyNetData {
         val startDate = window.startInclusive.atZone(zone).toLocalDate()
         val daysInMonth = startDate.lengthOfMonth()
-        // ISO dayOfWeek: 1=Monday, 7=Sunday → offset 0=Mon … 6=Sun
-        val firstWeekdayOffset = startDate.dayOfWeek.value - 1
+        // ISO dayOfWeek: 1=Mon … 7=Sun → Sun-first offset: Sunday→0, Monday→1 … Saturday→6
+        val firstWeekdayOffset = startDate.dayOfWeek.value % 7
 
         val today = LocalDate.now(zone)
         val todayDay: Int? =

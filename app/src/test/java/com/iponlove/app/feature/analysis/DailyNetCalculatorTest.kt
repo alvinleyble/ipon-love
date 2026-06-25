@@ -32,11 +32,11 @@ class DailyNetCalculatorTest {
     }
 
     @Test
-    fun juneStartsOnMonday_firstWeekdayOffsetIsZero() {
-        // 2026-06-01 is a Monday
+    fun juneStartsOnMonday_firstWeekdayOffsetIsOne() {
+        // 2026-06-01 is a Monday → Sun-first offset = 1 (Sunday=0, Monday=1)
         val data = DailyNetCalculator.calculate(emptyList(), juneWindow, zone)
 
-        assertThat(data.firstWeekdayOffset).isEqualTo(0)
+        assertThat(data.firstWeekdayOffset).isEqualTo(1)
     }
 
     @Test
@@ -127,12 +127,12 @@ class DailyNetCalculatorTest {
 
     @Test
     fun firstWeekdayOffset_correctForJuly2026() {
-        // 2026-07-01 is a Wednesday → offset = 2 (Mon=0, Tue=1, Wed=2)
+        // 2026-07-01 is a Wednesday → Sun-first offset = 3 (Sun=0, Mon=1, Tue=2, Wed=3)
         val julyWindow =
             AnalysisPeriodRange.windowFor(LocalDate.of(2026, 7, 1), AnalysisPeriod.MONTH, zone)
 
         val data = DailyNetCalculator.calculate(emptyList(), julyWindow, zone)
 
-        assertThat(data.firstWeekdayOffset).isEqualTo(2)
+        assertThat(data.firstWeekdayOffset).isEqualTo(3)
     }
 }

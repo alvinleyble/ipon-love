@@ -21,7 +21,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import com.iponlove.app.core.ui.IponFilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -256,12 +256,12 @@ private fun AddDebtDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
+                    IponFilterChip(
                         selected = editor.direction == DebtDirection.I_OWE,
                         onClick = { onDirectionChange(DebtDirection.I_OWE) },
                         label = { Text("I owe $partnerName") },
                     )
-                    FilterChip(
+                    IponFilterChip(
                         selected = editor.direction == DebtDirection.THEY_OWE,
                         onClick = { onDirectionChange(DebtDirection.THEY_OWE) },
                         label = { Text("$partnerName owes me") },
