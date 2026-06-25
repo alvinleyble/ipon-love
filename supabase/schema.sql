@@ -599,3 +599,12 @@ begin
     update couples set is_deleted = true, updated_at = now() where id = v_couple_id;
 end;
 $$;
+
+-- Returns the current server time. Used by the Android client to calibrate its
+-- SyncClock offset (ADR-0001) at the end of each successful sync.
+create or replace function get_server_time()
+returns timestamptz
+language sql
+security definer
+set search_path = public
+as $$ select now() $$;

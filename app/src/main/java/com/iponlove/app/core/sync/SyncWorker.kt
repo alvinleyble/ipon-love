@@ -5,10 +5,13 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
@@ -29,9 +32,18 @@ class SyncWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result = try {
         syncEngine.sync()
+        enqueueBudgetAlerts()
         Result.success()
     } catch (e: Exception) {
         if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.failure()
+    }
+
+    private fun enqueueBudgetAlerts() {
+        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            BudgetAlertWorker.WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            BudgetAlertWorker.buildRequest(),
+        )
     }
 
     companion object {

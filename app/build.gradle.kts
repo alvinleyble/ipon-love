@@ -110,6 +110,9 @@ dependencies {
     // Glance home screen widget
     implementation(libs.androidx.glance.appwidget)
 
+    // Biometric local app lock
+    implementation(libs.androidx.biometric)
+
     // Supabase (Auth + Postgrest) + Ktor engine — the cloud backend
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth)

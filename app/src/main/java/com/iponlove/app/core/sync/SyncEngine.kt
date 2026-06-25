@@ -1,5 +1,6 @@
 package com.iponlove.app.core.sync
 
+import com.iponlove.app.core.sync.data.ClockOffsetStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +33,9 @@ sealed interface SyncState {
  */
 class SyncEngine(
     syncers: Set<TableSyncer>,
+    private val clock: SyncClock? = null,
+    private val clockOffsetStore: ClockOffsetStore? = null,
+    private val serverTimeFetcher: (suspend () -> Instant)? = null,
     private val now: () -> Instant = Instant::now,
 ) {
     /** Stable FK order regardless of DI contribution order (ADR-0009). */
@@ -54,6 +58,7 @@ class SyncEngine(
             for (syncer in ordered) syncer.push()
             // ...then pull parent→child so a child's parent is already present.
             for (syncer in ordered) syncer.pull()
+            calibrateClock()
             _state.value = SyncState.Success(now())
             return true
         } catch (t: Throwable) {
@@ -62,5 +67,12 @@ class SyncEngine(
         } finally {
             inFlight.unlock()
         }
+    }
+
+    private suspend fun calibrateClock() {
+        if (clock == null || clockOffsetStore == null || serverTimeFetcher == null) return
+        val serverNow = serverTimeFetcher.invoke()
+        clock.recordServerTime(serverNow)
+        clockOffsetStore.save(clock)
     }
 }

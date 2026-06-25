@@ -27,10 +27,12 @@ import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion
 import com.iponlove.app.feature.notes.presentation.NotesScreen
 import com.iponlove.app.feature.partnerdebt.presentation.PartnerDebtScreen
 import com.iponlove.app.feature.recurring.presentation.RecurringScreen
+import com.iponlove.app.feature.applock.presentation.AppLockSetupScreen
 import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
 
 private const val RECURRING_ROUTE = "recurring"
+private const val APP_LOCK_SETUP_ROUTE = "app_lock_setup"
 private const val NOTES_ROUTE = "notes"
 private const val NOTE_EDITOR_ROUTE = "note_editor"
 private const val COUPLE_ROUTE = "couple"
@@ -113,7 +115,13 @@ fun IponApp(onSignOut: () -> Unit) {
                 PartnerDebtScreen(onBack = { navController.popBackStack() })
             }
             composable(PERSONALIZE_ROUTE) {
-                PersonalizeScreen(onBack = { navController.popBackStack() })
+                PersonalizeScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenSecurity = { navController.navigate(APP_LOCK_SETUP_ROUTE) },
+                )
+            }
+            composable(APP_LOCK_SETUP_ROUTE) {
+                AppLockSetupScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 route = "$NOTE_EDITOR_ROUTE/{$NOTE_ID_KEY}",

@@ -1,16 +1,28 @@
 package com.iponlove.app.core.sync
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
 import com.google.common.truth.Truth.assertThat
+import com.iponlove.app.core.sync.data.ClockOffsetStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SyncEngineTest {
+
+    @get:Rule val tmpFolder = TemporaryFolder()
+
+    private fun testDataStore(): DataStore<Preferences> =
+        PreferenceDataStoreFactory.create { tmpFolder.newFile("test_sync_prefs.preferences_pb") }
 
     private class RecordingSyncer(
         override val table: SyncTable,
@@ -109,5 +121,46 @@ class SyncEngineTest {
         engine.sync()
 
         assertThat(engine.state.value).isInstanceOf(SyncState.Success::class.java)
+    }
+
+    @Test
+    fun sync_calibratesClock_onSuccess() = runTest {
+        val clock = SyncClock()
+        val store = ClockOffsetStore(testDataStore())
+        // Simulate server 5 seconds ahead of local.
+        val fakeServerNow = Instant.now().plusSeconds(5)
+
+        val engine = SyncEngine(
+            syncers = emptySet(),
+            clock = clock,
+            clockOffsetStore = store,
+            serverTimeFetcher = { fakeServerNow },
+        )
+        engine.sync()
+
+        // Offset should be approximately +5000ms (give or take a few ms for execution time).
+        assertThat(clock.offsetMillis).isGreaterThan(4_900L)
+        assertThat(clock.offsetMillis).isLessThan(5_100L)
+    }
+
+    @Test
+    fun sync_doesNotCalibrateClock_onFailure() = runTest {
+        val clock = SyncClock(initialOffsetMillis = 0L)
+        val store = ClockOffsetStore(testDataStore())
+
+        val engine = SyncEngine(
+            syncers = setOf(object : TableSyncer {
+                override val table = SyncTable.USERS
+                override suspend fun push() = Unit
+                override suspend fun pull(): Unit = throw IllegalStateException("network")
+            }),
+            clock = clock,
+            clockOffsetStore = store,
+            serverTimeFetcher = { Instant.now().plusSeconds(10) },
+        )
+
+        runCatching { engine.sync() }
+
+        assertThat(clock.offsetMillis).isEqualTo(0L)
     }
 }

@@ -16,6 +16,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.Multibinds
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.postgrest.postgrest
+import java.time.OffsetDateTime
 import javax.inject.Singleton
 
 /** Single DataStore holding sync bookkeeping: per-table cursors + the clock offset. */
@@ -51,8 +54,20 @@ object SyncModule {
 
     @Provides
     @Singleton
-    fun syncEngine(syncers: Set<@JvmSuppressWildcards TableSyncer>): SyncEngine =
-        SyncEngine(syncers)
+    fun syncEngine(
+        syncers: Set<@JvmSuppressWildcards TableSyncer>,
+        clock: SyncClock,
+        clockOffsetStore: ClockOffsetStore,
+        client: SupabaseClient,
+    ): SyncEngine = SyncEngine(
+        syncers = syncers,
+        clock = clock,
+        clockOffsetStore = clockOffsetStore,
+        serverTimeFetcher = {
+            val raw = client.postgrest.rpc("get_server_time").decodeAs<String>()
+            OffsetDateTime.parse(raw).toInstant()
+        },
+    )
 }
 
 /** Declares the [TableSyncer] multibinding set so it resolves even with zero contributions. */

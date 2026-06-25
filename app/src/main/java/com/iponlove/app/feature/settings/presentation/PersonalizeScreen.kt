@@ -18,7 +18,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +46,7 @@ import com.iponlove.app.feature.settings.domain.model.ThemePalette
 @Composable
 fun PersonalizeScreen(
     onBack: () -> Unit,
+    onOpenSecurity: () -> Unit = {},
     viewModel: PersonalizeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -104,6 +108,17 @@ fun PersonalizeScreen(
                 ) {
                     Text(if (state.saved) "Saved!" else "Apply")
                 }
+
+                Spacer(Modifier.height(28.dp))
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("Security") },
+                    supportingContent = { Text("PIN lock & biometric") },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable(onClick = onOpenSecurity),
+                )
             }
         }
     }
