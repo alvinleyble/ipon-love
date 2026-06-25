@@ -27,6 +27,7 @@ import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion
 import com.iponlove.app.feature.notes.presentation.NotesScreen
 import com.iponlove.app.feature.partnerdebt.presentation.PartnerDebtScreen
 import com.iponlove.app.feature.recurring.presentation.RecurringScreen
+import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
 
 private const val RECURRING_ROUTE = "recurring"
@@ -35,6 +36,7 @@ private const val NOTE_EDITOR_ROUTE = "note_editor"
 private const val COUPLE_ROUTE = "couple"
 private const val COMBINED_ROUTE = "combined"
 private const val PARTNER_DEBT_ROUTE = "partner_debt"
+private const val PERSONALIZE_ROUTE = "personalize"
 
 /**
  * App root: a bottom-nav [Scaffold] hosting one composable per [TopLevelDestination].
@@ -80,6 +82,7 @@ fun IponApp(onSignOut: () -> Unit) {
                     onOpenRecurring = { navController.navigate(RECURRING_ROUTE) },
                     onOpenNotes = { navController.navigate(NOTES_ROUTE) },
                     onOpenCouple = { navController.navigate(COUPLE_ROUTE) },
+                    onOpenPersonalize = { navController.navigate(PERSONALIZE_ROUTE) },
                     onSignOut = onSignOut,
                 )
             }
@@ -108,6 +111,9 @@ fun IponApp(onSignOut: () -> Unit) {
             }
             composable(PARTNER_DEBT_ROUTE) {
                 PartnerDebtScreen(onBack = { navController.popBackStack() })
+            }
+            composable(PERSONALIZE_ROUTE) {
+                PersonalizeScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 route = "$NOTE_EDITOR_ROUTE/{$NOTE_ID_KEY}",

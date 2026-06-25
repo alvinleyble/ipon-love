@@ -370,11 +370,22 @@ Transaction entry → Add / Edit (bottom sheet modal over any tab)
 
 ## 8. Theme Architecture
 
-- Each theme is a data object implementing an `AppTheme` interface
-- `AppTheme` defines: `ColorScheme`, `Typography`, icon set variant
-- Active theme stored in DataStore, applied at the app root via `IponTheme { }` wrapper
-- A Compose `CompositionLocal` propagates the theme down the tree
-- Adding a new theme = add one new object. No structural changes needed.
+**Model: Palette × Mode.** Users pick a palette (6 options) and light/dark mode independently. Both stored in DataStore; `IponTheme` reads them at the app root via `CompositionLocal`.
+
+**Palettes** (seed = M3 light primary; full `ColorScheme` derived by M3 tonal palette generation):
+
+| Palette | Seed |
+|---|---|
+| Rose | `#C2647A` |
+| Mauve | `#9B6B7A` |
+| Lavender | `#8B7BB5` |
+| Peach | `#C47A5A` |
+| Sage | `#6B8F71` |
+| Mocha | `#8B6F5A` |
+
+**Personalize screen** (Settings → "Personalize"): `LazyVerticalGrid` of palette swatches + light/dark toggle. Tapping a swatch previews live on the screen itself (local VM state); Save/Apply persists to DataStore.
+
+**Couple attribution color is separate from theme palette.** Fixed blue vs pink in the combined view, chosen per-partner during the couple pairing flow, stored as `accent_color` on the `users` row. See ADR-0014.
 
 ---
 

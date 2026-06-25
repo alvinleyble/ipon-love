@@ -24,6 +24,8 @@ import com.iponlove.app.feature.auth.presentation.AuthScreen
 import com.iponlove.app.feature.auth.presentation.AuthViewModel
 import com.iponlove.app.feature.couple.domain.usecase.WatchUnpairUseCase
 import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRulesUseCase
+import com.iponlove.app.feature.settings.domain.model.ThemePreferences
+import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
 import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
 import com.iponlove.app.navigation.IponApp
 import dagger.hilt.android.AndroidEntryPoint
@@ -32,20 +34,19 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    /** Generates any recurring transactions that came due while the app was closed (ADR-0012:
-     *  interactive catch-up runs in-process; WorkManager owns background retry later). Only run
-     *  once authenticated — it writes owned rows that need the signed-in user's id. */
     @Inject lateinit var materializeRecurringRules: MaterializeRecurringRulesUseCase
     @Inject lateinit var ensureCurrentUserRow: EnsureCurrentUserRowUseCase
-
-    /** Purges the partner replica when this user's couple dissolves, on either side (ADR-0008). */
     @Inject lateinit var watchUnpair: WatchUnpairUseCase
+    @Inject lateinit var observeThemePreferences: ObserveThemePreferencesUseCase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            IponTheme {
+            val themePreferences by observeThemePreferences()
+                .collectAsState(initial = ThemePreferences())
+
+            IponTheme(themePreferences = themePreferences) {
                 val authViewModel: AuthViewModel = hiltViewModel()
                 val status by authViewModel.status.collectAsState()
                 when (val current = status) {
@@ -53,16 +54,12 @@ class MainActivity : ComponentActivity() {
                         LaunchedEffect(current.userId) {
                             ensureCurrentUserRow()
                             materializeRecurringRules()
-                            // Enqueue a background sync on network reconnect (ADR-0012).
-                            // KEEP_EXISTING so simultaneous triggers coalesce to one worker.
                             WorkManager.getInstance(applicationContext).enqueueUniqueWork(
                                 SyncWorker.WORK_NAME,
                                 ExistingWorkPolicy.KEEP,
                                 SyncWorker.buildRequest(),
                             )
                         }
-                        // Separate collector: runs for the whole session, purging the partner
-                        // replica if the couple is dissolved from either side (ADR-0008).
                         LaunchedEffect(current.userId) { watchUnpair() }
                         IponApp(onSignOut = authViewModel::signOut)
                     }

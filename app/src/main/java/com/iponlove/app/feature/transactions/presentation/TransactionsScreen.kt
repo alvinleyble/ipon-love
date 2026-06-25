@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -70,6 +71,7 @@ fun TransactionsScreen(
     onOpenRecurring: () -> Unit,
     onOpenNotes: () -> Unit,
     onOpenCouple: () -> Unit,
+    onOpenPersonalize: () -> Unit,
     onSignOut: () -> Unit,
     viewModel: TransactionsViewModel = hiltViewModel(),
 ) {
@@ -79,6 +81,7 @@ fun TransactionsScreen(
         onOpenRecurring = onOpenRecurring,
         onOpenNotes = onOpenNotes,
         onOpenCouple = onOpenCouple,
+        onOpenPersonalize = onOpenPersonalize,
         onSignOut = onSignOut,
         onSync = viewModel::sync,
         onAdd = viewModel::startCreate,
@@ -103,6 +106,7 @@ private fun TransactionsContent(
     onOpenRecurring: () -> Unit,
     onOpenNotes: () -> Unit,
     onOpenCouple: () -> Unit,
+    onOpenPersonalize: () -> Unit,
     onSignOut: () -> Unit,
     onSync: () -> Unit,
     onAdd: () -> Unit,
@@ -131,6 +135,9 @@ private fun TransactionsContent(
                     }
                     IconButton(onClick = onOpenRecurring) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Recurring rules")
+                    }
+                    IconButton(onClick = onOpenPersonalize) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Personalize")
                     }
                     IconButton(onClick = onSignOut) {
                         Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Sign out")

@@ -124,10 +124,12 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 - Private by default; option to share with paired partner
 - Shared notes are visible and editable by both partners
 
-### 6.5 Customization & Themes
+### 6.5 Customization & Themes (Personalize)
 
-- Multiple color themes — minimum: Light, Dark, plus 2 additional — all unlocked for every user (one-time purchase, no tiers)
-- Theme preview before applying
+- 6 named palettes: Rose, Mauve, Lavender, Peach, Sage, Mocha — all unlocked (one-time purchase, no tiers)
+- Light / dark mode is a separate toggle from palette — 12 combinations total
+- Personalize screen: visual swatch grid with live preview before applying
+- Couple attribution color (blue vs pink in combined view) is separate from personal theme palette; chosen during the pairing flow
 - Post-V1: custom font styles, custom category icon packs
 
 ### 6.6 Home Screen Widget
