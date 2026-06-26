@@ -21,6 +21,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -59,6 +63,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.feature.recurring.domain.model.RecurringFrequency
 import com.iponlove.app.feature.recurring.domain.usecase.RecurringError
+import com.iponlove.app.feature.recurring.presentation.components.RecurringCalendarChart
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import java.time.Instant
 import java.time.LocalDate
@@ -84,10 +89,19 @@ fun RecurringScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    IconButton(onClick = viewModel::toggleViewMode) {
+                        if (state.viewMode == RecurringViewMode.LIST) {
+                            Icon(Icons.Filled.DateRange, contentDescription = "Calendar view")
+                        } else {
+                            Icon(Icons.Filled.List, contentDescription = "List view")
+                        }
+                    }
+                },
             )
         },
         floatingActionButton = {
-            if (state.canAdd) {
+            if (state.canAdd && state.viewMode == RecurringViewMode.LIST) {
                 FloatingActionButton(onClick = viewModel::startCreate) {
                     Icon(Icons.Filled.Add, contentDescription = "Add recurring rule")
                 }
@@ -98,6 +112,9 @@ fun RecurringScreen(
             when {
                 state.isLoading ->
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
+
+                state.viewMode == RecurringViewMode.CALENDAR ->
+                    RecurringCalendarView(state = state, onPrev = viewModel::prevMonth, onNext = viewModel::nextMonth, onDayClick = viewModel::selectDay)
 
                 !state.canAdd ->
                     EmptyState(
@@ -145,6 +162,114 @@ fun RecurringScreen(
             onSave = viewModel::save,
             onCancel = viewModel::cancelEdit,
         )
+    }
+}
+
+private val MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
+
+@Composable
+private fun RecurringCalendarView(
+    state: RecurringUiState,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onDayClick: (Int) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        // Month stepper
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            IconButton(onClick = onPrev) {
+                Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
+            }
+            Text(
+                text = state.calendarMonth.atDay(1).format(MONTH_FORMATTER),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            IconButton(onClick = onNext) {
+                Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next month")
+            }
+        }
+
+        RecurringCalendarChart(
+            month = state.calendarMonth,
+            firingsByDay = state.firingsByDay,
+            selectedDay = state.selectedDay,
+            onDayClick = onDayClick,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+
+        if (state.firingsByDay.isEmpty()) {
+            Text(
+                text = "No recurring rules fire this month",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 24.dp, start = 32.dp, end = 32.dp),
+            )
+        }
+
+        // Selected day detail
+        state.selectedDay?.let { day ->
+            val rules = state.firingsByDay[day]
+            if (!rules.isNullOrEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                DayRulesCard(
+                    day = day,
+                    month = state.calendarMonth,
+                    rules = rules,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun DayRulesCard(
+    day: Int,
+    month: java.time.YearMonth,
+    rules: List<RecurringRuleListItem>,
+) {
+    val date = month.atDay(day)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = date.format(DATE_LABEL),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(8.dp))
+            rules.forEach { item ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(item.title, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = item.scheduleLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        text = item.signedAmount(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = item.amountColor(),
+                    )
+                }
+            }
+        }
     }
 }
 

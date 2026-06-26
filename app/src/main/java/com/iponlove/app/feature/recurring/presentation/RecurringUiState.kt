@@ -7,6 +7,9 @@ import com.iponlove.app.feature.recurring.domain.usecase.RecurringError
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.YearMonth
+
+enum class RecurringViewMode { LIST, CALENDAR }
 
 /** Screen state for the Recurring Rules screen (reached from the Records top bar). */
 data class RecurringUiState(
@@ -18,6 +21,12 @@ data class RecurringUiState(
     val editor: RecurringEditorState? = null,
     /** A rule needs at least one account and one category to be creatable. */
     val canAdd: Boolean = false,
+    val viewMode: RecurringViewMode = RecurringViewMode.LIST,
+    val calendarMonth: YearMonth = YearMonth.now(),
+    /** 1-based day-of-month the user tapped; null = no selection. */
+    val selectedDay: Int? = null,
+    /** day-of-month → rules firing that day in the displayed [calendarMonth]. */
+    val firingsByDay: Map<Int, List<RecurringRuleListItem>> = emptyMap(),
 )
 
 /** A rule rendered for the list, with ids resolved to names and the schedule humanized. */

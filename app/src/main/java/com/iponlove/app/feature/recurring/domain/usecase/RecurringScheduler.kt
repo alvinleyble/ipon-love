@@ -42,7 +42,30 @@ object RecurringScheduler {
         return Run(occurrences, date)
     }
 
-    private fun advance(date: LocalDate, frequency: RecurringFrequency, interval: Int): LocalDate {
+    /**
+     * All dates in [from]..[to] (inclusive) on which [rule] fires, projected forward from
+     * [RecurringRule.nextDate]. Dates before [nextDate] are already-materialized occurrences
+     * and are not recoverable here — only present/future dates are returned.
+     * Pure read — does not advance the rule's cursor.
+     */
+    fun occurrencesBetween(rule: RecurringRule, from: LocalDate, to: LocalDate): List<LocalDate> {
+        require(!from.isAfter(to)) { "from must be <= to" }
+        if (rule.nextDate.isAfter(to)) return emptyList()
+        val results = mutableListOf<LocalDate>()
+        var date = rule.nextDate
+        // Skip dates before the window without collecting them.
+        while (date.isBefore(from)) {
+            date = advance(date, rule.frequency, rule.interval)
+            if (date.isAfter(to)) return emptyList()
+        }
+        while (!date.isAfter(to) && (rule.endDate == null || !date.isAfter(rule.endDate))) {
+            results += date
+            date = advance(date, rule.frequency, rule.interval)
+        }
+        return results
+    }
+
+    internal fun advance(date: LocalDate, frequency: RecurringFrequency, interval: Int): LocalDate {
         val step = interval.toLong().coerceAtLeast(1L)
         return when (frequency) {
             RecurringFrequency.DAILY -> date.plusDays(step)

@@ -11,6 +11,7 @@ import com.iponlove.app.feature.recurring.domain.model.RecurringTemplate
 import com.iponlove.app.feature.recurring.domain.usecase.DeleteRecurringRuleUseCase
 import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRulesUseCase
 import com.iponlove.app.feature.recurring.domain.usecase.ObserveRecurringRulesUseCase
+import com.iponlove.app.feature.recurring.domain.usecase.RecurringScheduler
 import com.iponlove.app.feature.recurring.domain.usecase.RecurringValidator
 import com.iponlove.app.feature.recurring.domain.usecase.UpsertRecurringRuleUseCase
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
@@ -39,6 +41,13 @@ class RecurringViewModel @Inject constructor(
 
     private val editor = MutableStateFlow<RecurringEditorState?>(null)
 
+    private data class CalendarNav(
+        val viewMode: RecurringViewMode = RecurringViewMode.LIST,
+        val month: YearMonth = YearMonth.now(),
+        val selectedDay: Int? = null,
+    )
+    private val calendarNav = MutableStateFlow(CalendarNav())
+
     // Latest domain rules, captured so the editor can rehydrate the full rule on edit.
     private var latestRules: List<RecurringRule> = emptyList()
     private var firstAccountId: String? = null
@@ -50,21 +59,31 @@ class RecurringViewModel @Inject constructor(
             observeAccounts(),
             observeCategories(),
             editor,
-        ) { rules, accounts, categories, editorState ->
+            calendarNav,
+        ) { rules, accounts, categories, editorState, cal ->
             latestRules = rules
             firstAccountId = accounts.firstOrNull()?.id
             firstCategoryId = categories.firstOrNull()?.id
 
             val categoryNames = categories.associate { it.id to it.name }
             val categoryTypes = categories.associate { it.id to it.type }
+            val items = rules.map { it.toListItem(categoryNames, categoryTypes) }
+
+            val firingsByDay = if (cal.viewMode == RecurringViewMode.CALENDAR) {
+                buildFiringsByDay(rules, categoryNames, categoryTypes, cal.month)
+            } else emptyMap()
 
             RecurringUiState(
                 isLoading = false,
-                items = rules.map { it.toListItem(categoryNames, categoryTypes) },
+                items = items,
                 accounts = accounts,
                 categories = categories,
                 editor = editorState,
                 canAdd = accounts.isNotEmpty() && categories.isNotEmpty(),
+                viewMode = cal.viewMode,
+                calendarMonth = cal.month,
+                selectedDay = cal.selectedDay,
+                firingsByDay = firingsByDay,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -154,6 +173,41 @@ class RecurringViewModel @Inject constructor(
 
     fun delete(id: String) {
         viewModelScope.launch { deleteRule(id) }
+    }
+
+    fun toggleViewMode() {
+        calendarNav.update {
+            it.copy(
+                viewMode = if (it.viewMode == RecurringViewMode.LIST) RecurringViewMode.CALENDAR
+                           else RecurringViewMode.LIST,
+                selectedDay = null,
+            )
+        }
+    }
+
+    fun prevMonth() = calendarNav.update { it.copy(month = it.month.minusMonths(1), selectedDay = null) }
+    fun nextMonth() = calendarNav.update { it.copy(month = it.month.plusMonths(1), selectedDay = null) }
+
+    fun selectDay(day: Int) {
+        calendarNav.update { it.copy(selectedDay = if (it.selectedDay == day) null else day) }
+    }
+
+    private fun buildFiringsByDay(
+        rules: List<RecurringRule>,
+        categoryNames: Map<String, String>,
+        categoryTypes: Map<String, CategoryType>,
+        month: YearMonth,
+    ): Map<Int, List<RecurringRuleListItem>> {
+        val from = month.atDay(1)
+        val to = month.atEndOfMonth()
+        val result = mutableMapOf<Int, MutableList<RecurringRuleListItem>>()
+        rules.forEach { rule ->
+            RecurringScheduler.occurrencesBetween(rule, from, to).forEach { date ->
+                result.getOrPut(date.dayOfMonth) { mutableListOf() }
+                    .add(rule.toListItem(categoryNames, categoryTypes))
+            }
+        }
+        return result
     }
 
     private fun RecurringRule.toListItem(
