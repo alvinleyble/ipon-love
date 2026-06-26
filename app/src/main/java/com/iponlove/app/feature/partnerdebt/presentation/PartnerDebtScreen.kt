@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.partnerdebt.presentation
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -46,6 +48,7 @@ import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtItem
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtNet
+import com.iponlove.app.feature.partnerdebt.domain.model.DebtPaymentItem
 import com.iponlove.app.feature.partnerdebt.domain.model.NetDirection
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,7 +107,8 @@ fun PartnerDebtScreen(
                         items(state.debts, key = { it.id }) { debt ->
                             DebtCard(
                                 debt = debt,
-                                onPay = { viewModel.startPayment(debt) },
+                                onSettle = { viewModel.startSettle(debt) },
+                                onReceive = { payment -> viewModel.startReceive(debt, payment) },
                                 onDelete = { viewModel.removeDebt(debt.id) },
                             )
                         }
@@ -114,26 +118,36 @@ fun PartnerDebtScreen(
         }
     }
 
-    state.addEditor?.let { editor ->
-        AddDebtDialog(
-            editor = editor,
+    when (val dialog = state.dialog) {
+        is DebtDialog.AddDebt -> AddDebtDialog(
+            editor = dialog,
             partnerName = state.partnerName,
             onDirectionChange = viewModel::onDirectionChange,
             onAmountChange = viewModel::onDebtAmountChange,
             onDescriptionChange = viewModel::onDebtDescriptionChange,
             onSave = viewModel::saveDebt,
-            onCancel = viewModel::cancelAddDebt,
+            onCancel = viewModel::cancelDialog,
         )
-    }
 
-    state.paymentEditor?.let { editor ->
-        PaymentDialog(
-            editor = editor,
-            onAmountChange = viewModel::onPaymentAmountChange,
-            onNoteChange = viewModel::onPaymentNoteChange,
-            onSave = viewModel::savePayment,
-            onCancel = viewModel::cancelPayment,
+        is DebtDialog.Settle -> SettleDialog(
+            editor = dialog,
+            accounts = state.accounts,
+            onAmountChange = viewModel::onSettleAmountChange,
+            onAccountChange = viewModel::onSettleAccountChange,
+            onNoteChange = viewModel::onSettleNoteChange,
+            onSave = viewModel::saveSettle,
+            onCancel = viewModel::cancelDialog,
         )
+
+        is DebtDialog.Receive -> ReceiveDialog(
+            editor = dialog,
+            accounts = state.accounts,
+            onAccountChange = viewModel::onReceiveAccountChange,
+            onSave = viewModel::saveReceive,
+            onCancel = viewModel::cancelDialog,
+        )
+
+        null -> Unit
     }
 }
 
@@ -174,7 +188,12 @@ private fun NetSummaryCard(net: DebtNet?) {
 }
 
 @Composable
-private fun DebtCard(debt: DebtItem, onPay: () -> Unit, onDelete: () -> Unit) {
+private fun DebtCard(
+    debt: DebtItem,
+    onSettle: () -> Unit,
+    onReceive: (DebtPaymentItem) -> Unit,
+    onDelete: () -> Unit,
+) {
     val partner = debt.counterpartName ?: "Partner"
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -215,34 +234,58 @@ private fun DebtCard(debt: DebtItem, onPay: () -> Unit, onDelete: () -> Unit) {
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = onPay) { Text("Record payment") }
+                    // Only the borrower settles — they spend from their own account (ADR-0019 #14).
+                    if (debt.iAmBorrower) {
+                        TextButton(onClick = onSettle) { Text("Settle") }
+                    }
                 }
             }
 
-            if (debt.payments.isNotEmpty()) {
-                debt.payments.forEach { payment ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = payment.note ?: "Payment",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Text(
-                            text = "${formatPhp(payment.amount)} · ${formatShortDate(payment.date)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
+            debt.payments.forEach { payment ->
+                PaymentRow(
+                    payment = payment,
+                    // The lender (not borrower) is the receiver who can add the income leg.
+                    canReceive = !debt.iAmBorrower &&
+                        payment.payorTxnId != null && payment.receiverTxnId == null,
+                    onReceive = { onReceive(payment) },
+                )
             }
         }
     }
 }
 
 @Composable
+private fun PaymentRow(
+    payment: DebtPaymentItem,
+    canReceive: Boolean,
+    onReceive: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = payment.note ?: "Payment",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = "${formatPhp(payment.amount)} · ${formatShortDate(payment.date)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    when {
+        canReceive -> TextButton(onClick = onReceive) { Text("Add to my account") }
+        payment.receiverTxnId != null -> Text(
+            text = "Added to your account",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@Composable
 private fun AddDebtDialog(
-    editor: AddDebtEditorState,
+    editor: DebtDialog.AddDebt,
     partnerName: String,
     onDirectionChange: (DebtDirection) -> Unit,
     onAmountChange: (String) -> Unit,
@@ -296,16 +339,18 @@ private fun AddDebtDialog(
 }
 
 @Composable
-private fun PaymentDialog(
-    editor: PaymentEditorState,
+private fun SettleDialog(
+    editor: DebtDialog.Settle,
+    accounts: List<AccountOption>,
     onAmountChange: (String) -> Unit,
+    onAccountChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text("Record payment") },
+        title = { Text("Settle debt") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
@@ -327,6 +372,12 @@ private fun PaymentDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                AccountPicker(
+                    accounts = accounts,
+                    selectedId = editor.accountId,
+                    isError = editor.accountError,
+                    onSelect = onAccountChange,
+                )
                 OutlinedTextField(
                     value = editor.note,
                     onValueChange = onNoteChange,
@@ -336,9 +387,76 @@ private fun PaymentDialog(
                 )
             }
         },
-        confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
+        confirmButton = { TextButton(onClick = onSave) { Text("Pay") } },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )
+}
+
+@Composable
+private fun ReceiveDialog(
+    editor: DebtDialog.Receive,
+    accounts: List<AccountOption>,
+    onAccountChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Add to my account") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "Record ${formatPhp(editor.amount)} received for ${editor.debtLabel}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                AccountPicker(
+                    accounts = accounts,
+                    selectedId = editor.accountId,
+                    isError = editor.accountError,
+                    onSelect = onAccountChange,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onSave) { Text("Add") } },
+        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun AccountPicker(
+    accounts: List<AccountOption>,
+    selectedId: String?,
+    isError: Boolean,
+    onSelect: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "Account",
+            style = MaterialTheme.typography.labelMedium,
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (accounts.isEmpty()) {
+            Text(
+                text = "Add an account first.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        } else {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                accounts.forEach { account ->
+                    IponFilterChip(
+                        selected = account.id == selectedId,
+                        onClick = { onSelect(account.id) },
+                        label = { Text(account.name) },
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable

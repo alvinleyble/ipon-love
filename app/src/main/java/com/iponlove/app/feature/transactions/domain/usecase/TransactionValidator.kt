@@ -25,6 +25,7 @@ object TransactionValidator {
         accountId: String?,
         toAccountId: String?,
         categoryId: String?,
+        isSettlement: Boolean = false,
     ): List<TransactionError> {
         val errors = mutableListOf<TransactionError>()
 
@@ -33,7 +34,9 @@ object TransactionValidator {
 
         when (type) {
             TransactionType.INCOME, TransactionType.EXPENSE ->
-                if (categoryId.isNullOrBlank()) errors += TransactionError.CATEGORY_REQUIRED
+                // Settlement legs (ADR-0019 #14) are system-generated repayments with no
+                // user-chosen category, so the category requirement is waived for them.
+                if (!isSettlement && categoryId.isNullOrBlank()) errors += TransactionError.CATEGORY_REQUIRED
 
             TransactionType.TRANSFER ->
                 when {

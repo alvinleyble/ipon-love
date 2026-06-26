@@ -57,4 +57,8 @@ data class DebtPaymentItem(
     val amount: BigDecimal,
     val note: String?,
     val date: Instant,
+    /** Set when this payment is a settlement leg the payor recorded (ADR-0019 #14). */
+    val payorTxnId: String? = null,
+    /** Set once the receiver has added the matching income to their account; null = still owed a leg. */
+    val receiverTxnId: String? = null,
 )

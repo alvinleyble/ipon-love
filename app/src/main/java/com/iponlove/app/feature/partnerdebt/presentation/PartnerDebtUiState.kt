@@ -7,6 +7,7 @@ import java.math.BigDecimal
 /**
  * Screen state for the partner-debt tracker. [isPaired] guards the edge where the screen is
  * reached without a partner (it is normally only offered while paired with a joined partner).
+ * [accounts] feeds the account pickers in the settle / receive sheets.
  */
 data class PartnerDebtUiState(
     val isLoading: Boolean = true,
@@ -14,11 +15,13 @@ data class PartnerDebtUiState(
     val partnerName: String = "your partner",
     val net: DebtNet? = null,
     val debts: List<DebtItem> = emptyList(),
-    /** Non-null while the add-debt dialog is open. */
-    val addEditor: AddDebtEditorState? = null,
-    /** Non-null while the record-payment dialog is open. */
-    val paymentEditor: PaymentEditorState? = null,
+    val accounts: List<AccountOption> = emptyList(),
+    /** The single open dialog, or null when none is shown. */
+    val dialog: DebtDialog? = null,
 )
+
+/** A pickable account for the settle / receive sheets. */
+data class AccountOption(val id: String, val name: String)
 
 /** Which way a new debt runs, from my perspective. */
 enum class DebtDirection {
@@ -29,21 +32,43 @@ enum class DebtDirection {
     THEY_OWE,
 }
 
-/** Form state for creating a debt. */
-data class AddDebtEditorState(
-    val direction: DebtDirection = DebtDirection.I_OWE,
-    val amountText: String = "",
-    val description: String = "",
-    val amountError: Boolean = false,
-)
+/** The partner-debt screen shows at most one dialog at a time. */
+sealed interface DebtDialog {
 
-/** Form state for recording a repayment against [debtId]. */
-data class PaymentEditorState(
-    val debtId: String,
-    /** What the debt is for, shown in the dialog header. */
-    val debtLabel: String,
-    val remaining: BigDecimal,
-    val amountText: String = "",
-    val note: String = "",
-    val amountError: Boolean = false,
-)
+    /** Form state for creating a debt. */
+    data class AddDebt(
+        val direction: DebtDirection = DebtDirection.I_OWE,
+        val amountText: String = "",
+        val description: String = "",
+        val amountError: Boolean = false,
+    ) : DebtDialog
+
+    /**
+     * Payor settle sheet (ADR-0019 #14): I owe [debtId] and am paying it down from one of my
+     * accounts, recording a real expense leg.
+     */
+    data class Settle(
+        val debtId: String,
+        /** What the debt is for, shown in the sheet header. */
+        val debtLabel: String,
+        val remaining: BigDecimal,
+        val amountText: String = "",
+        val accountId: String? = null,
+        val note: String = "",
+        val amountError: Boolean = false,
+        val accountError: Boolean = false,
+    ) : DebtDialog
+
+    /**
+     * Receiver "add to my account" sheet (ADR-0019 #14): my partner settled and I'm adding
+     * the matching income to one of my accounts. The [amount] is fixed to the payor's leg.
+     */
+    data class Receive(
+        val paymentId: String,
+        val amount: BigDecimal,
+        /** What the debt is for, shown in the sheet header. */
+        val debtLabel: String,
+        val accountId: String? = null,
+        val accountError: Boolean = false,
+    ) : DebtDialog
+}

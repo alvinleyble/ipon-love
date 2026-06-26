@@ -2,13 +2,15 @@ package com.iponlove.app.feature.partnerdebt.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtItem
-import com.iponlove.app.feature.partnerdebt.domain.model.DebtPayment
+import com.iponlove.app.feature.partnerdebt.domain.model.DebtPaymentItem
 import com.iponlove.app.feature.partnerdebt.domain.model.PartnerDebt
+import com.iponlove.app.feature.partnerdebt.domain.usecase.AddSettlementIncomeUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.DeletePartnerDebtUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.ObservePartnerDebtBoardUseCase
-import com.iponlove.app.feature.partnerdebt.domain.usecase.RecordDebtPaymentUseCase
+import com.iponlove.app.feature.partnerdebt.domain.usecase.SettleDebtUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.UpsertPartnerDebtUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,20 +27,21 @@ import javax.inject.Inject
 /**
  * Drives the partner-debt tracker. The derived board is recomputed from the live debt +
  * payment streams ([ObservePartnerDebtBoardUseCase]); the member stream supplies the ids the
- * write side needs (who is borrower/lender, which couple to stamp). Only the two editor
- * dialogs hold transient UI state.
+ * write side needs (who is borrower/lender, which couple to stamp). At most one editor dialog
+ * is open at a time ([DebtDialog]); the account stream feeds its pickers.
  */
 @HiltViewModel
 class PartnerDebtViewModel @Inject constructor(
     observeBoard: ObservePartnerDebtBoardUseCase,
     observeCoupleMembers: ObserveCoupleMembersUseCase,
+    observeAccounts: ObserveAccountsUseCase,
     private val upsertDebt: UpsertPartnerDebtUseCase,
-    private val recordPayment: RecordDebtPaymentUseCase,
+    private val settleDebt: SettleDebtUseCase,
+    private val addSettlementIncome: AddSettlementIncomeUseCase,
     private val deleteDebt: DeletePartnerDebtUseCase,
 ) : ViewModel() {
 
-    private val addEditor = MutableStateFlow<AddDebtEditorState?>(null)
-    private val paymentEditor = MutableStateFlow<PaymentEditorState?>(null)
+    private val dialog = MutableStateFlow<DebtDialog?>(null)
 
     // Captured from the latest member emission so the editor save paths can act without
     // re-deriving: the couple to stamp, and the two member ids to assign borrower/lender.
@@ -50,9 +53,9 @@ class PartnerDebtViewModel @Inject constructor(
         combine(
             observeBoard(),
             observeCoupleMembers(),
-            addEditor,
-            paymentEditor,
-        ) { board, members, add, payment ->
+            observeAccounts(),
+            dialog,
+        ) { board, members, accounts, openDialog ->
             if (board == null || members == null) {
                 coupleId = null
                 myId = null
@@ -70,8 +73,8 @@ class PartnerDebtViewModel @Inject constructor(
                 partnerName = members.partner?.displayName ?: "your partner",
                 net = board.net,
                 debts = board.debts,
-                addEditor = add,
-                paymentEditor = payment,
+                accounts = accounts.map { AccountOption(it.id, it.name) },
+                dialog = openDialog,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -79,33 +82,30 @@ class PartnerDebtViewModel @Inject constructor(
             initialValue = PartnerDebtUiState(),
         )
 
+    fun cancelDialog() {
+        dialog.value = null
+    }
+
     // ---- add debt ----
 
     fun startAddDebt() {
-        addEditor.value = AddDebtEditorState()
+        dialog.value = DebtDialog.AddDebt()
     }
 
-    fun onDirectionChange(direction: DebtDirection) =
-        addEditor.update { it?.copy(direction = direction) }
+    fun onDirectionChange(direction: DebtDirection) = updateAddDebt { it.copy(direction = direction) }
 
-    fun onDebtAmountChange(value: String) =
-        addEditor.update { it?.copy(amountText = value, amountError = false) }
+    fun onDebtAmountChange(value: String) = updateAddDebt { it.copy(amountText = value, amountError = false) }
 
-    fun onDebtDescriptionChange(value: String) =
-        addEditor.update { it?.copy(description = value) }
-
-    fun cancelAddDebt() {
-        addEditor.value = null
-    }
+    fun onDebtDescriptionChange(value: String) = updateAddDebt { it.copy(description = value) }
 
     fun saveDebt() {
-        val editor = addEditor.value ?: return
+        val editor = dialog.value as? DebtDialog.AddDebt ?: return
         val couple = coupleId ?: return
         val me = myId ?: return
         val partner = partnerId ?: return
         val amount = editor.amountText.trim().toBigDecimalOrNull()
         if (amount == null || amount.signum() <= 0) {
-            addEditor.value = editor.copy(amountError = true)
+            dialog.value = editor.copy(amountError = true)
             return
         }
         // I_OWE → I'm the borrower; THEY_OWE → my partner is.
@@ -123,54 +123,94 @@ class PartnerDebtViewModel @Inject constructor(
         )
         viewModelScope.launch {
             upsertDebt(debt, couple)
-            addEditor.value = null
+            dialog.value = null
         }
     }
 
-    // ---- record payment ----
+    // ---- settle (payor leg) ----
 
-    fun startPayment(debt: DebtItem) {
-        paymentEditor.value = PaymentEditorState(
+    fun startSettle(debt: DebtItem) {
+        dialog.value = DebtDialog.Settle(
             debtId = debt.id,
             debtLabel = debt.description ?: "this debt",
             remaining = debt.remaining,
+            accountId = uiState.value.accounts.firstOrNull()?.id,
         )
     }
 
-    fun onPaymentAmountChange(value: String) =
-        paymentEditor.update { it?.copy(amountText = value, amountError = false) }
+    fun onSettleAmountChange(value: String) = updateSettle { it.copy(amountText = value, amountError = false) }
 
-    fun onPaymentNoteChange(value: String) =
-        paymentEditor.update { it?.copy(note = value) }
+    fun onSettleAccountChange(accountId: String) = updateSettle { it.copy(accountId = accountId, accountError = false) }
 
-    fun cancelPayment() {
-        paymentEditor.value = null
-    }
+    fun onSettleNoteChange(value: String) = updateSettle { it.copy(note = value) }
 
-    fun savePayment() {
-        val editor = paymentEditor.value ?: return
+    fun saveSettle() {
+        val editor = dialog.value as? DebtDialog.Settle ?: return
         val amount = editor.amountText.trim().toBigDecimalOrNull()
         // Guard against a non-positive amount or paying more than what's outstanding.
         if (amount == null || amount.signum() <= 0 || amount > editor.remaining) {
-            paymentEditor.value = editor.copy(amountError = true)
+            dialog.value = editor.copy(amountError = true)
             return
         }
-        val payment = DebtPayment(
-            id = UUID.randomUUID().toString(),
-            debtId = editor.debtId,
-            amount = amount,
-            note = editor.note.trim().ifBlank { null },
-            date = Instant.now(),
-        )
+        val account = editor.accountId
+        if (account == null) {
+            dialog.value = editor.copy(accountError = true)
+            return
+        }
         viewModelScope.launch {
-            recordPayment(payment)
-            paymentEditor.value = null
+            settleDebt(
+                debtId = editor.debtId,
+                amount = amount,
+                payorAccountId = account,
+                note = editor.note.trim().ifBlank { null },
+            )
+            dialog.value = null
+        }
+    }
+
+    // ---- add to my account (receiver leg) ----
+
+    fun startReceive(debt: DebtItem, payment: DebtPaymentItem) {
+        dialog.value = DebtDialog.Receive(
+            paymentId = payment.id,
+            amount = payment.amount,
+            debtLabel = debt.description ?: "this debt",
+            accountId = uiState.value.accounts.firstOrNull()?.id,
+        )
+    }
+
+    fun onReceiveAccountChange(accountId: String) = updateReceive { it.copy(accountId = accountId, accountError = false) }
+
+    fun saveReceive() {
+        val editor = dialog.value as? DebtDialog.Receive ?: return
+        val account = editor.accountId
+        if (account == null) {
+            dialog.value = editor.copy(accountError = true)
+            return
+        }
+        viewModelScope.launch {
+            addSettlementIncome(
+                paymentId = editor.paymentId,
+                amount = editor.amount,
+                receiverAccountId = account,
+                note = editor.debtLabel,
+            )
+            dialog.value = null
         }
     }
 
     fun removeDebt(id: String) {
         viewModelScope.launch { deleteDebt(id) }
     }
+
+    private inline fun updateAddDebt(transform: (DebtDialog.AddDebt) -> DebtDialog.AddDebt) =
+        dialog.update { (it as? DebtDialog.AddDebt)?.let(transform) ?: it }
+
+    private inline fun updateSettle(transform: (DebtDialog.Settle) -> DebtDialog.Settle) =
+        dialog.update { (it as? DebtDialog.Settle)?.let(transform) ?: it }
+
+    private inline fun updateReceive(transform: (DebtDialog.Receive) -> DebtDialog.Receive) =
+        dialog.update { (it as? DebtDialog.Receive)?.let(transform) ?: it }
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L

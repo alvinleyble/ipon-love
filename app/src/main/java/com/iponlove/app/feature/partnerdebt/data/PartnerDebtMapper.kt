@@ -62,6 +62,9 @@ fun DebtPaymentEntity.toDomain(): DebtPayment = DebtPayment(
     date = date,
     isNetting = isNetting,
     counterDebtId = counterDebtId,
+    payorAccountId = payorAccountId,
+    payorTxnId = payorTxnId,
+    receiverTxnId = receiverTxnId,
 )
 
 /** Entity → DTO for push. Drops `pendingSync` (local-only, ADR-0002). */
@@ -73,6 +76,9 @@ fun DebtPaymentEntity.toDto(): DebtPaymentDto = DebtPaymentDto(
     date = date,
     isNetting = isNetting,
     counterDebtId = counterDebtId,
+    payorAccountId = payorAccountId,
+    payorTxnId = payorTxnId,
+    receiverTxnId = receiverTxnId,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,
@@ -88,6 +94,9 @@ fun DebtPaymentDto.toEntity(): DebtPaymentEntity = DebtPaymentEntity(
     date = date,
     isNetting = isNetting,
     counterDebtId = counterDebtId,
+    payorAccountId = payorAccountId,
+    payorTxnId = payorTxnId,
+    receiverTxnId = receiverTxnId,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,

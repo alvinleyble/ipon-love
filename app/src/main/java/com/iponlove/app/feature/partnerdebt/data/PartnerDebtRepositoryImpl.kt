@@ -97,10 +97,29 @@ class PartnerDebtRepositoryImpl @Inject constructor(
                 date = payment.date,
                 isNetting = existing?.isNetting ?: payment.isNetting,
                 counterDebtId = existing?.counterDebtId ?: payment.counterDebtId,
+                // Settlement links are set once and immutable thereafter (existing wins);
+                // receiver_txn_id is stamped later via [stampReceiverTxn], not here.
+                payorAccountId = existing?.payorAccountId ?: payment.payorAccountId,
+                payorTxnId = existing?.payorTxnId ?: payment.payorTxnId,
+                receiverTxnId = existing?.receiverTxnId ?: payment.receiverTxnId,
                 createdAt = existing?.createdAt ?: updatedAt,
                 updatedAt = updatedAt,
                 isDeleted = existing?.isDeleted ?: false,
                 serverRev = existing?.serverRev,
+                pendingSync = true,
+            ),
+        )
+        syncTrigger.requestPush()
+    }
+
+    override suspend fun stampReceiverTxn(paymentId: String, receiverTxnId: String) {
+        val existing = dao.getPayment(paymentId) ?: return
+        // First writer wins — if the receiver leg was already added, don't double-stamp.
+        if (existing.receiverTxnId != null) return
+        dao.upsertPayment(
+            existing.copy(
+                receiverTxnId = receiverTxnId,
+                updatedAt = clock.stamp(existing.updatedAt),
                 pendingSync = true,
             ),
         )

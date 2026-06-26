@@ -36,6 +36,8 @@ object ExpenseFlowCalculator {
         val daily = Array(daysInMonth) { BigDecimal.ZERO }
         for (t in transactions) {
             if (t.type != TransactionType.EXPENSE) continue
+            // Debt-settlement legs aren't spending (ADR-0019 #14).
+            if (t.isSettlement) continue
             if (t.date < window.startInclusive || t.date >= window.endExclusive) continue
             val dayIdx = t.date.atZone(zone).toLocalDate().dayOfMonth - 1
             daily[dayIdx] = daily[dayIdx] + t.amount

@@ -12,6 +12,12 @@ import java.time.Instant
  * debt opposite to an existing open one settles them against each other via a linked pair
  * of netting payments, and [counterDebtId] points at the opposing debt this one offsets.
  * Manual repayments have [isNetting] = false and [counterDebtId] = null.
+ *
+ * A *settlement* payment (ADR-0019 #14) records real money movement. The payor (borrower)
+ * settles from [payorAccountId], with [payorTxnId] linking the EXPENSE leg they recorded.
+ * The receiver (lender) optionally adds the matching INCOME to their own account later via
+ * an inline affordance, stamping [receiverTxnId]; until then the payment is payor-only and
+ * still valid (graceful degradation). All three are null for manual and netting payments.
  */
 data class DebtPayment(
     val id: String,
@@ -21,4 +27,7 @@ data class DebtPayment(
     val date: Instant,
     val isNetting: Boolean = false,
     val counterDebtId: String? = null,
+    val payorAccountId: String? = null,
+    val payorTxnId: String? = null,
+    val receiverTxnId: String? = null,
 )

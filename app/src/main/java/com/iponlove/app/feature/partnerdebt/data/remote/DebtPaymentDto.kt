@@ -17,6 +17,9 @@ data class DebtPaymentDto(
     @Serializable(with = InstantSerializer::class) val date: Instant,
     @SerialName("is_netting") val isNetting: Boolean = false,
     @SerialName("counter_debt_id") val counterDebtId: String? = null,
+    @SerialName("payor_account_id") val payorAccountId: String? = null,
+    @SerialName("payor_txn_id") val payorTxnId: String? = null,
+    @SerialName("receiver_txn_id") val receiverTxnId: String? = null,
     @SerialName("created_at")
     @Serializable(with = InstantSerializer::class) val createdAt: Instant,
     @SerialName("updated_at")

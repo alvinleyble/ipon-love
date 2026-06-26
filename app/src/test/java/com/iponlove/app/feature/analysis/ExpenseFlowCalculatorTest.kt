@@ -74,6 +74,19 @@ class ExpenseFlowCalculatorTest {
     }
 
     @Test
+    fun settlementExpensesAreExcluded() {
+        val transactions = listOf(
+            txn("real", TransactionType.EXPENSE, "200.00", categoryId = "cat-1", date = june(3)),
+            // A debt-settlement leg is real money out, but never spending (ADR-0019 #14).
+            txn("settle", TransactionType.EXPENSE, "900.00", categoryId = null, date = june(5), isSettlement = true),
+        )
+
+        val data = ExpenseFlowCalculator.calculate(transactions, juneWindow, zone)
+
+        assertThat(data.cumulativeByDay[29]).isEqualTo(BigDecimal("200.00"))
+    }
+
+    @Test
     fun transactionsOutsideWindowAreIgnored() {
         val transactions = listOf(
             txn("before", TransactionType.EXPENSE, "999.00", categoryId = "cat-1", date = Instant.parse("2026-05-31T23:59:59Z")),

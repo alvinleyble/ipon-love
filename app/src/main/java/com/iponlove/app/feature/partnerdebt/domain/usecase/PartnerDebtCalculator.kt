@@ -51,7 +51,7 @@ object PartnerDebtCalculator {
                 createdAt = debt.createdAt,
                 payments = debtPayments
                     .sortedByDescending { it.date }
-                    .map { DebtPaymentItem(it.id, it.amount, it.note, it.date) },
+                    .map { DebtPaymentItem(it.id, it.amount, it.note, it.date, it.payorTxnId, it.receiverTxnId) },
             )
         }
 

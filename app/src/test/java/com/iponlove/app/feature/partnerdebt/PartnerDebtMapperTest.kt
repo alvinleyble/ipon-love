@@ -109,6 +109,34 @@ class PartnerDebtMapperTest {
     }
 
     @Test
+    fun settlementPayment_roundTrips_payorAndReceiverLinks() {
+        val entity = debtPaymentEntity(
+            id = "sp",
+            debtId = "d-1",
+            amount = "500.00",
+            payorAccountId = "acc-1",
+            payorTxnId = "txn-pay",
+            receiverTxnId = "txn-recv",
+        )
+
+        val dto = entity.toDto()
+        assertThat(dto.payorAccountId).isEqualTo("acc-1")
+        assertThat(dto.payorTxnId).isEqualTo("txn-pay")
+        assertThat(dto.receiverTxnId).isEqualTo("txn-recv")
+
+        val domain = entity.toDomain()
+        assertThat(domain.payorAccountId).isEqualTo("acc-1")
+        assertThat(domain.payorTxnId).isEqualTo("txn-pay")
+        assertThat(domain.receiverTxnId).isEqualTo("txn-recv")
+
+        val back = dto.toEntity()
+        assertThat(back.payorAccountId).isEqualTo("acc-1")
+        assertThat(back.payorTxnId).isEqualTo("txn-pay")
+        assertThat(back.receiverTxnId).isEqualTo("txn-recv")
+        assertThat(back.pendingSync).isFalse()
+    }
+
+    @Test
     fun manualPayment_isNettingFalse_counterDebtIdNull() {
         val entity = debtPaymentEntity(id = "mp", debtId = "d")
 

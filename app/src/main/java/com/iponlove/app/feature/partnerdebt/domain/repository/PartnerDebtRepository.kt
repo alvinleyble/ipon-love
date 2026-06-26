@@ -41,6 +41,13 @@ interface PartnerDebtRepository {
     suspend fun upsertPayment(payment: DebtPayment)
 
     /**
+     * Stamp [receiverTxnId] onto an existing settlement payment when the receiver (lender)
+     * adds the matching income to their own account (ADR-0019 #14). First writer wins — a
+     * payment that already has a receiver leg is left untouched.
+     */
+    suspend fun stampReceiverTxn(paymentId: String, receiverTxnId: String)
+
+    /**
      * Hard-delete every debt and payment on unpair (ADR-0008). RLS hides them the instant
      * the couple dissolves, so the device can never receive their tombstones — it purges
      * locally off the same signal shared budgets use. No cursor reset: the global

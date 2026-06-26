@@ -136,6 +136,7 @@ create table transactions (
     is_private        boolean not null default false,                      -- hidden from partner
     recurring_rule_id uuid references recurring_rules(id) on delete set null,
     attachment_url    text,                                                -- Supabase Storage URL for receipt photo (post-V1)
+    is_settlement     boolean not null default false,                      -- partner-debt settlement leg: counts toward balance, excluded from Analysis (ADR-0019 #14)
     created_at        timestamptz not null default now(),
     updated_at        timestamptz not null default now(),
     is_deleted        boolean not null default false,
@@ -218,6 +219,12 @@ create table partner_debt_payments (
     date            timestamptz not null,
     is_netting      boolean not null default false,
     counter_debt_id uuid references partner_debts(id) on delete cascade,
+    -- Settlement legs (ADR-0019 #14): payor's account + EXPENSE txn, and the receiver's
+    -- optional INCOME txn once they add it to their account. No FK to transactions: those
+    -- are per-user rows on different devices; this is a display/audit link, fire-and-forget.
+    payor_account_id uuid,
+    payor_txn_id     uuid,
+    receiver_txn_id  uuid,
     created_at      timestamptz not null default now(),
     updated_at      timestamptz not null default now(),
     is_deleted      boolean not null default false,
@@ -395,6 +402,7 @@ create view partner_transactions with (security_invoker = false) as
         case when t.is_private or t.is_deleted then null else t.date           end as date,
         t.is_private,
         t.is_deleted,
+        t.is_settlement,
         t.updated_at,
         t.server_rev,
         case when t.is_private or t.is_deleted then null else t.attachment_url end as attachment_url

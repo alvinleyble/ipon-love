@@ -50,6 +50,25 @@ class AnalysisCalculatorTest {
     }
 
     @Test
+    fun settlementLegsAreExcludedFromTotalsAndBreakdown() {
+        val transactions = listOf(
+            txn("income", TransactionType.INCOME, "5000.00", date = june(2)),
+            txn("spend", TransactionType.EXPENSE, "1200.00", categoryId = "cat-1", date = june(3)),
+            // Settling a partner debt: real money moved, but not spending/income (ADR-0019 #14).
+            txn("settle-out", TransactionType.EXPENSE, "900.00", categoryId = null, date = june(4), isSettlement = true),
+            txn("settle-in", TransactionType.INCOME, "700.00", categoryId = null, date = june(5), isSettlement = true),
+        )
+
+        val result = AnalysisCalculator.analyze(transactions, juneWindow)
+
+        assertThat(result.totalIncome).isEqualTo(BigDecimal("5000.00"))
+        assertThat(result.totalExpense).isEqualTo(BigDecimal("1200.00"))
+        assertThat(result.net).isEqualTo(BigDecimal("3800.00"))
+        // The settlement expense never appears as a category slice.
+        assertThat(result.expenseByCategory.map { it.categoryId }).containsExactly("cat-1")
+    }
+
+    @Test
     fun transfersAreIgnoredEverywhere() {
         val transactions = listOf(
             txn("t1", TransactionType.TRANSFER, "300.00", accountId = "acc-1", toAccountId = "acc-2", date = june(5)),

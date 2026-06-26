@@ -13,7 +13,9 @@ import java.math.BigDecimal
  * Only transactions whose date is in [AnalysisWindow.startInclusive, endExclusive) count.
  * INCOME and EXPENSE roll into their totals; TRANSFER is ignored entirely (it moves money
  * between the user's own accounts — neither income nor expense, consistent with
- * [com.iponlove.app.feature.budgets.domain.usecase.BudgetProgressCalculator]). Private
+ * [com.iponlove.app.feature.budgets.domain.usecase.BudgetProgressCalculator]). Debt-settlement
+ * legs (`is_settlement`) are also ignored — they repay a partner debt, not real spend/income
+ * (ADR-0019 #14). Private
  * transactions are included — this is the user's own view; privacy only redacts the
  * partner/combined view (ADR-0004).
  */
@@ -27,6 +29,8 @@ object AnalysisCalculator {
 
         for (t in transactions) {
             if (t.date < window.startInclusive || t.date >= window.endExclusive) continue
+            // Debt-settlement legs move money but aren't spending/income (ADR-0019 #14).
+            if (t.isSettlement) continue
             when (t.type) {
                 TransactionType.INCOME -> income += t.amount
                 TransactionType.EXPENSE -> {

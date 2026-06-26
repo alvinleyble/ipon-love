@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.transactions.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -35,6 +36,8 @@ data class TransactionEntity(
     val attachmentUrl: String? = null,
     /** Local-only staging path for a pending receipt upload; cleared once uploaded. Never synced. */
     val attachmentLocalPath: String? = null,
+    /** A partner-debt settlement leg (ADR-0019 #14): counts toward balance, excluded from Analysis. */
+    @ColumnInfo(defaultValue = "0") val isSettlement: Boolean = false,
     val createdAt: Instant,
     override val updatedAt: Instant,
     override val isDeleted: Boolean,

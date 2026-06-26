@@ -79,6 +79,7 @@ fun txn(
     toAccountId: String? = null,
     categoryId: String? = "cat-1",
     date: Instant = Instant.ofEpochMilli(1_000),
+    isSettlement: Boolean = false,
 ) = Transaction(
     id = id,
     type = type,
@@ -87,6 +88,7 @@ fun txn(
     toAccountId = toAccountId,
     categoryId = if (type == TransactionType.TRANSFER) null else categoryId,
     date = date,
+    isSettlement = isSettlement,
 )
 
 fun transactionEntity(

@@ -25,6 +25,11 @@ data class DebtPaymentEntity(
     val date: Instant,
     @ColumnInfo(defaultValue = "0") val isNetting: Boolean = false,
     val counterDebtId: String? = null,
+    /** Settlement legs (ADR-0019 #14): the payor's account + EXPENSE txn, and the
+     *  receiver's optional INCOME txn once they add it to their account. Null otherwise. */
+    val payorAccountId: String? = null,
+    val payorTxnId: String? = null,
+    val receiverTxnId: String? = null,
     val createdAt: Instant,
     override val updatedAt: Instant,
     override val isDeleted: Boolean,

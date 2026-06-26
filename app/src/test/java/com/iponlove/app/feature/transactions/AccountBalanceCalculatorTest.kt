@@ -32,6 +32,17 @@ class AccountBalanceCalculatorTest {
     }
 
     @Test
+    fun settlementLegs_stillMoveBalance() {
+        // Unlike Analysis, balance derivation counts settlement legs — money really moved (ADR-0019 #14).
+        val txns = listOf(
+            txn("settle-out", TransactionType.EXPENSE, "200.00", accountId = "acc-1", categoryId = null, isSettlement = true),
+            txn("settle-in", TransactionType.INCOME, "50.00", accountId = "acc-1", categoryId = null, isSettlement = true),
+        )
+        val balance = AccountBalanceCalculator.balanceOf("acc-1", bd("500.00"), txns)
+        assertThat(balance).isEqualTo(bd("350.00"))
+    }
+
+    @Test
     fun transfer_movesBetweenSourceAndDestination() {
         val txns = listOf(
             txn("t1", TransactionType.TRANSFER, "100.00", accountId = "acc-1", toAccountId = "acc-2"),

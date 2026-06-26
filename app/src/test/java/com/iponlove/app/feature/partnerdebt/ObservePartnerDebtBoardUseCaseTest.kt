@@ -39,6 +39,7 @@ class ObservePartnerDebtBoardUseCaseTest {
         override suspend fun upsertDebt(debt: PartnerDebt, coupleId: String) = Unit
         override suspend fun deleteDebt(id: String) = Unit
         override suspend fun upsertPayment(payment: DebtPayment) = Unit
+        override suspend fun stampReceiverTxn(paymentId: String, receiverTxnId: String) = Unit
         override suspend fun purgeCoupleDebts() = Unit
     }
     private val useCase = ObservePartnerDebtBoardUseCase(userRepo, debtRepo)

@@ -34,6 +34,22 @@ class DailyNetCalculatorTest {
     }
 
     @Test
+    fun settlementLegsAreExcludedFromBothDays() {
+        val transactions = listOf(
+            txn("income", TransactionType.INCOME, "5000.00", date = june(1)),
+            txn("spend", TransactionType.EXPENSE, "300.00", categoryId = "cat-1", date = june(1)),
+            // Settlement legs move balance but are not net income/expense (ADR-0019 #14).
+            txn("settle-out", TransactionType.EXPENSE, "900.00", categoryId = null, date = june(1), isSettlement = true),
+            txn("settle-in", TransactionType.INCOME, "700.00", categoryId = null, date = june(1), isSettlement = true),
+        )
+
+        val data = DailyNetCalculator.calculate(transactions, juneWindow, zone)
+
+        assertThat(data.incomeByDay[0]).isEqualTo(BigDecimal("5000.00"))
+        assertThat(data.expenseByDay[0]).isEqualTo(BigDecimal("300.00"))
+    }
+
+    @Test
     fun juneStartsOnMonday_firstWeekdayOffsetIsOne() {
         // 2026-06-01 is a Monday → Sun-first offset = 1 (Sunday=0, Monday=1)
         val data = DailyNetCalculator.calculate(emptyList(), juneWindow, zone)

@@ -28,4 +28,11 @@ data class Transaction(
     val attachmentUrl: String? = null,
     /** Local path of a receipt image pending upload; null once the uploader has stamped [attachmentUrl]. */
     val attachmentLocalPath: String? = null,
+    /**
+     * True for the ledger legs of a partner-debt settlement (ADR-0019 #14). Settlement legs
+     * move real money — so [com.iponlove.app.feature.transactions.domain.usecase.AccountBalanceCalculator]
+     * counts them — but they are not spending/income, so Analysis (donut / expense-flow /
+     * calendar) excludes them. They also carry no category.
+     */
+    val isSettlement: Boolean = false,
 )
