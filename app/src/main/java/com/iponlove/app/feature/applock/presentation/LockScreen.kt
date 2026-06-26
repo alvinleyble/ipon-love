@@ -25,7 +25,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import com.iponlove.app.R
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 
@@ -55,7 +57,7 @@ fun LockScreen(
             Spacer(Modifier.height(80.dp))
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("PattyWallet", style = MaterialTheme.typography.headlineMedium)
+                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "Enter your PIN",
@@ -181,7 +183,7 @@ private fun showBiometricPrompt(
     }
     BiometricPrompt(activity, executor, callback).authenticate(
         BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Unlock PattyWallet")
+            .setTitle("Unlock ${activity.getString(R.string.app_name)}")
             .setNegativeButtonText("Use PIN")
             .build(),
     )

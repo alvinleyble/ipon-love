@@ -27,6 +27,7 @@ import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import com.iponlove.app.R
 import com.iponlove.app.MainActivity
 import com.iponlove.app.feature.widget.di.WidgetEntryPoint
 import com.iponlove.app.feature.widget.domain.model.WidgetData
@@ -68,7 +69,7 @@ private fun BalanceWidgetContent(data: WidgetData?) {
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Text(
-                text = "PattyWallet",
+                text = LocalContext.current.getString(R.string.app_name),
                 style = TextStyle(
                     color = androidx.glance.unit.ColorProvider(Color(0xFF9F3758)),
                     fontSize = 11.sp,
