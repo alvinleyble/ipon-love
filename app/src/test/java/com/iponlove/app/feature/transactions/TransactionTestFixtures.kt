@@ -58,6 +58,16 @@ class FakeTransactionDao : TransactionDao {
         transactions.forEach { store[it.id] = it }
         changes.value++
     }
+
+    override suspend fun pendingReceiptUploads(): List<TransactionEntity> =
+        store.values.filter { it.attachmentLocalPath != null && !it.isDeleted }
+
+    override suspend fun markReceiptUploaded(id: String, url: String, updatedAt: Long) {
+        store[id]?.let {
+            store[id] = it.copy(attachmentUrl = url, attachmentLocalPath = null, pendingSync = true)
+        }
+        changes.value++
+    }
 }
 
 /** Domain transaction builder. */

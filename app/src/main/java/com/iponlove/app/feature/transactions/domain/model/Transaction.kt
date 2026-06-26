@@ -26,4 +26,6 @@ data class Transaction(
     val date: Instant,
     val isPrivate: Boolean = false,
     val attachmentUrl: String? = null,
+    /** Local path of a receipt image pending upload; null once the uploader has stamped [attachmentUrl]. */
+    val attachmentLocalPath: String? = null,
 )

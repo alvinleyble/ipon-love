@@ -52,6 +52,7 @@ class TransactionRepositoryImpl @Inject constructor(
                 isPrivate = transaction.isPrivate,
                 recurringRuleId = existing?.recurringRuleId,
                 attachmentUrl = transaction.attachmentUrl,
+                attachmentLocalPath = transaction.attachmentLocalPath ?: existing?.attachmentLocalPath,
                 createdAt = existing?.createdAt ?: updatedAt,
                 updatedAt = updatedAt,
                 isDeleted = existing?.isDeleted ?: false,

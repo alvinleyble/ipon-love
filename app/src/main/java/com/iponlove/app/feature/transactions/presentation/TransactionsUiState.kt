@@ -30,9 +30,11 @@ data class TransactionListItem(
     val date: Instant,
 )
 
-/** Editor form state. [id] null means a new transaction; non-null means editing. */
+/** Editor form state. [isEditing] true means updating an existing transaction. */
 data class TransactionEditorState(
-    val id: String? = null,
+    /** Always pre-generated so the receipt file can be named before save. */
+    val id: String,
+    val isEditing: Boolean = false,
     val type: TransactionType = TransactionType.EXPENSE,
     val amountText: String = "",
     val accountId: String? = null,
@@ -42,6 +44,8 @@ data class TransactionEditorState(
     val isPrivate: Boolean = false,
     val date: Instant = Instant.now(),
     val errors: Set<TransactionError> = emptySet(),
-) {
-    val isEditing: Boolean get() = id != null
-}
+    /** Local path of a receipt picked this session, pending upload. */
+    val attachmentLocalPath: String? = null,
+    /** Existing server URL loaded when editing a transaction that already has a receipt. */
+    val attachmentUrl: String? = null,
+)

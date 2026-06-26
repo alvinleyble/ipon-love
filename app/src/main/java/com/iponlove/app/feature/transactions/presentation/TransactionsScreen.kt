@@ -1,5 +1,8 @@
 package com.iponlove.app.feature.transactions.presentation
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +25,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
@@ -59,11 +64,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.parseHexColor
@@ -72,6 +81,7 @@ import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.TransactionError
+import java.io.File
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -106,6 +116,8 @@ fun TransactionsScreen(
         onNoteChange = viewModel::onNoteChange,
         onPrivateChange = viewModel::onPrivateChange,
         onDateChange = viewModel::onDateChange,
+        onReceiptPicked = viewModel::onReceiptPicked,
+        onRemoveReceipt = viewModel::onRemoveReceipt,
         onSave = viewModel::save,
         onCancel = viewModel::cancelEdit,
     )
@@ -132,6 +144,8 @@ private fun TransactionsContent(
     onNoteChange: (String) -> Unit,
     onPrivateChange: (Boolean) -> Unit,
     onDateChange: (Instant) -> Unit,
+    onReceiptPicked: (Uri) -> Unit,
+    onRemoveReceipt: () -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -218,6 +232,8 @@ private fun TransactionsContent(
             onNoteChange = onNoteChange,
             onPrivateChange = onPrivateChange,
             onDateChange = onDateChange,
+            onReceiptPicked = onReceiptPicked,
+            onRemoveReceipt = onRemoveReceipt,
             onSave = onSave,
             onCancel = onCancel,
         )
@@ -282,6 +298,8 @@ private fun TransactionEditorDialog(
     onNoteChange: (String) -> Unit,
     onPrivateChange: (Boolean) -> Unit,
     onDateChange: (Instant) -> Unit,
+    onReceiptPicked: (Uri) -> Unit,
+    onRemoveReceipt: () -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -291,6 +309,11 @@ private fun TransactionEditorDialog(
         .map { PickerOption(it.id, it.name, it.icon?.let { k -> CATEGORY_ICONS[k] }, it.color) }
 
     var showDatePicker by remember { mutableStateOf(false) }
+    var showFullScreenReceipt by remember { mutableStateOf(false) }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+    ) { uri: Uri? -> uri?.let(onReceiptPicked) }
 
     AlertDialog(
         onDismissRequest = onCancel,
@@ -369,6 +392,14 @@ private fun TransactionEditorDialog(
                     Text("Private", modifier = Modifier.weight(1f))
                     Switch(checked = editor.isPrivate, onCheckedChange = onPrivateChange)
                 }
+                Spacer(Modifier.height(8.dp))
+                ReceiptRow(
+                    localPath = editor.attachmentLocalPath,
+                    url = editor.attachmentUrl,
+                    onPickReceipt = { galleryLauncher.launch("image/*") },
+                    onRemoveReceipt = onRemoveReceipt,
+                    onViewReceipt = { showFullScreenReceipt = true },
+                )
                 if (editor.errors.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     editor.errors.forEach { error ->
@@ -384,6 +415,16 @@ private fun TransactionEditorDialog(
         confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )
+
+    if (showFullScreenReceipt) {
+        val imageSource = editor.attachmentLocalPath ?: editor.attachmentUrl
+        if (imageSource != null) {
+            FullScreenReceiptDialog(
+                imageSource = imageSource,
+                onDismiss = { showFullScreenReceipt = false },
+            )
+        }
+    }
 
     if (showDatePicker) {
         val pickerState = rememberDatePickerState(
@@ -506,6 +547,69 @@ private fun TransactionError.message(): String = when (this) {
     TransactionError.CATEGORY_REQUIRED -> "Choose a category"
     TransactionError.DESTINATION_REQUIRED -> "Choose a destination account"
     TransactionError.DESTINATION_SAME_AS_SOURCE -> "Destination must differ from the source"
+}
+
+@Composable
+private fun ReceiptRow(
+    localPath: String?,
+    url: String?,
+    onPickReceipt: () -> Unit,
+    onRemoveReceipt: () -> Unit,
+    onViewReceipt: () -> Unit,
+) {
+    val hasReceipt = localPath != null || url != null
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("Receipt", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+        if (hasReceipt) {
+            val imageSource: Any = if (localPath != null) File(localPath) else url!!
+            AsyncImage(
+                model = imageSource,
+                contentDescription = "Receipt thumbnail",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clickable(onClick = onViewReceipt),
+            )
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = onRemoveReceipt) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Remove receipt",
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+        } else {
+            IconButton(onClick = onPickReceipt) {
+                Icon(
+                    Icons.Filled.AddPhotoAlternate,
+                    contentDescription = "Attach receipt",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FullScreenReceiptDialog(imageSource: Any, onDismiss: () -> Unit) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center,
+        ) {
+            AsyncImage(
+                model = imageSource,
+                contentDescription = "Receipt full size",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
 }
 
 // DatePicker speaks UTC-midnight millis; convert through UTC so the calendar day is exact.

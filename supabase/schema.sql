@@ -374,17 +374,18 @@ create view partner_transactions with (security_invoker = false) as
     select
         t.id,
         t.user_id,
-        case when t.is_private or t.is_deleted then null else t.type          end as type,
-        case when t.is_private or t.is_deleted then null else t.amount        end as amount,
-        case when t.is_private or t.is_deleted then null else t.category_id   end as category_id,
-        case when t.is_private or t.is_deleted then null else t.account_id    end as account_id,
-        case when t.is_private or t.is_deleted then null else t.to_account_id end as to_account_id,
-        case when t.is_private or t.is_deleted then null else t.note          end as note,
-        case when t.is_private or t.is_deleted then null else t.date          end as date,
+        case when t.is_private or t.is_deleted then null else t.type           end as type,
+        case when t.is_private or t.is_deleted then null else t.amount         end as amount,
+        case when t.is_private or t.is_deleted then null else t.category_id    end as category_id,
+        case when t.is_private or t.is_deleted then null else t.account_id     end as account_id,
+        case when t.is_private or t.is_deleted then null else t.to_account_id  end as to_account_id,
+        case when t.is_private or t.is_deleted then null else t.note           end as note,
+        case when t.is_private or t.is_deleted then null else t.date           end as date,
         t.is_private,
         t.is_deleted,
         t.updated_at,
-        t.server_rev
+        t.server_rev,
+        case when t.is_private or t.is_deleted then null else t.attachment_url end as attachment_url
     from transactions t
     where t.user_id <> auth.uid()
       and t.user_id in (select id from users where couple_id = auth_couple_id());
@@ -637,4 +638,42 @@ create policy couple_channel_members on realtime.messages
     with check (
         public.auth_couple_id() is not null
         and realtime.topic() = 'couple:' || public.auth_couple_id()::text
+    );
+
+-- ============================================================================
+--  Receipts Storage bucket  [ADR-0020]
+--  Owner: full access scoped to their own folder receipts/{userId}/...
+--  Partner read: a couple member can SELECT (download) the partner's receipt
+--  object if it appears in a non-private, non-deleted transaction row — same
+--  visibility gate as the partner_transactions redacting view.
+-- ============================================================================
+
+alter table storage.objects enable row level security;
+
+create policy receipts_owner on storage.objects for all
+    to authenticated
+    using (
+        bucket_id = 'receipts'
+        and (storage.foldername(name))[1] = auth.uid()::text
+    )
+    with check (
+        bucket_id = 'receipts'
+        and (storage.foldername(name))[1] = auth.uid()::text
+    );
+
+create policy receipts_partner_read on storage.objects for select
+    to authenticated
+    using (
+        bucket_id = 'receipts'
+        and exists (
+            select 1 from transactions t
+            where t.attachment_url like '%' || name || '%'
+              and t.is_private = false
+              and t.is_deleted = false
+              and t.user_id in (
+                  select id from users
+                  where couple_id = public.auth_couple_id()
+                    and id <> auth.uid()
+              )
+        )
     );

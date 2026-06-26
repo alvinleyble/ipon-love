@@ -11,6 +11,8 @@ import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
+import android.net.Uri
+import com.iponlove.app.feature.transactions.domain.usecase.AttachReceiptUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.DeleteTransactionUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.TransactionValidator
@@ -36,6 +38,7 @@ class TransactionsViewModel @Inject constructor(
     observeCategories: ObserveCategoriesUseCase,
     private val upsertTransaction: UpsertTransactionUseCase,
     private val deleteTransaction: DeleteTransactionUseCase,
+    private val attachReceipt: AttachReceiptUseCase,
     private val syncEngine: SyncEngine,
 ) : ViewModel() {
 
@@ -77,13 +80,19 @@ class TransactionsViewModel @Inject constructor(
         )
 
     fun startCreate() {
-        editor.value = TransactionEditorState(accountId = firstAccountId, date = Instant.now())
+        editor.value = TransactionEditorState(
+            id = UUID.randomUUID().toString(),
+            isEditing = false,
+            accountId = firstAccountId,
+            date = Instant.now(),
+        )
     }
 
     fun startEdit(id: String) {
         val t = latestTransactions.firstOrNull { it.id == id } ?: return
         editor.value = TransactionEditorState(
             id = t.id,
+            isEditing = true,
             type = t.type,
             amountText = t.amount.toPlainString(),
             accountId = t.accountId,
@@ -92,6 +101,8 @@ class TransactionsViewModel @Inject constructor(
             note = t.note.orEmpty(),
             isPrivate = t.isPrivate,
             date = t.date,
+            attachmentUrl = t.attachmentUrl,
+            attachmentLocalPath = t.attachmentLocalPath,
         )
     }
 
@@ -136,6 +147,18 @@ class TransactionsViewModel @Inject constructor(
 
     fun onDateChange(date: Instant) = editor.update { it?.copy(date = date) }
 
+    fun onReceiptPicked(uri: Uri) {
+        val id = editor.value?.id ?: return
+        viewModelScope.launch {
+            val localPath = attachReceipt(uri, id)
+            editor.update { it?.copy(attachmentLocalPath = localPath) }
+        }
+    }
+
+    fun onRemoveReceipt() = editor.update {
+        it?.copy(attachmentLocalPath = null, attachmentUrl = null)
+    }
+
     fun save() {
         val s = editor.value ?: return
         val amount = s.amountText.trim().toBigDecimalOrNull() ?: BigDecimal.ZERO
@@ -155,7 +178,7 @@ class TransactionsViewModel @Inject constructor(
         }
 
         val transaction = Transaction(
-            id = s.id ?: UUID.randomUUID().toString(),
+            id = s.id,
             type = s.type,
             amount = amount,
             accountId = s.accountId!!,
@@ -164,6 +187,8 @@ class TransactionsViewModel @Inject constructor(
             note = s.note.trim().ifBlank { null },
             date = s.date,
             isPrivate = s.isPrivate,
+            attachmentUrl = s.attachmentUrl,
+            attachmentLocalPath = s.attachmentLocalPath,
         )
         viewModelScope.launch {
             upsertTransaction(transaction)

@@ -1,11 +1,13 @@
 package com.iponlove.app.feature.transactions.di
 
+import com.iponlove.app.core.sync.PreSyncStep
 import com.iponlove.app.core.sync.TableSyncer
 import com.iponlove.app.feature.transactions.data.TransactionRepositoryImpl
 import com.iponlove.app.feature.transactions.data.remote.SupabaseTransactionRemoteSource
 import com.iponlove.app.feature.transactions.data.remote.TransactionRemoteSource
 import com.iponlove.app.feature.transactions.data.sync.PartnerTransactionTableSyncer
 import com.iponlove.app.feature.transactions.data.sync.TransactionTableSyncer
+import com.iponlove.app.feature.transactions.data.upload.ReceiptUploader
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import dagger.Binds
 import dagger.Module
@@ -35,4 +37,9 @@ interface TransactionModule {
     @Binds
     @IntoSet
     fun partnerTransactionTableSyncer(impl: PartnerTransactionTableSyncer): TableSyncer
+
+    /** Uploads pending receipt images to Storage before the push loop. */
+    @Binds
+    @IntoSet
+    fun receiptUploader(impl: ReceiptUploader): PreSyncStep
 }

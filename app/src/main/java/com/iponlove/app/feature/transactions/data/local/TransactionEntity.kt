@@ -33,6 +33,8 @@ data class TransactionEntity(
     val isPrivate: Boolean,
     val recurringRuleId: String?,
     val attachmentUrl: String? = null,
+    /** Local-only staging path for a pending receipt upload; cleared once uploaded. Never synced. */
+    val attachmentLocalPath: String? = null,
     val createdAt: Instant,
     override val updatedAt: Instant,
     override val isDeleted: Boolean,
