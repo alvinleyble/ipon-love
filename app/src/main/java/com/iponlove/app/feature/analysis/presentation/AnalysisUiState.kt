@@ -16,11 +16,30 @@ data class AnalysisUiState(
     val slices: List<CategorySliceUi> = emptyList(),
     /** Cumulative expense curve for MONTH view; null for DAY/WEEK. */
     val expenseFlow: ExpenseFlowUi? = null,
+    /** Pace metrics derived from the expense flow for the Flow tab; null for DAY/WEEK. */
+    val flowMetrics: FlowMetricsUi? = null,
     /** Daily-net calendar grid for MONTH view; null for DAY/WEEK. */
     val calendarNet: CalendarNetUi? = null,
+    /** 1-based day-of-month with the highest expense; null when no expenses. MONTH only. */
+    val calendarBiggestSpendDay: Int? = null,
+    /** Count of elapsed days with neither income nor expense. MONTH only. */
+    val calendarNoSpendDayCount: Int = 0,
 ) {
     val hasExpenses: Boolean get() = totalExpense.signum() > 0
 }
+
+/**
+ * Derived spending-pace metrics for the Flow tab. All values are pre-computed BigDecimal so
+ * the UI never repeats the arithmetic.
+ *
+ * [projectedMonthEnd] is null when viewing a completed (past) month — extrapolation is
+ * meaningless once the month is over. [budgetRemaining] is null when no budgets are set.
+ */
+data class FlowMetricsUi(
+    val avgDailySpend: BigDecimal,
+    val projectedMonthEnd: BigDecimal?,
+    val budgetRemaining: BigDecimal?,
+)
 
 /**
  * Chart data for the Expense Flow composable. Values are pre-converted to Float so the

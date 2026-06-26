@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -25,12 +27,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +53,7 @@ import com.iponlove.app.feature.analysis.presentation.components.DonutChart
 import com.iponlove.app.feature.analysis.presentation.components.DonutSlice
 import com.iponlove.app.feature.analysis.presentation.components.ExpenseFlowChart
 import com.iponlove.app.feature.analysis.presentation.components.sliceColor
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 
 private val IncomeColor = Color(0xFF2E7D32)
@@ -72,14 +81,14 @@ private fun AnalysisContent(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+                .fillMaxSize(),
         ) {
+            // Persistent header — always visible regardless of period or tab.
             PeriodSelector(selected = state.period, onSelect = onSelectPeriod)
             PeriodStepper(label = state.periodLabel, onPrevious = onPrevious, onNext = onNext)
 
             if (state.isLoading) {
-                Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
                 return@Column
@@ -87,22 +96,104 @@ private fun AnalysisContent(
 
             SummaryCard(income = state.totalIncome, expense = state.totalExpense, net = state.net)
 
-            if (state.hasExpenses) {
-                BreakdownSection(state)
+            if (state.period == AnalysisPeriod.MONTH) {
+                MonthTabLayout(state = state, modifier = Modifier.weight(1f))
             } else {
-                EmptyState()
-            }
-
-            state.expenseFlow?.let { flow ->
-                ExpenseFlowSection(flow)
-            }
-
-            state.calendarNet?.let { cal ->
-                CalendarNetSection(cal)
+                // Day / Week: donut only — no dead tabs.
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    if (state.hasExpenses) BreakdownSection(state) else EmptyState()
+                }
             }
         }
     }
 }
+
+// ─── Month-only tab layout ──────────────────────────────────────────────────
+
+@Composable
+private fun MonthTabLayout(state: AnalysisUiState, modifier: Modifier = Modifier) {
+    val pagerState = rememberPagerState(pageCount = { 3 })
+    val scope = rememberCoroutineScope()
+    val tabLabels = listOf("Donut", "Flow", "Calendar")
+
+    Column(modifier = modifier) {
+        PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
+            tabLabels.forEachIndexed { index, label ->
+                Tab(
+                    selected = pagerState.currentPage == index,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                    text = { Text(label) },
+                )
+            }
+        }
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        ) { page ->
+            when (page) {
+                0 -> DonutTab(state)
+                1 -> FlowTab(state)
+                2 -> CalendarTab(state)
+                else -> {}
+            }
+        }
+    }
+}
+
+@Composable
+private fun DonutTab(state: AnalysisUiState) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+    ) {
+        if (state.hasExpenses) BreakdownSection(state) else EmptyState()
+    }
+}
+
+@Composable
+private fun FlowTab(state: AnalysisUiState) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+    ) {
+        state.expenseFlow?.let { flow -> ExpenseFlowSection(flow) }
+        state.flowMetrics?.let { metrics -> FlowMetricsSection(metrics) }
+    }
+}
+
+@Composable
+private fun CalendarTab(state: AnalysisUiState) {
+    var selectedDay by rememberSaveable { mutableStateOf<Int?>(null) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+    ) {
+        state.calendarNet?.let { cal ->
+            CalendarInsightsCard(
+                biggestSpendDay = state.calendarBiggestSpendDay,
+                noSpendDayCount = state.calendarNoSpendDayCount,
+            )
+            CalendarNetSection(
+                calendarNet = cal,
+                selectedDay = selectedDay,
+                onDayClick = { day -> selectedDay = if (selectedDay == day) null else day },
+            )
+            selectedDay?.let { day ->
+                val dayUi = cal.days.find { it.dayOfMonth == day }
+                if (dayUi != null) DayDetailCard(day = day, dayUi = dayUi)
+            }
+        }
+    }
+}
+
+// ─── Persistent header composables ──────────────────────────────────────────
 
 @Composable
 private fun PeriodSelector(selected: AnalysisPeriod, onSelect: (AnalysisPeriod) -> Unit) {
@@ -175,6 +266,8 @@ private fun SummaryItem(label: String, amount: BigDecimal, color: Color, modifie
         )
     }
 }
+
+// ─── Tab content composables ─────────────────────────────────────────────────
 
 @Composable
 private fun BreakdownSection(state: AnalysisUiState) {
@@ -279,12 +372,135 @@ private fun ExpenseFlowSection(flow: ExpenseFlowUi) {
 }
 
 @Composable
-private fun CalendarNetSection(calendarNet: CalendarNetUi) {
+private fun FlowMetricsSection(metrics: FlowMetricsUi) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            MetricItem(label = "Avg/day", amount = metrics.avgDailySpend, modifier = Modifier.weight(1f))
+            metrics.projectedMonthEnd?.let {
+                MetricItem(label = "Projected", amount = it, modifier = Modifier.weight(1f))
+            }
+            metrics.budgetRemaining?.let {
+                val color = if (it.signum() == 0) MaterialTheme.colorScheme.error else IncomeColor
+                MetricItem(label = "Left", amount = it, color = color, modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricItem(
+    label: String,
+    amount: BigDecimal,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = formatPhp(amount),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = color,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun CalendarInsightsCard(biggestSpendDay: Int?, noSpendDayCount: Int) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = "No-spend days",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "$noSpendDayCount",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            if (biggestSpendDay != null) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "Biggest spend",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Day $biggestSpendDay",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarNetSection(
+    calendarNet: CalendarNetUi,
+    selectedDay: Int?,
+    onDayClick: (Int) -> Unit,
+) {
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Daily Net", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(12.dp))
-            DailyNetCalendarChart(calendarNet = calendarNet)
+            DailyNetCalendarChart(
+                calendarNet = calendarNet,
+                selectedDay = selectedDay,
+                onDayClick = onDayClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DayDetailCard(day: Int, dayUi: CalendarDayUi) {
+    val income = BigDecimal.valueOf(dayUi.incomeFloat.toDouble())
+    val expense = BigDecimal.valueOf(dayUi.expenseFloat.toDouble())
+    val net = income - expense
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Day $day",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                SummaryItem("Income", income, IncomeColor, Modifier.weight(1f))
+                SummaryItem("Expense", expense, MaterialTheme.colorScheme.error, Modifier.weight(1f))
+                SummaryItem(
+                    label = "Net",
+                    amount = net,
+                    color = if (net.signum() < 0) MaterialTheme.colorScheme.error else IncomeColor,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }

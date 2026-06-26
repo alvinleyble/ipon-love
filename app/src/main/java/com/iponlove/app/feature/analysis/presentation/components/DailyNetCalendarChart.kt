@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.analysis.presentation.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
@@ -10,6 +11,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -26,18 +29,22 @@ private val IncomeGreen = Color(0xFF2E7D32)
  *
  * Layout: Sun–Sat header row + one cell per day. Empty cells before day 1 align the grid.
  * Each cell shows "+₱X" (green) and/or "-₱X" (red). Zero-row rule: only the nonzero row is
- * shown, vertically centered. Today's cell gets a [primaryContainer] background; text stays
- * green/red (not forced to onPrimaryContainer). Cell height is ~64dp.
+ * shown, vertically centered. Today's cell gets a [primaryContainer] background; a tapped
+ * [selectedDay] cell gets a [secondaryContainer] background (today takes priority when both).
+ * Cell height is ~64dp.
  *
  * Pure Canvas — no third-party chart library (CLAUDE.md).
  */
 @Composable
 fun DailyNetCalendarChart(
     calendarNet: CalendarNetUi,
+    selectedDay: Int? = null,
+    onDayClick: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val textMeasurer = rememberTextMeasurer()
     val primaryContainerColor = MaterialTheme.colorScheme.primaryContainer
+    val secondaryContainerColor = MaterialTheme.colorScheme.secondaryContainer
     val errorColor = MaterialTheme.colorScheme.error
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
 
@@ -50,10 +57,32 @@ fun DailyNetCalendarChart(
 
     val dayHeaders = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
+    // Capture pixel sizes in composable scope so they're accessible inside pointerInput.
+    val density = LocalDensity.current
+    val headerHeightPx = with(density) { headerHeightDp.dp.toPx() }
+    val cellHeightPx = with(density) { cellHeightDp.dp.toPx() }
+
+    val tapModifier = if (onDayClick != null) {
+        Modifier.pointerInput(calendarNet) {
+            detectTapGestures { offset ->
+                if (offset.y < headerHeightPx) return@detectTapGestures
+                val cellW = size.width / 7f
+                val col = (offset.x / cellW).toInt().coerceIn(0, 6)
+                val row = ((offset.y - headerHeightPx) / cellHeightPx).toInt()
+                val gridIndex = row * 7 + col
+                val dayOfMonth = gridIndex - calendarNet.firstWeekdayOffset + 1
+                if (dayOfMonth in 1..calendarNet.daysInMonth) {
+                    onDayClick(dayOfMonth)
+                }
+            }
+        }
+    } else Modifier
+
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(totalHeightDp.dp),
+            .height(totalHeightDp.dp)
+            .then(tapModifier),
     ) {
         val cellW = size.width / 7f
         val headerH = headerHeightDp.dp.toPx()
@@ -98,9 +127,15 @@ fun DailyNetCalendarChart(
             val cellX = col * cellW
             val cellY = headerH + row * cellH
 
-            if (day.isToday) {
+            // Today gets primary highlight; selected-but-not-today gets secondary.
+            val bgColor: Color? = when {
+                day.isToday -> primaryContainerColor
+                day.dayOfMonth == selectedDay -> secondaryContainerColor
+                else -> null
+            }
+            if (bgColor != null) {
                 drawRoundRect(
-                    color = primaryContainerColor,
+                    color = bgColor,
                     topLeft = Offset(cellX + 2.dp.toPx(), cellY + 2.dp.toPx()),
                     size = Size(cellW - 4.dp.toPx(), cellH - 4.dp.toPx()),
                     cornerRadius = CornerRadius(8.dp.toPx()),

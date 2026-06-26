@@ -8,6 +8,7 @@ import com.iponlove.app.feature.analysis.domain.usecase.AnalysisCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.AnalysisPeriodRange
 import com.iponlove.app.feature.analysis.domain.usecase.DailyNetCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.ExpenseFlowCalculator
+import com.iponlove.app.feature.analysis.domain.usecase.FlowMetricsCalculator
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveBudgetsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
@@ -58,7 +59,10 @@ class AnalysisViewModel @Inject constructor(
             val colors = categories.associateBy({ it.id }, { it.color })
 
             val expenseFlow: ExpenseFlowUi?
+            val flowMetrics: FlowMetricsUi?
             val calendarNet: CalendarNetUi?
+            val calendarBiggestSpendDay: Int?
+            val calendarNoSpendDayCount: Int
             if (selectedPeriod == AnalysisPeriod.MONTH) {
                 val startDate = window.startInclusive.atZone(zone).toLocalDate()
                 val yearMonthStr = YearMonth.of(startDate.year, startDate.month).toString()
@@ -71,6 +75,19 @@ class AnalysisViewModel @Inject constructor(
                     budgetTotal = budgetTotal.toFloat(),
                     daysInMonth = flowData.daysInMonth,
                     todayDayOfMonth = flowData.todayDayOfMonth,
+                )
+                val daysElapsed = flowData.todayDayOfMonth ?: flowData.daysInMonth
+                val fm = FlowMetricsCalculator.calculate(
+                    totalExpense = result.totalExpense,
+                    daysElapsed = daysElapsed,
+                    daysInMonth = flowData.daysInMonth,
+                    isCurrentMonth = flowData.todayDayOfMonth != null,
+                    budgetTotal = budgetTotal,
+                )
+                flowMetrics = FlowMetricsUi(
+                    avgDailySpend = fm.avgDailySpend,
+                    projectedMonthEnd = fm.projectedMonthEnd,
+                    budgetRemaining = fm.budgetRemaining,
                 )
                 val dailyNet = DailyNetCalculator.calculate(transactions, window, zone)
                 calendarNet = CalendarNetUi(
@@ -86,9 +103,22 @@ class AnalysisViewModel @Inject constructor(
                     firstWeekdayOffset = dailyNet.firstWeekdayOffset,
                     todayDayOfMonth = dailyNet.todayDayOfMonth,
                 )
+                // Calendar metrics: operate over elapsed days only.
+                val elapsedCount = dailyNet.todayDayOfMonth ?: dailyNet.daysInMonth
+                calendarBiggestSpendDay = (0 until elapsedCount)
+                    .filter { dailyNet.expenseByDay[it].signum() > 0 }
+                    .maxByOrNull { dailyNet.expenseByDay[it] }
+                    ?.let { it + 1 }
+                calendarNoSpendDayCount = (0 until elapsedCount).count { idx ->
+                    dailyNet.incomeByDay[idx].signum() == 0 &&
+                        dailyNet.expenseByDay[idx].signum() == 0
+                }
             } else {
                 expenseFlow = null
+                flowMetrics = null
                 calendarNet = null
+                calendarBiggestSpendDay = null
+                calendarNoSpendDayCount = 0
             }
 
             AnalysisUiState(
@@ -109,7 +139,10 @@ class AnalysisViewModel @Inject constructor(
                     )
                 },
                 expenseFlow = expenseFlow,
+                flowMetrics = flowMetrics,
                 calendarNet = calendarNet,
+                calendarBiggestSpendDay = calendarBiggestSpendDay,
+                calendarNoSpendDayCount = calendarNoSpendDayCount,
             )
         }.stateIn(
             scope = viewModelScope,
