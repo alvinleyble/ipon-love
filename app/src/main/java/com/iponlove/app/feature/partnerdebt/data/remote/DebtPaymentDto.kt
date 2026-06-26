@@ -15,6 +15,8 @@ data class DebtPaymentDto(
     @Serializable(with = BigDecimalSerializer::class) val amount: BigDecimal,
     val note: String?,
     @Serializable(with = InstantSerializer::class) val date: Instant,
+    @SerialName("is_netting") val isNetting: Boolean = false,
+    @SerialName("counter_debt_id") val counterDebtId: String? = null,
     @SerialName("created_at")
     @Serializable(with = InstantSerializer::class) val createdAt: Instant,
     @SerialName("updated_at")

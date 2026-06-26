@@ -93,6 +93,8 @@ internal class CountingPartnerDebtRepo : PartnerDebtRepository {
     override fun observeDebts(coupleId: String): Flow<List<PartnerDebt>> = emptyFlow()
     override fun observePayments(): Flow<List<DebtPayment>> = emptyFlow()
     override suspend fun getDebt(id: String): PartnerDebt? = null
+    override suspend fun getActiveDebts(coupleId: String): List<PartnerDebt> = emptyList()
+    override suspend fun getActivePayments(): List<DebtPayment> = emptyList()
     override suspend fun upsertDebt(debt: PartnerDebt, coupleId: String) = Unit
     override suspend fun deleteDebt(id: String) = Unit
     override suspend fun upsertPayment(payment: DebtPayment) = Unit

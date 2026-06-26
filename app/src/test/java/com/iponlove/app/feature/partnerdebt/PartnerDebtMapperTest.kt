@@ -50,6 +50,18 @@ class PartnerDebtMapperTest {
     }
 
     @Test
+    fun debt_roundTrips_sourceTransactionId() {
+        val entity = partnerDebtEntity(id = "d", sourceTransactionId = "txn-7")
+
+        assertThat(entity.toDto().sourceTransactionId).isEqualTo("txn-7")
+        assertThat(entity.toDomain().sourceTransactionId).isEqualTo("txn-7")
+        assertThat(partnerDebtDto(id = "d", sourceTransactionId = "txn-7").toEntity().sourceTransactionId)
+            .isEqualTo("txn-7")
+        // Manual debts carry no source link.
+        assertThat(partnerDebtEntity(id = "m").toDomain().sourceTransactionId).isNull()
+    }
+
+    @Test
     fun payment_roundTrips_throughDtoAndEntity() {
         val entity = debtPaymentEntity(
             id = "p",
@@ -70,5 +82,41 @@ class PartnerDebtMapperTest {
         assertThat(back.pendingSync).isFalse()
         assertThat(back.amount.toPlainString()).isEqualTo("99.99")
         assertThat(back.serverRev).isEqualTo(3)
+    }
+
+    @Test
+    fun nettingPayment_roundTrips_isNettingAndCounterDebtId() {
+        val entity = debtPaymentEntity(
+            id = "np",
+            debtId = "d-new",
+            amount = "500.00",
+            isNetting = true,
+            counterDebtId = "d-old",
+        )
+
+        val dto = entity.toDto()
+        assertThat(dto.isNetting).isTrue()
+        assertThat(dto.counterDebtId).isEqualTo("d-old")
+
+        val domain = entity.toDomain()
+        assertThat(domain.isNetting).isTrue()
+        assertThat(domain.counterDebtId).isEqualTo("d-old")
+
+        val back = dto.toEntity()
+        assertThat(back.isNetting).isTrue()
+        assertThat(back.counterDebtId).isEqualTo("d-old")
+        assertThat(back.pendingSync).isFalse()
+    }
+
+    @Test
+    fun manualPayment_isNettingFalse_counterDebtIdNull() {
+        val entity = debtPaymentEntity(id = "mp", debtId = "d")
+
+        assertThat(entity.isNetting).isFalse()
+        assertThat(entity.counterDebtId).isNull()
+        assertThat(entity.toDto().isNetting).isFalse()
+        assertThat(entity.toDto().counterDebtId).isNull()
+        assertThat(entity.toDomain().isNetting).isFalse()
+        assertThat(entity.toDomain().counterDebtId).isNull()
     }
 }

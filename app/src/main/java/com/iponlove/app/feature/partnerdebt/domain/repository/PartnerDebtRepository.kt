@@ -25,6 +25,12 @@ interface PartnerDebtRepository {
 
     suspend fun getDebt(id: String): PartnerDebt?
 
+    /** One-shot snapshot of active debts for the netting reconcile. */
+    suspend fun getActiveDebts(coupleId: String): List<PartnerDebt>
+
+    /** One-shot snapshot of active payments for the netting reconcile. */
+    suspend fun getActivePayments(): List<DebtPayment>
+
     /** Create or edit a couple-owned debt under [coupleId]; ownership survives edits. */
     suspend fun upsertDebt(debt: PartnerDebt, coupleId: String)
 

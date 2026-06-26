@@ -24,6 +24,9 @@ class FakePartnerDebtDao : PartnerDebtDao {
 
     override suspend fun getDebt(id: String): PartnerDebtEntity? = debts[id]
 
+    override suspend fun activeDebts(coupleId: String): List<PartnerDebtEntity> =
+        debts.values.filter { !it.isDeleted && it.coupleId == coupleId }
+
     override suspend fun upsertDebt(debt: PartnerDebtEntity) {
         debts[debt.id] = debt
         changes.value++
@@ -33,6 +36,14 @@ class FakePartnerDebtDao : PartnerDebtDao {
         changes.map { payments.values.filter { !it.isDeleted } }
 
     override suspend fun getPayment(id: String): DebtPaymentEntity? = payments[id]
+
+    override suspend fun activePayments(): List<DebtPaymentEntity> =
+        payments.values.filter { !it.isDeleted }
+
+    override suspend fun nettingPaymentsForDebt(debtId: String): List<DebtPaymentEntity> =
+        payments.values.filter {
+            (it.debtId == debtId || it.counterDebtId == debtId) && it.isNetting && !it.isDeleted
+        }
 
     override suspend fun upsertPayment(payment: DebtPaymentEntity) {
         payments[payment.id] = payment
@@ -111,6 +122,7 @@ fun partnerDebtEntity(
     lenderId: String = "you",
     amount: String = "1000.00",
     description: String? = "dinner",
+    sourceTransactionId: String? = null,
     createdAt: Instant = Instant.ofEpochMilli(1_000),
     updatedAt: Instant = Instant.ofEpochMilli(1_000),
     isDeleted: Boolean = false,
@@ -123,6 +135,7 @@ fun partnerDebtEntity(
     lenderId = lenderId,
     amount = BigDecimal(amount),
     description = description,
+    sourceTransactionId = sourceTransactionId,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,
@@ -136,6 +149,8 @@ fun debtPaymentEntity(
     amount: String = "100.00",
     note: String? = null,
     date: Instant = Instant.ofEpochMilli(2_000),
+    isNetting: Boolean = false,
+    counterDebtId: String? = null,
     createdAt: Instant = Instant.ofEpochMilli(2_000),
     updatedAt: Instant = Instant.ofEpochMilli(2_000),
     isDeleted: Boolean = false,
@@ -147,6 +162,8 @@ fun debtPaymentEntity(
     amount = BigDecimal(amount),
     note = note,
     date = date,
+    isNetting = isNetting,
+    counterDebtId = counterDebtId,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,
@@ -161,6 +178,7 @@ fun partnerDebtDto(
     lenderId: String = "you",
     amount: String = "1000.00",
     description: String? = "dinner",
+    sourceTransactionId: String? = null,
     updatedAt: Instant = Instant.ofEpochMilli(1_000),
     isDeleted: Boolean = false,
     serverRev: Long? = null,
@@ -171,6 +189,7 @@ fun partnerDebtDto(
     lenderId = lenderId,
     amount = BigDecimal(amount),
     description = description,
+    sourceTransactionId = sourceTransactionId,
     createdAt = Instant.ofEpochMilli(1_000),
     updatedAt = updatedAt,
     isDeleted = isDeleted,
@@ -183,6 +202,8 @@ fun debtPaymentDto(
     amount: String = "100.00",
     note: String? = null,
     date: Instant = Instant.ofEpochMilli(2_000),
+    isNetting: Boolean = false,
+    counterDebtId: String? = null,
     updatedAt: Instant = Instant.ofEpochMilli(2_000),
     isDeleted: Boolean = false,
     serverRev: Long? = null,
@@ -192,6 +213,8 @@ fun debtPaymentDto(
     amount = BigDecimal(amount),
     note = note,
     date = date,
+    isNetting = isNetting,
+    counterDebtId = counterDebtId,
     createdAt = Instant.ofEpochMilli(2_000),
     updatedAt = updatedAt,
     isDeleted = isDeleted,

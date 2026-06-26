@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.recurring.domain.usecase
 
+import com.iponlove.app.core.util.DeterministicUuid
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.recurring.domain.repository.RecurringRuleRepository

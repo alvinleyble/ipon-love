@@ -192,6 +192,11 @@ create table partner_debts (
     lender_id   uuid not null references users(id) on delete cascade,
     amount      numeric(14,2) not null,
     description text,
+    -- Display-only back-reference to the transaction that spawned this debt via the
+    -- "paid for partner" toggle (ADR-0019 #12). No FK: it's fire-and-forget — editing or
+    -- deleting that transaction must never cascade to the debt, and it may point at a row
+    -- the reader can't even see (the lender's private expense).
+    source_transaction_id uuid,
     created_at  timestamptz not null default now(),
     updated_at  timestamptz not null default now(),
     is_deleted  boolean not null default false,
@@ -200,16 +205,23 @@ create table partner_debts (
 
 -- ---------- partner_debt_payments -------------------------------------------
 -- Each row is one (partial or full) repayment against a partner_debt.
+-- A *netting* payment (is_netting = true, ADR-0019 #9) is an auto-generated
+-- offset created when an opposing debt is recorded: it carries counter_debt_id,
+-- the opposing debt it offsets. Its id is a deterministic UUIDv5 of the two debt
+-- ids, so two partners netting the same opposing pair offline converge on one
+-- row instead of double-netting. counter_debt_id is null for manual repayments.
 create table partner_debt_payments (
-    id         uuid primary key default gen_random_uuid(),
-    debt_id    uuid not null references partner_debts(id) on delete cascade,
-    amount     numeric(14,2) not null,
-    note       text,
-    date       timestamptz not null,
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now(),
-    is_deleted boolean not null default false,
-    server_rev bigint
+    id              uuid primary key default gen_random_uuid(),
+    debt_id         uuid not null references partner_debts(id) on delete cascade,
+    amount          numeric(14,2) not null,
+    note            text,
+    date            timestamptz not null,
+    is_netting      boolean not null default false,
+    counter_debt_id uuid references partner_debts(id) on delete cascade,
+    created_at      timestamptz not null default now(),
+    updated_at      timestamptz not null default now(),
+    is_deleted      boolean not null default false,
+    server_rev      bigint
 );
 
 -- ---------- note_images -----------------------------------------------------

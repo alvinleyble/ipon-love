@@ -23,6 +23,10 @@ interface PartnerDebtDao {
     @Query("SELECT * FROM partner_debts WHERE id = :id")
     suspend fun getDebt(id: String): PartnerDebtEntity?
 
+    /** One-shot snapshot of the couple's active debts — drives the netting reconcile. */
+    @Query("SELECT * FROM partner_debts WHERE isDeleted = 0 AND coupleId = :coupleId")
+    suspend fun activeDebts(coupleId: String): List<PartnerDebtEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertDebt(debt: PartnerDebtEntity)
 
@@ -34,6 +38,19 @@ interface PartnerDebtDao {
 
     @Query("SELECT * FROM partner_debt_payments WHERE id = :id")
     suspend fun getPayment(id: String): DebtPaymentEntity?
+
+    /** One-shot snapshot of all active payments — drives the netting reconcile. */
+    @Query("SELECT * FROM partner_debt_payments WHERE isDeleted = 0")
+    suspend fun activePayments(): List<DebtPaymentEntity>
+
+    /**
+     * Active netting payments touching [debtId] — either attached to it or referencing it
+     * as the counter-debt. Used to cascade soft-delete when the parent debt is deleted.
+     */
+    @Query(
+        "SELECT * FROM partner_debt_payments WHERE (debtId = :debtId OR counterDebtId = :debtId) AND isNetting = 1 AND isDeleted = 0",
+    )
+    suspend fun nettingPaymentsForDebt(debtId: String): List<DebtPaymentEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPayment(payment: DebtPaymentEntity)

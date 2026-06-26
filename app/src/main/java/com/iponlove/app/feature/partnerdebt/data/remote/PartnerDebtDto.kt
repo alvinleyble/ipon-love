@@ -16,6 +16,7 @@ data class PartnerDebtDto(
     @SerialName("lender_id") val lenderId: String,
     @Serializable(with = BigDecimalSerializer::class) val amount: BigDecimal,
     val description: String?,
+    @SerialName("source_transaction_id") val sourceTransactionId: String? = null,
     @SerialName("created_at")
     @Serializable(with = InstantSerializer::class) val createdAt: Instant,
     @SerialName("updated_at")

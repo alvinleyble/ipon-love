@@ -32,6 +32,12 @@ class PartnerDebtRepositoryImpl @Inject constructor(
 
     override suspend fun getDebt(id: String): PartnerDebt? = dao.getDebt(id)?.toDomain()
 
+    override suspend fun getActiveDebts(coupleId: String): List<PartnerDebt> =
+        dao.activeDebts(coupleId).map { it.toDomain() }
+
+    override suspend fun getActivePayments(): List<DebtPayment> =
+        dao.activePayments().map { it.toDomain() }
+
     override suspend fun upsertDebt(debt: PartnerDebt, coupleId: String) {
         val existing = dao.getDebt(debt.id)
         val updatedAt = clock.stamp(existing?.updatedAt)
@@ -43,6 +49,8 @@ class PartnerDebtRepositoryImpl @Inject constructor(
                 lenderId = debt.lenderId,
                 amount = debt.amount,
                 description = debt.description,
+                // Set once at creation; survives edits (display-only, ADR-0019 #12).
+                sourceTransactionId = existing?.sourceTransactionId ?: debt.sourceTransactionId,
                 createdAt = existing?.createdAt ?: updatedAt,
                 updatedAt = updatedAt,
                 isDeleted = existing?.isDeleted ?: false,
@@ -62,6 +70,18 @@ class PartnerDebtRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        // Cascade soft-delete to all netting payments that reference this debt (either as
+        // the direct payment or as the counter-debt side of an offsetting pair — ADR-0019).
+        val nettingPayments = dao.nettingPaymentsForDebt(id)
+        nettingPayments.forEach { p ->
+            dao.upsertPayment(
+                p.copy(
+                    isDeleted = true,
+                    updatedAt = clock.stamp(p.updatedAt),
+                    pendingSync = true,
+                ),
+            )
+        }
         syncTrigger.requestPush()
     }
 
@@ -75,6 +95,8 @@ class PartnerDebtRepositoryImpl @Inject constructor(
                 amount = payment.amount,
                 note = payment.note,
                 date = payment.date,
+                isNetting = existing?.isNetting ?: payment.isNetting,
+                counterDebtId = existing?.counterDebtId ?: payment.counterDebtId,
                 createdAt = existing?.createdAt ?: updatedAt,
                 updatedAt = updatedAt,
                 isDeleted = existing?.isDeleted ?: false,

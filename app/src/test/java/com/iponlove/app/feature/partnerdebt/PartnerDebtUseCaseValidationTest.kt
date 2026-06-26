@@ -2,6 +2,7 @@ package com.iponlove.app.feature.partnerdebt
 
 import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.feature.partnerdebt.data.PartnerDebtRepositoryImpl
+import com.iponlove.app.feature.partnerdebt.domain.usecase.ApplyDebtNettingUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.RecordDebtPaymentUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.UpsertPartnerDebtUseCase
 import com.iponlove.app.core.sync.SyncClock
@@ -13,8 +14,10 @@ import java.time.Instant
 class PartnerDebtUseCaseValidationTest {
 
     private val dao = FakePartnerDebtDao()
-    private val repository = PartnerDebtRepositoryImpl(dao, SyncClock(now = { Instant.ofEpochMilli(0) }))
-    private val upsertDebt = UpsertPartnerDebtUseCase(repository)
+    private val clock = SyncClock(now = { Instant.ofEpochMilli(0) })
+    private val repository = PartnerDebtRepositoryImpl(dao, clock)
+    private val applyNetting = ApplyDebtNettingUseCase(repository, clock)
+    private val upsertDebt = UpsertPartnerDebtUseCase(repository, applyNetting)
     private val recordPayment = RecordDebtPaymentUseCase(repository)
 
     @Test

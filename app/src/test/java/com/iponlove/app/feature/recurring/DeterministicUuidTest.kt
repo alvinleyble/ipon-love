@@ -1,7 +1,7 @@
 package com.iponlove.app.feature.recurring
 
 import com.google.common.truth.Truth.assertThat
-import com.iponlove.app.feature.recurring.domain.usecase.DeterministicUuid
+import com.iponlove.app.core.util.DeterministicUuid
 import org.junit.Test
 
 class DeterministicUuidTest {

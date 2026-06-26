@@ -9,6 +9,9 @@ import java.time.Instant
  * debts only ever exist within a couple. [description] is an optional free-text reason
  * ("dinner", "rent share"). Remaining balance is **derived** from [DebtPayment]s, never
  * stored — see [com.iponlove.app.feature.partnerdebt.domain.usecase.PartnerDebtCalculator].
+ *
+ * [sourceTransactionId] is set when the debt was auto-created from a "paid for partner"
+ * transaction (ADR-0019 #12) — display-only, fire-and-forget; null for manual debts.
  */
 data class PartnerDebt(
     val id: String,
@@ -17,4 +20,5 @@ data class PartnerDebt(
     val amount: BigDecimal,
     val description: String?,
     val createdAt: Instant,
+    val sourceTransactionId: String? = null,
 )

@@ -20,6 +20,9 @@ data class PartnerDebtEntity(
     val lenderId: String,
     val amount: BigDecimal,
     val description: String?,
+    /** Display-only id of the transaction that spawned this debt (ADR-0019 #12); null for
+     *  manually-entered debts. Fire-and-forget — never used to cascade edits/deletes. */
+    val sourceTransactionId: String? = null,
     val createdAt: Instant,
     override val updatedAt: Instant,
     override val isDeleted: Boolean,

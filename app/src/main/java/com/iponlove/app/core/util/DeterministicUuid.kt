@@ -1,4 +1,4 @@
-package com.iponlove.app.feature.recurring.domain.usecase
+package com.iponlove.app.core.util
 
 import java.nio.ByteBuffer
 import java.security.MessageDigest
@@ -7,12 +7,12 @@ import java.util.UUID
 /**
  * RFC 4122 name-based (version 5, SHA-1) UUIDs. Pure Kotlin/JDK — no Android imports.
  *
- * Recurring materialization derives each generated transaction's id from
- * `ruleId:occurrenceDate` (see [MaterializeRecurringRulesUseCase]). Because the id is a
- * deterministic function of the rule and date, two synced devices independently compute
- * the *same* id, so a sync upsert collapses the would-be duplicate into one row — and a
- * tombstoned occurrence is never resurrected. This is the idempotency the recurring
- * feature was gated on.
+ * A shared sync primitive: when an id is a deterministic function of stable inputs, two
+ * synced devices independently compute the *same* id, so an upsert collapses the would-be
+ * duplicate into one row (and a tombstoned row is never resurrected). Used by recurring
+ * materialization (`ruleId:occurrenceDate`) and by partner-debt netting (the two debt ids
+ * of an offsetting pair, ADR-0019 #9) so concurrent offline netting converges instead of
+ * double-netting.
  *
  * v5 (SHA-1) rather than the JDK's built-in [UUID.nameUUIDFromBytes] (v3/MD5) — same
  * determinism, the modern hash.

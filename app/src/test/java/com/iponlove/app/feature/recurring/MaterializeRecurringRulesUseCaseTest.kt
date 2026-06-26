@@ -2,6 +2,7 @@ package com.iponlove.app.feature.recurring
 
 import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.util.DeterministicUuid
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.model.CategoryType
@@ -9,7 +10,6 @@ import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.recurring.data.RecurringRuleRepositoryImpl
 import com.iponlove.app.feature.recurring.domain.model.RecurringFrequency
-import com.iponlove.app.feature.recurring.domain.usecase.DeterministicUuid
 import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRulesUseCase
 import com.iponlove.app.feature.transactions.FakeTransactionDao
 import com.iponlove.app.feature.transactions.data.TransactionRepositoryImpl
