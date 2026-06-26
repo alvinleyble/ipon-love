@@ -67,6 +67,8 @@ class CategoriesViewModel @Inject constructor(
             source = category,
             name = category.name,
             type = category.type,
+            icon = category.icon,
+            color = category.color,
         )
     }
 
@@ -78,6 +80,10 @@ class CategoriesViewModel @Inject constructor(
 
     fun onTypeChange(value: CategoryType) = editor.update { it?.copy(type = value) }
 
+    fun onIconChange(value: String?) = editor.update { it?.copy(icon = value) }
+
+    fun onColorChange(value: String?) = editor.update { it?.copy(color = value) }
+
     fun save() {
         val state = editor.value ?: return
         if (state.name.isBlank()) {
@@ -87,10 +93,14 @@ class CategoriesViewModel @Inject constructor(
         val category = state.source?.copy(
             name = state.name.trim(),
             type = state.type,
+            icon = state.icon,
+            color = state.color,
         ) ?: Category(
             id = UUID.randomUUID().toString(),
             name = state.name.trim(),
             type = state.type,
+            icon = state.icon,
+            color = state.color,
         )
         viewModelScope.launch {
             upsertCategory(category)

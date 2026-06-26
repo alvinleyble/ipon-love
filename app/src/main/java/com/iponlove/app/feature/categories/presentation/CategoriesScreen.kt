@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -44,9 +46,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.EntityColorPicker
+import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
+import com.iponlove.app.core.ui.icons.IconPicker
+import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 
@@ -62,6 +69,8 @@ fun CategoriesScreen(viewModel: CategoriesViewModel = hiltViewModel()) {
         onDelete = { category -> viewModel.delete(category.id) },
         onNameChange = viewModel::onNameChange,
         onTypeChange = viewModel::onTypeChange,
+        onIconChange = viewModel::onIconChange,
+        onColorChange = viewModel::onColorChange,
         onSave = viewModel::save,
         onCancel = viewModel::cancelEdit,
     )
@@ -78,6 +87,8 @@ private fun CategoriesContent(
     onDelete: (Category) -> Unit,
     onNameChange: (String) -> Unit,
     onTypeChange: (CategoryType) -> Unit,
+    onIconChange: (String?) -> Unit,
+    onColorChange: (String?) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -123,6 +134,8 @@ private fun CategoriesContent(
             editor = editor,
             onNameChange = onNameChange,
             onTypeChange = onTypeChange,
+            onIconChange = onIconChange,
+            onColorChange = onColorChange,
             onSave = onSave,
             onCancel = onCancel,
         )
@@ -153,6 +166,13 @@ private fun CategoryCard(
     onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val iconColor = parseHexColor(category.color) ?: MaterialTheme.colorScheme.primary
+    val containerColor = if (category.color != null) iconColor.copy(alpha = 0.15f)
+    else MaterialTheme.colorScheme.secondaryContainer
+    val contentColor = if (category.color != null) iconColor
+    else MaterialTheme.colorScheme.onSecondaryContainer
+    val imageVector = category.icon?.let { CATEGORY_ICONS[it] }
+
     Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -160,14 +180,23 @@ private fun CategoryCard(
         ) {
             Surface(
                 modifier = Modifier.size(44.dp).clip(CircleShape),
-                color = MaterialTheme.colorScheme.secondaryContainer,
+                color = containerColor,
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = category.name.take(1).uppercase(),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
+                    if (imageVector != null) {
+                        Icon(
+                            imageVector = imageVector,
+                            contentDescription = null,
+                            tint = contentColor,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    } else {
+                        Text(
+                            text = category.name.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = contentColor,
+                        )
+                    }
                 }
             }
             Spacer(Modifier.size(12.dp))
@@ -203,14 +232,17 @@ private fun CategoryEditorDialog(
     editor: CategoryEditorState,
     onNameChange: (String) -> Unit,
     onTypeChange: (CategoryType) -> Unit,
+    onIconChange: (String?) -> Unit,
+    onColorChange: (String?) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    val tintColor = parseHexColor(editor.color) ?: MaterialTheme.colorScheme.primary
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text(if (editor.isEditing) "Edit category" else "New category") },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = editor.name,
                     onValueChange = onNameChange,
@@ -236,6 +268,26 @@ private fun CategoryEditorDialog(
                         )
                     }
                 }
+                Spacer(Modifier.height(16.dp))
+                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(8.dp))
+                IconPicker(
+                    icons = CATEGORY_ICONS,
+                    selectedKey = editor.icon,
+                    tintColor = tintColor,
+                    onSelect = { key ->
+                        if (key == editor.icon) onIconChange(null) else onIconChange(key)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(16.dp))
+                EntityColorPicker(
+                    selectedHex = editor.color,
+                    onSelect = { hex ->
+                        if (hex == editor.color) onColorChange(null) else onColorChange(hex)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         },
         confirmButton = { TextButton(onClick = onSave) { Text("Save") } },

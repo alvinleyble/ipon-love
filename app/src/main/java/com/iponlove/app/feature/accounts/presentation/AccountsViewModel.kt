@@ -60,6 +60,8 @@ class AccountsViewModel @Inject constructor(
             name = account.name,
             type = account.type,
             openingBalanceText = account.openingBalance.toPlainString(),
+            icon = account.icon,
+            color = account.color,
         )
     }
 
@@ -73,6 +75,10 @@ class AccountsViewModel @Inject constructor(
 
     fun onOpeningBalanceChange(value: String) = editor.update { it?.copy(openingBalanceText = value) }
 
+    fun onIconChange(value: String?) = editor.update { it?.copy(icon = value) }
+
+    fun onColorChange(value: String?) = editor.update { it?.copy(color = value) }
+
     fun save() {
         val state = editor.value ?: return
         if (state.name.isBlank()) {
@@ -84,11 +90,15 @@ class AccountsViewModel @Inject constructor(
             name = state.name.trim(),
             type = state.type,
             openingBalance = balance,
+            icon = state.icon,
+            color = state.color,
         ) ?: Account(
             id = UUID.randomUUID().toString(),
             name = state.name.trim(),
             type = state.type,
             openingBalance = balance,
+            icon = state.icon,
+            color = state.color,
         )
         viewModelScope.launch {
             upsertAccount(account)

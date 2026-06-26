@@ -23,6 +23,8 @@ data class CategoryEditorState(
     val source: Category? = null,
     val name: String = "",
     val type: CategoryType = CategoryType.EXPENSE,
+    val icon: String? = null,
+    val color: String? = null,
     val nameError: Boolean = false,
 ) {
     val isEditing: Boolean get() = source != null

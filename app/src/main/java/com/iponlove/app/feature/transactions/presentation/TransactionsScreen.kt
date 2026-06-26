@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -64,6 +66,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.formatShortDate
+import com.iponlove.app.core.ui.parseHexColor
+import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
+import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.TransactionError
@@ -280,10 +285,10 @@ private fun TransactionEditorDialog(
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    val accountOptions = state.accounts.map { PickerOption(it.id, it.name) }
+    val accountOptions = state.accounts.map { PickerOption(it.id, it.name, it.icon?.let { k -> ACCOUNT_ICONS[k] }, it.color) }
     val categoryOptions = state.categories
         .filter { it.type == editor.type.matchingCategoryType() }
-        .map { PickerOption(it.id, it.name) }
+        .map { PickerOption(it.id, it.name, it.icon?.let { k -> CATEGORY_ICONS[k] }, it.color) }
 
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -401,7 +406,12 @@ private fun TransactionEditorDialog(
     }
 }
 
-private data class PickerOption(val id: String, val label: String)
+private data class PickerOption(
+    val id: String,
+    val label: String,
+    val icon: ImageVector? = null,
+    val colorHex: String? = null,
+)
 
 @Composable
 private fun ChipRow(
@@ -423,10 +433,21 @@ private fun ChipRow(
             Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 options.forEachIndexed { index, option ->
                     if (index > 0) Spacer(Modifier.width(8.dp))
+                    val iconTint = parseHexColor(option.colorHex) ?: MaterialTheme.colorScheme.primary
                     IponFilterChip(
                         selected = option.id == selectedId,
                         onClick = { onSelect(option.id) },
                         label = { Text(option.label) },
+                        leadingIcon = option.icon?.let { vector ->
+                            {
+                                Icon(
+                                    imageVector = vector,
+                                    contentDescription = null,
+                                    tint = iconTint,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        },
                     )
                 }
             }

@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -51,7 +53,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.EntityColorPicker
 import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
+import com.iponlove.app.core.ui.icons.IconPicker
+import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.model.AccountType
 import java.math.BigDecimal
@@ -68,6 +74,8 @@ fun AccountsScreen(viewModel: AccountsViewModel = hiltViewModel()) {
         onNameChange = viewModel::onNameChange,
         onTypeChange = viewModel::onTypeChange,
         onBalanceChange = viewModel::onOpeningBalanceChange,
+        onIconChange = viewModel::onIconChange,
+        onColorChange = viewModel::onColorChange,
         onSave = viewModel::save,
         onCancel = viewModel::cancelEdit,
     )
@@ -84,6 +92,8 @@ private fun AccountsContent(
     onNameChange: (String) -> Unit,
     onTypeChange: (AccountType) -> Unit,
     onBalanceChange: (String) -> Unit,
+    onIconChange: (String?) -> Unit,
+    onColorChange: (String?) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -128,6 +138,8 @@ private fun AccountsContent(
             onNameChange = onNameChange,
             onTypeChange = onTypeChange,
             onBalanceChange = onBalanceChange,
+            onIconChange = onIconChange,
+            onColorChange = onColorChange,
             onSave = onSave,
             onCancel = onCancel,
         )
@@ -143,6 +155,13 @@ private fun AccountCard(
     onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val iconColor = parseHexColor(account.color) ?: MaterialTheme.colorScheme.primary
+    val containerColor = if (account.color != null) iconColor.copy(alpha = 0.15f)
+    else MaterialTheme.colorScheme.primaryContainer
+    val contentColor = if (account.color != null) iconColor
+    else MaterialTheme.colorScheme.onPrimaryContainer
+    val imageVector = account.icon?.let { ACCOUNT_ICONS[it] }
+
     Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -150,14 +169,23 @@ private fun AccountCard(
         ) {
             Surface(
                 modifier = Modifier.size(44.dp).clip(CircleShape),
-                color = MaterialTheme.colorScheme.primaryContainer,
+                color = containerColor,
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = account.name.take(1).uppercase(),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
+                    if (imageVector != null) {
+                        Icon(
+                            imageVector = imageVector,
+                            contentDescription = null,
+                            tint = contentColor,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    } else {
+                        Text(
+                            text = account.name.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = contentColor,
+                        )
+                    }
                 }
             }
             Spacer(Modifier.size(12.dp))
@@ -199,14 +227,17 @@ private fun AccountEditorDialog(
     onNameChange: (String) -> Unit,
     onTypeChange: (AccountType) -> Unit,
     onBalanceChange: (String) -> Unit,
+    onIconChange: (String?) -> Unit,
+    onColorChange: (String?) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    val tintColor = parseHexColor(editor.color) ?: MaterialTheme.colorScheme.primary
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text(if (editor.isEditing) "Edit account" else "New account") },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = editor.name,
                     onValueChange = onNameChange,
@@ -239,6 +270,26 @@ private fun AccountEditorDialog(
                     label = { Text("Opening balance (₱)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(16.dp))
+                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(8.dp))
+                IconPicker(
+                    icons = ACCOUNT_ICONS,
+                    selectedKey = editor.icon,
+                    tintColor = tintColor,
+                    onSelect = { key ->
+                        if (key == editor.icon) onIconChange(null) else onIconChange(key)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(16.dp))
+                EntityColorPicker(
+                    selectedHex = editor.color,
+                    onSelect = { hex ->
+                        if (hex == editor.color) onColorChange(null) else onColorChange(hex)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

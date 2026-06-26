@@ -24,6 +24,8 @@ data class AccountEditorState(
     val name: String = "",
     val type: AccountType = AccountType.EWALLET,
     val openingBalanceText: String = "",
+    val icon: String? = null,
+    val color: String? = null,
     val nameError: Boolean = false,
 ) {
     val isEditing: Boolean get() = source != null

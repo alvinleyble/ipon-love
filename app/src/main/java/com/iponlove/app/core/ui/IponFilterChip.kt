@@ -11,11 +11,13 @@ fun IponFilterChip(
     selected: Boolean,
     onClick: () -> Unit,
     label: @Composable () -> Unit,
+    leadingIcon: (@Composable () -> Unit)? = null,
 ) {
     FilterChip(
         selected = selected,
         onClick = onClick,
         label = label,
+        leadingIcon = leadingIcon,
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
