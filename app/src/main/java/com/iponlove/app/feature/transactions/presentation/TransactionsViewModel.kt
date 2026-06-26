@@ -9,6 +9,11 @@ import com.iponlove.app.feature.widget.presentation.BalanceWidget
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
+import com.iponlove.app.feature.couple.domain.model.CoupleMembers
+import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
+import com.iponlove.app.feature.accounts.domain.model.Account
+import com.iponlove.app.feature.categories.domain.model.Category
+import com.iponlove.app.feature.partnerdebt.domain.usecase.PaidOnBehalfUseCase
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import android.net.Uri
@@ -36,7 +41,9 @@ class TransactionsViewModel @Inject constructor(
     observeTransactions: ObserveTransactionsUseCase,
     observeAccounts: ObserveAccountsUseCase,
     observeCategories: ObserveCategoriesUseCase,
+    observeCoupleMembers: ObserveCoupleMembersUseCase,
     private val upsertTransaction: UpsertTransactionUseCase,
+    private val paidOnBehalf: PaidOnBehalfUseCase,
     private val deleteTransaction: DeleteTransactionUseCase,
     private val attachReceipt: AttachReceiptUseCase,
     private val syncEngine: SyncEngine,
@@ -49,35 +56,59 @@ class TransactionsViewModel @Inject constructor(
     // (the list exposes display models only).
     private var latestTransactions: List<Transaction> = emptyList()
     private var firstAccountId: String? = null
+    // Couple identity captured for the "paid for partner" save path; null when not paired
+    // (or the partner row hasn't replicated in yet).
+    private var coupleId: String? = null
+    private var myId: String? = null
+    private var partnerId: String? = null
+    private var partnerName: String = "Partner"
+
+    private data class Sources(
+        val transactions: List<Transaction>,
+        val accounts: List<Account>,
+        val categories: List<Category>,
+        val members: CoupleMembers?,
+    )
 
     val uiState: StateFlow<TransactionsUiState> =
         combine(
             observeTransactions(),
             observeAccounts(),
             observeCategories(),
-            editor,
-            isRefreshing,
-        ) { transactions, accounts, categories, editorState, refreshing ->
-            latestTransactions = transactions
-            firstAccountId = accounts.firstOrNull()?.id
+            observeCoupleMembers(),
+        ) { transactions, accounts, categories, members ->
+            Sources(transactions, accounts, categories, members)
+        }
+            .combine(editor) { sources, editorState -> sources to editorState }
+            .combine(isRefreshing) { (sources, editorState), refreshing ->
+                latestTransactions = sources.transactions
+                firstAccountId = sources.accounts.firstOrNull()?.id
+                coupleId = sources.members?.me?.coupleId
+                myId = sources.members?.me?.id
+                partnerId = sources.members?.partner?.id
+                partnerName = sources.members?.partner?.displayName ?: "Partner"
 
-            val accountNames = accounts.associate { it.id to it.name }
-            val categoryNames = categories.associate { it.id to it.name }
+                val accountNames = sources.accounts.associate { it.id to it.name }
+                val categoryNames = sources.categories.associate { it.id to it.name }
 
-            TransactionsUiState(
-                isLoading = false,
-                isRefreshing = refreshing,
-                items = transactions.map { it.toListItem(accountNames, categoryNames) },
-                accounts = accounts,
-                categories = categories,
-                editor = editorState,
-                canAdd = accounts.isNotEmpty(),
+                TransactionsUiState(
+                    isLoading = false,
+                    isRefreshing = refreshing,
+                    items = sources.transactions.map { it.toListItem(accountNames, categoryNames) },
+                    accounts = sources.accounts,
+                    categories = sources.categories,
+                    editor = editorState,
+                    canAdd = sources.accounts.isNotEmpty(),
+                )
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+                initialValue = TransactionsUiState(),
             )
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            initialValue = TransactionsUiState(),
-        )
+
+    // Paid-for-partner needs a known borrower (the partner) and lender (me) under a couple.
+    private fun canPayForPartner(): Boolean =
+        coupleId != null && myId != null && partnerId != null
 
     fun startCreate() {
         editor.value = TransactionEditorState(
@@ -85,6 +116,8 @@ class TransactionsViewModel @Inject constructor(
             isEditing = false,
             accountId = firstAccountId,
             date = Instant.now(),
+            canPayForPartner = canPayForPartner(),
+            partnerName = partnerName,
         )
     }
 
@@ -129,6 +162,8 @@ class TransactionsViewModel @Inject constructor(
             type = type,
             categoryId = if (type == TransactionType.TRANSFER) null else e.categoryId,
             toAccountId = if (type == TransactionType.TRANSFER) e.toAccountId else null,
+            // "Paid for partner" only makes sense on an expense; clear it on any other type.
+            paidForPartner = if (type == TransactionType.EXPENSE) e.paidForPartner else false,
             errors = emptySet(),
         )
     }
@@ -144,6 +179,20 @@ class TransactionsViewModel @Inject constructor(
     fun onNoteChange(value: String) = editor.update { it?.copy(note = value) }
 
     fun onPrivateChange(value: Boolean) = editor.update { it?.copy(isPrivate = value) }
+
+    fun onPaidForPartnerChange(value: Boolean) = editor.update { e ->
+        e ?: return@update null
+        e.copy(
+            paidForPartner = value,
+            // Default the owed amount to the full transaction amount when switching on; the
+            // user can edit it down for a bill split. Clear the error either way.
+            amountOwedText = if (value && e.amountOwedText.isBlank()) e.amountText else e.amountOwedText,
+            amountOwedError = false,
+        )
+    }
+
+    fun onAmountOwedChange(value: String) =
+        editor.update { it?.copy(amountOwedText = value, amountOwedError = false) }
 
     fun onDateChange(date: Instant) = editor.update { it?.copy(date = date) }
 
@@ -190,6 +239,36 @@ class TransactionsViewModel @Inject constructor(
             attachmentUrl = s.attachmentUrl,
             attachmentLocalPath = s.attachmentLocalPath,
         )
+
+        // "Paid for partner": record the transaction and auto-create a partner debt the
+        // partner owes (ADR-0019 #12). Only valid on an expense while paired.
+        val payForPartner = s.paidForPartner && s.canPayForPartner && s.type == TransactionType.EXPENSE
+        if (payForPartner) {
+            val borrower = partnerId
+            val lender = myId
+            val couple = coupleId
+            // Blank owed = full amount (the field defaults to it); otherwise must be 0 < owed ≤ amount.
+            val owed = s.amountOwedText.trim().ifBlank { amount.toPlainString() }.toBigDecimalOrNull()
+            if (borrower == null || lender == null || couple == null ||
+                owed == null || owed.signum() <= 0 || owed > amount
+            ) {
+                editor.value = s.copy(amountOwedError = true)
+                return
+            }
+            viewModelScope.launch {
+                paidOnBehalf(
+                    transaction = transaction,
+                    amountOwed = owed,
+                    borrowerId = borrower,
+                    lenderId = lender,
+                    coupleId = couple,
+                )
+                editor.value = null
+                BalanceWidget().updateAll(context)
+            }
+            return
+        }
+
         viewModelScope.launch {
             upsertTransaction(transaction)
             editor.value = null

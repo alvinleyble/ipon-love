@@ -48,4 +48,17 @@ data class TransactionEditorState(
     val attachmentLocalPath: String? = null,
     /** Existing server URL loaded when editing a transaction that already has a receipt. */
     val attachmentUrl: String? = null,
+    /**
+     * True only when creating an EXPENSE while paired with a partner whose row is available —
+     * gates the "Paid for partner" affordance (ADR-0019 #12). False when editing, since the
+     * debt is fire-and-forget and must not be re-created on edit.
+     */
+    val canPayForPartner: Boolean = false,
+    /** Partner's display name, for the toggle label; "Partner" fallback. */
+    val partnerName: String = "Partner",
+    /** "Paid for partner" toggle: on save, also creates a partner debt for [amountOwedText]. */
+    val paidForPartner: Boolean = false,
+    /** What the partner owes; defaults to the full amount, editable down. Blank = full amount. */
+    val amountOwedText: String = "",
+    val amountOwedError: Boolean = false,
 )

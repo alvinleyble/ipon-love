@@ -115,6 +115,8 @@ fun TransactionsScreen(
         onCategoryChange = viewModel::onCategoryChange,
         onNoteChange = viewModel::onNoteChange,
         onPrivateChange = viewModel::onPrivateChange,
+        onPaidForPartnerChange = viewModel::onPaidForPartnerChange,
+        onAmountOwedChange = viewModel::onAmountOwedChange,
         onDateChange = viewModel::onDateChange,
         onReceiptPicked = viewModel::onReceiptPicked,
         onRemoveReceipt = viewModel::onRemoveReceipt,
@@ -143,6 +145,8 @@ private fun TransactionsContent(
     onCategoryChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onPrivateChange: (Boolean) -> Unit,
+    onPaidForPartnerChange: (Boolean) -> Unit,
+    onAmountOwedChange: (String) -> Unit,
     onDateChange: (Instant) -> Unit,
     onReceiptPicked: (Uri) -> Unit,
     onRemoveReceipt: () -> Unit,
@@ -231,6 +235,8 @@ private fun TransactionsContent(
             onCategoryChange = onCategoryChange,
             onNoteChange = onNoteChange,
             onPrivateChange = onPrivateChange,
+            onPaidForPartnerChange = onPaidForPartnerChange,
+            onAmountOwedChange = onAmountOwedChange,
             onDateChange = onDateChange,
             onReceiptPicked = onReceiptPicked,
             onRemoveReceipt = onRemoveReceipt,
@@ -297,6 +303,8 @@ private fun TransactionEditorDialog(
     onCategoryChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onPrivateChange: (Boolean) -> Unit,
+    onPaidForPartnerChange: (Boolean) -> Unit,
+    onAmountOwedChange: (String) -> Unit,
     onDateChange: (Instant) -> Unit,
     onReceiptPicked: (Uri) -> Unit,
     onRemoveReceipt: () -> Unit,
@@ -391,6 +399,31 @@ private fun TransactionEditorDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Private", modifier = Modifier.weight(1f))
                     Switch(checked = editor.isPrivate, onCheckedChange = onPrivateChange)
+                }
+                if (editor.canPayForPartner && editor.type == TransactionType.EXPENSE) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Paid for ${editor.partnerName}", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = editor.paidForPartner,
+                            onCheckedChange = onPaidForPartnerChange,
+                        )
+                    }
+                    if (editor.paidForPartner) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = editor.amountOwedText,
+                            onValueChange = onAmountOwedChange,
+                            label = { Text("Amount owed (₱)") },
+                            supportingText = {
+                                Text("How much ${editor.partnerName} owes you — defaults to the full amount.")
+                            },
+                            singleLine = true,
+                            isError = editor.amountOwedError,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 ReceiptRow(
