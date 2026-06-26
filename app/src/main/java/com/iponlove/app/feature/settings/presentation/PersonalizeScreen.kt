@@ -48,6 +48,7 @@ fun PersonalizeScreen(
     onBack: () -> Unit,
     onOpenProfile: () -> Unit = {},
     onOpenSecurity: () -> Unit = {},
+    onOpenNavbar: () -> Unit = {},
     viewModel: PersonalizeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -128,6 +129,15 @@ fun PersonalizeScreen(
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
                     },
                     modifier = Modifier.clickable(onClick = onOpenSecurity),
+                )
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("Edit navbar") },
+                    supportingContent = { Text("Choose & reorder bottom-bar shortcuts") },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable(onClick = onOpenNavbar),
                 )
             }
         }

@@ -2,6 +2,7 @@ package com.iponlove.app.feature.settings.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.feature.settings.data.ThemeDraftRepository
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
@@ -18,6 +19,7 @@ import javax.inject.Inject
 class PersonalizeViewModel @Inject constructor(
     private val observeTheme: ObserveThemePreferencesUseCase,
     private val saveTheme: SaveThemePreferencesUseCase,
+    private val themeDraft: ThemeDraftRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PersonalizeUiState())
@@ -34,10 +36,12 @@ class PersonalizeViewModel @Inject constructor(
 
     fun selectPalette(palette: ThemePalette) {
         _uiState.update { it.copy(draftPalette = palette, saved = false) }
+        themeDraft.set(ThemePreferences(palette = palette, isDark = _uiState.value.draftIsDark))
     }
 
     fun toggleDarkMode(isDark: Boolean) {
         _uiState.update { it.copy(draftIsDark = isDark, saved = false) }
+        themeDraft.set(ThemePreferences(palette = _uiState.value.draftPalette, isDark = isDark))
     }
 
     fun save() {
@@ -46,5 +50,10 @@ class PersonalizeViewModel @Inject constructor(
             saveTheme(ThemePreferences(palette = state.draftPalette, isDark = state.draftIsDark))
             _uiState.update { it.copy(saved = true) }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        themeDraft.clear()
     }
 }

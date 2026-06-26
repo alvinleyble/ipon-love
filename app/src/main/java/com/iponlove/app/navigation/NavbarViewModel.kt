@@ -1,0 +1,55 @@
+package com.iponlove.app.navigation
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.iponlove.app.feature.couple.domain.model.PairingState
+import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+/**
+ * Resolved navbar state for the dynamic bottom bar, the More sheet, and the editor.
+ * [visiblePinIds]/[startRoute] are derived purely via [NavResolver]; the UI maps ids back to
+ * [NavDestination] through [NavRegistry].
+ */
+data class NavUiState(
+    val loaded: Boolean = false,
+    val isPaired: Boolean = false,
+    val config: NavConfig = NavConfig(),
+) {
+    val visiblePinIds: List<String> get() = NavResolver.visiblePinIds(config, isPaired)
+    val visibleModuleIds: List<String> get() = NavResolver.visibleModuleIds(isPaired)
+    val startRoute: String get() = NavResolver.startRoute(config)
+}
+
+@HiltViewModel
+class NavbarViewModel @Inject constructor(
+    private val navConfigRepository: NavConfigRepository,
+    observePairingState: ObservePairingStateUseCase,
+) : ViewModel() {
+
+    val uiState: StateFlow<NavUiState> = combine(
+        navConfigRepository.observe(),
+        observePairingState().map { it is PairingState.Paired },
+    ) { config, paired ->
+        NavUiState(loaded = true, isPaired = paired, config = config)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = NavUiState(),
+    )
+
+    /**
+     * Persist a layout the editor produced. The editor owns a working [NavConfig] and mutates it
+     * through [NavConfig]'s own invariant-keeping methods, so this is a plain save.
+     */
+    fun applyConfig(config: NavConfig) {
+        viewModelScope.launch { navConfigRepository.save(config) }
+    }
+}

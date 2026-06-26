@@ -41,6 +41,7 @@ import com.iponlove.app.feature.auth.presentation.AuthScreen
 import com.iponlove.app.feature.auth.presentation.AuthViewModel
 import com.iponlove.app.feature.couple.domain.usecase.WatchUnpairUseCase
 import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRulesUseCase
+import com.iponlove.app.feature.settings.data.ThemeDraftRepository
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
 import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
@@ -69,6 +70,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var appLockManager: AppLockManager
     @Inject lateinit var syncEngine: SyncEngine
     @Inject lateinit var coupleChannelManager: CoupleChannelManager
+    @Inject lateinit var themeDraft: ThemeDraftRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,13 +83,14 @@ class MainActivity : FragmentActivity() {
                 appLockManager.cancelAutoLock()
                 coupleChannelManager.setForeground(true)
                 lifecycleScope.launch {
-                    materializeRecurringRules()
                     // Full refresh on every foreground resume — not only on login — so a
                     // partner's changes (and our own pending rows) converge immediately on
-                    // return. Guarded by an active session so it's a no-op on the auth screen;
-                    // shares the engine's single-flight lock, so it coalesces with the bell's
-                    // catch-up pull rather than double-syncing.
+                    // return. Both calls are guarded by an active session so they're a no-op on
+                    // the auth screen (materialize reads categories via CurrentUserProvider, which
+                    // throws when logged out); sync shares the engine's single-flight lock, so it
+                    // coalesces with the bell's catch-up pull rather than double-syncing.
                     if (supabaseClient.auth.currentUserOrNull() != null) {
+                        materializeRecurringRules()
                         runCatching { syncEngine.sync() }
                     }
                 }
@@ -99,8 +102,10 @@ class MainActivity : FragmentActivity() {
         })
         enableEdgeToEdge()
         setContent {
-            val themePreferences by observeThemePreferences()
+            val savedTheme by observeThemePreferences()
                 .collectAsState(initial = ThemePreferences())
+            val draftTheme by themeDraft.draft.collectAsState()
+            val themePreferences = draftTheme ?: savedTheme
             val appLockPrefs by observeAppLock()
                 .collectAsState(initial = AppLockPreferences())
             val isLocked by appLockManager.isLocked.collectAsState()
