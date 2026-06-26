@@ -3,6 +3,7 @@ package com.iponlove.app.feature.notes
 import com.iponlove.app.feature.notes.data.local.NoteDao
 import com.iponlove.app.feature.notes.data.local.NoteEntity
 import com.iponlove.app.feature.notes.data.remote.NoteDto
+import com.iponlove.app.feature.notes.data.remote.PartnerNoteDto
 import com.iponlove.app.feature.notes.domain.model.Note
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +18,7 @@ class FakeNoteDao : NoteDao {
     override fun observeNotes(userId: String): Flow<List<NoteEntity>> =
         changes.map {
             store.values
-                .filter { it.userId == userId && !it.isDeleted }
+                .filter { (it.userId == userId || it.isShared) && !it.isDeleted }
                 .sortedByDescending { it.updatedAt }
         }
 
@@ -83,6 +84,28 @@ fun noteEntity(
     isDeleted = isDeleted,
     serverRev = serverRev,
     pendingSync = pendingSync,
+)
+
+fun partnerNoteDto(
+    id: String,
+    userId: String = "partner-1",
+    title: String? = "Trip plan",
+    content: String? = "<p>Body</p>",
+    isShared: Boolean = true,
+    coupleId: String? = "c-1",
+    updatedAt: Instant = Instant.ofEpochMilli(1_000),
+    isDeleted: Boolean = false,
+    serverRev: Long? = null,
+) = PartnerNoteDto(
+    id = id,
+    userId = userId,
+    title = title,
+    content = content,
+    isShared = isShared,
+    isDeleted = isDeleted,
+    coupleId = coupleId,
+    updatedAt = updatedAt,
+    serverRev = serverRev,
 )
 
 fun noteDto(

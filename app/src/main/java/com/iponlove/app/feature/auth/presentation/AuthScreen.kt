@@ -35,6 +35,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
     val state by viewModel.form.collectAsState()
     AuthContent(
         state = state,
+        onNameChange = viewModel::onNameChange,
         onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::submit,
@@ -45,6 +46,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
 @Composable
 private fun AuthContent(
     state: AuthUiState,
+    onNameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
@@ -72,6 +74,21 @@ private fun AuthContent(
             if (state.confirmationSent) {
                 ConfirmationBanner()
                 Spacer(Modifier.height(16.dp))
+            }
+
+            if (state.mode == AuthMode.SIGN_UP) {
+                OutlinedTextField(
+                    value = state.name,
+                    onValueChange = onNameChange,
+                    label = { Text("Your name") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Next,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
             }
 
             OutlinedTextField(
@@ -154,6 +171,7 @@ private fun AuthError.message(): String = when (this) {
     AuthError.EMAIL_ALREADY_REGISTERED -> "That email is already registered — sign in instead"
     AuthError.WEAK_PASSWORD -> "Password must be at least 6 characters"
     AuthError.INVALID_EMAIL -> "Enter a valid email address"
+    AuthError.INVALID_NAME -> "Enter your name (up to 50 characters)"
     AuthError.NETWORK -> "Can't reach the server — check your connection"
     AuthError.UNKNOWN -> "Something went wrong. Please try again"
 }

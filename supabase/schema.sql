@@ -609,3 +609,32 @@ language sql
 security definer
 set search_path = public
 as $$ select now() $$;
+
+-- ============================================================================
+--  Realtime "bell" channel authorization  [ADR-0015]
+--  Live sync uses a PRIVATE Realtime Broadcast channel `couple:{coupleId}` as a
+--  content-less notification: after a push that sent rows, the writer broadcasts a
+--  tiny "changed" ping; the partner reacts by PULLING — and partner data still flows
+--  only through the redacting views (ADR-0005), so the ping carrying no row data
+--  means redaction is never bypassed.
+--
+--  Private channels are gated by RLS on realtime.messages. This policy lets a member
+--  subscribe to (select) and broadcast on (insert) only their OWN couple's topic:
+--  topic = 'couple:' || their auth_couple_id(). Without it, anyone who learned a
+--  couple id could spam pull-triggers at a couple or probe whether it is active —
+--  matching the security-first posture of the redacting-views design. public-schema
+--  qualify the helper since the policy is evaluated in the realtime schema context.
+-- ============================================================================
+alter table realtime.messages enable row level security;
+
+create policy couple_channel_members on realtime.messages
+    for all
+    to authenticated
+    using (
+        public.auth_couple_id() is not null
+        and realtime.topic() = 'couple:' || public.auth_couple_id()::text
+    )
+    with check (
+        public.auth_couple_id() is not null
+        and realtime.topic() = 'couple:' || public.auth_couple_id()::text
+    );

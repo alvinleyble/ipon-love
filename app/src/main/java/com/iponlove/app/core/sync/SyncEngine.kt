@@ -1,9 +1,11 @@
 package com.iponlove.app.core.sync
 
 import com.iponlove.app.core.sync.data.ClockOffsetStore
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import java.time.Instant
 
@@ -16,18 +18,21 @@ sealed interface SyncState {
 }
 
 /**
- * Orchestrates a full sync over every [TableSyncer], in FK order, push-all then pull-all
+ * Orchestrates a full sync over every [TableSyncer], push-all then pull-all.
  * (ADR-0002, ADR-0009). This is the in-process interactive path (foreground, pull-to-
  * refresh, reconnect); WorkManager owns background retry and wraps a call to [sync]
  * (ADR-0012).
  *
- * **Single-flight (ARCHITECTURE §6):** overlapping triggers coalesce — if a sync is in
- * flight, a concurrent [sync] call returns immediately rather than running a second pass.
+ * **Push is sequential, FK-ordered** — a parent row must land on the server before its
+ * child, otherwise the server's RLS/FK rejects the child.
  *
- * Progress is durable: per-row `pending_sync` is cleared as pushes ack and per-table
- * cursors advance as pull batches commit, so an interrupted run self-heals on the next
- * trigger (ADR-0009) — a thrown failure surfaces as [SyncState.Error] without rolling
- * back the work already committed.
+ * **Pull is parallel** — all tables fire their SELECT simultaneously; Room has no FK
+ * constraints at the entity level, so parallel upserts are safe. On a steady-state sync
+ * most tables return 0 rows (cursor already at latest), so 15 sequential ~600 ms round
+ * trips collapse to ~1 parallel batch, cutting pull time from ~10 s to ~1 s.
+ *
+ * **Single-flight:** overlapping triggers coalesce — if a sync is in flight, a concurrent
+ * call returns immediately (ADR-0015).
  *
  * @param syncers contributed by feature modules in any order; sorted here by FK order.
  */
@@ -57,10 +62,10 @@ class SyncEngine(
             _state.value = SyncState.Syncing
             // Upload pending files before pushing rows so rows carry the Storage URL.
             for (step in preSyncSteps) step.run()
-            // Push parent→child so a parent gets a lower server_rev than its child...
+            // Push parent→child (sequential, FK-ordered) so the server sees parents first.
             for (syncer in ordered) syncer.push()
-            // ...then pull parent→child so a child's parent is already present.
-            for (syncer in ordered) syncer.pull()
+            // Pull all tables in parallel — independent SELECTs, each manages its own cursor.
+            pullAllParallel()
             calibrateClock()
             _state.value = SyncState.Success(now())
             return true
@@ -70,6 +75,58 @@ class SyncEngine(
         } finally {
             inFlight.unlock()
         }
+    }
+
+    /**
+     * Push half only, in FK order (ADR-0009) — the debounced write-on-push path (ADR-0015).
+     * Runs pre-sync steps (e.g. image upload) first, like [sync], so a freshly written row
+     * carries its Storage URL. Coalesces with any in-flight run via the shared [inFlight]
+     * mutex: if a full [sync] or another narrow pass is already running, this is a no-op.
+     *
+     * Deliberately silent — it does NOT touch [state] or calibrate the clock; it's a
+     * background micro-sync, not a user-visible refresh, so the UI spinner never flickers on
+     * a debounced keystroke push.
+     *
+     * @return true only when at least one table actually sent rows — the caller rings the
+     *   couple "bell" on true. False also covers "coalesced away" (lock not acquired), so a
+     *   ping never fires for a push that didn't happen.
+     */
+    suspend fun pushOnly(): Boolean {
+        if (!inFlight.tryLock()) return false
+        try {
+            for (step in preSyncSteps) step.run()
+            var pushedAnything = false
+            for (syncer in ordered) {
+                if (syncer.push()) pushedAnything = true
+            }
+            return pushedAnything
+        } finally {
+            inFlight.unlock()
+        }
+    }
+
+    /**
+     * Pull half only, parallel — the bell-triggered receive path (ADR-0015).
+     * All partner data still flows through the RLS-protected redacting-view syncers
+     * (ADR-0005); the bell ping carried no data. Pulled rows land with `pending_sync = false`,
+     * so a pull never makes a row dirty and thus never triggers a push or another bell — no
+     * ping-pong. Coalesces with any in-flight run via [inFlight]; silent like [pushOnly].
+     *
+     * @return true if this call ran the pull; false if it coalesced with an in-flight run.
+     */
+    suspend fun pullOnly(): Boolean {
+        if (!inFlight.tryLock()) return false
+        try {
+            pullAllParallel()
+            return true
+        } finally {
+            inFlight.unlock()
+        }
+    }
+
+    /** Fires all table pulls concurrently and waits for every one to finish. */
+    private suspend fun pullAllParallel() = coroutineScope {
+        for (syncer in ordered) launch { syncer.pull() }
     }
 
     private suspend fun calibrateClock() {

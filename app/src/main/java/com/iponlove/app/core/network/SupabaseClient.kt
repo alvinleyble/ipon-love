@@ -5,6 +5,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.storage.Storage
 
 /** Builds the app's single [SupabaseClient] from the build-config credentials. */
@@ -15,4 +16,8 @@ fun createIponSupabaseClient(): SupabaseClient = createSupabaseClient(
     install(Auth)
     install(Postgrest)
     install(Storage)
+    // Realtime powers the couple "bell" (ADR-0015): a content-less Broadcast ping that
+    // tells the partner to pull. The websocket connects lazily, only when a channel
+    // subscribes (CoupleChannelManager, foreground + paired only).
+    install(Realtime)
 }

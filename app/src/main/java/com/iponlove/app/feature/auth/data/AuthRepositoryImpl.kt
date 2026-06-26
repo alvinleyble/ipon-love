@@ -8,6 +8,8 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -32,10 +34,14 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun signUp(email: String, password: String): SignUpResult = mapErrors {
+    override suspend fun signUp(name: String, email: String, password: String): SignUpResult = mapErrors {
         client.auth.signUpWith(Email) {
             this.email = email
             this.password = password
+            // The name must survive the gap between sign-up and first login (possibly on
+            // another device), so it rides on the auth account itself, not local storage.
+            // EnsureCurrentUserRowUseCase reads it back to seed the users row (ADR-0016).
+            this.data = buildJsonObject { put("display_name", name) }
         }
         // With email confirmation on, sign-up creates no session until the link is clicked.
         if (client.auth.currentSessionOrNull() != null) SignUpResult.SIGNED_IN

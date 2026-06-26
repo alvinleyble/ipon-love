@@ -10,12 +10,13 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface NoteDao {
 
-    /** The current user's own active notes — filtered to [userId] so replicated partner
-     *  notes (ADR-0004) never leak into the individual list. */
+    /** Own notes plus any replicated partner notes that are still shared (ADR-0005 guarantees
+     *  surviving partner rows have isShared=1 and isDeleted=0; the OR is safe because
+     *  shouldPurge() in PartnerNoteTableSyncer hard-deletes unshared partner rows). */
     @Query(
         """
         SELECT * FROM notes
-        WHERE userId = :userId AND isDeleted = 0
+        WHERE (userId = :userId OR isShared = 1) AND isDeleted = 0
         ORDER BY updatedAt DESC, createdAt DESC
         """,
     )

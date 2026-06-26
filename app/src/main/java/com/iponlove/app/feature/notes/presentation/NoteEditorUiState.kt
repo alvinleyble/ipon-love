@@ -21,4 +21,6 @@ data class NoteEditorUiState(
     val isPaired: Boolean = false,
     /** The couple id, populated when [isPaired] is true. Used for shareNote calls. */
     val coupleId: String? = null,
+    /** True when the note belongs to the partner; editor is read-only in this state. */
+    val isPartnerNote: Boolean = false,
 )

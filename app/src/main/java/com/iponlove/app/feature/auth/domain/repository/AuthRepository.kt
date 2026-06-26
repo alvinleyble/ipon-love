@@ -15,7 +15,8 @@ interface AuthRepository {
     /** Live auth state, driven by the SDK's session status (restore, refresh, sign-out). */
     val status: Flow<AuthStatus>
 
-    suspend fun signUp(email: String, password: String): SignUpResult
+    /** [name] is carried into Supabase auth `user_metadata` as `display_name` (ADR-0016). */
+    suspend fun signUp(name: String, email: String, password: String): SignUpResult
 
     suspend fun signIn(email: String, password: String)
 

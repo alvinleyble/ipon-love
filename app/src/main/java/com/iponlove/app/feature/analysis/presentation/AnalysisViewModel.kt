@@ -74,10 +74,11 @@ class AnalysisViewModel @Inject constructor(
                 )
                 val dailyNet = DailyNetCalculator.calculate(transactions, window, zone)
                 calendarNet = CalendarNetUi(
-                    days = dailyNet.netByDay.mapIndexed { idx, net ->
+                    days = (0 until dailyNet.daysInMonth).map { idx ->
                         CalendarDayUi(
                             dayOfMonth = idx + 1,
-                            netFloat = net.toFloat(),
+                            incomeFloat = dailyNet.incomeByDay[idx].toFloat(),
+                            expenseFloat = dailyNet.expenseByDay[idx].toFloat(),
                             isToday = dailyNet.todayDayOfMonth == idx + 1,
                         )
                     },

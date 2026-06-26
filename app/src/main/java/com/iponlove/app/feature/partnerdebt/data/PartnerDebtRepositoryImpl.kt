@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.partnerdebt.data
 
 import com.iponlove.app.core.sync.SyncClock
+import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.partnerdebt.data.local.DebtPaymentEntity
 import com.iponlove.app.feature.partnerdebt.data.local.PartnerDebtDao
 import com.iponlove.app.feature.partnerdebt.data.local.PartnerDebtEntity
@@ -20,6 +21,7 @@ import javax.inject.Inject
 class PartnerDebtRepositoryImpl @Inject constructor(
     private val dao: PartnerDebtDao,
     private val clock: SyncClock,
+    private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : PartnerDebtRepository {
 
     override fun observeDebts(coupleId: String): Flow<List<PartnerDebt>> =
@@ -48,6 +50,7 @@ class PartnerDebtRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun deleteDebt(id: String) {
@@ -59,6 +62,7 @@ class PartnerDebtRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun upsertPayment(payment: DebtPayment) {
@@ -78,6 +82,7 @@ class PartnerDebtRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun purgeCoupleDebts() {

@@ -18,16 +18,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iponlove.app.feature.analysis.presentation.CalendarNetUi
 import kotlin.math.ceil
-import kotlin.math.abs
 
 private val IncomeGreen = Color(0xFF2E7D32)
 
 /**
- * Monthly calendar grid showing daily net (income − expense) per day cell (Slice H).
+ * Monthly calendar grid showing daily income and expense in two rows per cell (V1.2 item 2).
  *
- * Layout: Mon–Sun header row + one cell per day of the month. Empty cells are drawn before
- * day 1 to align with the correct weekday column. Today's cell gets a [primaryContainer]
- * background. Net positive → green; net negative → error red; zero/no activity → muted.
+ * Layout: Sun–Sat header row + one cell per day. Empty cells before day 1 align the grid.
+ * Each cell shows "+₱X" (green) and/or "-₱X" (red). Zero-row rule: only the nonzero row is
+ * shown, vertically centered. Today's cell gets a [primaryContainer] background; text stays
+ * green/red (not forced to onPrimaryContainer). Cell height is ~64dp.
  *
  * Pure Canvas — no third-party chart library (CLAUDE.md).
  */
@@ -38,15 +38,13 @@ fun DailyNetCalendarChart(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val primaryContainerColor = MaterialTheme.colorScheme.primaryContainer
-    val onPrimaryContainerColor = MaterialTheme.colorScheme.onPrimaryContainer
     val errorColor = MaterialTheme.colorScheme.error
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
 
     val totalCells = calendarNet.firstWeekdayOffset + calendarNet.daysInMonth
     val rowCount = ceil(totalCells / 7.0).toInt()
 
-    // Fixed cell height + header row height
-    val cellHeightDp = 52
+    val cellHeightDp = 64
     val headerHeightDp = 22
     val totalHeightDp = headerHeightDp + rowCount * cellHeightDp
 
@@ -69,12 +67,18 @@ fun DailyNetCalendarChart(
             fontSize = 9.sp,
             color = onSurfaceColor.copy(alpha = 0.55f),
         )
-        val netStyleBase = TextStyle(
+        val amountStyle = TextStyle(
             fontSize = 9.sp,
             fontWeight = FontWeight.Medium,
         )
 
-        // --- header row (Mon … Sun) ---
+        // Content zone starts below the day-number area.
+        // Day number sits at +4dp; with 9sp text (~12dp) plus 2dp gap = 18dp reserved.
+        val contentStartDp = 18f
+        // Two equal slots in the remaining (64 - 18 = 46dp) space.
+        val halfSlotDp = (cellHeightDp - contentStartDp) / 2f  // 23dp
+
+        // --- header row (Sun … Sat) ---
         dayHeaders.forEachIndexed { col, label ->
             val measured = textMeasurer.measure(label, headerStyle)
             drawText(
@@ -94,7 +98,6 @@ fun DailyNetCalendarChart(
             val cellX = col * cellW
             val cellY = headerH + row * cellH
 
-            // today highlight background
             if (day.isToday) {
                 drawRoundRect(
                     color = primaryContainerColor,
@@ -104,7 +107,7 @@ fun DailyNetCalendarChart(
                 )
             }
 
-            // day number (top-left of cell)
+            // day number (top-left)
             val dayNumMeasured = textMeasurer.measure("${day.dayOfMonth}", dayNumStyle)
             drawText(
                 textLayoutResult = dayNumMeasured,
@@ -114,35 +117,79 @@ fun DailyNetCalendarChart(
                 ),
             )
 
-            // net amount (centred vertically, filling cell width)
-            if (day.netFloat != 0f) {
-                val netColor: Color = when {
-                    day.isToday -> onPrimaryContainerColor
-                    day.netFloat > 0f -> IncomeGreen
-                    else -> errorColor
+            val hasIncome = day.incomeFloat > 0f
+            val hasExpense = day.expenseFloat > 0f
+
+            when {
+                hasIncome && hasExpense -> {
+                    // Income row: centered in upper half of content zone.
+                    val incomeLabel = compactAmount(day.incomeFloat, "+")
+                    val incomeMeasured = textMeasurer.measure(incomeLabel, amountStyle.copy(color = IncomeGreen))
+                    val incomeRowCenterPx = cellY + (contentStartDp + halfSlotDp * 0.5f).dp.toPx()
+                    drawText(
+                        textLayoutResult = incomeMeasured,
+                        topLeft = Offset(
+                            x = (cellX + (cellW - incomeMeasured.size.width) / 2f)
+                                .coerceIn(cellX, cellX + cellW - incomeMeasured.size.width),
+                            y = incomeRowCenterPx - incomeMeasured.size.height / 2f,
+                        ),
+                    )
+                    // Expense row: centered in lower half.
+                    val expenseLabel = compactAmount(day.expenseFloat, "-")
+                    val expenseMeasured = textMeasurer.measure(expenseLabel, amountStyle.copy(color = errorColor))
+                    val expenseRowCenterPx = cellY + (contentStartDp + halfSlotDp * 1.5f).dp.toPx()
+                    drawText(
+                        textLayoutResult = expenseMeasured,
+                        topLeft = Offset(
+                            x = (cellX + (cellW - expenseMeasured.size.width) / 2f)
+                                .coerceIn(cellX, cellX + cellW - expenseMeasured.size.width),
+                            y = expenseRowCenterPx - expenseMeasured.size.height / 2f,
+                        ),
+                    )
                 }
-                val netLabel = compactAmount(day.netFloat)
-                val netMeasured = textMeasurer.measure(netLabel, netStyleBase.copy(color = netColor))
-                drawText(
-                    textLayoutResult = netMeasured,
-                    topLeft = Offset(
-                        x = (cellX + (cellW - netMeasured.size.width) / 2f)
-                            .coerceIn(cellX, cellX + cellW - netMeasured.size.width),
-                        y = cellY + cellH / 2f - netMeasured.size.height / 2f + 4.dp.toPx(),
-                    ),
-                )
+                hasIncome -> {
+                    // Single income row, vertically centered in the full content zone.
+                    val incomeLabel = compactAmount(day.incomeFloat, "+")
+                    val incomeMeasured = textMeasurer.measure(incomeLabel, amountStyle.copy(color = IncomeGreen))
+                    val centerPx = cellY + (contentStartDp + halfSlotDp).dp.toPx()
+                    drawText(
+                        textLayoutResult = incomeMeasured,
+                        topLeft = Offset(
+                            x = (cellX + (cellW - incomeMeasured.size.width) / 2f)
+                                .coerceIn(cellX, cellX + cellW - incomeMeasured.size.width),
+                            y = centerPx - incomeMeasured.size.height / 2f,
+                        ),
+                    )
+                }
+                hasExpense -> {
+                    // Single expense row, vertically centered in the full content zone.
+                    val expenseLabel = compactAmount(day.expenseFloat, "-")
+                    val expenseMeasured = textMeasurer.measure(expenseLabel, amountStyle.copy(color = errorColor))
+                    val centerPx = cellY + (contentStartDp + halfSlotDp).dp.toPx()
+                    drawText(
+                        textLayoutResult = expenseMeasured,
+                        topLeft = Offset(
+                            x = (cellX + (cellW - expenseMeasured.size.width) / 2f)
+                                .coerceIn(cellX, cellX + cellW - expenseMeasured.size.width),
+                            y = centerPx - expenseMeasured.size.height / 2f,
+                        ),
+                    )
+                }
+                // else: no activity — empty cell
             }
         }
     }
 }
 
-/** Formats a PHP net amount compactly for a small calendar cell (no ₱ prefix on negatives). */
-private fun compactAmount(value: Float): String {
-    val sign = if (value < 0f) "-" else "+"
-    val absVal = abs(value)
-    return when {
-        absVal >= 1_000_000f -> "$sign₱${String.format("%.1f", absVal / 1_000_000f)}M"
-        absVal >= 1_000f -> "$sign₱${String.format("%.1f", absVal / 1_000f)}k"
-        else -> "$sign₱${absVal.toInt()}"
-    }
+/**
+ * Compact PHP amount for a small calendar cell.
+ *
+ * Format spec: <1k→integer; 1k–9k→2dp k; 10k–999k→1dp k; ≥1M→2dp M.
+ * sign is "+" for income rows and "-" for expense rows.
+ */
+private fun compactAmount(absVal: Float, sign: String): String = when {
+    absVal >= 1_000_000f -> "$sign₱${String.format("%.2f", absVal / 1_000_000f)}M"
+    absVal >= 10_000f    -> "$sign₱${String.format("%.1f", absVal / 1_000f)}k"
+    absVal >= 1_000f     -> "$sign₱${String.format("%.2f", absVal / 1_000f)}k"
+    else                 -> "$sign₱${absVal.toInt()}"
 }

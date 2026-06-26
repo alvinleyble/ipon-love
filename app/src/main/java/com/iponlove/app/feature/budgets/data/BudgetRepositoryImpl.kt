@@ -2,6 +2,7 @@ package com.iponlove.app.feature.budgets.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.SyncClock
+import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.budgets.data.local.BudgetDao
 import com.iponlove.app.feature.budgets.data.local.BudgetEntity
 import com.iponlove.app.feature.budgets.domain.model.Budget
@@ -20,6 +21,7 @@ class BudgetRepositoryImpl @Inject constructor(
     private val dao: BudgetDao,
     private val clock: SyncClock,
     private val currentUser: CurrentUserProvider,
+    private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : BudgetRepository {
 
     override fun observeBudgets(): Flow<List<Budget>> =
@@ -48,6 +50,7 @@ class BudgetRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun upsertSharedBudget(budget: Budget, coupleId: String) {
@@ -69,6 +72,7 @@ class BudgetRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun deleteBudget(id: String) {
@@ -80,6 +84,7 @@ class BudgetRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun purgeSharedBudgets() = dao.deleteCoupleBudgets()

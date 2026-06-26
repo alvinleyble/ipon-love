@@ -6,14 +6,17 @@ import com.iponlove.app.feature.notes.domain.model.Note
 
 /** Entity ↔ Domain ↔ DTO conversions. Pure functions — unit-tested. */
 
-/** Normalizes the nullable `title`/`content` columns to "" at the domain boundary. */
-fun NoteEntity.toDomain(): Note = Note(
+/** Normalizes the nullable `title`/`content` columns to "" at the domain boundary.
+ *  [currentUserId] is used to compute [Note.isPartnerNote] — rows owned by another user
+ *  are partner replicas (ADR-0005) and must be shown read-only. */
+fun NoteEntity.toDomain(currentUserId: String): Note = Note(
     id = id,
     title = title.orEmpty(),
     contentHtml = content.orEmpty(),
     isShared = isShared,
     isConflictCopy = isConflictCopy,
     updatedAt = updatedAt,
+    isPartnerNote = userId != currentUserId,
 )
 
 /** Entity → DTO for push. Drops `pendingSync` (local-only, ADR-0002). */

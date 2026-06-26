@@ -2,6 +2,7 @@ package com.iponlove.app.feature.user.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.SyncClock
+import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.user.data.local.UserDao
 import com.iponlove.app.feature.user.data.local.UserEntity
 import com.iponlove.app.feature.user.data.remote.UserRemoteSource
@@ -18,6 +19,7 @@ class UserRepositoryImpl @Inject constructor(
     private val clock: SyncClock,
     private val currentUserProvider: CurrentUserProvider,
     private val remote: UserRemoteSource,
+    private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : UserRepository {
 
     override fun observeCurrentUser(): Flow<User?> =
@@ -31,9 +33,18 @@ class UserRepositoryImpl @Inject constructor(
         val existing = dao.getById(userId) ?: return
         val now = clock.stamp()
         dao.upsert(existing.copy(accentColor = color, updatedAt = now, pendingSync = true))
+        syncTrigger.requestPush()
     }
 
-    override suspend fun ensureLocalRow(userId: String) {
+    override suspend fun updateDisplayName(name: String) {
+        val userId = currentUserProvider.userId()
+        val existing = dao.getById(userId) ?: return
+        val now = clock.stamp()
+        dao.upsert(existing.copy(displayName = name, updatedAt = now, pendingSync = true))
+        syncTrigger.requestPush()
+    }
+
+    override suspend fun ensureLocalRow(userId: String, displayName: String?) {
         if (dao.getById(userId) != null) return
 
         // Reinstall: Room is empty but the server already has a row (e.g. with couple_id set).
@@ -49,7 +60,7 @@ class UserRepositoryImpl @Inject constructor(
         dao.upsert(
             UserEntity(
                 id = userId,
-                displayName = null,
+                displayName = displayName,
                 avatarUrl = null,
                 accentColor = null,
                 coupleId = null,

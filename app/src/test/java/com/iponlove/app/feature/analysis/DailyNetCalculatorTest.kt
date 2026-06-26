@@ -18,7 +18,7 @@ class DailyNetCalculatorTest {
 
     private fun june(day: Int): Instant = Instant.parse("2026-06-${"%02d".format(day)}T12:00:00Z")
 
-    // June 2026 starts on a Monday → firstWeekdayOffset = 0
+    // June 2026 starts on a Monday → Sun-first firstWeekdayOffset = 1
     private val juneWindow =
         AnalysisPeriodRange.windowFor(LocalDate.of(2026, 6, 15), AnalysisPeriod.MONTH, zone)
 
@@ -27,8 +27,10 @@ class DailyNetCalculatorTest {
         val data = DailyNetCalculator.calculate(emptyList(), juneWindow, zone)
 
         assertThat(data.daysInMonth).isEqualTo(30)
-        assertThat(data.netByDay).hasSize(30)
-        assertThat(data.netByDay.all { it == BigDecimal.ZERO }).isTrue()
+        assertThat(data.incomeByDay).hasSize(30)
+        assertThat(data.expenseByDay).hasSize(30)
+        assertThat(data.incomeByDay.all { it == BigDecimal.ZERO }).isTrue()
+        assertThat(data.expenseByDay.all { it == BigDecimal.ZERO }).isTrue()
     }
 
     @Test
@@ -40,31 +42,33 @@ class DailyNetCalculatorTest {
     }
 
     @Test
-    fun incomeOnDay1_positivenetOnDay1() {
+    fun incomeOnDay1_incomeArrayUpdated() {
         val transactions = listOf(
             txn("t1", TransactionType.INCOME, "5000.00", date = june(1)),
         )
 
         val data = DailyNetCalculator.calculate(transactions, juneWindow, zone)
 
-        assertThat(data.netByDay[0]).isEqualTo(BigDecimal("5000.00"))
-        assertThat(data.netByDay[1]).isEqualTo(BigDecimal.ZERO)
+        assertThat(data.incomeByDay[0]).isEqualTo(BigDecimal("5000.00"))
+        assertThat(data.expenseByDay[0]).isEqualTo(BigDecimal.ZERO)
+        assertThat(data.incomeByDay[1]).isEqualTo(BigDecimal.ZERO)
     }
 
     @Test
-    fun expenseOnDay1_negativeNetOnDay1() {
+    fun expenseOnDay1_expenseArrayUpdated() {
         val transactions = listOf(
             txn("t1", TransactionType.EXPENSE, "1200.00", categoryId = "food", date = june(1)),
         )
 
         val data = DailyNetCalculator.calculate(transactions, juneWindow, zone)
 
-        assertThat(data.netByDay[0]).isEqualTo(BigDecimal("-1200.00"))
-        assertThat(data.netByDay[1]).isEqualTo(BigDecimal.ZERO)
+        assertThat(data.expenseByDay[0]).isEqualTo(BigDecimal("1200.00"))
+        assertThat(data.incomeByDay[0]).isEqualTo(BigDecimal.ZERO)
+        assertThat(data.expenseByDay[1]).isEqualTo(BigDecimal.ZERO)
     }
 
     @Test
-    fun sameDay_incomeAndExpense_netsCorrectly() {
+    fun sameDay_incomeAndExpense_bothArraysCorrect() {
         val transactions = listOf(
             txn("i1", TransactionType.INCOME, "3000.00", date = june(10)),
             txn("e1", TransactionType.EXPENSE, "1500.00", categoryId = "cat", date = june(10)),
@@ -72,7 +76,8 @@ class DailyNetCalculatorTest {
 
         val data = DailyNetCalculator.calculate(transactions, juneWindow, zone)
 
-        assertThat(data.netByDay[9]).isEqualTo(BigDecimal("1500.00"))
+        assertThat(data.incomeByDay[9]).isEqualTo(BigDecimal("3000.00"))
+        assertThat(data.expenseByDay[9]).isEqualTo(BigDecimal("1500.00"))
     }
 
     @Test
@@ -84,7 +89,8 @@ class DailyNetCalculatorTest {
 
         val data = DailyNetCalculator.calculate(transactions, juneWindow, zone)
 
-        assertThat(data.netByDay[4]).isEqualTo(BigDecimal("1000.00"))
+        assertThat(data.incomeByDay[4]).isEqualTo(BigDecimal("1000.00"))
+        assertThat(data.expenseByDay[4]).isEqualTo(BigDecimal.ZERO)
     }
 
     @Test
@@ -97,8 +103,9 @@ class DailyNetCalculatorTest {
 
         val data = DailyNetCalculator.calculate(transactions, juneWindow, zone)
 
-        assertThat(data.netByDay[14]).isEqualTo(BigDecimal("100.00"))
-        assertThat(data.netByDay.filterIndexed { i, _ -> i != 14 }.all { it == BigDecimal.ZERO }).isTrue()
+        assertThat(data.incomeByDay[14]).isEqualTo(BigDecimal("100.00"))
+        assertThat(data.incomeByDay.filterIndexed { i, _ -> i != 14 }.all { it == BigDecimal.ZERO }).isTrue()
+        assertThat(data.expenseByDay.all { it == BigDecimal.ZERO }).isTrue()
     }
 
     @Test
@@ -121,8 +128,8 @@ class DailyNetCalculatorTest {
 
         val data = DailyNetCalculator.calculate(transactions, juneWindow, zone)
 
-        // net = 100 - (300 + 200) = -400
-        assertThat(data.netByDay[19]).isEqualTo(BigDecimal("-400.00"))
+        assertThat(data.incomeByDay[19]).isEqualTo(BigDecimal("100.00"))
+        assertThat(data.expenseByDay[19]).isEqualTo(BigDecimal("500.00"))
     }
 
     @Test

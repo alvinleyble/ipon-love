@@ -27,6 +27,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkManager
+import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.core.sync.SyncWorker
 import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
@@ -48,6 +49,7 @@ import com.iponlove.app.feature.widget.presentation.BalanceWidget
 import com.iponlove.app.navigation.IponApp
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -66,6 +68,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var observeAppLock: ObserveAppLockUseCase
     @Inject lateinit var appLockManager: AppLockManager
     @Inject lateinit var syncEngine: SyncEngine
+    @Inject lateinit var coupleChannelManager: CoupleChannelManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,10 +79,22 @@ class MainActivity : FragmentActivity() {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 appLockManager.cancelAutoLock()
-                lifecycleScope.launch { materializeRecurringRules() }
+                coupleChannelManager.setForeground(true)
+                lifecycleScope.launch {
+                    materializeRecurringRules()
+                    // Full refresh on every foreground resume — not only on login — so a
+                    // partner's changes (and our own pending rows) converge immediately on
+                    // return. Guarded by an active session so it's a no-op on the auth screen;
+                    // shares the engine's single-flight lock, so it coalesces with the bell's
+                    // catch-up pull rather than double-syncing.
+                    if (supabaseClient.auth.currentUserOrNull() != null) {
+                        runCatching { syncEngine.sync() }
+                    }
+                }
             }
             override fun onStop(owner: LifecycleOwner) {
                 appLockManager.scheduleAutoLock()
+                coupleChannelManager.setForeground(false)
             }
         })
         enableEdgeToEdge()
@@ -93,6 +108,13 @@ class MainActivity : FragmentActivity() {
             IponTheme(themePreferences = themePreferences) {
                 val authViewModel: AuthViewModel = hiltViewModel()
                 val status by authViewModel.status.collectAsState()
+                // Drive the live-sync couple channel: connect when an authenticated, paired
+                // user is foregrounded; tear down on sign-out (ADR-0015).
+                LaunchedEffect(status) {
+                    coupleChannelManager.setAuthenticatedUser(
+                        (status as? AuthStatus.Authenticated)?.userId,
+                    )
+                }
                 when (val current = status) {
                     is AuthStatus.Authenticated -> {
                         if (appLockPrefs.isPinSet && isLocked) {

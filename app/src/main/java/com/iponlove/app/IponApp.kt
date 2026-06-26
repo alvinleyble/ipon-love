@@ -3,6 +3,7 @@ package com.iponlove.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.data.ClockOffsetStore
 import com.iponlove.app.feature.budgets.presentation.BudgetAlertNotifier
@@ -24,6 +25,7 @@ class IponApp : Application(), Configuration.Provider {
     @Inject lateinit var syncClock: SyncClock
     @Inject lateinit var clockOffsetStore: ClockOffsetStore
     @Inject lateinit var budgetAlertNotifier: BudgetAlertNotifier
+    @Inject lateinit var coupleChannelManager: CoupleChannelManager
 
     private val appScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -31,6 +33,9 @@ class IponApp : Application(), Configuration.Provider {
         super.onCreate()
         appScope.launch { clockOffsetStore.restoreInto(syncClock) }
         budgetAlertNotifier.createChannel()
+        // Launch the live-sync collectors once per process. They idle (no socket, no push)
+        // until MainActivity reports foreground + an authenticated, paired user (ADR-0015).
+        coupleChannelManager.start()
     }
 
     override val workManagerConfiguration: Configuration

@@ -125,13 +125,23 @@ private fun NoteCard(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    if (note.isShared) {
-                        Icon(
-                            imageVector = Icons.Filled.Favorite,
-                            contentDescription = "Shared with partner",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(14.dp),
-                        )
+                    when {
+                        note.isPartnerNote -> {
+                            val label = "From ${note.partnerName ?: "Partner"}"
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        note.isShared -> {
+                            Icon(
+                                imageVector = Icons.Filled.Favorite,
+                                contentDescription = "Shared with partner",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
                     }
                 }
                 if (note.preview.isNotEmpty()) {
@@ -151,15 +161,17 @@ private fun NoteCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "More options")
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text("Delete") },
-                        onClick = { menuOpen = false; onDelete() },
-                    )
+            if (!note.isPartnerNote) {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            onClick = { menuOpen = false; onDelete() },
+                        )
+                    }
                 }
             }
         }

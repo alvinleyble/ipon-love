@@ -61,6 +61,11 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    testOptions {
+        // JVM unit tests stub out android.* — return defaults (e.g. android.util.Log no-ops)
+        // instead of throwing, so logging in code under test doesn't break the JVM suite.
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 kotlin {
@@ -122,6 +127,7 @@ dependencies {
     implementation(libs.supabase.auth)
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.storage)
+    implementation(libs.supabase.realtime)
     implementation(libs.ktor.client.cio)
 
     // Unit tests (JVM, fast — the per-commit gate)

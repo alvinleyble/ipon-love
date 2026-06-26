@@ -26,7 +26,9 @@ class ObservePartnerDebtBoardUseCaseTest {
     private val userRepo = object : UserRepository {
         override fun observeCurrentUser(): Flow<User?> = currentUser
         override fun observePartner(coupleId: String): Flow<User?> = partner
-        override suspend fun ensureLocalRow(userId: String) = Unit
+        override suspend fun ensureLocalRow(userId: String, displayName: String?) = Unit
+        override suspend fun updateAccentColor(color: String) = Unit
+        override suspend fun updateDisplayName(name: String) = Unit
     }
     private val debtRepo = object : PartnerDebtRepository {
         override fun observeDebts(coupleId: String): Flow<List<PartnerDebt>> = debts

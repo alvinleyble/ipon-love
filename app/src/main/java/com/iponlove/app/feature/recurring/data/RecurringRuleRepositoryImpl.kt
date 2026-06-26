@@ -2,6 +2,7 @@ package com.iponlove.app.feature.recurring.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.SyncClock
+import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleDao
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleEntity
 import com.iponlove.app.feature.recurring.domain.model.RecurringRule
@@ -20,6 +21,7 @@ class RecurringRuleRepositoryImpl @Inject constructor(
     private val dao: RecurringRuleDao,
     private val clock: SyncClock,
     private val currentUser: CurrentUserProvider,
+    private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : RecurringRuleRepository {
 
     override fun observeRules(): Flow<List<RecurringRule>> =
@@ -52,6 +54,7 @@ class RecurringRuleRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun deleteRule(id: String) {
@@ -63,5 +66,6 @@ class RecurringRuleRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 }

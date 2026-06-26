@@ -2,6 +2,7 @@ package com.iponlove.app.feature.accounts.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.SyncClock
+import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.accounts.data.local.AccountDao
 import com.iponlove.app.feature.accounts.data.local.AccountEntity
 import com.iponlove.app.feature.accounts.domain.model.Account
@@ -19,6 +20,7 @@ class AccountRepositoryImpl @Inject constructor(
     private val dao: AccountDao,
     private val clock: SyncClock,
     private val currentUser: CurrentUserProvider,
+    private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : AccountRepository {
 
     override fun observeAccounts(includeArchived: Boolean): Flow<List<Account>> =
@@ -48,6 +50,7 @@ class AccountRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun setArchived(id: String, archived: Boolean) {
@@ -59,6 +62,7 @@ class AccountRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun deleteAccount(id: String) {
@@ -70,6 +74,7 @@ class AccountRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun purgePartnerData() = dao.deleteNotOwnedBy(currentUser.userId())

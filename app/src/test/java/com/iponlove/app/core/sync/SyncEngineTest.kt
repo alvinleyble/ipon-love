@@ -28,14 +28,14 @@ class SyncEngineTest {
         override val table: SyncTable,
         private val log: MutableList<String>,
     ) : TableSyncer {
-        override suspend fun push() { log += "push:${table.name}" }
+        override suspend fun push(): Boolean { log += "push:${table.name}"; return false }
         override suspend fun pull() { log += "pull:${table.name}" }
     }
 
     @Test
-    fun sync_runsSyncersInFkOrder_pushAllThenPullAll() = runTest {
+    fun sync_pushIsSequentialFkOrder_pullRunsAllTables() = runTest {
         val log = mutableListOf<String>()
-        // Contributed out of FK order on purpose; engine must reorder.
+        // Contributed out of FK order on purpose; engine must reorder push.
         val syncers = setOf(
             RecordingSyncer(SyncTable.NOTE_IMAGES, log),
             RecordingSyncer(SyncTable.ACCOUNTS, log),
@@ -44,10 +44,17 @@ class SyncEngineTest {
 
         SyncEngine(syncers).sync()
 
-        assertThat(log).containsExactly(
+        // Push must be strictly FK-ordered (parent before child).
+        val pushEntries = log.filter { it.startsWith("push:") }
+        assertThat(pushEntries).containsExactly(
             "push:USERS", "push:ACCOUNTS", "push:NOTE_IMAGES",
-            "pull:USERS", "pull:ACCOUNTS", "pull:NOTE_IMAGES",
         ).inOrder()
+
+        // Pull fires all tables concurrently — every table pulled, order is not guaranteed.
+        val pullEntries = log.filter { it.startsWith("pull:") }
+        assertThat(pullEntries).containsExactlyElementsIn(
+            listOf("pull:USERS", "pull:ACCOUNTS", "pull:NOTE_IMAGES"),
+        )
     }
 
     @Test
@@ -64,7 +71,7 @@ class SyncEngineTest {
         val runs = AtomicInteger(0)
         val gated = object : TableSyncer {
             override val table = SyncTable.USERS
-            override suspend fun push() = Unit
+            override suspend fun push() = false
             override suspend fun pull() {
                 runs.incrementAndGet()
                 gate.await()
@@ -92,7 +99,7 @@ class SyncEngineTest {
         val engine = SyncEngine(
             setOf(object : TableSyncer {
                 override val table = SyncTable.USERS
-                override suspend fun push() = Unit
+                override suspend fun push() = false
                 override suspend fun pull(): Unit = throw IllegalStateException("boom")
             }),
         )
@@ -109,7 +116,7 @@ class SyncEngineTest {
         val engine = SyncEngine(
             setOf(object : TableSyncer {
                 override val table = SyncTable.USERS
-                override suspend fun push() = Unit
+                override suspend fun push() = false
                 override suspend fun pull() {
                     if (shouldFail) throw IllegalStateException("boom")
                 }
@@ -151,7 +158,7 @@ class SyncEngineTest {
         val engine = SyncEngine(
             syncers = setOf(object : TableSyncer {
                 override val table = SyncTable.USERS
-                override suspend fun push() = Unit
+                override suspend fun push() = false
                 override suspend fun pull(): Unit = throw IllegalStateException("network")
             }),
             clock = clock,

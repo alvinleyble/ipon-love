@@ -2,6 +2,8 @@ package com.iponlove.app.core.session
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import javax.inject.Inject
 
 /**
@@ -15,6 +17,16 @@ import javax.inject.Inject
  */
 fun interface CurrentUserProvider {
     fun userId(): String
+
+    /**
+     * The display name carried on the auth account (`user_metadata.display_name`, set at
+     * registration — ADR-0016), or null if absent. Default null keeps this a functional
+     * interface so test fakes can supply just [userId] as a lambda.
+     */
+    fun displayName(): String? = null
+
+    /** The signed-in account's email, or null if unavailable. Shown read-only in Profile. */
+    fun email(): String? = null
 }
 
 /** The authenticated user's id, read synchronously from the in-memory Supabase session. */
@@ -23,4 +35,9 @@ class SupabaseCurrentUserProvider @Inject constructor(
 ) : CurrentUserProvider {
     override fun userId(): String = client.auth.currentUserOrNull()?.id
         ?: error("No authenticated user — a write was attempted before sign-in")
+
+    override fun displayName(): String? = client.auth.currentUserOrNull()
+        ?.userMetadata?.get("display_name")?.jsonPrimitive?.contentOrNull
+
+    override fun email(): String? = client.auth.currentUserOrNull()?.email
 }

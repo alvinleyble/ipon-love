@@ -8,9 +8,10 @@ import javax.inject.Inject
 class SignUpUseCase @Inject constructor(
     private val repository: AuthRepository,
 ) {
-    suspend operator fun invoke(email: String, password: String): SignUpResult {
+    suspend operator fun invoke(name: String, email: String, password: String): SignUpResult {
+        AuthCredentials.validateName(name)
         AuthCredentials.validateEmail(email)
         AuthCredentials.validatePassword(password)
-        return repository.signUp(email.trim(), password)
+        return repository.signUp(name.trim(), email.trim(), password)
     }
 }

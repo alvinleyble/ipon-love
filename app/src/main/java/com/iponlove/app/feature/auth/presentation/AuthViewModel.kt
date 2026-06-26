@@ -45,6 +45,8 @@ class AuthViewModel @Inject constructor(
     private val _form = MutableStateFlow(AuthUiState())
     val form: StateFlow<AuthUiState> = _form
 
+    fun onNameChange(value: String) = _form.update { it.copy(name = value, error = null) }
+
     fun onEmailChange(value: String) = _form.update { it.copy(email = value, error = null) }
 
     fun onPasswordChange(value: String) = _form.update { it.copy(password = value, error = null) }
@@ -62,7 +64,7 @@ class AuthViewModel @Inject constructor(
             try {
                 when (state.mode) {
                     AuthMode.SIGN_IN -> signIn(state.email, state.password)
-                    AuthMode.SIGN_UP -> onSignedUp(signUp(state.email, state.password))
+                    AuthMode.SIGN_UP -> onSignedUp(signUp(state.name, state.email, state.password))
                 }
                 // On success the status stream flips and the gate swaps screens; clear the
                 // spinner in case we stayed (sign-up awaiting confirmation).

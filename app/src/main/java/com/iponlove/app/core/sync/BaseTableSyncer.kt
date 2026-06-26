@@ -55,11 +55,13 @@ abstract class BaseTableSyncer<R : SyncMeta>(
 
     // ---- algorithm ----
 
-    final override suspend fun push() {
+    final override suspend fun push(): Boolean {
         val dirty = dirtyRows()
-        if (dirty.isEmpty()) return
+        if (dirty.isEmpty()) return false
         val acked = remotePush(dirty)
-        if (acked.isNotEmpty()) clearPending(acked)
+        if (acked.isEmpty()) return false
+        clearPending(acked)
+        return true
     }
 
     final override suspend fun pull() {

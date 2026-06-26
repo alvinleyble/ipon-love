@@ -11,6 +11,18 @@ import com.iponlove.app.feature.auth.domain.model.AuthException
 internal object AuthCredentials {
 
     const val MIN_PASSWORD_LENGTH = 6
+    const val MAX_NAME_LENGTH = 50
+
+    /**
+     * The display name shown to a partner (combined view, shared-note attribution). Required at
+     * registration: trimmed, non-blank, and at most [MAX_NAME_LENGTH] chars (ADR-0016).
+     */
+    fun validateName(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty() || trimmed.length > MAX_NAME_LENGTH) {
+            throw AuthException(AuthError.INVALID_NAME)
+        }
+    }
 
     fun validateEmail(email: String) {
         // Intentionally loose — "contains an @ with text on both sides". The server does the

@@ -8,8 +8,14 @@ package com.iponlove.app.core.sync
 interface TableSyncer {
     val table: SyncTable
 
-    /** Outbox push: send local dirty rows, clear `pending_sync` per acked row. */
-    suspend fun push()
+    /**
+     * Outbox push: send local dirty rows, clear `pending_sync` per acked row.
+     *
+     * @return true if rows were actually sent (acked). [SyncEngine.pushOnly] ORs these so a
+     *   debounced write-push can ring the couple "bell" only when something really changed
+     *   (ADR-0015); an empty/no-op push returns false.
+     */
+    suspend fun push(): Boolean
 
     /** Cursor pull: fetch `server_rev > cursor`, resolve, apply, advance cursor. */
     suspend fun pull()

@@ -57,8 +57,9 @@ class ObserveSharedBudgetUseCaseTest {
     private class FakeUserRepo(private val current: MutableStateFlow<User?>) : UserRepository {
         override fun observeCurrentUser(): Flow<User?> = current
         override fun observePartner(coupleId: String): Flow<User?> = emptyFlow()
-        override suspend fun ensureLocalRow(userId: String) = Unit
+        override suspend fun ensureLocalRow(userId: String, displayName: String?) = Unit
         override suspend fun updateAccentColor(color: String) = Unit
+        override suspend fun updateDisplayName(name: String) = Unit
     }
 
     private class FakeBudgetRepo(private val shared: Map<String, List<Budget>>) : BudgetRepository {

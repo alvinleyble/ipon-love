@@ -105,8 +105,9 @@ internal class FakeUserFlowRepository(
 ) : UserRepository {
     override fun observeCurrentUser(): Flow<User?> = currentUser
     override fun observePartner(coupleId: String): Flow<User?> = emptyFlow()
-    override suspend fun ensureLocalRow(userId: String) = Unit
+    override suspend fun ensureLocalRow(userId: String, displayName: String?) = Unit
     override suspend fun updateAccentColor(color: String) = Unit
+    override suspend fun updateDisplayName(name: String) = Unit
 }
 
 internal fun userRow(coupleId: String?) =

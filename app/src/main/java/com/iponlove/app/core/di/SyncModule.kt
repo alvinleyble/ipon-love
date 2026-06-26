@@ -4,13 +4,18 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.iponlove.app.core.sync.CoupleBell
+import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.PreSyncStep
+import com.iponlove.app.core.sync.SupabaseCoupleBell
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncCursorStore
 import com.iponlove.app.core.sync.SyncEngine
+import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.core.sync.TableSyncer
 import com.iponlove.app.core.sync.data.ClockOffsetStore
 import com.iponlove.app.core.sync.data.DataStoreSyncCursorStore
+import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,7 +24,11 @@ import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.Multibinds
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.time.OffsetDateTime
+import javax.inject.Qualifier
 import javax.inject.Singleton
 
 /** Single DataStore holding sync bookkeeping: per-table cursors + the clock offset. */
@@ -71,7 +80,46 @@ object SyncModule {
             OffsetDateTime.parse(raw).toInstant()
         },
     )
+
+    /**
+     * Process-lifetime scope for the live-sync collectors and the Realtime websocket
+     * (ADR-0015). [SupervisorJob] so one failing collector can't tear down the others;
+     * [Dispatchers.Default] since the work is debounce + suspend I/O, not UI.
+     */
+    @Provides
+    @Singleton
+    @LiveSyncScope
+    fun liveSyncScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    @Provides
+    @Singleton
+    fun coupleBell(
+        client: SupabaseClient,
+        @LiveSyncScope scope: CoroutineScope,
+    ): CoupleBell = SupabaseCoupleBell(client, scope)
+
+    @Provides
+    @Singleton
+    fun coupleChannelManager(
+        bell: CoupleBell,
+        engine: SyncEngine,
+        syncTrigger: SyncTrigger,
+        observePairingState: ObservePairingStateUseCase,
+        @LiveSyncScope scope: CoroutineScope,
+    ): CoupleChannelManager = CoupleChannelManager(
+        bell = bell,
+        engine = engine,
+        syncTrigger = syncTrigger,
+        // Lazily built per (re)subscription so its eager user-id read happens only post-auth.
+        pairingStates = { observePairingState() },
+        scope = scope,
+    )
 }
+
+/** Qualifies the process-lifetime [CoroutineScope] that drives live sync (ADR-0015). */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class LiveSyncScope
 
 /** Declares multibinding sets so they resolve even with zero contributions. */
 @Module

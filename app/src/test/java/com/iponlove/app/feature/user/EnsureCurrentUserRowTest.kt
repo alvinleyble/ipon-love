@@ -8,6 +8,7 @@ import com.iponlove.app.feature.user.data.local.UserDao
 import com.iponlove.app.feature.user.data.local.UserEntity
 import com.iponlove.app.feature.user.data.remote.UserDto
 import com.iponlove.app.feature.user.data.remote.UserRemoteSource
+import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
@@ -27,8 +28,9 @@ class EnsureCurrentUserRowTest {
         val remote = FakeUserRemoteSource(fetchResult = null)
         val repo = UserRepositoryImpl(dao, clock, currentUser, remote)
 
-        repo.ensureLocalRow("user-1")
+        repo.ensureLocalRow("user-1", "Patty")
 
+        // Existing row (and any name set earlier) is left untouched.
         assertThat(dao.store["user-1"]).isEqualTo(existing)
         assertThat(remote.fetchSelfCalled).isFalse()
     }
@@ -39,7 +41,7 @@ class EnsureCurrentUserRowTest {
         val remote = FakeUserRemoteSource(fetchResult = serverRow)
         val repo = UserRepositoryImpl(dao, clock, currentUser, remote)
 
-        repo.ensureLocalRow("user-1")
+        repo.ensureLocalRow("user-1", "Patty")
 
         val saved = dao.store["user-1"]!!
         assertThat(saved.coupleId).isEqualTo("couple-x")
@@ -52,7 +54,7 @@ class EnsureCurrentUserRowTest {
         val remote = FakeUserRemoteSource(fetchResult = null)
         val repo = UserRepositoryImpl(dao, clock, currentUser, remote)
 
-        repo.ensureLocalRow("user-1")
+        repo.ensureLocalRow("user-1", null)
 
         val saved = dao.store["user-1"]!!
         assertThat(saved.coupleId).isNull()
@@ -61,14 +63,44 @@ class EnsureCurrentUserRowTest {
     }
 
     @Test
+    fun ensureLocalRow_newSignup_seedsDisplayNameOntoStub() = runTest {
+        val remote = FakeUserRemoteSource(fetchResult = null)
+        val repo = UserRepositoryImpl(dao, clock, currentUser, remote)
+
+        repo.ensureLocalRow("user-1", "Patty")
+
+        val saved = dao.store["user-1"]!!
+        assertThat(saved.displayName).isEqualTo("Patty")
+        assertThat(saved.pendingSync).isTrue()
+    }
+
+    @Test
     fun ensureLocalRow_remoteThrows_fallsBackToDirtyStub() = runTest {
         val remote = FakeUserRemoteSource(fetchResult = null, throws = true)
         val repo = UserRepositoryImpl(dao, clock, currentUser, remote)
 
-        repo.ensureLocalRow("user-1")
+        repo.ensureLocalRow("user-1", "Patty")
 
         val saved = dao.store["user-1"]!!
+        assertThat(saved.displayName).isEqualTo("Patty")
         assertThat(saved.pendingSync).isTrue()
+    }
+
+    @Test
+    fun useCase_threadsDisplayNameFromSessionMetadataOntoNewRow() = runTest {
+        // The provider supplies the name captured at registration (auth metadata, ADR-0016);
+        // the use case must seed it onto the freshly created row.
+        val provider = object : CurrentUserProvider {
+            override fun userId(): String = "user-1"
+            override fun displayName(): String? = "Alvin"
+        }
+        val remote = FakeUserRemoteSource(fetchResult = null)
+        val repo = UserRepositoryImpl(dao, clock, provider, remote)
+        val useCase = EnsureCurrentUserRowUseCase(repo, provider)
+
+        useCase()
+
+        assertThat(dao.store["user-1"]!!.displayName).isEqualTo("Alvin")
     }
 }
 

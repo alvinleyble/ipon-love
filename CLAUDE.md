@@ -17,18 +17,20 @@
 
 The rule: **Sonnet by default, Opus when the design is genuinely novel or architecturally risky.**
 
+**REQUIRED: State the model choice and your rationale in one sentence before writing any code or making any edit.**
+
 **Use Sonnet for:**
-- Standard feature slices where the per-feature pattern is already established (accounts, categories, transactions, budgets, recurring, notes were all pattern-following after the first one)
-- Settings/Themes — purely additive, low design risk
-- Glance widget — self-contained, no cross-feature entanglement
-- Auth + Supabase backend slice — mostly swapping stubs for real SDK calls, pattern is clear
+- Bug fixes and UI polish — mechanical, pattern-following
+- Additive post-V1 features that follow the established slice pattern (new entity → DAO → syncer → usecase → screen)
+- Any task where the design is clear and the risk is low
 
 **Use Opus for:**
-- **Couples/pairing** — the most complex remaining V1 feature: invite codes, partner data replication into Room, redacting views, shared-note conflict-copy path, shared budget, Partner Debt Tracker sub-feature, and ADR-0004/0005/0011 all interact. Build this on Opus.
+- Cross-cutting architectural redesigns (e.g. the pending sync overhaul — Realtime vs polling, per-table triggers, optimistic UI)
+- Any new feature with non-obvious cross-ADR interactions (e.g. AI companion reading across all entities, shared lists extending the couple-sharing layer)
+- Debugging subtle sync or concurrency bugs — Opus reasons through multi-step state better
 - Any slice where you're unsure how the design fits together before writing code (run `/grilling` first, then build on Opus)
-- Debugging a subtle sync or concurrency bug — Opus reasons through multi-step state better
 
-**General principle:** If the next slice is "copy the pattern and adapt it," use Sonnet. If it involves design decisions that span multiple ADRs, shared state between users, or non-obvious cross-feature interactions, use Opus. Sonnet is faster and cheaper for mechanical work; the saving pays for Opus where it actually matters.
+**General principle:** If the task is "follow the pattern," use Sonnet. If it spans multiple ADRs, involves shared state between users, or requires architectural decisions, use Opus. Sonnet is faster and cheaper for mechanical work; the saving pays for Opus where it matters.
 
 ---
 
@@ -36,8 +38,6 @@ The rule: **Sonnet by default, Opus when the design is genuinely novel or archit
 A couples personal finance + notes Android app for the Philippine market. Users track individual expenses and share a combined financial view with their partner. Clean, aesthetic UI. Offline-first with Supabase cloud sync.
 
 Personal instance is branded **PattyWallet**. Public Play Store name is **Love, Ipon**.
-
-Full specs: see PRD.md and ARCHITECTURE.md.
 
 ---
 
@@ -118,15 +118,32 @@ The per-commit gate is: **build compiles green**, and **domain + data logic has 
 - Account balance is derived (opening_balance + ledger), never synced (ADR-0007)
 - Partner data is read via redacting views and replicated into Room; combined view shows shared spending, not partner balances (ADR-0004/0005/0011)
 - Room is always read first; Supabase is background sync only
+- Money amounts use `BigDecimal` — never `Double` or `Long`; serialize via `BigDecimalSerializer` for Supabase DTOs
 - Package name: `com.iponlove.app`
 - minSdk: 26 (Android 8.0)
+
+---
+
+## Critical Decisions (ADRs)
+
+Full rationale in `docs/adr/`. These are the rules most likely to be violated by a cold-start agent — know them before touching sync, couples, or auth.
+
+**ADR-0006/0008 — Couple ops are RPCs only.** Never write directly to the `couples` table. Use `create_couple`, `redeem_invite`, `rotate_invite_code`, `unpair` server-side RPCs. Unpair also triggers a local bulk purge of all replicated non-owned rows.
+
+**ADR-0013 — Users row is a synced entity.** `EnsureCurrentUserRowUseCase` runs on login before any other write. No database trigger creates the row. The users row must push before accounts/categories (FK root in the ordering below).
+
+**ADR-0005 — Partner data goes through redacting views.** Never query partner base tables directly. A partner row arriving flagged private, deleted, or unshared means purge the local Room copy, not upsert it.
+
+**ADR-0009 — FK push/pull order.** Always process tables in this order (both push and pull): `users → couples → accounts → categories → recurring_rules → transactions → budgets → notes → note_images` (partner variants follow their owned counterparts). Upserts are idempotent by `id`; an interrupted sync just resumes.
+
+**ADR-0014 — Personalize screen.** Live preview is local ViewModel state only — do not persist on tap. Save/Apply writes to DataStore. Couple attribution color (blue/pink in combined view) is stored as `accent_color` on the `users` row, chosen during the pairing flow — it is separate from the personal theme palette.
 
 ---
 
 ## Auth
 - Email + password via Supabase Auth only (v1)
 - Email verification required before first login
-- PIN and biometric are local app lock only — not server auth
+- PIN and biometric are local app lock only — not server auth; lock triggers after 30 seconds in background (grace period in `AppLockManager`)
 - Session stored in DataStore; Supabase SDK handles token refresh
 
 ---
@@ -136,26 +153,19 @@ The per-commit gate is: **build compiles green**, and **domain + data logic has 
 - Notes (rich text, checklists, images, optional partner sharing)
 - Couples pairing via invite code, combined view with color-coded attribution
 - Shared couple budget (joint monthly budget)
+- Partner Debt Tracker (couples-only IOU tracking; hidden until paired)
+- App lock (PIN + biometric; local only; 30-second grace period)
 - Multiple themes (light + dark + more)
-- Home screen widget
+- Balance home screen widget + quick-add shortcut widget
 - Minimal notifications (budget alerts only)
 
 ## Scalability Principle
 
-Every V1 decision must leave the door open for post-V1 features — no rewrites, just additions.
+When in doubt: favor thin, composable layers over shortcuts. Three constraints that must survive into post-V1:
 
-Planned post-V1 enhancements to keep in mind:
-- **AI financial companion** — will need access to transaction history; keep domain models query-friendly and don't bury business logic in the DB layer
-- **Receipt / photo on transactions** — Supabase Storage is already in the stack; Transaction entity should have a nullable `attachmentUrl` field from day one
-- **Password vault** — will be a new feature module; no coupling concerns, but encryption utilities should live in a shared `core` module
-- **Voice recording on notes** — Notes data model should use a generic `attachments` concept, not be hard-coded to images only
-- **iOS / Kotlin Multiplatform** — keep the domain layer free of Android imports (already a rule); avoid Android-only types leaking into domain models
-- **CSV / PDF export** — keep data access in UseCases, not scattered across ViewModels, so an export UseCase can reuse the same queries
-- **Shared lists (groceries, trip budgets)** — the couple-sharing and notes infrastructure built in V1 is the foundation; don't hard-code sharing logic to notes only
-- **Quick-add transaction widget** — a Glance widget that launches a lightweight Activity/bottom sheet for fast transaction entry from the home screen (tap → bottom sheet → save → dismiss); fully possible with Glance's tap-to-Intent pattern; no architectural changes needed post-V1 since transaction domain and UseCases are already in place
-- **Richer theme influence on backgrounds** — currently light mode = white, dark mode = near-black regardless of palette; post-V1 the selected palette color should tint surface/background tokens (e.g. a warm rose-tinted white in light, a deep rose-tinted dark in dark) so the theme feels pervasive, not just accent-deep; achievable by tuning `surface`, `surfaceVariant`, and `background` in `IponPalettes.kt` per palette instead of using neutral M3 defaults
-
-When in doubt: favor thin, composable layers over shortcuts. A feature being out of scope for V1 does not mean we design against it.
+- **UseCases own data access** — never scatter queries into ViewModels; a future export UseCase must be able to reuse them
+- **Encryption utilities in `core/`** — not buried inside `feature/vault/`; other features may need them
+- **Sharing logic stays generic** — the pairing/sharing infrastructure must not be hard-coded to notes only; shared lists and other future shared entities must be addable without rewrites
 
 ---
 
@@ -180,6 +190,16 @@ Paid app on Play Store (one-time purchase). All features unlocked on purchase. N
 ## Bottom Nav Tabs
 Records | Analysis | Budgets | Accounts | Categories
 (same layout as MyMoney app — reference for UX feel)
+
+**Outside the bottom nav:**
+```
+Auth graph        → Login → Register → Forgot password
+Onboarding graph  → Profile setup → Couple setup
+Notes             → Notes list → Note editor
+Couple view       → Combined view → Shared budget → Partner Debt Tracker
+Settings          → Theme / Profile / Couple / Notifications
+Transaction entry → Add / Edit (bottom sheet modal over any tab)
+```
 
 ---
 

@@ -11,6 +11,9 @@ data class NotesUiState(
 /**
  * A note as the list renders it: [preview] is the body reduced to plain text (the markup
  * never reaches the UI), [title] falls back to "Untitled" so every row has a heading.
+ *
+ * [isPartnerNote] is true for replicated partner notes; those are read-only in the editor.
+ * [partnerName] is the partner's display name (null → show "Partner" as fallback in the list).
  */
 data class NoteListItem(
     val id: String,
@@ -18,4 +21,6 @@ data class NoteListItem(
     val preview: String,
     val updatedAt: Instant,
     val isShared: Boolean,
+    val isPartnerNote: Boolean = false,
+    val partnerName: String? = null,
 )

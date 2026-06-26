@@ -1,10 +1,6 @@
 package com.iponlove.app.feature.couple.presentation
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,9 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -40,11 +34,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.AccentColorRow
 import com.iponlove.app.feature.couple.domain.model.PairingError
 import com.iponlove.app.feature.couple.domain.model.PairingState
 
@@ -111,7 +104,7 @@ private fun NotPairedContent(state: CoupleUiState, viewModel: CoupleViewModel) {
                 enabled = !state.isWorking,
                 modifier = Modifier.fillMaxWidth(),
             )
-            ColorSwatchRow(
+            AccentColorRow(
                 selectedHex = state.selectedColor,
                 enabled = !state.isWorking,
                 onSelect = viewModel::onColorSelected,
@@ -140,7 +133,7 @@ private fun NotPairedContent(state: CoupleUiState, viewModel: CoupleViewModel) {
                 enabled = !state.isWorking,
                 modifier = Modifier.fillMaxWidth(),
             )
-            ColorSwatchRow(
+            AccentColorRow(
                 selectedHex = state.selectedColor,
                 enabled = !state.isWorking,
                 onSelect = viewModel::onColorSelected,
@@ -258,73 +251,6 @@ private fun ErrorBanner(error: PairingError) {
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(16.dp),
         )
-    }
-}
-
-private data class AttributionColor(val hex: String, val label: String, val color: Color)
-
-private val AttributionColors = listOf(
-    AttributionColor("#1565C0", "Blue",   Color(0xFF1565C0)),
-    AttributionColor("#C2185B", "Pink",   Color(0xFFC2185B)),
-    AttributionColor("#F9A825", "Yellow", Color(0xFFF9A825)),
-    AttributionColor("#C62828", "Red",    Color(0xFFC62828)),
-    AttributionColor("#6A1B9A", "Purple", Color(0xFF6A1B9A)),
-    AttributionColor("#2E7D32", "Green",  Color(0xFF2E7D32)),
-)
-
-@Composable
-private fun ColorSwatchRow(
-    selectedHex: String?,
-    enabled: Boolean,
-    onSelect: (String) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            "Your color",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            AttributionColors.forEach { ac ->
-                ColorSwatch(
-                    color = ac.color,
-                    label = ac.label,
-                    selected = selectedHex == ac.hex,
-                    enabled = enabled,
-                    onClick = { onSelect(ac.hex) },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ColorSwatch(
-    color: Color,
-    label: String,
-    selected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.clickable(enabled = enabled, onClick = onClick),
-    ) {
-        Box(
-            Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(color)
-                .then(
-                    if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                    else Modifier
-                ),
-        )
-        Text(label, style = MaterialTheme.typography.labelSmall)
     }
 }
 

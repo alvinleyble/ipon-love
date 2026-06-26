@@ -46,6 +46,7 @@ import com.iponlove.app.feature.settings.domain.model.ThemePalette
 @Composable
 fun PersonalizeScreen(
     onBack: () -> Unit,
+    onOpenProfile: () -> Unit = {},
     onOpenSecurity: () -> Unit = {},
     viewModel: PersonalizeViewModel = hiltViewModel(),
 ) {
@@ -110,6 +111,15 @@ fun PersonalizeScreen(
                 }
 
                 Spacer(Modifier.height(28.dp))
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("Profile") },
+                    supportingContent = { Text("Display name, color & account") },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable(onClick = onOpenProfile),
+                )
                 HorizontalDivider()
                 ListItem(
                     headlineContent = { Text("Security") },

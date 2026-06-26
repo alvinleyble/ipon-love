@@ -63,9 +63,10 @@ data class CalendarNetUi(
     val todayDayOfMonth: Int?,
 )
 
-/** One day cell in the calendar. [netFloat] positive = net income; negative = net expense. */
+/** One day cell in the calendar. Both [incomeFloat] and [expenseFloat] are non-negative. */
 data class CalendarDayUi(
     val dayOfMonth: Int,
-    val netFloat: Float,
+    val incomeFloat: Float,
+    val expenseFloat: Float,
     val isToday: Boolean,
 )

@@ -45,10 +45,9 @@ object DailyNetCalculator {
             }
         }
 
-        val netByDay = (0 until daysInMonth).map { i -> dailyIncome[i] - dailyExpense[i] }
-
         return DailyNetData(
-            netByDay = netByDay,
+            incomeByDay = dailyIncome.toList(),
+            expenseByDay = dailyExpense.toList(),
             daysInMonth = daysInMonth,
             todayDayOfMonth = todayDay,
             firstWeekdayOffset = firstWeekdayOffset,

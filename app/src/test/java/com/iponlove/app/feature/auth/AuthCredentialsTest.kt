@@ -36,4 +36,23 @@ class AuthCredentialsTest {
         assertThat(errorFrom { AuthCredentials.validatePassword("12345") }).isEqualTo(AuthError.WEAK_PASSWORD)
         AuthCredentials.validatePassword("123456") // exactly the minimum — no throw
     }
+
+    @Test
+    fun validNamePasses() {
+        AuthCredentials.validateName("Patty") // no throw
+        AuthCredentials.validateName("  Alvin  ") // trimmed, still valid
+        AuthCredentials.validateName("a".repeat(50)) // exactly the max — no throw
+    }
+
+    @Test
+    fun blankOrWhitespaceNameRejected() {
+        assertThat(errorFrom { AuthCredentials.validateName("") }).isEqualTo(AuthError.INVALID_NAME)
+        assertThat(errorFrom { AuthCredentials.validateName("   ") }).isEqualTo(AuthError.INVALID_NAME)
+    }
+
+    @Test
+    fun overLongNameRejected() {
+        assertThat(errorFrom { AuthCredentials.validateName("a".repeat(51)) })
+            .isEqualTo(AuthError.INVALID_NAME)
+    }
 }

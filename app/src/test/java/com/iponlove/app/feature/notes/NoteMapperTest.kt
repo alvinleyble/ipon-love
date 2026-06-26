@@ -10,7 +10,8 @@ class NoteMapperTest {
 
     @Test
     fun entityToDomain_dropsSyncColumns_carriesShareAndUpdatedAt() {
-        val domain = noteEntity(id = "n", title = "Groceries", content = "<p>milk</p>", isShared = true).toDomain()
+        val domain = noteEntity(id = "n", title = "Groceries", content = "<p>milk</p>", isShared = true)
+            .toDomain(currentUserId = "user-1")
 
         assertThat(domain.id).isEqualTo("n")
         assertThat(domain.title).isEqualTo("Groceries")
@@ -20,7 +21,7 @@ class NoteMapperTest {
 
     @Test
     fun entityToDomain_normalizesNullTitleAndContentToEmpty() {
-        val domain = noteEntity(id = "n", title = null, content = null).toDomain()
+        val domain = noteEntity(id = "n", title = null, content = null).toDomain(currentUserId = "user-1")
 
         assertThat(domain.title).isEmpty()
         assertThat(domain.contentHtml).isEmpty()
@@ -42,5 +43,35 @@ class NoteMapperTest {
 
         // The DTO has no pendingSync field, so a pulled row is always server-canonical.
         assertThat(roundTripped).isEqualTo(original.copy(pendingSync = false))
+    }
+
+    @Test
+    fun entityToDomain_ownNote_isPartnerNoteFalse() {
+        val domain = noteEntity(id = "n", userId = "user-1").toDomain(currentUserId = "user-1")
+
+        assertThat(domain.isPartnerNote).isFalse()
+    }
+
+    @Test
+    fun entityToDomain_partnerRow_isPartnerNoteTrue() {
+        val domain = noteEntity(id = "n", userId = "partner-99").toDomain(currentUserId = "user-1")
+
+        assertThat(domain.isPartnerNote).isTrue()
+    }
+
+    @Test
+    fun partnerNoteDtoToEntity_thenToDomain_isPartnerNoteTrue() {
+        val entity = partnerNoteDto(id = "n", userId = "partner-99").toEntity()
+        val domain = entity.toDomain(currentUserId = "user-1")
+
+        assertThat(domain.isPartnerNote).isTrue()
+        assertThat(domain.isShared).isTrue()
+    }
+
+    @Test
+    fun partnerNoteDtoToEntity_isConflictCopyAlwaysFalse() {
+        val entity = partnerNoteDto(id = "n").toEntity()
+
+        assertThat(entity.isConflictCopy).isFalse()
     }
 }

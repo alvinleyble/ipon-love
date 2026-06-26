@@ -7,6 +7,7 @@ enum class AuthError {
     EMAIL_ALREADY_REGISTERED,
     WEAK_PASSWORD,
     INVALID_EMAIL,
+    INVALID_NAME,
     NETWORK,
     UNKNOWN,
 }

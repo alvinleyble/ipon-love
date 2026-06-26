@@ -37,7 +37,9 @@ abstract class BasePartnerTableSyncer<R : SyncMeta>(
     /** Upsert the visible partner [rows] into Room in a single transaction. */
     protected abstract suspend fun applyPullBatch(rows: List<R>)
 
-    final override suspend fun push() = Unit
+    // Partner rows are read-only on this device, so a push never sends anything (and never
+    // rings the bell): always false.
+    final override suspend fun push() = false
 
     final override suspend fun pull() {
         var cursor = cursors.cursor(table)

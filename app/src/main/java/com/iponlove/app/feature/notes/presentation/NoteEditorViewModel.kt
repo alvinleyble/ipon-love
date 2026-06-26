@@ -63,6 +63,7 @@ class NoteEditorViewModel @Inject constructor(
                             initialTitle = note.title,
                             initialHtml = note.contentHtml,
                             isShared = note.isShared,
+                            isPartnerNote = note.isPartnerNote,
                         )
                     }
                 }
@@ -90,40 +91,48 @@ class NoteEditorViewModel @Inject constructor(
     /** Persist (or discard) the note, then invoke [onDone] so the screen can navigate back. */
     fun save(title: String, html: String, onDone: () -> Unit) {
         val id = _uiState.value.noteId
-        if (id == null || _uiState.value.missing) {
+        if (id == null || _uiState.value.missing || _uiState.value.isPartnerNote) {
             onDone()
             return
         }
         viewModelScope.launch {
             when {
-                NoteContentText.isBlank(title, html) && isNew -> Unit // never persisted
+                NoteContentText.isBlank(title, html) && isNew -> Unit // never persisted; share intent discarded silently
                 NoteContentText.isBlank(title, html) -> deleteNote(id) // emptied existing
-                else -> upsertNote(Note(id = id, title = title, contentHtml = html))
+                else -> {
+                    upsertNote(Note(id = id, title = title, contentHtml = html))
+                    if (isNew && _uiState.value.isShared) {
+                        val coupleId = _uiState.value.coupleId
+                        if (coupleId != null) shareNote(id, coupleId)
+                    }
+                }
             }
             onDone()
         }
     }
 
-    /**
-     * Toggle sharing for the current note. Only valid for existing (non-new) notes when the
-     * user is paired — the share icon is hidden otherwise.
-     */
     fun toggleShared() {
-        val id = _uiState.value.noteId ?: return
-        if (isNew) return
+        if (_uiState.value.isPartnerNote) return
+        _uiState.value.noteId ?: return
+        if (isNew) {
+            // Note doesn't exist yet — just track intent locally; save() will call shareNote().
+            _uiState.update { it.copy(isShared = !it.isShared) }
+            return
+        }
         val coupleId = _uiState.value.coupleId ?: return
         val nowShared = _uiState.value.isShared
         viewModelScope.launch {
             if (nowShared) {
-                unshareNote(id)
+                unshareNote(_uiState.value.noteId!!)
             } else {
-                shareNote(id, coupleId)
+                shareNote(_uiState.value.noteId!!, coupleId)
             }
             _uiState.update { it.copy(isShared = !nowShared) }
         }
     }
 
     fun addImage(uri: Uri) {
+        if (_uiState.value.isPartnerNote) return
         val noteId = _uiState.value.noteId ?: return
         viewModelScope.launch {
             runCatching { addNoteImage(noteId, uri) }

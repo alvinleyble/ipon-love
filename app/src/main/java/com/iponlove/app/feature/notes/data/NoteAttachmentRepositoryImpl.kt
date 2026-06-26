@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.notes.data
 
 import com.iponlove.app.core.sync.SyncClock
+import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.notes.data.local.NoteAttachmentDao
 import com.iponlove.app.feature.notes.data.local.NoteAttachmentEntity
 import com.iponlove.app.feature.notes.domain.model.NoteAttachment
@@ -13,6 +14,7 @@ import javax.inject.Inject
 class NoteAttachmentRepositoryImpl @Inject constructor(
     private val dao: NoteAttachmentDao,
     private val clock: SyncClock,
+    private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : NoteAttachmentRepository {
 
     override fun observeByNote(noteId: String): Flow<List<NoteAttachment>> =
@@ -36,6 +38,7 @@ class NoteAttachmentRepositoryImpl @Inject constructor(
             pendingSync = true,
         )
         dao.upsert(entity)
+        syncTrigger.requestPush()
         return entity.toDomain()
     }
 
@@ -48,10 +51,12 @@ class NoteAttachmentRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun softDeleteAllForNote(noteId: String) {
         dao.softDeleteAllForNote(noteId, clock.stamp(null))
+        syncTrigger.requestPush()
     }
 
     override suspend fun purgePartnerData(userId: String) =

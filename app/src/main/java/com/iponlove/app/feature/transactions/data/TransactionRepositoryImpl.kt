@@ -2,6 +2,7 @@ package com.iponlove.app.feature.transactions.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.SyncClock
+import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.transactions.data.local.TransactionDao
 import com.iponlove.app.feature.transactions.data.local.TransactionEntity
 import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
@@ -21,6 +22,7 @@ class TransactionRepositoryImpl @Inject constructor(
     private val dao: TransactionDao,
     private val clock: SyncClock,
     private val currentUser: CurrentUserProvider,
+    private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : TransactionRepository {
 
     override fun observeTransactions(): Flow<List<Transaction>> =
@@ -57,6 +59,7 @@ class TransactionRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun deleteTransaction(id: String) {
@@ -68,6 +71,7 @@ class TransactionRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun materializeTransaction(
@@ -99,6 +103,7 @@ class TransactionRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
         return true
     }
 

@@ -2,6 +2,7 @@ package com.iponlove.app.feature.categories.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.SyncClock
+import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.categories.data.local.CategoryDao
 import com.iponlove.app.feature.categories.data.local.CategoryEntity
 import com.iponlove.app.feature.categories.domain.model.Category
@@ -19,6 +20,7 @@ class CategoryRepositoryImpl @Inject constructor(
     private val dao: CategoryDao,
     private val clock: SyncClock,
     private val currentUser: CurrentUserProvider,
+    private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : CategoryRepository {
 
     override fun observeCategories(includeArchived: Boolean): Flow<List<Category>> =
@@ -50,6 +52,7 @@ class CategoryRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun setArchived(id: String, archived: Boolean) {
@@ -61,6 +64,7 @@ class CategoryRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun deleteCategory(id: String) {
@@ -72,6 +76,7 @@ class CategoryRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun purgePartnerData() = dao.deleteNotOwnedBy(currentUser.userId())

@@ -29,6 +29,7 @@ import com.iponlove.app.feature.partnerdebt.presentation.PartnerDebtScreen
 import com.iponlove.app.feature.recurring.presentation.RecurringScreen
 import com.iponlove.app.feature.applock.presentation.AppLockSetupScreen
 import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
+import com.iponlove.app.feature.settings.presentation.ProfileScreen
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
 
 private const val RECURRING_ROUTE = "recurring"
@@ -39,6 +40,7 @@ private const val COUPLE_ROUTE = "couple"
 private const val COMBINED_ROUTE = "combined"
 private const val PARTNER_DEBT_ROUTE = "partner_debt"
 private const val PERSONALIZE_ROUTE = "personalize"
+private const val PROFILE_ROUTE = "profile"
 
 /**
  * App root: a bottom-nav [Scaffold] hosting one composable per [TopLevelDestination].
@@ -117,8 +119,12 @@ fun IponApp(onSignOut: () -> Unit) {
             composable(PERSONALIZE_ROUTE) {
                 PersonalizeScreen(
                     onBack = { navController.popBackStack() },
+                    onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
                     onOpenSecurity = { navController.navigate(APP_LOCK_SETUP_ROUTE) },
                 )
+            }
+            composable(PROFILE_ROUTE) {
+                ProfileScreen(onBack = { navController.popBackStack() })
             }
             composable(APP_LOCK_SETUP_ROUTE) {
                 AppLockSetupScreen(onBack = { navController.popBackStack() })

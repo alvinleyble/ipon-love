@@ -2,6 +2,7 @@ package com.iponlove.app.feature.notes.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.SyncClock
+import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.notes.data.local.NoteDao
 import com.iponlove.app.feature.notes.data.local.NoteEntity
 import com.iponlove.app.feature.notes.domain.model.Note
@@ -23,12 +24,15 @@ class NoteRepositoryImpl @Inject constructor(
     private val dao: NoteDao,
     private val clock: SyncClock,
     private val currentUser: CurrentUserProvider,
+    private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : NoteRepository {
 
-    override fun observeNotes(): Flow<List<Note>> =
-        dao.observeNotes(currentUser.userId()).map { rows -> rows.map { it.toDomain() } }
+    override fun observeNotes(): Flow<List<Note>> {
+        val userId = currentUser.userId()
+        return dao.observeNotes(userId).map { rows -> rows.map { it.toDomain(userId) } }
+    }
 
-    override suspend fun getNote(id: String): Note? = dao.getById(id)?.toDomain()
+    override suspend fun getNote(id: String): Note? = dao.getById(id)?.toDomain(currentUser.userId())
 
     override suspend fun upsertNote(note: Note) {
         val existing = dao.getById(note.id)
@@ -50,6 +54,7 @@ class NoteRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun deleteNote(id: String) {
@@ -61,6 +66,7 @@ class NoteRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun shareNote(id: String, coupleId: String) {
@@ -73,6 +79,7 @@ class NoteRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun unshareNote(id: String) {
@@ -85,6 +92,7 @@ class NoteRepositoryImpl @Inject constructor(
                 pendingSync = true,
             ),
         )
+        syncTrigger.requestPush()
     }
 
     override suspend fun purgePartnerData() = dao.deleteNotOwnedBy(currentUser.userId())

@@ -18,6 +18,8 @@ class EnsureCurrentUserRowUseCase @Inject constructor(
     suspend operator fun invoke() {
         val userId = currentUserProvider.userId()
         if (userId.isBlank()) return
-        userRepository.ensureLocalRow(userId)
+        // Seed the display name captured at registration (auth metadata) onto the new row;
+        // null for older accounts or a sync-timing gap, handled by UI fallbacks (ADR-0016).
+        userRepository.ensureLocalRow(userId, currentUserProvider.displayName())
     }
 }

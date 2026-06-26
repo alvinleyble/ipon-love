@@ -86,30 +86,40 @@ fun NoteEditorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (state.isNew) "New note" else "Edit note") },
+                title = {
+                    Text(
+                        when {
+                            state.isPartnerNote -> "Partner's note"
+                            state.isNew -> "New note"
+                            else -> "Edit note"
+                        },
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = saveAndExit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Save and close")
                     }
                 },
                 actions = {
-                    if (!state.isNew && state.isPaired) {
-                        IconButton(onClick = { viewModel.toggleShared() }) {
-                            Icon(
-                                imageVector = if (state.isShared) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                contentDescription = if (state.isShared) "Unshare note" else "Share note with partner",
-                                tint = if (state.isShared) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                    if (!state.isPartnerNote) {
+                        if (state.isPaired) {
+                            IconButton(onClick = { viewModel.toggleShared() }) {
+                                Icon(
+                                    imageVector = if (state.isShared) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                    contentDescription = if (state.isShared) "Unshare note" else "Share note with partner",
+                                    tint = if (state.isShared) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
-                    }
-                    IconButton(
-                        onClick = {
-                            pickMedia.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                            )
-                        },
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = "Add image")
+                        IconButton(
+                            onClick = {
+                                pickMedia.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
+                        ) {
+                            Icon(Icons.Filled.Add, contentDescription = "Add image")
+                        }
                     }
                 },
             )
@@ -131,21 +141,26 @@ fun NoteEditorScreen(
                 else -> Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                     OutlinedTextField(
                         value = title,
-                        onValueChange = { title = it },
+                        onValueChange = { if (!state.isPartnerNote) title = it },
                         label = { Text("Title") },
                         singleLine = true,
+                        readOnly = state.isPartnerNote,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     if (state.attachments.isNotEmpty()) {
                         AttachmentStrip(
                             attachments = state.attachments,
                             onDelete = { viewModel.removeAttachment(it) },
+                            showDeleteButtons = !state.isPartnerNote,
                             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                         )
                     }
-                    FormattingToolbar(richTextState)
+                    if (!state.isPartnerNote) {
+                        FormattingToolbar(richTextState)
+                    }
                     OutlinedRichTextEditor(
                         state = richTextState,
+                        readOnly = state.isPartnerNote,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -158,6 +173,7 @@ fun NoteEditorScreen(
 private fun AttachmentStrip(
     attachments: List<NoteAttachment>,
     onDelete: (String) -> Unit,
+    showDeleteButtons: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
@@ -179,19 +195,21 @@ private fun AttachmentStrip(
                         .size(80.dp)
                         .clip(RoundedCornerShape(8.dp)),
                 )
-                SmallFloatingActionButton(
-                    onClick = { onDelete(attachment.id) },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(2.dp)
-                        .size(20.dp),
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Remove image",
-                        modifier = Modifier.size(12.dp),
-                    )
+                if (showDeleteButtons) {
+                    SmallFloatingActionButton(
+                        onClick = { onDelete(attachment.id) },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .size(20.dp),
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Remove image",
+                            modifier = Modifier.size(12.dp),
+                        )
+                    }
                 }
             }
         }
