@@ -91,3 +91,27 @@ _Avoid_: debt repayment, instalment
 **Remaining balance (debt)**:
 Derived figure = `partner_debt.amount` − `sum(partner_debt_payments.amount)` for non-deleted payments. Never stored — always computed at read time by `PartnerDebtBalanceCalculator` (same derivation pattern as account balance, ADR-0007).
 _Avoid_: outstanding amount, balance due
+
+**Shared account**:
+An Account owned by the couple rather than one user (`couple_id` set, `user_id` null) — both partners log transactions against it and both see its balance. Distinct from a personal account. Its balance sums *both* partners' transactions, which is only computable because a transaction on a shared account is forced non-private. The ADR-0011 carve-out: shared-account balances *are* shown precisely because their activity is never private. See ADR-0018.
+_Avoid_: joint account, couple account (use "shared account")
+
+**Shared category**:
+A Category owned by the couple (`couple_id` set, `user_id` null), appearing in both partners' category pickers and usable on any transaction. A couple-owned [[Shared record]], replicated via the base-table pull (not a redacting view). See ADR-0018.
+_Avoid_: joint category, global category
+
+**Revert-to-creator**:
+What happens to a couple-owned account/category on un-share or unpair: the row becomes the **creator's** personal row (`user_id = created_by`, `couple_id = null`), keeping its history; it is purged from the other partner, whose transactions referencing it fall back to "Unknown account"/"Uncategorized". Keeps unpair unilateral (never blocked). See ADR-0018, amends ADR-0008.
+_Avoid_: dissolve, transfer ownership
+
+**Debt netting**:
+Collapsing opposing partner debts into the real position. When a debt is created opposite to existing open debt, it auto-offsets oldest-first via linked, auditable **netting payments** (`DebtPayment`s that reference the counter-debt) — the smaller debt closes, the larger reduces. The couple net was always *derived*; netting makes the *records* agree with it. See ADR-0019.
+_Avoid_: reconcile, merge debts, cancel
+
+**Paid on behalf**:
+A transaction logged with the "Paid for Partner" toggle: it records the normal expense **and** auto-creates a partner debt (borrower = partner) for an *amount owed* (default = full transaction amount). The debt keeps a display-only `source_transaction_id`; the link is fire-and-forget (no cascade on edit/delete). See ADR-0019.
+_Avoid_: covered, fronted
+
+**Settlement (debt)**:
+Repaying a partner debt as real money movement: two ledger legs — the payor's outflow (their account) and the receiver's inflow (their account, an optional inline affordance on the debt board). Both legs are EXPENSE/INCOME flagged `is_settlement` so balances move but Analysis excludes them. Distinct from a bare [[Partner debt payment]], which need not touch any account. See ADR-0019.
+_Avoid_: payback transaction, repayment transfer
