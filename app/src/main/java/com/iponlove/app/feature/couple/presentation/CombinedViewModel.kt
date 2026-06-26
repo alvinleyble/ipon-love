@@ -6,6 +6,7 @@ import com.iponlove.app.feature.budgets.domain.model.Budget
 import com.iponlove.app.feature.budgets.domain.usecase.DeleteBudgetUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveSharedBudgetUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.UpsertSharedBudgetUseCase
+import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.feature.categories.domain.usecase.ObserveAllCategoriesUseCase
 import com.iponlove.app.feature.couple.domain.usecase.CombinedLedgerCalculator
 import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
@@ -41,9 +42,11 @@ class CombinedViewModel @Inject constructor(
     observeSharedBudget: ObserveSharedBudgetUseCase,
     private val upsertSharedBudget: UpsertSharedBudgetUseCase,
     private val deleteBudget: DeleteBudgetUseCase,
+    private val syncEngine: SyncEngine,
 ) : ViewModel() {
 
     private val budgetEditor = MutableStateFlow<BudgetEditorState?>(null)
+    private val isRefreshing = MutableStateFlow(false)
 
     // Captured from the latest emission so the editor's save/clear can act without re-deriving:
     // the couple to stamp ownership on, the month to target, and the existing budget to reuse.
@@ -112,11 +115,27 @@ class CombinedViewModel @Inject constructor(
                 coupleBudget = coupleBudget,
                 budgetEditor = editor,
             )
-        }.stateIn(
+        }
+        .combine(isRefreshing) { state, refreshing -> state.copy(isRefreshing = refreshing) }
+        .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
             initialValue = CombinedUiState(),
         )
+
+    fun sync() {
+        viewModelScope.launch {
+            isRefreshing.value = true
+            try {
+                syncEngine.sync()
+            } catch (_: Exception) {
+                // SyncEngine already surfaces the error via SyncState.Error;
+                // swallow here so an uncaught exception doesn't crash the app.
+            } finally {
+                isRefreshing.value = false
+            }
+        }
+    }
 
     fun startEditBudget() {
         budgetEditor.value = BudgetEditorState(

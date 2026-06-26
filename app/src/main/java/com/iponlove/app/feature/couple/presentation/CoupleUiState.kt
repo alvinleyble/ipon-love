@@ -14,6 +14,7 @@ data class CoupleUiState(
     val isWorking: Boolean = false,
     val error: PairingError? = null,
     val selectedColor: String? = null,
+    val currentDisplayName: String? = null,
 ) {
     val canCreate: Boolean get() = nameInput.isNotBlank() && selectedColor != null && !isWorking
     val canRedeem: Boolean get() = codeInput.isNotBlank() && selectedColor != null && !isWorking

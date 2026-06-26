@@ -11,6 +11,7 @@ import java.math.BigDecimal
 data class CombinedUiState(
     val isLoading: Boolean = true,
     val isPaired: Boolean = false,
+    val isRefreshing: Boolean = false,
     val monthLabel: String = "",
     val members: List<MemberSpend> = emptyList(),
     val entries: List<CombinedEntry> = emptyList(),

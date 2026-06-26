@@ -8,6 +8,7 @@ import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.couple.domain.usecase.RedeemInviteUseCase
 import com.iponlove.app.feature.couple.domain.usecase.RotateInviteCodeUseCase
 import com.iponlove.app.feature.couple.domain.usecase.UnpairUseCase
+import com.iponlove.app.feature.user.domain.repository.UserRepository
 import com.iponlove.app.feature.user.domain.usecase.UpdateAccentColorUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,13 +28,14 @@ class CoupleViewModel @Inject constructor(
     private val rotateInviteCodeUseCase: RotateInviteCodeUseCase,
     private val unpairUseCase: UnpairUseCase,
     private val updateAccentColorUseCase: UpdateAccentColorUseCase,
+    private val userRepository: UserRepository,
 ) : ViewModel() {
 
     private val local = MutableStateFlow(CoupleUiState())
 
     val state: StateFlow<CoupleUiState> =
-        combine(observePairingState(), local) { pairing, l ->
-            l.copy(pairing = pairing)
+        combine(observePairingState(), local, userRepository.observeCurrentUser()) { pairing, l, me ->
+            l.copy(pairing = pairing, currentDisplayName = me?.displayName)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),

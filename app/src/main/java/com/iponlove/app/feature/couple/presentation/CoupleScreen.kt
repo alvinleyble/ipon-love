@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.couple.presentation
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -34,12 +36,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.AccentColorRow
 import com.iponlove.app.feature.couple.domain.model.PairingError
 import com.iponlove.app.feature.couple.domain.model.PairingState
+
+private const val INVITE_LANDING_URL = "https://loveipon.app/invite"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,7 +85,7 @@ fun CoupleScreen(
                 PairingState.NotPaired -> NotPairedContent(state, viewModel)
 
                 is PairingState.Paired ->
-                    PairedContent(pairing, state, viewModel, onOpenCombined, onOpenDebts)
+                    PairedContent(pairing, state, viewModel, onOpenCombined, onOpenDebts, state.currentDisplayName)
             }
         }
     }
@@ -154,6 +159,7 @@ private fun PairedContent(
     viewModel: CoupleViewModel,
     onOpenCombined: () -> Unit,
     onOpenDebts: () -> Unit,
+    currentDisplayName: String?,
 ) {
     var confirmUnpair by remember { mutableStateOf(false) }
     val couple = paired.couple
@@ -190,6 +196,7 @@ private fun PairedContent(
 
     // The invite code is only useful until someone redeems it.
     if (couple.isAwaitingPartner) {
+        val context = LocalContext.current
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Invite code", style = MaterialTheme.typography.titleMedium)
@@ -199,6 +206,24 @@ private fun PairedContent(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                OutlinedButton(
+                    onClick = {
+                        val senderName = currentDisplayName ?: "Your partner"
+                        val message = "$senderName wants to partner up on Love, Ipon to track our money together!\n\n" +
+                            "Open the app and enter this invite code: ${couple.inviteCode}\n\n" +
+                            "Or visit: $INVITE_LANDING_URL"
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, message)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Share invite"))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Filled.Share, contentDescription = null)
+                    Spacer(Modifier.padding(horizontal = 4.dp))
+                    Text("Share invite code")
+                }
                 Text(
                     "Share this code with your partner so they can join.",
                     style = MaterialTheme.typography.bodySmall,
