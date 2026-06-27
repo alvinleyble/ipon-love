@@ -131,6 +131,8 @@ class MaterializeRecurringRulesUseCaseTest {
         override suspend fun upsertCategory(category: Category) = error("unused")
         override suspend fun setArchived(id: String, archived: Boolean) = error("unused")
         override suspend fun deleteCategory(id: String) = error("unused")
+        override suspend fun shareCategory(id: String, coupleId: String) = error("unused")
+        override suspend fun unshareCategory(id: String) = error("unused")
         override suspend fun purgePartnerData() = error("unused")
     }
 }

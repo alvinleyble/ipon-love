@@ -13,11 +13,17 @@ import java.time.Instant
  *
  * Carries the columns the domain [com.iponlove.app.feature.accounts.domain.model.Account]
  * deliberately hides: `userId` (ownership) and the sync columns.
+ *
+ * Personal account: [userId] set, [coupleId] null. Shared (couple-owned, ADR-0018): the
+ * reverse — exactly like budgets. [createdBy] records the creator so un-share/unpair can
+ * revert the row to that user's personal account (revert-to-creator).
  */
 @Entity(tableName = "accounts")
 data class AccountEntity(
     @PrimaryKey override val id: String,
-    val userId: String,
+    val userId: String?,
+    val coupleId: String?,
+    val createdBy: String?,
     val name: String,
     val type: AccountType,
     val openingBalance: BigDecimal,

@@ -15,12 +15,15 @@ fun AccountEntity.toDomain(): Account = Account(
     color = color,
     position = position,
     isArchived = isArchived,
+    isShared = coupleId != null,
 )
 
 /** Entity → DTO for push. Drops `pendingSync` (local-only, ADR-0002). */
 fun AccountEntity.toDto(): AccountDto = AccountDto(
     id = id,
     userId = userId,
+    coupleId = coupleId,
+    createdBy = createdBy,
     name = name,
     type = type,
     openingBalance = openingBalance,
@@ -41,6 +44,8 @@ fun AccountEntity.toDto(): AccountDto = AccountDto(
 fun AccountDto.toEntity(): AccountEntity = AccountEntity(
     id = id,
     userId = userId,
+    coupleId = coupleId,
+    createdBy = createdBy,
     name = name,
     type = type,
     openingBalance = openingBalance,

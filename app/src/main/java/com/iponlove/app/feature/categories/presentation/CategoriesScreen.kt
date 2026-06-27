@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.EntityColorPicker
+import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
 import com.iponlove.app.core.ui.icons.IconPicker
 import com.iponlove.app.core.ui.parseHexColor
@@ -66,6 +67,8 @@ fun CategoriesScreen(viewModel: CategoriesViewModel = hiltViewModel()) {
         onAdd = viewModel::startCreate,
         onEdit = viewModel::startEdit,
         onToggleArchive = { category -> viewModel.archive(category.id, !category.isArchived) },
+        onShare = { category -> viewModel.share(category.id) },
+        onUnshare = { category -> viewModel.unshare(category.id) },
         onDelete = { category -> viewModel.delete(category.id) },
         onNameChange = viewModel::onNameChange,
         onTypeChange = viewModel::onTypeChange,
@@ -84,6 +87,8 @@ private fun CategoriesContent(
     onAdd: () -> Unit,
     onEdit: (Category) -> Unit,
     onToggleArchive: (Category) -> Unit,
+    onShare: (Category) -> Unit,
+    onUnshare: (Category) -> Unit,
     onDelete: (Category) -> Unit,
     onNameChange: (String) -> Unit,
     onTypeChange: (CategoryType) -> Unit,
@@ -118,8 +123,11 @@ private fun CategoriesContent(
                         items(state.categories, key = { it.id }) { category ->
                             CategoryCard(
                                 category = category,
+                                isPaired = state.isPaired,
                                 onClick = { onEdit(category) },
                                 onToggleArchive = { onToggleArchive(category) },
+                                onShare = { onShare(category) },
+                                onUnshare = { onUnshare(category) },
                                 onDelete = { onDelete(category) },
                             )
                         }
@@ -161,8 +169,11 @@ private fun FilterRow(selected: CategoryFilter, onSelect: (CategoryFilter) -> Un
 @Composable
 private fun CategoryCard(
     category: Category,
+    isPaired: Boolean,
     onClick: () -> Unit,
     onToggleArchive: () -> Unit,
+    onShare: () -> Unit,
+    onUnshare: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -201,7 +212,13 @@ private fun CategoryCard(
             }
             Spacer(Modifier.size(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(category.name, style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(category.name, style = MaterialTheme.typography.titleMedium)
+                    if (category.isShared) {
+                        Spacer(Modifier.size(6.dp))
+                        SharedBadge()
+                    }
+                }
                 Text(
                     text = category.type.label(),
                     style = MaterialTheme.typography.bodySmall,
@@ -213,6 +230,20 @@ private fun CategoryCard(
                     Icon(Icons.Filled.MoreVert, contentDescription = "More options")
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    // Share/un-share is a couple-only capability (ADR-0018), shown only when paired.
+                    if (isPaired) {
+                        if (category.isShared) {
+                            DropdownMenuItem(
+                                text = { Text("Make personal") },
+                                onClick = { menuOpen = false; onUnshare() },
+                            )
+                        } else {
+                            DropdownMenuItem(
+                                text = { Text("Share with partner") },
+                                onClick = { menuOpen = false; onShare() },
+                            )
+                        }
+                    }
                     DropdownMenuItem(
                         text = { Text(if (category.isArchived) "Unarchive" else "Archive") },
                         onClick = { menuOpen = false; onToggleArchive() },

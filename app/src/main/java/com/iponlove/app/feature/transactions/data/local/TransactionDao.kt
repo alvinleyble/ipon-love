@@ -40,6 +40,22 @@ interface TransactionDao {
     )
     fun observeCombined(): Flow<List<TransactionEntity>>
 
+    /**
+     * The ledger for deriving account balances, including shared accounts (ADR-0018): the
+     * user's own transactions (private and not) plus every member's non-private ones. A shared
+     * account's spend is forced non-private, so the partner's postings against it are included;
+     * [AccountBalanceCalculator] ignores postings to accounts not in the opening-balance map, so
+     * over-fetched partner postings against their personal accounts simply fall away.
+     */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE isDeleted = 0 AND (userId = :userId OR isPrivate = 0)
+        ORDER BY date DESC, createdAt DESC
+        """,
+    )
+    fun observeForBalances(userId: String): Flow<List<TransactionEntity>>
+
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getById(id: String): TransactionEntity?
 

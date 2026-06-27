@@ -7,9 +7,12 @@ import com.iponlove.app.feature.accounts.domain.model.AccountType
 import com.iponlove.app.feature.accounts.domain.usecase.ArchiveAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.DeleteAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
+import com.iponlove.app.feature.accounts.domain.usecase.ShareAccountUseCase
+import com.iponlove.app.feature.accounts.domain.usecase.UnshareAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.UpsertAccountUseCase
+import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.AccountBalanceCalculator
-import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.ObserveBalanceLedgerUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,23 +28,37 @@ import javax.inject.Inject
 @HiltViewModel
 class AccountsViewModel @Inject constructor(
     observeAccounts: ObserveAccountsUseCase,
-    observeTransactions: ObserveTransactionsUseCase,
+    observeBalanceLedger: ObserveBalanceLedgerUseCase,
+    observeCoupleMembers: ObserveCoupleMembersUseCase,
     private val upsertAccount: UpsertAccountUseCase,
     private val archiveAccount: ArchiveAccountUseCase,
     private val deleteAccount: DeleteAccountUseCase,
+    private val shareAccount: ShareAccountUseCase,
+    private val unshareAccount: UnshareAccountUseCase,
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<AccountEditorState?>(null)
 
+    // Couple id captured for the share action; null when not paired.
+    private var coupleId: String? = null
+
     val uiState: StateFlow<AccountsUiState> =
-        combine(observeAccounts(), observeTransactions(), editor) { accounts, transactions, editorState ->
-            // Current balance = opening_balance + ledger, derived locally (ADR-0007).
+        combine(
+            observeAccounts(),
+            observeBalanceLedger(),
+            observeCoupleMembers(),
+            editor,
+        ) { accounts, ledger, members, editorState ->
+            coupleId = members?.me?.coupleId
+            // Current balance = opening_balance + ledger, derived locally (ADR-0007). For a
+            // shared account the ledger carries both partners' postings (ADR-0018).
             val openingBalances = accounts.associate { it.id to it.openingBalance }
-            val balances = AccountBalanceCalculator.balances(openingBalances, transactions)
+            val balances = AccountBalanceCalculator.balances(openingBalances, ledger)
             AccountsUiState(
                 isLoading = false,
                 accounts = accounts,
                 balances = balances,
+                isPaired = members != null,
                 editor = editorState,
             )
         }.stateIn(
@@ -104,6 +121,17 @@ class AccountsViewModel @Inject constructor(
             upsertAccount(account)
             editor.value = null
         }
+    }
+
+    /** Make a personal account couple-owned (shared). No-op if not paired. */
+    fun share(id: String) {
+        val couple = coupleId ?: return
+        viewModelScope.launch { shareAccount(id, couple) }
+    }
+
+    /** Revert a shared account to its creator's personal account (ADR-0018). */
+    fun unshare(id: String) {
+        viewModelScope.launch { unshareAccount(id) }
     }
 
     fun archive(id: String, archived: Boolean) {

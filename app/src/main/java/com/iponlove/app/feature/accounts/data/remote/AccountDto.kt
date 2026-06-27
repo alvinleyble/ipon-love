@@ -12,7 +12,9 @@ import java.time.Instant
 @Serializable
 data class AccountDto(
     val id: String,
-    @SerialName("user_id") val userId: String,
+    @SerialName("user_id") val userId: String?,
+    @SerialName("couple_id") val coupleId: String? = null,
+    @SerialName("created_by") val createdBy: String? = null,
     val name: String,
     val type: AccountType,
     @SerialName("opening_balance")

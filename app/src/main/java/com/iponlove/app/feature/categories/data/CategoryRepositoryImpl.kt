@@ -35,10 +35,14 @@ class CategoryRepositoryImpl @Inject constructor(
     override suspend fun upsertCategory(category: Category) {
         val existing = dao.getById(category.id)
         val updatedAt = clock.stamp(existing?.updatedAt)
+        val me = currentUser.userId()
         dao.upsert(
             CategoryEntity(
                 id = category.id,
-                userId = existing?.userId ?: currentUser.userId(),
+                // Ownership is managed by share/unshare, never the editor, so it survives edits.
+                userId = if (existing != null) existing.userId else me,
+                coupleId = existing?.coupleId,
+                createdBy = existing?.createdBy ?: me,
                 name = category.name,
                 type = category.type,
                 icon = category.icon,
@@ -49,6 +53,35 @@ class CategoryRepositoryImpl @Inject constructor(
                 updatedAt = updatedAt,
                 isDeleted = existing?.isDeleted ?: false,
                 serverRev = existing?.serverRev,
+                pendingSync = true,
+            ),
+        )
+        syncTrigger.requestPush()
+    }
+
+    override suspend fun shareCategory(id: String, coupleId: String) {
+        val existing = dao.getById(id) ?: return
+        if (existing.coupleId != null) return // already shared
+        dao.upsert(
+            existing.copy(
+                userId = null,
+                coupleId = coupleId,
+                createdBy = existing.createdBy ?: existing.userId,
+                updatedAt = clock.stamp(existing.updatedAt),
+                pendingSync = true,
+            ),
+        )
+        syncTrigger.requestPush()
+    }
+
+    override suspend fun unshareCategory(id: String) {
+        val existing = dao.getById(id) ?: return
+        val creator = existing.createdBy ?: existing.userId ?: return
+        dao.upsert(
+            existing.copy(
+                userId = creator,
+                coupleId = null,
+                updatedAt = clock.stamp(existing.updatedAt),
                 pendingSync = true,
             ),
         )
@@ -79,5 +112,10 @@ class CategoryRepositoryImpl @Inject constructor(
         syncTrigger.requestPush()
     }
 
-    override suspend fun purgePartnerData() = dao.deleteNotOwnedBy(currentUser.userId())
+    override suspend fun purgePartnerData() {
+        val me = currentUser.userId()
+        dao.revertOwnCoupleRowsToCreator(me, clock.stamp(null).toEpochMilli())
+        dao.deleteCoupleRowsNotCreatedBy(me)
+        dao.deleteNotOwnedBy(me)
+    }
 }

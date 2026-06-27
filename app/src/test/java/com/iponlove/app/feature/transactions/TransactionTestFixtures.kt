@@ -30,6 +30,13 @@ class FakeTransactionDao : TransactionDao {
                 .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
         }
 
+    override fun observeForBalances(userId: String): Flow<List<TransactionEntity>> =
+        changes.map {
+            store.values
+                .filter { !it.isDeleted && (it.userId == userId || !it.isPrivate) }
+                .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
+        }
+
     override suspend fun getById(id: String): TransactionEntity? = store[id]
 
     override suspend fun deleteById(id: String) {

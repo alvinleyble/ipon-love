@@ -11,11 +11,16 @@ import java.time.Instant
  * can read its bookkeeping uniformly. Carries the columns the domain
  * [com.iponlove.app.feature.categories.domain.model.Category] hides: `userId` and the
  * sync columns.
+ *
+ * Personal category: [userId] set, [coupleId] null. Shared (couple-owned, ADR-0018): the
+ * reverse. [createdBy] records the creator for revert-to-creator on un-share/unpair.
  */
 @Entity(tableName = "categories")
 data class CategoryEntity(
     @PrimaryKey override val id: String,
-    val userId: String,
+    val userId: String?,
+    val coupleId: String?,
+    val createdBy: String?,
     val name: String,
     val type: CategoryType,
     val icon: String?,

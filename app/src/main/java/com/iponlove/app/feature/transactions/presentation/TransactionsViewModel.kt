@@ -55,6 +55,7 @@ class TransactionsViewModel @Inject constructor(
     // Latest domain values, captured so the editor and saves can read full transactions
     // (the list exposes display models only).
     private var latestTransactions: List<Transaction> = emptyList()
+    private var latestAccounts: List<Account> = emptyList()
     private var firstAccountId: String? = null
     // Couple identity captured for the "paid for partner" save path; null when not paired
     // (or the partner row hasn't replicated in yet).
@@ -82,6 +83,7 @@ class TransactionsViewModel @Inject constructor(
             .combine(editor) { sources, editorState -> sources to editorState }
             .combine(isRefreshing) { (sources, editorState), refreshing ->
                 latestTransactions = sources.transactions
+                latestAccounts = sources.accounts
                 firstAccountId = sources.accounts.firstOrNull()?.id
                 coupleId = sources.members?.me?.coupleId
                 myId = sources.members?.me?.id
@@ -170,9 +172,26 @@ class TransactionsViewModel @Inject constructor(
 
     fun onAmountChange(value: String) = editor.update { it?.copy(amountText = value, errors = emptySet()) }
 
-    fun onAccountChange(id: String) = editor.update { it?.copy(accountId = id, errors = emptySet()) }
+    // Spend on a shared account must stay non-private (ADR-0018), so selecting one clears the
+    // private flag — the UI also hides the toggle, this is the model-side guard.
+    fun onAccountChange(id: String) = editor.update { e ->
+        e?.copy(
+            accountId = id,
+            isPrivate = if (isSharedAccount(id) || isSharedAccount(e.toAccountId)) false else e.isPrivate,
+            errors = emptySet(),
+        )
+    }
 
-    fun onToAccountChange(id: String) = editor.update { it?.copy(toAccountId = id, errors = emptySet()) }
+    fun onToAccountChange(id: String) = editor.update { e ->
+        e?.copy(
+            toAccountId = id,
+            isPrivate = if (isSharedAccount(id) || isSharedAccount(e.accountId)) false else e.isPrivate,
+            errors = emptySet(),
+        )
+    }
+
+    private fun isSharedAccount(id: String?): Boolean =
+        id != null && latestAccounts.any { it.id == id && it.isShared }
 
     fun onCategoryChange(id: String) = editor.update { it?.copy(categoryId = id, errors = emptySet()) }
 
@@ -220,6 +239,8 @@ class TransactionsViewModel @Inject constructor(
             accountId = s.accountId,
             toAccountId = toAccountId,
             categoryId = categoryId,
+            isPrivate = s.isPrivate,
+            touchesSharedAccount = isSharedAccount(s.accountId) || isSharedAccount(toAccountId),
         )
         if (errors.isNotEmpty()) {
             editor.value = s.copy(errors = errors.toSet())

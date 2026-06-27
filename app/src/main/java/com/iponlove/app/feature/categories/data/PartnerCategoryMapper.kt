@@ -12,6 +12,10 @@ import com.iponlove.app.feature.categories.domain.model.CategoryType
 fun PartnerCategoryDto.toEntity(): CategoryEntity = CategoryEntity(
     id = id,
     userId = userId,
+    // Partner replicas are personal-to-the-partner rows, never couple-owned (those cross via
+    // the base table, ADR-0018), so they carry no couple_id/created_by here.
+    coupleId = null,
+    createdBy = null,
     name = name.orEmpty(),
     type = type ?: CategoryType.EXPENSE,
     icon = icon,

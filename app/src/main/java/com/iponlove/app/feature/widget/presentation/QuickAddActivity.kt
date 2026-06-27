@@ -182,4 +182,5 @@ private fun TransactionError.message(): String = when (this) {
     TransactionError.CATEGORY_REQUIRED -> "Choose a category"
     TransactionError.DESTINATION_REQUIRED -> "Choose a destination account"
     TransactionError.DESTINATION_SAME_AS_SOURCE -> "Destination must differ from source"
+    TransactionError.PRIVATE_ON_SHARED_ACCOUNT -> "A shared account's spend can't be private"
 }

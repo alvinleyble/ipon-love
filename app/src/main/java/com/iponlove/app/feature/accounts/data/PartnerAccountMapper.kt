@@ -14,6 +14,10 @@ import java.math.BigDecimal
 fun PartnerAccountDto.toEntity(): AccountEntity = AccountEntity(
     id = id,
     userId = userId,
+    // Partner replicas are personal-to-the-partner rows, never couple-owned (those cross via
+    // the base table, ADR-0018), so they carry no couple_id/created_by here.
+    coupleId = null,
+    createdBy = null,
     name = name.orEmpty(),
     type = type ?: AccountType.CASH,
     openingBalance = BigDecimal.ZERO,

@@ -79,4 +79,51 @@ class CategoryRepositoryImplTest {
 
         assertThat(categories.map { it.name }).containsExactly("Bills")
     }
+
+    // ---- shared categories (ADR-0018) -----------------------------------------------
+
+    @Test
+    fun shareCategory_makesCoupleOwned_keepingCreator() = runTest {
+        dao.store["c"] = categoryEntity(id = "c", userId = "user-1", createdBy = "user-1")
+
+        repository.shareCategory("c", coupleId = "couple-1")
+
+        val row = dao.store.getValue("c")
+        assertThat(row.userId).isNull()
+        assertThat(row.coupleId).isEqualTo("couple-1")
+        assertThat(row.createdBy).isEqualTo("user-1")
+        assertThat(row.pendingSync).isTrue()
+    }
+
+    @Test
+    fun unshareCategory_revertsToCreator() = runTest {
+        dao.store["c"] = categoryEntity(
+            id = "c", userId = null, coupleId = "couple-1", createdBy = "owner-2",
+        )
+
+        repository.unshareCategory("c")
+
+        val row = dao.store.getValue("c")
+        assertThat(row.userId).isEqualTo("owner-2")
+        assertThat(row.coupleId).isNull()
+        assertThat(row.pendingSync).isTrue()
+    }
+
+    @Test
+    fun purgePartnerData_revertsMine_deletesPartnersCoupleRows_andReplicas() = runTest {
+        dao.store["mine"] = categoryEntity(
+            id = "mine", userId = null, coupleId = "couple-1", createdBy = "user-1",
+        )
+        dao.store["theirs"] = categoryEntity(
+            id = "theirs", userId = null, coupleId = "couple-1", createdBy = "owner-2",
+        )
+        dao.store["replica"] = categoryEntity(id = "replica", userId = "owner-2", coupleId = null)
+        dao.store["personal"] = categoryEntity(id = "personal", userId = "user-1", coupleId = null)
+
+        repository.purgePartnerData()
+
+        assertThat(dao.store.keys).containsExactly("mine", "personal")
+        assertThat(dao.store.getValue("mine").userId).isEqualTo("user-1")
+        assertThat(dao.store.getValue("mine").coupleId).isNull()
+    }
 }

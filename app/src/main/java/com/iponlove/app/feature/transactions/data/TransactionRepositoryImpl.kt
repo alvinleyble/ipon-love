@@ -33,6 +33,10 @@ class TransactionRepositoryImpl @Inject constructor(
         dao.observeCombined()
             .map { rows -> rows.map { OwnedTransaction(ownerId = it.userId, transaction = it.toDomain()) } }
 
+    override fun observeBalanceLedger(): Flow<List<Transaction>> =
+        dao.observeForBalances(currentUser.userId())
+            .map { rows -> rows.map { it.toDomain() } }
+
     override suspend fun getTransaction(id: String): Transaction? = dao.getById(id)?.toDomain()
 
     override suspend fun upsertTransaction(transaction: Transaction) {

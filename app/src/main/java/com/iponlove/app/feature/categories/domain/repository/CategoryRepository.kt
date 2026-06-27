@@ -28,6 +28,16 @@ interface CategoryRepository {
     /** Soft delete — sets `is_deleted = true`; never a hard delete (ADR-0010). */
     suspend fun deleteCategory(id: String)
 
-    /** Hard-delete all replicated partner categories on unpair (ADR-0008). */
+    /** Make a personal category couple-owned (shared) under [coupleId] (ADR-0018). */
+    suspend fun shareCategory(id: String, coupleId: String)
+
+    /** Revert a shared category to its creator's personal category (revert-to-creator, ADR-0018). */
+    suspend fun unshareCategory(id: String)
+
+    /**
+     * On unpair (ADR-0008): revert couple-owned categories this user created back to personal,
+     * delete the partner's couple-owned categories and replicated partner personal categories
+     * (ADR-0018).
+     */
     suspend fun purgePartnerData()
 }

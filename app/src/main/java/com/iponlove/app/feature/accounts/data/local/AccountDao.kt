@@ -11,14 +11,16 @@ import kotlinx.coroutines.flow.Flow
 interface AccountDao {
 
     /**
-     * The current user's own active accounts (not soft-deleted), optionally including
-     * archived ones. Filtered to [userId] so replicated partner accounts (ADR-0004) never
-     * leak into the individual view.
+     * The current user's own active accounts plus any couple-owned shared accounts (ADR-0018),
+     * optionally including archived ones. `coupleId IS NOT NULL` admits shared accounts into
+     * both partners' lists; replicated partner *personal* accounts (userId = partner,
+     * coupleId null, ADR-0004) are still excluded from the individual view.
      */
     @Query(
         """
         SELECT * FROM accounts
-        WHERE userId = :userId AND isDeleted = 0 AND (:includeArchived = 1 OR isArchived = 0)
+        WHERE (userId = :userId OR coupleId IS NOT NULL)
+          AND isDeleted = 0 AND (:includeArchived = 1 OR isArchived = 0)
         ORDER BY position ASC, createdAt ASC
         """,
     )
@@ -34,9 +36,31 @@ interface AccountDao {
     @Query("DELETE FROM accounts WHERE id = :id")
     suspend fun deleteById(id: String)
 
-    /** Hard-delete every replicated partner row on unpair (ADR-0008). */
-    @Query("DELETE FROM accounts WHERE userId <> :userId")
+    /**
+     * Hard-delete replicated partner *personal* rows on unpair (ADR-0008). Couple-owned rows
+     * (userId IS NULL) are handled by the revert/delete pair below, so the `userId IS NOT NULL`
+     * guard keeps this from touching them (and SQL `NULL <> x` would skip them anyway).
+     */
+    @Query("DELETE FROM accounts WHERE userId IS NOT NULL AND userId <> :userId")
     suspend fun deleteNotOwnedBy(userId: String)
+
+    /**
+     * Revert-to-creator for the unpair purge (ADR-0018): a couple-owned account this user
+     * created becomes their personal account, keeping its balance/history. Mirrors the
+     * server-side revert in unpair(); marked dirty so it re-converges if done offline.
+     */
+    @Query(
+        """
+        UPDATE accounts
+        SET userId = createdBy, coupleId = NULL, pendingSync = 1, updatedAt = :updatedAt
+        WHERE coupleId IS NOT NULL AND createdBy = :userId
+        """,
+    )
+    suspend fun revertOwnCoupleRowsToCreator(userId: String, updatedAt: Long)
+
+    /** Hard-delete couple-owned accounts created by the *other* partner on unpair (ADR-0018). */
+    @Query("DELETE FROM accounts WHERE coupleId IS NOT NULL AND (createdBy IS NULL OR createdBy <> :userId)")
+    suspend fun deleteCoupleRowsNotCreatedBy(userId: String)
 
     // ---- sync engine plumbing ----
 

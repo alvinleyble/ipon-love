@@ -10,6 +10,8 @@ data class AccountsUiState(
     val accounts: List<Account> = emptyList(),
     /** Current balance per account id (opening + ledger, ADR-0007). */
     val balances: Map<String, BigDecimal> = emptyMap(),
+    /** Whether the user is paired — gates the "Share with partner" action (ADR-0018). */
+    val isPaired: Boolean = false,
     /** Non-null while the add/edit sheet is open. */
     val editor: AccountEditorState? = null,
 )

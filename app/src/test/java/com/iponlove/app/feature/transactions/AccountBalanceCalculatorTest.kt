@@ -76,6 +76,21 @@ class AccountBalanceCalculatorTest {
     }
 
     @Test
+    fun sharedAccount_sumsBothPartnersPostings() {
+        // ADR-0018: a couple-owned account's balance is opening + BOTH members' postings. The
+        // calculator is owner-agnostic, so the balance ledger (own txns + every member's
+        // non-private ones) feeds it postings from both partners against the same shared id.
+        val txns = listOf(
+            txn("mine", TransactionType.EXPENSE, "200.00", accountId = "shared-1"),     // me
+            txn("partner", TransactionType.EXPENSE, "150.00", accountId = "shared-1"),  // partner
+            txn("myIncome", TransactionType.INCOME, "1000.00", accountId = "shared-1"), // me
+        )
+        val balance = AccountBalanceCalculator.balanceOf("shared-1", bd("500.00"), txns)
+        // 500 + 1000 - 200 - 150 = 1150.00
+        assertThat(balance).isEqualTo(bd("1150.00"))
+    }
+
+    @Test
     fun multipleTransactions_accumulate() {
         val txns = listOf(
             txn("t1", TransactionType.INCOME, "1000.00", accountId = "acc-1"),

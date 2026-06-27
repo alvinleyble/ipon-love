@@ -10,12 +10,16 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface CategoryDao {
 
-    /** The current user's own categories — filtered to [userId] so replicated partner
-     *  categories (ADR-0004) never leak into the individual view. */
+    /**
+     * The current user's own categories plus any couple-owned shared categories (ADR-0018),
+     * which appear in both partners' pickers. `coupleId IS NOT NULL` admits shared ones;
+     * replicated partner *personal* categories (ADR-0004) stay out of the individual view.
+     */
     @Query(
         """
         SELECT * FROM categories
-        WHERE userId = :userId AND isDeleted = 0 AND (:includeArchived = 1 OR isArchived = 0)
+        WHERE (userId = :userId OR coupleId IS NOT NULL)
+          AND isDeleted = 0 AND (:includeArchived = 1 OR isArchived = 0)
         ORDER BY position ASC, createdAt ASC
         """,
     )
@@ -39,9 +43,27 @@ interface CategoryDao {
     @Query("DELETE FROM categories WHERE id = :id")
     suspend fun deleteById(id: String)
 
-    /** Hard-delete every replicated partner row on unpair (ADR-0008). */
-    @Query("DELETE FROM categories WHERE userId <> :userId")
+    /**
+     * Hard-delete replicated partner *personal* rows on unpair (ADR-0008). Couple-owned rows
+     * (userId IS NULL) are handled by the revert/delete pair below.
+     */
+    @Query("DELETE FROM categories WHERE userId IS NOT NULL AND userId <> :userId")
     suspend fun deleteNotOwnedBy(userId: String)
+
+    /** Revert-to-creator for the unpair purge (ADR-0018): a couple-owned category this user
+     *  created becomes their personal category. Mirrors the server-side revert in unpair(). */
+    @Query(
+        """
+        UPDATE categories
+        SET userId = createdBy, coupleId = NULL, pendingSync = 1, updatedAt = :updatedAt
+        WHERE coupleId IS NOT NULL AND createdBy = :userId
+        """,
+    )
+    suspend fun revertOwnCoupleRowsToCreator(userId: String, updatedAt: Long)
+
+    /** Hard-delete couple-owned categories created by the *other* partner on unpair (ADR-0018). */
+    @Query("DELETE FROM categories WHERE coupleId IS NOT NULL AND (createdBy IS NULL OR createdBy <> :userId)")
+    suspend fun deleteCoupleRowsNotCreatedBy(userId: String)
 
     // ---- sync engine plumbing ----
 

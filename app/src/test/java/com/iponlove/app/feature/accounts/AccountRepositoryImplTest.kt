@@ -105,4 +105,87 @@ class AccountRepositoryImplTest {
 
         assertThat(accounts.map { it.name }).containsExactly("Cash")
     }
+
+    // ---- shared accounts (ADR-0018) -------------------------------------------------
+
+    @Test
+    fun upsert_newAccount_stampsCreatedBy() = runTest {
+        repository.upsertAccount(newAccount("a"))
+
+        assertThat(dao.store.getValue("a").createdBy).isEqualTo("user-1")
+    }
+
+    @Test
+    fun shareAccount_makesCoupleOwned_nullingUserId_keepingCreator() = runTest {
+        dao.store["a"] = accountEntity(id = "a", userId = "user-1", createdBy = "user-1")
+
+        repository.shareAccount("a", coupleId = "couple-1")
+
+        val row = dao.store.getValue("a")
+        assertThat(row.userId).isNull()
+        assertThat(row.coupleId).isEqualTo("couple-1")
+        assertThat(row.createdBy).isEqualTo("user-1")
+        assertThat(row.pendingSync).isTrue()
+    }
+
+    @Test
+    fun shareAccount_backfillsCreatorFromUserId_whenMissing() = runTest {
+        dao.store["a"] = accountEntity(id = "a", userId = "user-1", createdBy = null)
+
+        repository.shareAccount("a", coupleId = "couple-1")
+
+        assertThat(dao.store.getValue("a").createdBy).isEqualTo("user-1")
+    }
+
+    @Test
+    fun unshareAccount_revertsToCreator() = runTest {
+        // Shared account created by user-1, currently couple-owned.
+        dao.store["a"] = accountEntity(
+            id = "a", userId = null, coupleId = "couple-1", createdBy = "user-1",
+        )
+
+        repository.unshareAccount("a")
+
+        val row = dao.store.getValue("a")
+        assertThat(row.userId).isEqualTo("user-1")
+        assertThat(row.coupleId).isNull()
+        assertThat(row.pendingSync).isTrue()
+    }
+
+    @Test
+    fun unshareAccount_revertsToCreator_evenWhenAnotherMemberTriggersIt() = runTest {
+        // Partner (user-1) un-shares an account the other member (owner-2) created: it goes
+        // back to its creator, not to whoever clicked un-share (revert-to-creator, ADR-0018).
+        dao.store["a"] = accountEntity(
+            id = "a", userId = null, coupleId = "couple-1", createdBy = "owner-2",
+        )
+
+        repository.unshareAccount("a")
+
+        assertThat(dao.store.getValue("a").userId).isEqualTo("owner-2")
+        assertThat(dao.store.getValue("a").coupleId).isNull()
+    }
+
+    @Test
+    fun purgePartnerData_revertsMine_deletesPartnersCoupleRows_andPartnerReplicas() = runTest {
+        // Mine, couple-owned → reverts to my personal account, kept.
+        dao.store["mine"] = accountEntity(
+            id = "mine", userId = null, coupleId = "couple-1", createdBy = "user-1",
+        )
+        // Partner-created couple-owned → deleted (the partner keeps it via their own revert).
+        dao.store["theirs"] = accountEntity(
+            id = "theirs", userId = null, coupleId = "couple-1", createdBy = "owner-2",
+        )
+        // Replicated partner personal account → deleted.
+        dao.store["replica"] = accountEntity(id = "replica", userId = "owner-2", coupleId = null)
+        // My personal account → untouched.
+        dao.store["personal"] = accountEntity(id = "personal", userId = "user-1", coupleId = null)
+
+        repository.purgePartnerData()
+
+        assertThat(dao.store.keys).containsExactly("mine", "personal")
+        val mine = dao.store.getValue("mine")
+        assertThat(mine.userId).isEqualTo("user-1")
+        assertThat(mine.coupleId).isNull()
+    }
 }

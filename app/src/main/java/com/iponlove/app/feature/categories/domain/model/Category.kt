@@ -12,4 +12,9 @@ data class Category(
     val color: String? = null,
     val position: Int = 0,
     val isArchived: Boolean = false,
+    /**
+     * True when this is a couple-owned shared category (ADR-0018): it appears in both
+     * partners' pickers. Set by the data layer (`couple_id != null`); not editor-writable.
+     */
+    val isShared: Boolean = false,
 )

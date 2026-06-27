@@ -23,6 +23,16 @@ interface AccountRepository {
     /** Soft delete — sets `is_deleted = true`; never a hard delete (ADR-0010). */
     suspend fun deleteAccount(id: String)
 
-    /** Hard-delete all replicated partner accounts on unpair (ADR-0008). */
+    /** Make a personal account couple-owned (shared) under [coupleId] (ADR-0018). */
+    suspend fun shareAccount(id: String, coupleId: String)
+
+    /** Revert a shared account to its creator's personal account (revert-to-creator, ADR-0018). */
+    suspend fun unshareAccount(id: String)
+
+    /**
+     * On unpair (ADR-0008): revert couple-owned accounts this user created back to personal,
+     * delete the partner's couple-owned accounts and replicated partner personal accounts
+     * (ADR-0018).
+     */
     suspend fun purgePartnerData()
 }

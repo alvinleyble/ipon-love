@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.EntityColorPicker
+import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.IconPicker
@@ -70,6 +71,8 @@ fun AccountsScreen(viewModel: AccountsViewModel = hiltViewModel()) {
         onAdd = viewModel::startCreate,
         onEdit = viewModel::startEdit,
         onToggleArchive = { account -> viewModel.archive(account.id, !account.isArchived) },
+        onShare = { account -> viewModel.share(account.id) },
+        onUnshare = { account -> viewModel.unshare(account.id) },
         onDelete = { account -> viewModel.delete(account.id) },
         onNameChange = viewModel::onNameChange,
         onTypeChange = viewModel::onTypeChange,
@@ -88,6 +91,8 @@ private fun AccountsContent(
     onAdd: () -> Unit,
     onEdit: (Account) -> Unit,
     onToggleArchive: (Account) -> Unit,
+    onShare: (Account) -> Unit,
+    onUnshare: (Account) -> Unit,
     onDelete: (Account) -> Unit,
     onNameChange: (String) -> Unit,
     onTypeChange: (AccountType) -> Unit,
@@ -122,8 +127,11 @@ private fun AccountsContent(
                         AccountCard(
                             account = account,
                             balance = state.balances[account.id] ?: account.openingBalance,
+                            isPaired = state.isPaired,
                             onClick = { onEdit(account) },
                             onToggleArchive = { onToggleArchive(account) },
+                            onShare = { onShare(account) },
+                            onUnshare = { onUnshare(account) },
                             onDelete = { onDelete(account) },
                         )
                     }
@@ -150,8 +158,11 @@ private fun AccountsContent(
 private fun AccountCard(
     account: Account,
     balance: BigDecimal,
+    isPaired: Boolean,
     onClick: () -> Unit,
     onToggleArchive: () -> Unit,
+    onShare: () -> Unit,
+    onUnshare: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -190,7 +201,13 @@ private fun AccountCard(
             }
             Spacer(Modifier.size(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(account.name, style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(account.name, style = MaterialTheme.typography.titleMedium)
+                    if (account.isShared) {
+                        Spacer(Modifier.size(6.dp))
+                        SharedBadge()
+                    }
+                }
                 Text(
                     text = account.type.label(),
                     style = MaterialTheme.typography.bodySmall,
@@ -206,6 +223,20 @@ private fun AccountCard(
                     Icon(Icons.Filled.MoreVert, contentDescription = "More options")
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    // Share/un-share is a couple-only capability (ADR-0018), shown only when paired.
+                    if (isPaired) {
+                        if (account.isShared) {
+                            DropdownMenuItem(
+                                text = { Text("Make personal") },
+                                onClick = { menuOpen = false; onUnshare() },
+                            )
+                        } else {
+                            DropdownMenuItem(
+                                text = { Text("Share with partner") },
+                                onClick = { menuOpen = false; onShare() },
+                            )
+                        }
+                    }
                     DropdownMenuItem(
                         text = { Text(if (account.isArchived) "Unarchive" else "Archive") },
                         onClick = { menuOpen = false; onToggleArchive() },

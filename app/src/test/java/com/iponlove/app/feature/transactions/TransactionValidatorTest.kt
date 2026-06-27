@@ -15,7 +15,13 @@ class TransactionValidatorTest {
         accountId: String? = "acc-1",
         toAccountId: String? = null,
         categoryId: String? = "cat-1",
-    ) = TransactionValidator.validate(type, BigDecimal(amount), accountId, toAccountId, categoryId)
+        isPrivate: Boolean = false,
+        touchesSharedAccount: Boolean = false,
+    ) = TransactionValidator.validate(
+        type, BigDecimal(amount), accountId, toAccountId, categoryId,
+        isPrivate = isPrivate,
+        touchesSharedAccount = touchesSharedAccount,
+    )
 
     @Test
     fun validExpense_hasNoErrors() {
@@ -84,5 +90,25 @@ class TransactionValidatorTest {
     fun transfer_doesNotRequireCategory() {
         val errors = validate(TransactionType.TRANSFER, toAccountId = "acc-2", categoryId = null)
         assertThat(errors).doesNotContain(TransactionError.CATEGORY_REQUIRED)
+    }
+
+    @Test
+    fun privateSpend_onSharedAccount_isRejected() {
+        // ADR-0018: a shared account's spend must stay non-private so the joint balance is
+        // computable and identical on both devices.
+        val errors = validate(TransactionType.EXPENSE, isPrivate = true, touchesSharedAccount = true)
+        assertThat(errors).contains(TransactionError.PRIVATE_ON_SHARED_ACCOUNT)
+    }
+
+    @Test
+    fun nonPrivateSpend_onSharedAccount_isAllowed() {
+        val errors = validate(TransactionType.EXPENSE, isPrivate = false, touchesSharedAccount = true)
+        assertThat(errors).doesNotContain(TransactionError.PRIVATE_ON_SHARED_ACCOUNT)
+    }
+
+    @Test
+    fun privateSpend_onPersonalAccount_isAllowed() {
+        val errors = validate(TransactionType.EXPENSE, isPrivate = true, touchesSharedAccount = false)
+        assertThat(errors).doesNotContain(TransactionError.PRIVATE_ON_SHARED_ACCOUNT)
     }
 }

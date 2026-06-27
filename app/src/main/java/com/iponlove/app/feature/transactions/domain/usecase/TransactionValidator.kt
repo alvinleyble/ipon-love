@@ -10,6 +10,7 @@ enum class TransactionError {
     CATEGORY_REQUIRED,           // income/expense must be filed under a category
     DESTINATION_REQUIRED,        // a transfer needs a target account
     DESTINATION_SAME_AS_SOURCE,  // a transfer can't go to its own source
+    PRIVATE_ON_SHARED_ACCOUNT,   // a shared account's spend must stay non-private (ADR-0018)
 }
 
 /**
@@ -26,11 +27,17 @@ object TransactionValidator {
         toAccountId: String?,
         categoryId: String?,
         isSettlement: Boolean = false,
+        isPrivate: Boolean = false,
+        // True when this transaction touches a couple-owned account (source or transfer
+        // destination). Such activity must stay non-private so the joint balance is computable
+        // and identical on both devices (ADR-0018, the carve-out from ADR-0011).
+        touchesSharedAccount: Boolean = false,
     ): List<TransactionError> {
         val errors = mutableListOf<TransactionError>()
 
         if (amount.signum() <= 0) errors += TransactionError.AMOUNT_NOT_POSITIVE
         if (accountId.isNullOrBlank()) errors += TransactionError.ACCOUNT_REQUIRED
+        if (isPrivate && touchesSharedAccount) errors += TransactionError.PRIVATE_ON_SHARED_ACCOUNT
 
         when (type) {
             TransactionType.INCOME, TransactionType.EXPENSE ->

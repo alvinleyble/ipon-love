@@ -46,4 +46,20 @@ class AccountMapperTest {
         // pendingSync is intentionally reset to false on the way back from the wire.
         assertThat(roundTripped).isEqualTo(original.copy(pendingSync = false))
     }
+
+    @Test
+    fun coupleOwnedEntity_isShared_andRoundTripsCoupleColumns() {
+        val original = accountEntity(
+            id = "a", userId = null, coupleId = "couple-1", createdBy = "user-1", serverRev = 9,
+        )
+
+        assertThat(original.toDomain().isShared).isTrue()
+        // couple_id + created_by survive the wire round-trip (ADR-0018).
+        assertThat(original.toDto().toEntity()).isEqualTo(original.copy(pendingSync = false))
+    }
+
+    @Test
+    fun personalEntity_isNotShared() {
+        assertThat(accountEntity(id = "a").toDomain().isShared).isFalse()
+    }
 }

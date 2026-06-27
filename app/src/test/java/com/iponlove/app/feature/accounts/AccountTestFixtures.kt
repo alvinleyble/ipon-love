@@ -18,7 +18,10 @@ class FakeAccountDao : AccountDao {
     override fun observeAccounts(userId: String, includeArchived: Boolean): Flow<List<AccountEntity>> =
         changes.map {
             store.values
-                .filter { it.userId == userId && !it.isDeleted && (includeArchived || !it.isArchived) }
+                .filter {
+                    (it.userId == userId || it.coupleId != null) &&
+                        !it.isDeleted && (includeArchived || !it.isArchived)
+                }
                 .sortedWith(compareBy({ it.position }, { it.createdAt }))
         }
 
@@ -30,7 +33,28 @@ class FakeAccountDao : AccountDao {
     }
 
     override suspend fun deleteNotOwnedBy(userId: String) {
-        store.values.removeAll { it.userId != userId }
+        // Mirrors SQL `WHERE userId IS NOT NULL AND userId <> :userId` — couple-owned rows
+        // (userId null) are left for the revert/delete-couple pair.
+        store.values.removeAll { it.userId != null && it.userId != userId }
+        changes.value++
+    }
+
+    override suspend fun revertOwnCoupleRowsToCreator(userId: String, updatedAt: Long) {
+        store.values.toList().forEach { row ->
+            if (row.coupleId != null && row.createdBy == userId) {
+                store[row.id] = row.copy(
+                    userId = row.createdBy,
+                    coupleId = null,
+                    pendingSync = true,
+                    updatedAt = Instant.ofEpochMilli(updatedAt),
+                )
+            }
+        }
+        changes.value++
+    }
+
+    override suspend fun deleteCoupleRowsNotCreatedBy(userId: String) {
+        store.values.removeAll { it.coupleId != null && it.createdBy != userId }
         changes.value++
     }
 
@@ -55,7 +79,9 @@ class FakeAccountDao : AccountDao {
 fun accountEntity(
     id: String,
     name: String = "GCash",
-    userId: String = "user-1",
+    userId: String? = "user-1",
+    coupleId: String? = null,
+    createdBy: String? = null,
     type: AccountType = AccountType.EWALLET,
     openingBalance: BigDecimal = BigDecimal("100.00"),
     position: Int = 0,
@@ -68,6 +94,8 @@ fun accountEntity(
 ) = AccountEntity(
     id = id,
     userId = userId,
+    coupleId = coupleId,
+    createdBy = createdBy,
     name = name,
     type = type,
     openingBalance = openingBalance,
@@ -85,13 +113,17 @@ fun accountEntity(
 fun accountDto(
     id: String,
     name: String = "GCash",
-    userId: String = "user-1",
+    userId: String? = "user-1",
+    coupleId: String? = null,
+    createdBy: String? = null,
     serverRev: Long? = null,
     updatedAt: Instant = Instant.ofEpochMilli(1_000),
     isDeleted: Boolean = false,
 ) = AccountDto(
     id = id,
     userId = userId,
+    coupleId = coupleId,
+    createdBy = createdBy,
     name = name,
     type = AccountType.EWALLET,
     openingBalance = BigDecimal("100.00"),

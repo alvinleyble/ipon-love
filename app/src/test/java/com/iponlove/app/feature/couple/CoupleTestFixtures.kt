@@ -31,6 +31,8 @@ internal class CountingAccountRepo : AccountRepository {
     override suspend fun upsertAccount(account: Account) = Unit
     override suspend fun setArchived(id: String, archived: Boolean) = Unit
     override suspend fun deleteAccount(id: String) = Unit
+    override suspend fun shareAccount(id: String, coupleId: String) = Unit
+    override suspend fun unshareAccount(id: String) = Unit
     override suspend fun purgePartnerData() { purgeCount++ }
 }
 
@@ -42,6 +44,8 @@ internal class CountingCategoryRepo : CategoryRepository {
     override suspend fun upsertCategory(category: Category) = Unit
     override suspend fun setArchived(id: String, archived: Boolean) = Unit
     override suspend fun deleteCategory(id: String) = Unit
+    override suspend fun shareCategory(id: String, coupleId: String) = Unit
+    override suspend fun unshareCategory(id: String) = Unit
     override suspend fun purgePartnerData() { purgeCount++ }
 }
 
@@ -49,6 +53,7 @@ internal class CountingTransactionRepo : TransactionRepository {
     var purgeCount = 0
     override fun observeTransactions(): Flow<List<Transaction>> = emptyFlow()
     override fun observeCombinedTransactions(): Flow<List<OwnedTransaction>> = emptyFlow()
+    override fun observeBalanceLedger(): Flow<List<Transaction>> = emptyFlow()
     override suspend fun getTransaction(id: String): Transaction? = null
     override suspend fun upsertTransaction(transaction: Transaction) = Unit
     override suspend fun deleteTransaction(id: String) = Unit

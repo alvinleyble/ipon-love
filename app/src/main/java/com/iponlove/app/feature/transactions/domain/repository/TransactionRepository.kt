@@ -21,6 +21,13 @@ interface TransactionRepository {
      */
     fun observeCombinedTransactions(): Flow<List<OwnedTransaction>>
 
+    /**
+     * The ledger used to derive account balances, including couple-owned shared accounts: the
+     * user's own transactions plus every member's non-private ones (ADR-0018). Feed alongside
+     * the account opening balances to [com.iponlove.app.feature.transactions.domain.usecase.AccountBalanceCalculator].
+     */
+    fun observeBalanceLedger(): Flow<List<Transaction>>
+
     suspend fun getTransaction(id: String): Transaction?
 
     suspend fun upsertTransaction(transaction: Transaction)

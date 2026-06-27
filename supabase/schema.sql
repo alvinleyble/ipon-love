@@ -75,9 +75,15 @@ alter table couples
 
 -- ---------- accounts --------------------------------------------------------
 -- balance is DERIVED from the ledger (ADR-0007); only opening_balance syncs.
+-- Personal: user_id set, couple_id null. Shared (couple-owned, ADR-0018): the
+-- reverse, exactly like budgets. created_by records the creator so un-share/unpair
+-- can revert-to-creator (user_id = created_by, couple_id = null), preserving the
+-- account + its balance/history for whoever made it.
 create table accounts (
     id              uuid primary key default gen_random_uuid(),
-    user_id         uuid not null references users(id) on delete cascade,
+    user_id         uuid references users(id) on delete cascade,
+    couple_id       uuid references couples(id) on delete cascade,
+    created_by      uuid references users(id) on delete set null,
     name            text not null,
     type            account_type not null,
     opening_balance numeric(14,2) not null default 0,   -- current balance = this + ledger
@@ -88,13 +94,20 @@ create table accounts (
     created_at      timestamptz not null default now(),
     updated_at      timestamptz not null default now(),
     is_deleted      boolean not null default false,
-    server_rev      bigint
+    server_rev      bigint,
+    constraint account_owner_chk check (
+        (user_id is not null and couple_id is null) or
+        (user_id is null and couple_id is not null)
+    )
 );
 
 -- ---------- categories ------------------------------------------------------
+-- Personal vs. shared (couple-owned) mirrors accounts above (ADR-0018).
 create table categories (
     id          uuid primary key default gen_random_uuid(),
-    user_id     uuid not null references users(id) on delete cascade,
+    user_id     uuid references users(id) on delete cascade,
+    couple_id   uuid references couples(id) on delete cascade,
+    created_by  uuid references users(id) on delete set null,
     name        text not null,
     type        category_type not null,
     icon        text,
@@ -104,7 +117,11 @@ create table categories (
     created_at  timestamptz not null default now(),
     updated_at  timestamptz not null default now(),
     is_deleted  boolean not null default false,
-    server_rev  bigint
+    server_rev  bigint,
+    constraint category_owner_chk check (
+        (user_id is not null and couple_id is null) or
+        (user_id is null and couple_id is not null)
+    )
 );
 
 -- ---------- recurring_rules (owner-only, never shared) -----------------------
@@ -244,6 +261,33 @@ create table note_images (
     server_rev  bigint
 );
 
+-- ---------- no private spend on a shared account (ADR-0018) -----------------
+-- A shared account's balance is shown to both partners, which is only computable
+-- because ALL its activity is non-private (the principled carve-out from ADR-0011).
+-- This is the DB-level backstop to TransactionValidator: a CHECK can't span tables, so
+-- a trigger enforces it. Covers both the source (account_id) and a transfer's
+-- destination (to_account_id) — either touching a couple-owned account forces non-private.
+create or replace function enforce_no_private_on_shared_account()
+returns trigger
+language plpgsql
+as $$
+begin
+    if new.is_private and new.is_deleted = false
+       and exists (
+           select 1 from accounts
+           where id in (new.account_id, new.to_account_id)
+             and couple_id is not null
+       ) then
+        raise exception 'private transactions are not allowed on a shared account';
+    end if;
+    return new;
+end;
+$$;
+
+create trigger trg_no_private_on_shared
+    before insert or update on transactions
+    for each row execute function enforce_no_private_on_shared_account();
+
 -- ---------- server_rev triggers (one per synced table) ----------------------
 create trigger trg_rev_couples            before insert or update on couples              for each row execute function set_server_rev();
 create trigger trg_rev_users              before insert or update on users               for each row execute function set_server_rev();
@@ -273,7 +317,9 @@ create index idx_notes_rev            on notes(server_rev);
 create index idx_note_images_rev      on note_images(server_rev);
 
 create index idx_accounts_user        on accounts(user_id);
+create index idx_accounts_couple      on accounts(couple_id);
 create index idx_categories_user      on categories(user_id);
+create index idx_categories_couple    on categories(couple_id);
 create index idx_transactions_user    on transactions(user_id);
 create index idx_transactions_date    on transactions(date);
 create index idx_recurring_user       on recurring_rules(user_id);
@@ -343,6 +389,17 @@ create policy categories_owner on categories for all
     using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy recurring_owner on recurring_rules for all
     using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- Shared (couple-owned) accounts & categories: any couple member, full access, no
+-- redaction — jointly owned, exactly like budgets_couple. These rows replicate to both
+-- partners through the BASE-table pull (this policy returns them), NOT the redacting
+-- partner_* views, so opening_balance crosses and the joint balance is computable. [ADR-0018]
+create policy accounts_couple on accounts for all
+    using (couple_id = auth_couple_id())
+    with check (couple_id = auth_couple_id());
+create policy categories_couple on categories for all
+    using (couple_id = auth_couple_id())
+    with check (couple_id = auth_couple_id());
 create policy transactions_owner on transactions for all
     using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy notes_owner on notes for all
@@ -424,7 +481,8 @@ create view partner_accounts with (security_invoker = false) as
         a.updated_at,
         a.server_rev
     from accounts a
-    where a.user_id <> auth.uid()
+    where a.couple_id is null              -- couple-owned accounts cross via the base table (ADR-0018), not here
+      and a.user_id <> auth.uid()
       and a.user_id in (select id from users where couple_id = auth_couple_id());
 
 create view partner_categories with (security_invoker = false) as
@@ -440,7 +498,8 @@ create view partner_categories with (security_invoker = false) as
         c.updated_at,
         c.server_rev
     from categories c
-    where c.user_id <> auth.uid()
+    where c.couple_id is null              -- couple-owned categories cross via the base table (ADR-0018), not here
+      and c.user_id <> auth.uid()
       and c.user_id in (select id from users where couple_id = auth_couple_id());
 
 -- A note is hidden from the partner when not shared or deleted; its row still
@@ -585,8 +644,9 @@ end;
 $$;
 
 -- Dissolve the caller's couple: both leave, shared budgets soft-deleted, shared
--- notes revert to private-to-owner, couple soft-deleted. Each client then bulk-
--- purges replicated non-owned rows on seeing its own couple_id go null.       [ADR-0008]
+-- notes revert to private-to-owner, shared accounts & categories revert-to-creator,
+-- couple soft-deleted. Each client then bulk-purges replicated non-owned rows on
+-- seeing its own couple_id go null.                                     [ADR-0008, 0018]
 create or replace function unpair()
 returns void
 language plpgsql
@@ -615,6 +675,15 @@ begin
 
     update notes set is_shared = false, couple_id = null, updated_at = now()
         where couple_id = v_couple_id and is_shared = true;
+
+    -- Shared accounts & categories revert to their creator's personal rows (ADR-0018):
+    -- the creator keeps the account with its balance/history; the other partner's client
+    -- purges its replica (created_by <> self) when it sees couple_id clear.
+    update accounts set user_id = created_by, couple_id = null, updated_at = now()
+        where couple_id = v_couple_id and created_by is not null;
+
+    update categories set user_id = created_by, couple_id = null, updated_at = now()
+        where couple_id = v_couple_id and created_by is not null;
 
     update users set couple_id = null, updated_at = now() where couple_id = v_couple_id;
 

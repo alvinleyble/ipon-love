@@ -17,7 +17,10 @@ class FakeCategoryDao : CategoryDao {
     override fun observeCategories(userId: String, includeArchived: Boolean): Flow<List<CategoryEntity>> =
         changes.map {
             store.values
-                .filter { it.userId == userId && !it.isDeleted && (includeArchived || !it.isArchived) }
+                .filter {
+                    (it.userId == userId || it.coupleId != null) &&
+                        !it.isDeleted && (includeArchived || !it.isArchived)
+                }
                 .sortedWith(compareBy({ it.position }, { it.createdAt }))
         }
 
@@ -32,7 +35,26 @@ class FakeCategoryDao : CategoryDao {
     }
 
     override suspend fun deleteNotOwnedBy(userId: String) {
-        store.values.removeAll { it.userId != userId }
+        store.values.removeAll { it.userId != null && it.userId != userId }
+        changes.value++
+    }
+
+    override suspend fun revertOwnCoupleRowsToCreator(userId: String, updatedAt: Long) {
+        store.values.toList().forEach { row ->
+            if (row.coupleId != null && row.createdBy == userId) {
+                store[row.id] = row.copy(
+                    userId = row.createdBy,
+                    coupleId = null,
+                    pendingSync = true,
+                    updatedAt = Instant.ofEpochMilli(updatedAt),
+                )
+            }
+        }
+        changes.value++
+    }
+
+    override suspend fun deleteCoupleRowsNotCreatedBy(userId: String) {
+        store.values.removeAll { it.coupleId != null && it.createdBy != userId }
         changes.value++
     }
 
@@ -57,7 +79,9 @@ class FakeCategoryDao : CategoryDao {
 fun categoryEntity(
     id: String,
     name: String = "Groceries",
-    userId: String = "user-1",
+    userId: String? = "user-1",
+    coupleId: String? = null,
+    createdBy: String? = null,
     type: CategoryType = CategoryType.EXPENSE,
     position: Int = 0,
     isArchived: Boolean = false,
@@ -69,6 +93,8 @@ fun categoryEntity(
 ) = CategoryEntity(
     id = id,
     userId = userId,
+    coupleId = coupleId,
+    createdBy = createdBy,
     name = name,
     type = type,
     icon = null,
@@ -85,7 +111,9 @@ fun categoryEntity(
 fun categoryDto(
     id: String,
     name: String = "Groceries",
-    userId: String = "user-1",
+    userId: String? = "user-1",
+    coupleId: String? = null,
+    createdBy: String? = null,
     type: CategoryType = CategoryType.EXPENSE,
     serverRev: Long? = null,
     updatedAt: Instant = Instant.ofEpochMilli(1_000),
@@ -93,6 +121,8 @@ fun categoryDto(
 ) = CategoryDto(
     id = id,
     userId = userId,
+    coupleId = coupleId,
+    createdBy = createdBy,
     name = name,
     type = type,
     icon = null,

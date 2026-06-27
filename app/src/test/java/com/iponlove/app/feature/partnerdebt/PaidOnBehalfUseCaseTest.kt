@@ -31,6 +31,7 @@ class PaidOnBehalfUseCaseTest {
         val upserted = mutableListOf<Transaction>()
         override fun observeTransactions(): Flow<List<Transaction>> = flowOf(emptyList())
         override fun observeCombinedTransactions(): Flow<List<OwnedTransaction>> = flowOf(emptyList())
+        override fun observeBalanceLedger(): Flow<List<Transaction>> = flowOf(emptyList())
         override suspend fun getTransaction(id: String): Transaction? = upserted.lastOrNull { it.id == id }
         override suspend fun upsertTransaction(transaction: Transaction) { upserted += transaction }
         override suspend fun deleteTransaction(id: String) = Unit

@@ -20,4 +20,10 @@ data class Account(
     val color: String? = null,
     val position: Int = 0,
     val isArchived: Boolean = false,
+    /**
+     * True when this is a couple-owned shared account (ADR-0018): both partners log against
+     * it and see its balance. Set by the data layer (`couple_id != null`); the editor never
+     * writes it — sharing is a separate action (share/un-share), not an editable field.
+     */
+    val isShared: Boolean = false,
 )

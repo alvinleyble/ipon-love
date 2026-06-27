@@ -7,7 +7,10 @@ import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.categories.domain.usecase.ArchiveCategoryUseCase
 import com.iponlove.app.feature.categories.domain.usecase.DeleteCategoryUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
+import com.iponlove.app.feature.categories.domain.usecase.ShareCategoryUseCase
+import com.iponlove.app.feature.categories.domain.usecase.UnshareCategoryUseCase
 import com.iponlove.app.feature.categories.domain.usecase.UpsertCategoryUseCase
+import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,16 +25,23 @@ import javax.inject.Inject
 @HiltViewModel
 class CategoriesViewModel @Inject constructor(
     observeCategories: ObserveCategoriesUseCase,
+    observeCoupleMembers: ObserveCoupleMembersUseCase,
     private val upsertCategory: UpsertCategoryUseCase,
     private val archiveCategory: ArchiveCategoryUseCase,
     private val deleteCategory: DeleteCategoryUseCase,
+    private val shareCategory: ShareCategoryUseCase,
+    private val unshareCategory: UnshareCategoryUseCase,
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<CategoryEditorState?>(null)
     private val filter = MutableStateFlow(CategoryFilter.ALL)
 
+    // Couple id captured for the share action; null when not paired.
+    private var coupleId: String? = null
+
     val uiState: StateFlow<CategoriesUiState> =
-        combine(observeCategories(), filter, editor) { all, activeFilter, editorState ->
+        combine(observeCategories(), observeCoupleMembers(), filter, editor) { all, members, activeFilter, editorState ->
+            coupleId = members?.me?.coupleId
             val visible = when (activeFilter) {
                 CategoryFilter.ALL -> all
                 CategoryFilter.INCOME -> all.filter { it.type == CategoryType.INCOME }
@@ -41,6 +51,7 @@ class CategoriesViewModel @Inject constructor(
                 isLoading = false,
                 categories = visible,
                 filter = activeFilter,
+                isPaired = members != null,
                 editor = editorState,
             )
         }.stateIn(
@@ -106,6 +117,17 @@ class CategoriesViewModel @Inject constructor(
             upsertCategory(category)
             editor.value = null
         }
+    }
+
+    /** Make a personal category couple-owned (shared). No-op if not paired. */
+    fun share(id: String) {
+        val couple = coupleId ?: return
+        viewModelScope.launch { shareCategory(id, couple) }
+    }
+
+    /** Revert a shared category to its creator's personal category (ADR-0018). */
+    fun unshare(id: String) {
+        viewModelScope.launch { unshareCategory(id) }
     }
 
     fun archive(id: String, archived: Boolean) {

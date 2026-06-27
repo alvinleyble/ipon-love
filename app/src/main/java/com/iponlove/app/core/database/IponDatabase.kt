@@ -48,7 +48,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         PartnerDebtEntity::class,
         DebtPaymentEntity::class,
     ],
-    version = 16,
+    version = 17,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 10, to = 11),
@@ -57,6 +57,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AutoMigration(from = 13, to = 14),
         AutoMigration(from = 14, to = 15),
         AutoMigration(from = 15, to = 16),
+        AutoMigration(from = 16, to = 17),
     ],
 )
 @TypeConverters(IponConverters::class)

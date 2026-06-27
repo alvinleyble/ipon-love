@@ -14,12 +14,15 @@ fun CategoryEntity.toDomain(): Category = Category(
     color = color,
     position = position,
     isArchived = isArchived,
+    isShared = coupleId != null,
 )
 
 /** Entity → DTO for push. Drops `pendingSync` (local-only, ADR-0002). */
 fun CategoryEntity.toDto(): CategoryDto = CategoryDto(
     id = id,
     userId = userId,
+    coupleId = coupleId,
+    createdBy = createdBy,
     name = name,
     type = type,
     icon = icon,
@@ -39,6 +42,8 @@ fun CategoryEntity.toDto(): CategoryDto = CategoryDto(
 fun CategoryDto.toEntity(): CategoryEntity = CategoryEntity(
     id = id,
     userId = userId,
+    coupleId = coupleId,
+    createdBy = createdBy,
     name = name,
     type = type,
     icon = icon,

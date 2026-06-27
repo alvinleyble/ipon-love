@@ -316,6 +316,12 @@ private fun TransactionEditorDialog(
         .filter { it.type == editor.type.matchingCategoryType() }
         .map { PickerOption(it.id, it.name, it.icon?.let { k -> CATEGORY_ICONS[k] }, it.color) }
 
+    // Spend touching a shared account is forced non-private (ADR-0018), so the Private toggle
+    // is hidden whenever the source or destination account is couple-owned.
+    val sharedAccountIds = state.accounts.filter { it.isShared }.map { it.id }.toSet()
+    val touchesSharedAccount =
+        editor.accountId in sharedAccountIds || editor.toAccountId in sharedAccountIds
+
     var showDatePicker by remember { mutableStateOf(false) }
     var showFullScreenReceipt by remember { mutableStateOf(false) }
 
@@ -395,10 +401,12 @@ private fun TransactionEditorDialog(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Private", modifier = Modifier.weight(1f))
-                    Switch(checked = editor.isPrivate, onCheckedChange = onPrivateChange)
+                if (!touchesSharedAccount) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Private", modifier = Modifier.weight(1f))
+                        Switch(checked = editor.isPrivate, onCheckedChange = onPrivateChange)
+                    }
                 }
                 if (editor.canPayForPartner && editor.type == TransactionType.EXPENSE) {
                     Spacer(Modifier.height(8.dp))
@@ -580,6 +588,7 @@ private fun TransactionError.message(): String = when (this) {
     TransactionError.CATEGORY_REQUIRED -> "Choose a category"
     TransactionError.DESTINATION_REQUIRED -> "Choose a destination account"
     TransactionError.DESTINATION_SAME_AS_SOURCE -> "Destination must differ from the source"
+    TransactionError.PRIVATE_ON_SHARED_ACCOUNT -> "A shared account's spend can't be private"
 }
 
 @Composable
