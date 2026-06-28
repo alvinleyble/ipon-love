@@ -55,4 +55,26 @@ object DailyNetCalculator {
             firstWeekdayOffset = firstWeekdayOffset,
         )
     }
+
+    /**
+     * Count elapsed days in [incomeByDay]/[expenseByDay] with zero spend AND zero income,
+     * lower-bounded by [firstEligibleDayOfMonth] so days before the account existed are
+     * excluded (registration baseline — if the user registered on day 10, days 1–9 don't
+     * count as "no-spend" days).
+     *
+     * [firstEligibleDayOfMonth] = 1 means no lower bound (all elapsed days eligible).
+     * [firstEligibleDayOfMonth] > [elapsedCount] means the user registered after the
+     * current period → returns 0.
+     */
+    fun noSpendDayCount(
+        incomeByDay: List<BigDecimal>,
+        expenseByDay: List<BigDecimal>,
+        elapsedCount: Int,
+        firstEligibleDayOfMonth: Int,
+    ): Int {
+        val startIdx = (firstEligibleDayOfMonth - 1).coerceAtLeast(0)
+        return (startIdx until elapsedCount).count { idx ->
+            incomeByDay[idx].signum() == 0 && expenseByDay[idx].signum() == 0
+        }
+    }
 }

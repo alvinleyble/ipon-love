@@ -12,6 +12,8 @@ import com.iponlove.app.feature.analysis.domain.usecase.FlowMetricsCalculator
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveBudgetsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
+import com.iponlove.app.feature.user.domain.model.User
+import com.iponlove.app.feature.user.domain.usecase.ObserveCurrentUserUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,10 +38,15 @@ class AnalysisViewModel @Inject constructor(
     observeTransactions: ObserveTransactionsUseCase,
     observeCategories: ObserveCategoriesUseCase,
     observeBudgets: ObserveBudgetsUseCase,
+    observeCurrentUser: ObserveCurrentUserUseCase,
 ) : ViewModel() {
 
     private val anchor = MutableStateFlow(LocalDate.now())
     private val period = MutableStateFlow(AnalysisPeriod.MONTH)
+
+    // createdAt is effectively immutable — reading .value as a snapshot in the combine is safe.
+    private val currentUser: StateFlow<User?> = observeCurrentUser()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val uiState: StateFlow<AnalysisUiState> =
         combine(
@@ -109,10 +116,20 @@ class AnalysisViewModel @Inject constructor(
                     .filter { dailyNet.expenseByDay[it].signum() > 0 }
                     .maxByOrNull { dailyNet.expenseByDay[it] }
                     ?.let { it + 1 }
-                calendarNoSpendDayCount = (0 until elapsedCount).count { idx ->
-                    dailyNet.incomeByDay[idx].signum() == 0 &&
-                        dailyNet.expenseByDay[idx].signum() == 0
+                val windowYearMonth = YearMonth.of(startDate.year, startDate.month)
+                val regDate = currentUser.value?.createdAt?.atZone(zone)?.toLocalDate()
+                val firstEligibleDayOfMonth = when {
+                    regDate == null -> 1
+                    YearMonth.from(regDate) > windowYearMonth -> elapsedCount + 1
+                    YearMonth.from(regDate) == windowYearMonth -> regDate.dayOfMonth
+                    else -> 1
                 }
+                calendarNoSpendDayCount = DailyNetCalculator.noSpendDayCount(
+                    incomeByDay = dailyNet.incomeByDay,
+                    expenseByDay = dailyNet.expenseByDay,
+                    elapsedCount = elapsedCount,
+                    firstEligibleDayOfMonth = firstEligibleDayOfMonth,
+                )
             } else {
                 expenseFlow = null
                 flowMetrics = null

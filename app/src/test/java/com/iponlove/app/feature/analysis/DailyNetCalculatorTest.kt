@@ -158,4 +158,64 @@ class DailyNetCalculatorTest {
 
         assertThat(data.firstWeekdayOffset).isEqualTo(3)
     }
+
+    // --- noSpendDayCount ---
+
+    private fun zeroList(size: Int) = List(size) { BigDecimal.ZERO }
+
+    @Test
+    fun noSpendDayCount_noLowerBound_countsAllElapsedZeroDays() {
+        // 10 elapsed days, all zero → 10 no-spend days
+        val count = DailyNetCalculator.noSpendDayCount(
+            incomeByDay = zeroList(30),
+            expenseByDay = zeroList(30),
+            elapsedCount = 10,
+            firstEligibleDayOfMonth = 1,
+        )
+
+        assertThat(count).isEqualTo(10)
+    }
+
+    @Test
+    fun noSpendDayCount_registrationMidMonth_skipsDaysBeforeRegistration() {
+        // 10 elapsed days, registered on day 5 → only days 5–10 counted = 6 no-spend days
+        val count = DailyNetCalculator.noSpendDayCount(
+            incomeByDay = zeroList(30),
+            expenseByDay = zeroList(30),
+            elapsedCount = 10,
+            firstEligibleDayOfMonth = 5,
+        )
+
+        assertThat(count).isEqualTo(6)
+    }
+
+    @Test
+    fun noSpendDayCount_spendOnEligibleDay_notCounted() {
+        val expense = MutableList(30) { BigDecimal.ZERO }
+        expense[6] = BigDecimal("500.00") // day 7 has spend
+
+        // Registered on day 5, 10 days elapsed → days 5–10 eligible; day 7 has spend → 5 no-spend
+        val count = DailyNetCalculator.noSpendDayCount(
+            incomeByDay = zeroList(30),
+            expenseByDay = expense,
+            elapsedCount = 10,
+            firstEligibleDayOfMonth = 5,
+        )
+
+        assertThat(count).isEqualTo(5)
+    }
+
+    @Test
+    fun noSpendDayCount_registrationAfterElapsedPeriod_returnsZero() {
+        // User registered on day 15 but only 10 days have elapsed (current month, day 10)
+        // → firstEligibleDayOfMonth = elapsedCount + 1 = 11; no days satisfy range
+        val count = DailyNetCalculator.noSpendDayCount(
+            incomeByDay = zeroList(30),
+            expenseByDay = zeroList(30),
+            elapsedCount = 10,
+            firstEligibleDayOfMonth = 11, // elapsedCount + 1
+        )
+
+        assertThat(count).isEqualTo(0)
+    }
 }

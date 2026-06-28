@@ -9,6 +9,7 @@ fun UserEntity.toDomain(): User = User(
     displayName = displayName,
     accentColor = accentColor,
     coupleId = coupleId,
+    createdAt = createdAt,
 )
 
 fun UserEntity.toDto(): UserDto = UserDto(
