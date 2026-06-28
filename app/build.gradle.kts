@@ -9,22 +9,20 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
-// Supabase URL + anon key come from local.properties (gitignored). The anon key is a
+// Supabase credentials per flavor come from local.properties (gitignored). The anon key is a
 // public client key protected by RLS, so it ships in the APK; we still keep it out of
 // version control. Empty defaults keep the build green before the project is set up.
 val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
-val supabaseUrl: String = localProps.getProperty("SUPABASE_URL", "")
-val supabaseAnonKey: String = localProps.getProperty("SUPABASE_ANON_KEY", "")
+fun prop(key: String) = localProps.getProperty(key, "")
 
 android {
     namespace = "com.iponlove.app"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.iponlove.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -32,9 +30,23 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+    }
 
-        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+    flavorDimensions += "env"
+    productFlavors {
+        create("staging") {
+            dimension = "env"
+            applicationId = "com.iponlove.app.staging"
+            versionNameSuffix = "-staging"
+            buildConfigField("String", "SUPABASE_URL", "\"${prop("STAGING_SUPABASE_URL")}\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${prop("STAGING_SUPABASE_ANON_KEY")}\"")
+        }
+        create("prod") {
+            dimension = "env"
+            applicationId = "com.iponlove.app"
+            buildConfigField("String", "SUPABASE_URL", "\"${prop("PROD_SUPABASE_URL")}\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${prop("PROD_SUPABASE_ANON_KEY")}\"")
+        }
     }
 
     buildTypes {
