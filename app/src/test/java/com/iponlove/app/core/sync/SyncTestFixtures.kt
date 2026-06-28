@@ -18,6 +18,7 @@ class InMemoryCursorStore : SyncCursorStore {
     override suspend fun setCursor(table: SyncTable, value: Long) {
         cursors[table] = value
     }
+    override suspend fun reset() = cursors.clear()
 }
 
 /** Fixed instant helper. */

@@ -11,4 +11,12 @@ package com.iponlove.app.core.sync
 interface SyncCursorStore {
     suspend fun cursor(table: SyncTable): Long
     suspend fun setCursor(table: SyncTable, value: Long)
+
+    /**
+     * Reset every table's cursor to 0 so the next sync re-pulls the full history. Used by the
+     * sign-out / account-switch wipe (ADR-0021): after Room is cleared the cursors must drop
+     * too, otherwise a re-login would skip every row whose `server_rev` sits below the stale
+     * cursor and the account would appear empty.
+     */
+    suspend fun reset()
 }

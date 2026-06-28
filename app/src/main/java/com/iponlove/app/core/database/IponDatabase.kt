@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.iponlove.app.core.database.converters.IponConverters
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.iponlove.app.feature.accounts.data.local.AccountDao
 import com.iponlove.app.feature.accounts.data.local.AccountEntity
 import com.iponlove.app.feature.budgets.data.local.BudgetDao
@@ -72,4 +74,11 @@ abstract class IponDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
     abstract fun noteAttachmentDao(): NoteAttachmentDao
     abstract fun partnerDebtDao(): PartnerDebtDao
+
+    /**
+     * Wipe every table — the local source of truth for one account. Called on sign-out and on
+     * the login account-switch guard so one user's offline-first data can never surface under
+     * another's session (ADR-0021). Runs off the main thread; [clearAllTables] is blocking.
+     */
+    suspend fun clearAll() = withContext(Dispatchers.IO) { clearAllTables() }
 }

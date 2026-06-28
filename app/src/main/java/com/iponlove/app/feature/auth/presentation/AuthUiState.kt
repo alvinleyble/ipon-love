@@ -17,6 +17,9 @@ data class AuthUiState(
     val isSubmitting: Boolean = false,
     val error: AuthError? = null,
     val confirmationSent: Boolean = false,
+    // Raised when sign-out couldn't flush pending changes (offline): wiping local data would
+    // lose them, so the UI confirms before proceeding (ADR-0021).
+    val signOutPendingConfirm: Boolean = false,
 ) {
     val canSubmit: Boolean
         get() = email.isNotBlank() && password.isNotBlank() && !isSubmitting &&

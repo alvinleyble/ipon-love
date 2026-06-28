@@ -9,4 +9,7 @@ import kotlinx.coroutines.flow.Flow
 interface NavConfigRepository {
     fun observe(): Flow<NavConfig>
     suspend fun save(config: NavConfig)
+
+    /** Drop the saved layout so the next account starts from default pins (ADR-0021 wipe). */
+    suspend fun reset()
 }

@@ -19,6 +19,10 @@ class NavConfigRepositoryImpl @Inject constructor(
         dataStore.edit { it[KEY_PINS] = NavConfig.serialize(config) }
     }
 
+    override suspend fun reset() {
+        dataStore.edit { it.remove(KEY_PINS) }
+    }
+
     private companion object {
         val KEY_PINS = stringPreferencesKey("nav_pinned_ids")
     }

@@ -23,5 +23,11 @@ class DataStoreSyncCursorStore(
         dataStore.edit { it[key(table)] = value }
     }
 
+    override suspend fun reset() {
+        // Remove only the cursor keys; the clock offset shares this DataStore and must survive
+        // (it's a device-level calibration, not per-account state).
+        dataStore.edit { prefs -> SyncTable.entries.forEach { prefs.remove(key(it)) } }
+    }
+
     private fun key(table: SyncTable) = longPreferencesKey("cursor_${table.name}")
 }

@@ -9,8 +9,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -27,6 +30,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkManager
+import com.iponlove.app.core.session.AccountSwitchGuard
 import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.core.sync.SyncWorker
@@ -71,6 +75,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var syncEngine: SyncEngine
     @Inject lateinit var coupleChannelManager: CoupleChannelManager
     @Inject lateinit var themeDraft: ThemeDraftRepository
+    @Inject lateinit var accountSwitchGuard: AccountSwitchGuard
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,6 +132,10 @@ class MainActivity : FragmentActivity() {
                         } else {
                             var initialSyncDone by remember(current.userId) { mutableStateOf(false) }
                             LaunchedEffect(current.userId) {
+                                // Defensive net for a sign-out that never wiped (crash, reinstall,
+                                // restored session): purge stale local data before the first sync
+                                // if a different account is now signed in (ADR-0021).
+                                accountSwitchGuard.onAuthenticated(current.userId)
                                 ensureCurrentUserRow()
                                 runCatching { syncEngine.sync() }
                                 initialSyncDone = true
@@ -146,7 +155,14 @@ class MainActivity : FragmentActivity() {
                             }
                             LaunchedEffect(current.userId) { watchUnpair() }
                             if (initialSyncDone) {
+                                val form by authViewModel.form.collectAsState()
                                 IponApp(onSignOut = authViewModel::signOut)
+                                if (form.signOutPendingConfirm) {
+                                    SignOutPendingDialog(
+                                        onConfirm = authViewModel::confirmSignOutDiscardingChanges,
+                                        onDismiss = authViewModel::cancelSignOut,
+                                    )
+                                }
                             } else {
                                 SplashScreen()
                             }
@@ -177,4 +193,28 @@ private fun SplashScreen() {
             CircularProgressIndicator()
         }
     }
+}
+
+/**
+ * Shown when sign-out couldn't sync pending changes (offline). Signing out wipes local data,
+ * so confirm before discarding the unsynced changes (ADR-0021).
+ */
+@Composable
+private fun SignOutPendingDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Unsynced changes") },
+        text = {
+            Text(
+                "We couldn't sync your latest changes — you may be offline. Signing out now " +
+                    "will erase them from this device. Sign out anyway?",
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text("Sign out") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Stay signed in") }
+        },
+    )
 }

@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
+import com.iponlove.app.core.session.LocalDataWiper
+import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.core.sync.SyncWorker
 import com.iponlove.app.feature.auth.domain.model.AuthException
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
@@ -34,6 +36,8 @@ class AuthViewModel @Inject constructor(
     private val signIn: SignInUseCase,
     private val signUp: SignUpUseCase,
     private val signOutUseCase: SignOutUseCase,
+    private val syncEngine: SyncEngine,
+    private val localDataWiper: LocalDataWiper,
 ) : ViewModel() {
 
     val status: StateFlow<AuthStatus> = observeAuthStatus().stateIn(
@@ -85,16 +89,45 @@ class AuthViewModel @Inject constructor(
         // SIGNED_IN: confirmation is off server-side; the status stream authenticates us.
     }
 
+    /**
+     * Sign out and wipe this account's local data (ADR-0021). A best-effort push runs first so
+     * a synced device loses nothing. If that push *throws*, there were pending rows we couldn't
+     * send (offline) — wiping would lose them, so we surface a confirm instead of proceeding.
+     * (A no-op push — nothing dirty — returns normally and wipes safely.)
+     */
     fun signOut() {
         viewModelScope.launch {
             WorkManager.getInstance(context).cancelUniqueWork(SyncWorker.WORK_NAME)
-            try {
-                signOutUseCase()
-            } catch (_: AuthException) {
-                // A failed sign-out leaves the session intact; nothing actionable for the user.
+            val flushed = runCatching { syncEngine.pushOnly() }.isSuccess
+            if (flushed) {
+                performSignOut()
+            } else {
+                _form.update { it.copy(signOutPendingConfirm = true) }
             }
-            _form.value = AuthUiState()
         }
+    }
+
+    /** User chose to sign out despite unsynced changes — discard them and wipe. */
+    fun confirmSignOutDiscardingChanges() {
+        viewModelScope.launch {
+            _form.update { it.copy(signOutPendingConfirm = false) }
+            performSignOut()
+        }
+    }
+
+    fun cancelSignOut() = _form.update { it.copy(signOutPendingConfirm = false) }
+
+    private suspend fun performSignOut() {
+        // Only wipe once the session is actually gone: if sign-out fails the same user stays
+        // logged in (no leak), and we must not destroy the data they're still looking at.
+        val signedOut = try {
+            signOutUseCase()
+            true
+        } catch (_: AuthException) {
+            false
+        }
+        if (signedOut) runCatching { localDataWiper.wipe() }
+        _form.value = AuthUiState()
     }
 
     fun dismissError() = _form.update { it.copy(error = null) }
