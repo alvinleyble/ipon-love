@@ -8,8 +8,8 @@ class NavConfigTest {
     @Test
     fun pin_appendsWhenRoomAndNotPresent() {
         val config = NavConfig(listOf("records", "analysis"))
-        assertThat(config.pin("budgets").pinnedIds)
-            .containsExactly("records", "analysis", "budgets").inOrder()
+        assertThat(config.pin("manage").pinnedIds)
+            .containsExactly("records", "analysis", "manage").inOrder()
     }
 
     @Test
@@ -20,9 +20,9 @@ class NavConfigTest {
 
     @Test
     fun pin_isNoOpWhenAtMax() {
-        val config = NavConfig(listOf("records", "analysis", "budgets", "accounts"))
-        assertThat(config.pin("categories").pinnedIds).hasSize(NavRegistry.MAX_PINS)
-        assertThat(config.pin("categories").pinnedIds).doesNotContain("categories")
+        val config = NavConfig(listOf("records", "analysis", "manage", "couple"))
+        assertThat(config.pin("notes").pinnedIds).hasSize(NavRegistry.MAX_PINS)
+        assertThat(config.pin("notes").pinnedIds).doesNotContain("notes")
     }
 
     @Test
@@ -46,28 +46,28 @@ class NavConfigTest {
 
     @Test
     fun move_reordersAndShiftsTheRest() {
-        val config = NavConfig(listOf("records", "analysis", "budgets", "accounts"))
+        val config = NavConfig(listOf("records", "analysis", "manage", "couple"))
         // move first to last
         assertThat(config.move(0, 3).pinnedIds)
-            .containsExactly("analysis", "budgets", "accounts", "records").inOrder()
+            .containsExactly("analysis", "manage", "couple", "records").inOrder()
         // move last to first
         assertThat(config.move(3, 0).pinnedIds)
-            .containsExactly("accounts", "records", "analysis", "budgets").inOrder()
+            .containsExactly("couple", "records", "analysis", "manage").inOrder()
     }
 
     @Test
     fun move_isNoOpWhenIndicesEqualOrOutOfRange() {
-        val config = NavConfig(listOf("records", "analysis", "budgets"))
+        val config = NavConfig(listOf("records", "analysis", "manage"))
         assertThat(config.move(1, 1).pinnedIds).isEqualTo(config.pinnedIds)
         assertThat(config.move(5, 0).pinnedIds).isEqualTo(config.pinnedIds)
     }
 
     @Test
     fun deserialize_dropsUnknownAndDuplicateIdsAndCaps() {
-        val config = NavConfig.deserialize("records, bogus,analysis,records, budgets ,accounts,categories")
+        val config = NavConfig.deserialize("records, bogus,analysis,records, manage ,couple,notes")
         // bogus dropped, duplicate "records" deduped, capped to MAX_PINS
         assertThat(config.pinnedIds)
-            .containsExactly("records", "analysis", "budgets", "accounts").inOrder()
+            .containsExactly("records", "analysis", "manage", "couple").inOrder()
     }
 
     @Test
@@ -86,7 +86,7 @@ class NavConfigTest {
 
     @Test
     fun serialize_roundTrips() {
-        val config = NavConfig(listOf("couple", "records", "budgets"))
+        val config = NavConfig(listOf("couple", "records", "manage"))
         assertThat(NavConfig.deserialize(NavConfig.serialize(config)).pinnedIds)
             .isEqualTo(config.pinnedIds)
     }

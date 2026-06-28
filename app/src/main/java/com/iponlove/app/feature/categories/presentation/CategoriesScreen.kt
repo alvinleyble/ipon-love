@@ -18,25 +18,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import com.iponlove.app.core.ui.IponFilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -58,79 +52,43 @@ import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 
+/**
+ * Chrome-less Categories body — no Scaffold/TopAppBar/FAB. The Manage host provides the single
+ * scaffold + page-aware FAB (which calls [CategoriesViewModel.startCreate]); this renders only the
+ * filter row + list + editor dialog.
+ */
 @Composable
-fun CategoriesScreen(viewModel: CategoriesViewModel = hiltViewModel()) {
-    val state by viewModel.uiState.collectAsState()
-    CategoriesContent(
-        state = state,
-        onFilterChange = viewModel::setFilter,
-        onAdd = viewModel::startCreate,
-        onEdit = viewModel::startEdit,
-        onToggleArchive = { category -> viewModel.archive(category.id, !category.isArchived) },
-        onShare = { category -> viewModel.share(category.id) },
-        onUnshare = { category -> viewModel.unshare(category.id) },
-        onDelete = { category -> viewModel.delete(category.id) },
-        onNameChange = viewModel::onNameChange,
-        onTypeChange = viewModel::onTypeChange,
-        onIconChange = viewModel::onIconChange,
-        onColorChange = viewModel::onColorChange,
-        onSave = viewModel::save,
-        onCancel = viewModel::cancelEdit,
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CategoriesContent(
-    state: CategoriesUiState,
-    onFilterChange: (CategoryFilter) -> Unit,
-    onAdd: () -> Unit,
-    onEdit: (Category) -> Unit,
-    onToggleArchive: (Category) -> Unit,
-    onShare: (Category) -> Unit,
-    onUnshare: (Category) -> Unit,
-    onDelete: (Category) -> Unit,
-    onNameChange: (String) -> Unit,
-    onTypeChange: (CategoryType) -> Unit,
-    onIconChange: (String?) -> Unit,
-    onColorChange: (String?) -> Unit,
-    onSave: () -> Unit,
-    onCancel: () -> Unit,
+fun CategoriesBody(
+    modifier: Modifier = Modifier,
+    viewModel: CategoriesViewModel = hiltViewModel(),
 ) {
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("Categories") }) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onAdd) {
-                Icon(Icons.Filled.Add, contentDescription = "Add category")
-            }
-        },
-    ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            FilterRow(selected = state.filter, onSelect = onFilterChange)
-            Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    state.isLoading ->
-                        CircularProgressIndicator(Modifier.align(Alignment.Center))
+    val state by viewModel.uiState.collectAsState()
 
-                    state.categories.isEmpty() ->
-                        EmptyState(state.filter, Modifier.align(Alignment.Center))
+    Column(modifier = modifier) {
+        FilterRow(selected = state.filter, onSelect = viewModel::setFilter)
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                state.isLoading ->
+                    CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-                    else -> LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        items(state.categories, key = { it.id }) { category ->
-                            CategoryCard(
-                                category = category,
-                                isPaired = state.isPaired,
-                                onClick = { onEdit(category) },
-                                onToggleArchive = { onToggleArchive(category) },
-                                onShare = { onShare(category) },
-                                onUnshare = { onUnshare(category) },
-                                onDelete = { onDelete(category) },
-                            )
-                        }
+                state.categories.isEmpty() ->
+                    EmptyState(state.filter, Modifier.align(Alignment.Center))
+
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(state.categories, key = { it.id }) { category ->
+                        CategoryCard(
+                            category = category,
+                            isPaired = state.isPaired,
+                            onClick = { viewModel.startEdit(category) },
+                            onToggleArchive = { viewModel.archive(category.id, !category.isArchived) },
+                            onShare = { viewModel.share(category.id) },
+                            onUnshare = { viewModel.unshare(category.id) },
+                            onDelete = { viewModel.delete(category.id) },
+                        )
                     }
                 }
             }
@@ -140,12 +98,12 @@ private fun CategoriesContent(
     state.editor?.let { editor ->
         CategoryEditorDialog(
             editor = editor,
-            onNameChange = onNameChange,
-            onTypeChange = onTypeChange,
-            onIconChange = onIconChange,
-            onColorChange = onColorChange,
-            onSave = onSave,
-            onCancel = onCancel,
+            onNameChange = viewModel::onNameChange,
+            onTypeChange = viewModel::onTypeChange,
+            onIconChange = viewModel::onIconChange,
+            onColorChange = viewModel::onColorChange,
+            onSave = viewModel::save,
+            onCancel = viewModel::cancelEdit,
         )
     }
 }

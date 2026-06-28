@@ -1,8 +1,7 @@
 package com.iponlove.app.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Handshake
@@ -10,7 +9,6 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -47,9 +45,8 @@ object NavRegistry {
 
     val RECORDS = NavDestination("records", "Records", Icons.Filled.Receipt, "records")
     val ANALYSIS = NavDestination("analysis", "Analysis", Icons.Filled.PieChart, "analysis")
-    val BUDGETS = NavDestination("budgets", "Budgets", Icons.Filled.Savings, "budgets")
-    val ACCOUNTS = NavDestination("accounts", "Accounts", Icons.Filled.AccountBalanceWallet, "accounts")
-    val CATEGORIES = NavDestination("categories", "Categories", Icons.Filled.Category, "categories")
+    // Manage hosts the Accounts / Categories / Budgets tabs (V1.4 IA consolidation — ADR-0017).
+    val MANAGE = NavDestination("manage", "Manage", Icons.Filled.Dashboard, "manage")
     val NOTES = NavDestination("notes", "Notes", Icons.Filled.Description, "notes")
     val RECURRING = NavDestination("recurring", "Recurring", Icons.Filled.Repeat, "recurring")
     val COUPLE = NavDestination("couple", "Couple", Icons.Filled.Favorite, "couple")
@@ -59,7 +56,7 @@ object NavRegistry {
 
     /** Registry order — drives the editor's "available" list and the More grid. */
     val all: List<NavDestination> = listOf(
-        RECORDS, ANALYSIS, BUDGETS, ACCOUNTS, CATEGORIES,
+        RECORDS, ANALYSIS, MANAGE,
         NOTES, RECURRING, COUPLE, COMBINED, PARTNER_DEBT, SETTINGS,
     )
 
@@ -69,5 +66,5 @@ object NavRegistry {
     val pairedOnlyIds: Set<String> = all.filter { it.requiresPaired }.map { it.id }.toSet()
 
     /** Factory defaults for a fresh install (ADR-0017). */
-    val DEFAULT_PINS: List<String> = listOf(RECORDS.id, ANALYSIS.id, COUPLE.id, BUDGETS.id)
+    val DEFAULT_PINS: List<String> = listOf(RECORDS.id, ANALYSIS.id, COUPLE.id, MANAGE.id)
 }

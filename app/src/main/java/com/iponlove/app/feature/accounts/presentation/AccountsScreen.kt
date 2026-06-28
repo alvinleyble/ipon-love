@@ -21,25 +21,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import com.iponlove.app.core.ui.IponFilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -63,78 +58,42 @@ import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.model.AccountType
 import java.math.BigDecimal
 
+/**
+ * Chrome-less Accounts body — no Scaffold/TopAppBar/FAB. The Manage host
+ * ([feature/manage/presentation/ManageScreen.kt]) provides the single scaffold + page-aware FAB
+ * (which calls [AccountsViewModel.startCreate]); this renders only the list + editor dialog.
+ */
 @Composable
-fun AccountsScreen(viewModel: AccountsViewModel = hiltViewModel()) {
-    val state by viewModel.uiState.collectAsState()
-    AccountsContent(
-        state = state,
-        onAdd = viewModel::startCreate,
-        onEdit = viewModel::startEdit,
-        onToggleArchive = { account -> viewModel.archive(account.id, !account.isArchived) },
-        onShare = { account -> viewModel.share(account.id) },
-        onUnshare = { account -> viewModel.unshare(account.id) },
-        onDelete = { account -> viewModel.delete(account.id) },
-        onNameChange = viewModel::onNameChange,
-        onTypeChange = viewModel::onTypeChange,
-        onBalanceChange = viewModel::onOpeningBalanceChange,
-        onIconChange = viewModel::onIconChange,
-        onColorChange = viewModel::onColorChange,
-        onSave = viewModel::save,
-        onCancel = viewModel::cancelEdit,
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AccountsContent(
-    state: AccountsUiState,
-    onAdd: () -> Unit,
-    onEdit: (Account) -> Unit,
-    onToggleArchive: (Account) -> Unit,
-    onShare: (Account) -> Unit,
-    onUnshare: (Account) -> Unit,
-    onDelete: (Account) -> Unit,
-    onNameChange: (String) -> Unit,
-    onTypeChange: (AccountType) -> Unit,
-    onBalanceChange: (String) -> Unit,
-    onIconChange: (String?) -> Unit,
-    onColorChange: (String?) -> Unit,
-    onSave: () -> Unit,
-    onCancel: () -> Unit,
+fun AccountsBody(
+    modifier: Modifier = Modifier,
+    viewModel: AccountsViewModel = hiltViewModel(),
 ) {
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("Accounts") }) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onAdd) {
-                Icon(Icons.Filled.Add, contentDescription = "Add account")
-            }
-        },
-    ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            when {
-                state.isLoading ->
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+    val state by viewModel.uiState.collectAsState()
 
-                state.accounts.isEmpty() ->
-                    EmptyState(Modifier.align(Alignment.Center))
+    Box(modifier = modifier) {
+        when {
+            state.isLoading ->
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(state.accounts, key = { it.id }) { account ->
-                        AccountCard(
-                            account = account,
-                            balance = state.balances[account.id] ?: account.openingBalance,
-                            isPaired = state.isPaired,
-                            onClick = { onEdit(account) },
-                            onToggleArchive = { onToggleArchive(account) },
-                            onShare = { onShare(account) },
-                            onUnshare = { onUnshare(account) },
-                            onDelete = { onDelete(account) },
-                        )
-                    }
+            state.accounts.isEmpty() ->
+                EmptyState(Modifier.align(Alignment.Center))
+
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(state.accounts, key = { it.id }) { account ->
+                    AccountCard(
+                        account = account,
+                        balance = state.balances[account.id] ?: account.openingBalance,
+                        isPaired = state.isPaired,
+                        onClick = { viewModel.startEdit(account) },
+                        onToggleArchive = { viewModel.archive(account.id, !account.isArchived) },
+                        onShare = { viewModel.share(account.id) },
+                        onUnshare = { viewModel.unshare(account.id) },
+                        onDelete = { viewModel.delete(account.id) },
+                    )
                 }
             }
         }
@@ -143,13 +102,13 @@ private fun AccountsContent(
     state.editor?.let { editor ->
         AccountEditorDialog(
             editor = editor,
-            onNameChange = onNameChange,
-            onTypeChange = onTypeChange,
-            onBalanceChange = onBalanceChange,
-            onIconChange = onIconChange,
-            onColorChange = onColorChange,
-            onSave = onSave,
-            onCancel = onCancel,
+            onNameChange = viewModel::onNameChange,
+            onTypeChange = viewModel::onTypeChange,
+            onBalanceChange = viewModel::onOpeningBalanceChange,
+            onIconChange = viewModel::onIconChange,
+            onColorChange = viewModel::onColorChange,
+            onSave = viewModel::save,
+            onCancel = viewModel::cancelEdit,
         )
     }
 }

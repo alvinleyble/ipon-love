@@ -54,13 +54,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.iponlove.app.feature.accounts.presentation.AccountsScreen
 import com.iponlove.app.feature.analysis.presentation.AnalysisScreen
 import com.iponlove.app.feature.applock.presentation.AppLockSetupScreen
-import com.iponlove.app.feature.budgets.presentation.BudgetsScreen
-import com.iponlove.app.feature.categories.presentation.CategoriesScreen
 import com.iponlove.app.feature.couple.presentation.CombinedScreen
 import com.iponlove.app.feature.couple.presentation.CoupleScreen
+import com.iponlove.app.feature.manage.presentation.ManageScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion.NOTE_ID_KEY
 import com.iponlove.app.feature.notes.presentation.NotesScreen
@@ -155,9 +153,7 @@ private fun IponAppContent(
                 )
             }
             composable(NavRegistry.ANALYSIS.route) { AnalysisScreen() }
-            composable(NavRegistry.BUDGETS.route) { BudgetsScreen() }
-            composable(NavRegistry.ACCOUNTS.route) { AccountsScreen() }
-            composable(NavRegistry.CATEGORIES.route) { CategoriesScreen() }
+            composable(NavRegistry.MANAGE.route) { ManageScreen() }
             composable(NavRegistry.NOTES.route) {
                 NotesScreen(
                     onBack = { navController.popBackStack() },
