@@ -24,6 +24,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.iponlove.app.BuildConfig
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +51,8 @@ fun PersonalizeScreen(
     onOpenProfile: () -> Unit = {},
     onOpenSecurity: () -> Unit = {},
     onOpenNavbar: () -> Unit = {},
+    onOpenHelp: () -> Unit = {},
+    onOpenBetaFeedback: () -> Unit = {},
     onSignOut: () -> Unit = {},
     viewModel: PersonalizeViewModel = hiltViewModel(),
 ) {
@@ -142,6 +145,32 @@ fun PersonalizeScreen(
                     modifier = Modifier.clickable(onClick = onOpenNavbar),
                 )
                 HorizontalDivider()
+
+                Spacer(Modifier.height(24.dp))
+                Text("Support", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(4.dp))
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("Help") },
+                    supportingContent = { Text("FAQs and app guide") },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable(onClick = onOpenHelp),
+                )
+                if (BuildConfig.IS_BETA_BUILD) {
+                    HorizontalDivider()
+                    ListItem(
+                        headlineContent = { Text("Beta feedback") },
+                        supportingContent = { Text("Report bugs or suggest improvements") },
+                        trailingContent = {
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                        },
+                        modifier = Modifier.clickable(onClick = onOpenBetaFeedback),
+                    )
+                }
+                HorizontalDivider()
+
                 Spacer(Modifier.height(8.dp))
                 TextButton(
                     onClick = onSignOut,

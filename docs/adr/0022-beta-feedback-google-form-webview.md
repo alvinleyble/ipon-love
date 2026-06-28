@@ -1,0 +1,15 @@
+# Beta feedback via embedded Google Form WebView
+
+**Context.** During the beta self-test phase we need a frictionless channel for testers (currently Alvin + Patty) to send bug reports, suggestions, and comments without requiring a separate app or form link. The options considered were: (A) a native feedback entity synced via Supabase, (B) an email `Intent`, (C) a Google Form embedded in an in-app WebView.
+
+**Decision.** Use option C — a guest-accessible Google Form loaded inside an `AndroidView { WebView }` with JavaScript enabled. The form URL is prefilled via Google's `?usp=pp_url&entry.<id>=<value>` query-param scheme with automatic context: app version, device model, Android version, and the tester's display name or user ID.
+
+Key design choices:
+
+- **No offline capture.** A web form can't queue submissions without network. Beta testers are expected to have connectivity when sending feedback, and offline capture would require a synced entity, increasing scope significantly. The trade-off is accepted for the beta phase. If offline feedback capture becomes a need post-beta, a native entity can replace this screen without any data-layer migration (the form is a presentation-only detail).
+- **`BuildConfig.IS_BETA_BUILD` gate.** The Beta feedback row in Settings is conditionally rendered only when `IS_BETA_BUILD = true` (staging flavor). The prod flavor sets `IS_BETA_BUILD = false` so the row is completely absent from production builds, with no dead routes or empty states visible to paying users.
+- **Help screen always visible.** The Help screen is shown in both flavors — it's a user-facing support artifact, not a testing tool. It currently holds static FAQ placeholders and the app version, structured to swap to a hosted WebView later without a new screen.
+- **`BetaFeedbackConfig` placeholder.** `FORM_BASE_URL` ships as an empty string. The screen detects `isConfigured = false` and shows a "not configured yet" message instead of a broken WebView. Alvin fills in the URL and `entry.*` IDs after creating the Google Form (Settings: uncheck "Collect email" / "Require sign-in" / "Limit to 1 response"; share "anyone with the link"; ⋮ → "Get pre-filled link" to extract the `entry.XXXXXXXXXX` param keys). The screen then becomes live without an app release — the URL is a compile-time constant, so a minor version bump is enough.
+- **Retry state.** `WebViewClient.onReceivedError` on the main frame sets `hasError = true`, swapping the WebView for an error message + Retry button. Retry resets the flag, recomposing a fresh `AndroidView` whose factory re-calls `loadUrl`. No explicit reload-on-existing-WebView bookkeeping is needed.
+
+**Consequences.** Feedback submissions land directly in a Google Sheet the owner controls, with no backend, no Supabase migration, and no app release needed to update or close the form. The `BetaFeedbackConfig` object is the only file that changes when the form is ready. After the beta period, the row can be hidden by flipping `IS_BETA_BUILD` to `false` on the staging flavor, or removed entirely.

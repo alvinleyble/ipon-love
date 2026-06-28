@@ -57,6 +57,8 @@ import androidx.navigation.navArgument
 import com.iponlove.app.feature.analysis.presentation.AnalysisScreen
 import com.iponlove.app.feature.applock.presentation.AppLockSetupScreen
 import com.iponlove.app.feature.couple.presentation.CoupleScreen
+import com.iponlove.app.feature.feedback.presentation.BetaFeedbackScreen
+import com.iponlove.app.feature.help.presentation.HelpScreen
 import com.iponlove.app.feature.manage.presentation.ManageScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion.NOTE_ID_KEY
@@ -71,6 +73,8 @@ private const val APP_LOCK_SETUP_ROUTE = "app_lock_setup"
 private const val NOTE_EDITOR_ROUTE = "note_editor"
 private const val PROFILE_ROUTE = "profile"
 private const val NAV_EDITOR_ROUTE = "nav_editor"
+private const val HELP_ROUTE = "help"
+private const val BETA_FEEDBACK_ROUTE = "beta_feedback"
 
 /**
  * App root: a bottom-nav [Scaffold] whose bar is built dynamically from the user's pinned
@@ -165,6 +169,8 @@ private fun IponAppContent(
                     onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
                     onOpenSecurity = { navController.navigate(APP_LOCK_SETUP_ROUTE) },
                     onOpenNavbar = { navController.navigate(NAV_EDITOR_ROUTE) },
+                    onOpenHelp = { navController.navigate(HELP_ROUTE) },
+                    onOpenBetaFeedback = { navController.navigate(BETA_FEEDBACK_ROUTE) },
                     onSignOut = onSignOut,
                 )
             }
@@ -181,6 +187,12 @@ private fun IponAppContent(
                     onApply = navViewModel::applyConfig,
                     onBack = { navController.popBackStack() },
                 )
+            }
+            composable(HELP_ROUTE) {
+                HelpScreen(onBack = { navController.popBackStack() })
+            }
+            composable(BETA_FEEDBACK_ROUTE) {
+                BetaFeedbackScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 route = "$NOTE_EDITOR_ROUTE/{$NOTE_ID_KEY}",

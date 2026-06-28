@@ -40,12 +40,14 @@ android {
             versionNameSuffix = "-staging"
             buildConfigField("String", "SUPABASE_URL", "\"${prop("STAGING_SUPABASE_URL")}\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${prop("STAGING_SUPABASE_ANON_KEY")}\"")
+            buildConfigField("Boolean", "IS_BETA_BUILD", "true")
         }
         create("prod") {
             dimension = "env"
             applicationId = "com.iponlove.app"
             buildConfigField("String", "SUPABASE_URL", "\"${prop("PROD_SUPABASE_URL")}\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${prop("PROD_SUPABASE_ANON_KEY")}\"")
+            buildConfigField("Boolean", "IS_BETA_BUILD", "false")
         }
     }
 
