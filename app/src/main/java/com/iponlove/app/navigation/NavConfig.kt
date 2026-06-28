@@ -12,10 +12,19 @@ package com.iponlove.app.navigation
 data class NavConfig(
     val pinnedIds: List<String> = NavRegistry.DEFAULT_PINS,
 ) {
-    /** Append [id] as a new pin if there's room and it isn't already pinned. */
+    /**
+     * Append [id] as a new pin if there's room, it isn't already pinned, and the module allows
+     * pinning (non-pinnable modules like Settings live only in the More sheet — ADR-0017).
+     */
     fun pin(id: String): NavConfig =
-        if (id in pinnedIds || pinnedIds.size >= NavRegistry.MAX_PINS) this
-        else copy(pinnedIds = pinnedIds + id)
+        if (id in pinnedIds ||
+            pinnedIds.size >= NavRegistry.MAX_PINS ||
+            NavRegistry.byId[id]?.pinnable != true
+        ) {
+            this
+        } else {
+            copy(pinnedIds = pinnedIds + id)
+        }
 
     /** Remove [id] unless it's the last remaining pin (min 1). */
     fun unpin(id: String): NavConfig =
@@ -40,7 +49,7 @@ data class NavConfig(
             val ids = raw
                 ?.split(',')
                 ?.map { it.trim() }
-                ?.filter { it.isNotEmpty() && it in NavRegistry.byId }
+                ?.filter { it.isNotEmpty() && NavRegistry.byId[it]?.pinnable == true }
                 ?.distinct()
                 ?.take(NavRegistry.MAX_PINS)
                 .orEmpty()

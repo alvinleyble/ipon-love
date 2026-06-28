@@ -66,7 +66,7 @@ fun NavbarEditorScreen(
 
     val pinned = config.pinnedIds.mapNotNull { NavRegistry.byId[it] }
     val available = NavRegistry.all.filter {
-        it.id !in config.pinnedIds && (!it.requiresPaired || isPaired)
+        it.pinnable && it.id !in config.pinnedIds && (!it.requiresPaired || isPaired)
     }
 
     Scaffold(

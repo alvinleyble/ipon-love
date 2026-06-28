@@ -43,6 +43,28 @@ class NavResolverTest {
     }
 
     @Test
+    fun moreModuleIds_excludesCurrentlyPinnedModules() {
+        val config = NavConfig(listOf("records", "analysis", "couple"))
+        val more = NavResolver.moreModuleIds(config, isPaired = true)
+        assertThat(more).containsNoneOf("records", "analysis", "couple")
+    }
+
+    @Test
+    fun moreModuleIds_alwaysIncludesNonPinnableSettings() {
+        // Settings can't be pinned, so it must always stay reachable in the More sheet.
+        val config = NavConfig(listOf("records", "analysis", "couple", "budgets"))
+        assertThat(NavResolver.moreModuleIds(config, isPaired = true)).contains("settings")
+        assertThat(NavResolver.moreModuleIds(config, isPaired = false)).contains("settings")
+    }
+
+    @Test
+    fun moreModuleIds_dropsPairedOnlyWhenUnpaired() {
+        val config = NavConfig(listOf("records"))
+        assertThat(NavResolver.moreModuleIds(config, isPaired = false))
+            .containsNoneOf("combined", "partner_debt")
+    }
+
+    @Test
     fun startRoute_isFirstNonPairedOnlyPin() {
         val config = NavConfig(listOf("couple", "records"))
         assertThat(NavResolver.startRoute(config)).isEqualTo(NavRegistry.COUPLE.route)

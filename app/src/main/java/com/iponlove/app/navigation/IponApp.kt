@@ -213,7 +213,7 @@ private fun IponAppContent(
 
     if (showMore) {
         MoreSheet(
-            modules = state.visibleModuleIds.mapNotNull { NavRegistry.byId[it] },
+            modules = state.moreModuleIds.mapNotNull { NavRegistry.byId[it] },
             onModule = { dest ->
                 showMore = false
                 navController.switchTab(dest.route)

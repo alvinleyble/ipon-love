@@ -26,6 +26,13 @@ class NavConfigTest {
     }
 
     @Test
+    fun pin_isNoOpForNonPinnableModule() {
+        // Settings is non-pinnable — it lives only in the More sheet (ADR-0017).
+        val config = NavConfig(listOf("records"))
+        assertThat(config.pin("settings").pinnedIds).containsExactly("records")
+    }
+
+    @Test
     fun unpin_removesWhenMoreThanOne() {
         val config = NavConfig(listOf("records", "analysis"))
         assertThat(config.unpin("records").pinnedIds).containsExactly("analysis")
@@ -61,6 +68,13 @@ class NavConfigTest {
         // bogus dropped, duplicate "records" deduped, capped to MAX_PINS
         assertThat(config.pinnedIds)
             .containsExactly("records", "analysis", "budgets", "accounts").inOrder()
+    }
+
+    @Test
+    fun deserialize_dropsNonPinnableIds() {
+        // A stale/hand-edited "settings" pin must not survive into the bar.
+        val config = NavConfig.deserialize("records,settings,analysis")
+        assertThat(config.pinnedIds).containsExactly("records", "analysis").inOrder()
     }
 
     @Test

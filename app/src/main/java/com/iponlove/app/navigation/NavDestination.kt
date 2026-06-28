@@ -23,6 +23,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
  * Note: Couple itself is NOT paired-only — it doubles as the pairing entry point and renders
  * its own create/join UI when unpaired, so hiding it would orphan onboarding. Only Combined
  * and Partner Debt (which read purged partner data when unpaired) are gated.
+ *
+ * [pinnable] = false means the module can never sit on the bottom bar — it lives permanently in
+ * the More sheet so it stays reachable without ever consuming a precious pin slot (ADR-0017).
+ * Settings is the canonical non-pinnable module.
  */
 data class NavDestination(
     val id: String,
@@ -30,6 +34,7 @@ data class NavDestination(
     val icon: ImageVector,
     val route: String,
     val requiresPaired: Boolean = false,
+    val pinnable: Boolean = true,
 )
 
 /**
@@ -50,7 +55,7 @@ object NavRegistry {
     val COUPLE = NavDestination("couple", "Couple", Icons.Filled.Favorite, "couple")
     val COMBINED = NavDestination("combined", "Combined", Icons.Filled.People, "combined", requiresPaired = true)
     val PARTNER_DEBT = NavDestination("partner_debt", "Debts", Icons.Filled.Handshake, "partner_debt", requiresPaired = true)
-    val SETTINGS = NavDestination("settings", "Settings", Icons.Filled.Settings, "personalize")
+    val SETTINGS = NavDestination("settings", "Settings", Icons.Filled.Settings, "settings", pinnable = false)
 
     /** Registry order — drives the editor's "available" list and the More grid. */
     val all: List<NavDestination> = listOf(

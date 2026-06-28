@@ -17,10 +17,20 @@ object NavResolver {
             .filter { it !in NavRegistry.pairedOnlyIds || isPaired }
             .take(NavRegistry.MAX_PINS)
 
-    /** Every module reachable right now (for the More grid / editor), paired-only gated. */
+    /** Every module reachable right now (for the editor's catalog), paired-only gated. */
     fun visibleModuleIds(isPaired: Boolean): List<String> =
         NavRegistry.all.map { it.id }
             .filter { it !in NavRegistry.pairedOnlyIds || isPaired }
+
+    /**
+     * Modules to surface in the More sheet: every reachable module that is NOT already on the
+     * bar. Excluding the live pins removes the pin/More duplication (ADR-0017) — non-pinnable
+     * modules like Settings are never in the pin set, so they always remain here.
+     */
+    fun moreModuleIds(config: NavConfig, isPaired: Boolean): List<String> {
+        val onBar = visiblePinIds(config, isPaired).toSet()
+        return visibleModuleIds(isPaired).filter { it !in onBar }
+    }
 
     /**
      * The NavHost start destination route. Always the first pin that is NOT paired-only (so the

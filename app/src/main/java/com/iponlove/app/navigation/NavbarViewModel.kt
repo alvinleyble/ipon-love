@@ -24,7 +24,7 @@ data class NavUiState(
     val config: NavConfig = NavConfig(),
 ) {
     val visiblePinIds: List<String> get() = NavResolver.visiblePinIds(config, isPaired)
-    val visibleModuleIds: List<String> get() = NavResolver.visibleModuleIds(isPaired)
+    val moreModuleIds: List<String> get() = NavResolver.moreModuleIds(config, isPaired)
     val startRoute: String get() = NavResolver.startRoute(config)
 }
 
