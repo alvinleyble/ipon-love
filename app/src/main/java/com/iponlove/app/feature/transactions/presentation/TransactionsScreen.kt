@@ -23,16 +23,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -91,9 +88,6 @@ private val IncomeColor = Color(0xFF2E7D32)
 fun TransactionsScreen(
     onOpenRecurring: () -> Unit,
     onOpenNotes: () -> Unit,
-    onOpenCouple: () -> Unit,
-    onOpenPersonalize: () -> Unit,
-    onSignOut: () -> Unit,
     viewModel: TransactionsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -101,9 +95,6 @@ fun TransactionsScreen(
         state = state,
         onOpenRecurring = onOpenRecurring,
         onOpenNotes = onOpenNotes,
-        onOpenCouple = onOpenCouple,
-        onOpenPersonalize = onOpenPersonalize,
-        onSignOut = onSignOut,
         onSync = viewModel::sync,
         onAdd = viewModel::startCreate,
         onEdit = viewModel::startEdit,
@@ -131,9 +122,6 @@ private fun TransactionsContent(
     state: TransactionsUiState,
     onOpenRecurring: () -> Unit,
     onOpenNotes: () -> Unit,
-    onOpenCouple: () -> Unit,
-    onOpenPersonalize: () -> Unit,
-    onSignOut: () -> Unit,
     onSync: () -> Unit,
     onAdd: () -> Unit,
     onEdit: (String) -> Unit,
@@ -158,20 +146,11 @@ private fun TransactionsContent(
             TopAppBar(
                 title = { Text("Records") },
                 actions = {
-                    IconButton(onClick = onOpenCouple) {
-                        Icon(Icons.Filled.Favorite, contentDescription = "Couple")
-                    }
                     IconButton(onClick = onOpenNotes) {
                         Icon(Icons.Filled.Edit, contentDescription = "Notes")
                     }
                     IconButton(onClick = onOpenRecurring) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Recurring rules")
-                    }
-                    IconButton(onClick = onOpenPersonalize) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Personalize")
-                    }
-                    IconButton(onClick = onSignOut) {
-                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Sign out")
                     }
                 },
             )

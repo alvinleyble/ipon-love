@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -49,6 +50,7 @@ fun PersonalizeScreen(
     onOpenProfile: () -> Unit = {},
     onOpenSecurity: () -> Unit = {},
     onOpenNavbar: () -> Unit = {},
+    onSignOut: () -> Unit = {},
     viewModel: PersonalizeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -61,7 +63,7 @@ fun PersonalizeScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Personalize") },
+                    title = { Text("Settings") },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -139,6 +141,14 @@ fun PersonalizeScreen(
                     },
                     modifier = Modifier.clickable(onClick = onOpenNavbar),
                 )
+                HorizontalDivider()
+                Spacer(Modifier.height(8.dp))
+                TextButton(
+                    onClick = onSignOut,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Sign out", color = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }

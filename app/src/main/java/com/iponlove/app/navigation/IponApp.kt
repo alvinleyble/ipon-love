@@ -145,9 +145,6 @@ private fun IponAppContent(
                 TransactionsScreen(
                     onOpenRecurring = { navController.navigate(NavRegistry.RECURRING.route) },
                     onOpenNotes = { navController.navigate(NavRegistry.NOTES.route) },
-                    onOpenCouple = { navController.navigate(NavRegistry.COUPLE.route) },
-                    onOpenPersonalize = { navController.navigate(NavRegistry.SETTINGS.route) },
-                    onSignOut = onSignOut,
                 )
             }
             composable(NavRegistry.ANALYSIS.route) { AnalysisScreen() }
@@ -168,6 +165,7 @@ private fun IponAppContent(
                     onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
                     onOpenSecurity = { navController.navigate(APP_LOCK_SETUP_ROUTE) },
                     onOpenNavbar = { navController.navigate(NAV_EDITOR_ROUTE) },
+                    onSignOut = onSignOut,
                 )
             }
             composable(PROFILE_ROUTE) {
