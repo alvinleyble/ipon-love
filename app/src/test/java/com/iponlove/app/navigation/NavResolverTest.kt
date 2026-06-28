@@ -6,34 +6,38 @@ import org.junit.Test
 class NavResolverTest {
 
     @Test
-    fun visiblePinIds_keepsPairedOnlyOnlyWhenPaired() {
-        val config = NavConfig(listOf("records", "combined", "analysis"))
+    fun visiblePinIds_returnsKnownPinsInConfigOrder() {
+        // All current modules are returned in the order stored in config.
+        val config = NavConfig(listOf("records", "analysis", "couple"))
         assertThat(NavResolver.visiblePinIds(config, isPaired = false))
-            .containsExactly("records", "analysis").inOrder()
+            .containsExactly("records", "analysis", "couple").inOrder()
         assertThat(NavResolver.visiblePinIds(config, isPaired = true))
-            .containsExactly("records", "combined", "analysis").inOrder()
+            .containsExactly("records", "analysis", "couple").inOrder()
     }
 
     @Test
-    fun visiblePinIds_preservesConfigWhenUnpaired() {
-        // config still holds the hidden pin, so re-pairing restores the layout
-        val config = NavConfig(listOf("combined", "records"))
-        assertThat(NavResolver.visiblePinIds(config, isPaired = false)).containsExactly("records")
-        assertThat(config.pinnedIds).contains("combined")
+    fun visiblePinIds_preservesConfigIds() {
+        // Stored pin ids survive the resolver (UI's mapNotNull later drops any unknown ids).
+        val config = NavConfig(listOf("couple", "records"))
+        assertThat(NavResolver.visiblePinIds(config, isPaired = false))
+            .containsExactly("couple", "records").inOrder()
+        assertThat(config.pinnedIds).containsExactly("couple", "records").inOrder()
     }
 
     @Test
-    fun visiblePinIds_canBeEmptyWhenEveryPinIsPairedOnlyAndUnpaired() {
-        val config = NavConfig(listOf("combined", "partner_debt"))
-        assertThat(NavResolver.visiblePinIds(config, isPaired = false)).isEmpty()
+    fun visiblePinIds_capsAtMaxPins() {
+        val config = NavConfig(listOf("records", "analysis", "couple", "manage", "notes"))
+        assertThat(NavResolver.visiblePinIds(config, isPaired = true))
+            .hasSize(NavRegistry.MAX_PINS)
     }
 
     @Test
-    fun visibleModuleIds_gatesPairedOnlyModules() {
-        assertThat(NavResolver.visibleModuleIds(isPaired = false))
-            .containsNoneOf("combined", "partner_debt")
-        assertThat(NavResolver.visibleModuleIds(isPaired = true))
-            .containsAtLeast("combined", "partner_debt")
+    fun visibleModuleIds_containsAllCurrentModules() {
+        // No paired-only modules exist in the current registry; all are reachable regardless.
+        val all = NavResolver.visibleModuleIds(isPaired = false)
+        assertThat(all).containsAtLeast("records", "analysis", "manage", "couple", "settings")
+        // combined and partner_debt are now internal Couple tabs, not standalone modules.
+        assertThat(all).containsNoneOf("combined", "partner_debt")
     }
 
     @Test
@@ -58,9 +62,13 @@ class NavResolverTest {
     }
 
     @Test
-    fun moreModuleIds_dropsPairedOnlyWhenUnpaired() {
+    fun moreModuleIds_doesNotContainFormerStandaloneModules() {
+        // combined and partner_debt were removed from NavRegistry.all in V1.4 —
+        // they live as tabs inside Couple now and must not appear in More.
         val config = NavConfig(listOf("records"))
         assertThat(NavResolver.moreModuleIds(config, isPaired = false))
+            .containsNoneOf("combined", "partner_debt")
+        assertThat(NavResolver.moreModuleIds(config, isPaired = true))
             .containsNoneOf("combined", "partner_debt")
     }
 
@@ -71,13 +79,15 @@ class NavResolverTest {
     }
 
     @Test
-    fun startRoute_skipsPairedOnlyFirstPinSoHomeSurvivesUnpair() {
+    fun startRoute_fallsBackToRecordsWhenFirstPinIsUnknown() {
+        // startRoute tries only the first non-paired-only id; if that id is not in
+        // NavRegistry.byId (stale or removed module), it falls back to Records.
         val config = NavConfig(listOf("combined", "manage"))
-        assertThat(NavResolver.startRoute(config)).isEqualTo(NavRegistry.MANAGE.route)
+        assertThat(NavResolver.startRoute(config)).isEqualTo(NavRegistry.RECORDS.route)
     }
 
     @Test
-    fun startRoute_fallsBackToRecordsWhenAllPinsPairedOnly() {
+    fun startRoute_fallsBackToRecordsWhenAllPinsUnknown() {
         val config = NavConfig(listOf("combined", "partner_debt"))
         assertThat(NavResolver.startRoute(config)).isEqualTo(NavRegistry.RECORDS.route)
     }

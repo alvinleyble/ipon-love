@@ -56,13 +56,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.iponlove.app.feature.analysis.presentation.AnalysisScreen
 import com.iponlove.app.feature.applock.presentation.AppLockSetupScreen
-import com.iponlove.app.feature.couple.presentation.CombinedScreen
 import com.iponlove.app.feature.couple.presentation.CoupleScreen
 import com.iponlove.app.feature.manage.presentation.ManageScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion.NOTE_ID_KEY
 import com.iponlove.app.feature.notes.presentation.NotesScreen
-import com.iponlove.app.feature.partnerdebt.presentation.PartnerDebtScreen
 import com.iponlove.app.feature.recurring.presentation.RecurringScreen
 import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
 import com.iponlove.app.feature.settings.presentation.ProfileScreen
@@ -163,19 +161,7 @@ private fun IponAppContent(
             composable(NavRegistry.RECURRING.route) {
                 RecurringScreen(onBack = { navController.popBackStack() })
             }
-            composable(NavRegistry.COUPLE.route) {
-                CoupleScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenCombined = { navController.navigate(NavRegistry.COMBINED.route) },
-                    onOpenDebts = { navController.navigate(NavRegistry.PARTNER_DEBT.route) },
-                )
-            }
-            composable(NavRegistry.COMBINED.route) {
-                CombinedScreen(onBack = { navController.popBackStack() })
-            }
-            composable(NavRegistry.PARTNER_DEBT.route) {
-                PartnerDebtScreen(onBack = { navController.popBackStack() })
-            }
+            composable(NavRegistry.COUPLE.route) { CoupleScreen() }
             composable(NavRegistry.SETTINGS.route) {
                 PersonalizeScreen(
                     onBack = { navController.popBackStack() },

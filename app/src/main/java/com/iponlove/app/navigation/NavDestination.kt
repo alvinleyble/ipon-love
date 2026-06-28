@@ -57,7 +57,7 @@ object NavRegistry {
     /** Registry order — drives the editor's "available" list and the More grid. */
     val all: List<NavDestination> = listOf(
         RECORDS, ANALYSIS, MANAGE,
-        NOTES, RECURRING, COUPLE, COMBINED, PARTNER_DEBT, SETTINGS,
+        NOTES, RECURRING, COUPLE, SETTINGS,
     )
 
     val byId: Map<String, NavDestination> = all.associateBy { it.id }

@@ -3,28 +3,30 @@ package com.iponlove.app.feature.couple.presentation
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -33,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,56 +46,125 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.AccentColorRow
 import com.iponlove.app.feature.couple.domain.model.PairingError
 import com.iponlove.app.feature.couple.domain.model.PairingState
+import com.iponlove.app.feature.partnerdebt.presentation.PartnerDebtBody
+import com.iponlove.app.feature.partnerdebt.presentation.PartnerDebtViewModel
+import kotlinx.coroutines.launch
 
 private const val INVITE_LANDING_URL = "https://loveipon.app/invite"
 
+/**
+ * Couple module tab host (V1.4 IA consolidation — ADR-0017).
+ *
+ * When the user is fully paired (couple exists AND partner has accepted the invite) three tabs are
+ * shown: Overview | Combined | Debts. Otherwise only the Overview tab content is rendered without
+ * a tab row — the pairing entry point is always reachable regardless of state.
+ *
+ * The Debts FAB is owned here (not in [PartnerDebtBody]) so the host controls the single FAB slot.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoupleScreen(
-    onBack: () -> Unit,
-    onOpenCombined: () -> Unit,
-    onOpenDebts: () -> Unit,
-    viewModel: CoupleViewModel = hiltViewModel(),
+    coupleViewModel: CoupleViewModel = hiltViewModel(),
+    combinedViewModel: CombinedViewModel = hiltViewModel(),
+    debtViewModel: PartnerDebtViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by coupleViewModel.state.collectAsState()
+    val debtState by debtViewModel.uiState.collectAsState()
+
+    val paired = (state.pairing as? PairingState.Paired)?.couple
+    val showTabs = paired != null && !paired.isAwaitingPartner
+
+    val tabLabels = listOf("Overview", "Combined", "Debts")
+    val pagerState = rememberPagerState(pageCount = { if (showTabs) 3 else 1 })
+    val scope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Couple") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
+        topBar = { TopAppBar(title = { Text("Couple") }) },
+        floatingActionButton = {
+            if (showTabs && pagerState.currentPage == 2 && debtState.isPaired) {
+                FloatingActionButton(onClick = debtViewModel::startAddDebt) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add debt")
+                }
+            }
         },
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            state.error?.let { ErrorBanner(it) }
-
-            when (val pairing = state.pairing) {
-                PairingState.Loading ->
-                    CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
-
-                PairingState.NotPaired -> NotPairedContent(state, viewModel)
-
-                is PairingState.Paired ->
-                    PairedContent(pairing, state, viewModel, onOpenCombined, onOpenDebts, state.currentDisplayName)
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            if (showTabs) {
+                PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
+                    tabLabels.forEachIndexed { index, label ->
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                            text = { Text(label) },
+                        )
+                    }
+                }
+            }
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                userScrollEnabled = showTabs,
+            ) { page ->
+                when (page) {
+                    0 -> OverviewContent(
+                        state = state,
+                        viewModel = coupleViewModel,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    1 -> CombinedBody(
+                        viewModel = combinedViewModel,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    2 -> PartnerDebtBody(
+                        viewModel = debtViewModel,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
+private fun OverviewContent(
+    state: CoupleUiState,
+    viewModel: CoupleViewModel,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        state.error?.let { ErrorBanner(it) }
+
+        when (val pairing = state.pairing) {
+            PairingState.Loading ->
+                CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+
+            PairingState.NotPaired -> NotPairedContent(state, viewModel)
+
+            is PairingState.Paired ->
+                PairedContent(pairing, state, viewModel, state.currentDisplayName)
+        }
+    }
+}
+
+@Composable
 private fun NotPairedContent(state: CoupleUiState, viewModel: CoupleViewModel) {
+    // Single color picker shown once — shared by both create and join flows.
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Your accent color", style = MaterialTheme.typography.titleSmall)
+            AccentColorRow(
+                selectedHex = state.selectedColor,
+                enabled = !state.isWorking,
+                onSelect = viewModel::onColorSelected,
+            )
+        }
+    }
+
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Create a couple", style = MaterialTheme.typography.titleMedium)
@@ -108,11 +180,6 @@ private fun NotPairedContent(state: CoupleUiState, viewModel: CoupleViewModel) {
                 singleLine = true,
                 enabled = !state.isWorking,
                 modifier = Modifier.fillMaxWidth(),
-            )
-            AccentColorRow(
-                selectedHex = state.selectedColor,
-                enabled = !state.isWorking,
-                onSelect = viewModel::onColorSelected,
             )
             Button(
                 onClick = viewModel::createCouple,
@@ -138,11 +205,6 @@ private fun NotPairedContent(state: CoupleUiState, viewModel: CoupleViewModel) {
                 enabled = !state.isWorking,
                 modifier = Modifier.fillMaxWidth(),
             )
-            AccentColorRow(
-                selectedHex = state.selectedColor,
-                enabled = !state.isWorking,
-                onSelect = viewModel::onColorSelected,
-            )
             Button(
                 onClick = viewModel::redeemInvite,
                 enabled = state.canRedeem,
@@ -157,8 +219,6 @@ private fun PairedContent(
     paired: PairingState.Paired,
     state: CoupleUiState,
     viewModel: CoupleViewModel,
-    onOpenCombined: () -> Unit,
-    onOpenDebts: () -> Unit,
     currentDisplayName: String?,
 ) {
     var confirmUnpair by remember { mutableStateOf(false) }
@@ -179,22 +239,6 @@ private fun PairedContent(
         }
     }
 
-    // The combined view and debt tracker both need a joined partner to attribute against;
-    // offer them only once the invite has been redeemed.
-    if (!couple.isAwaitingPartner) {
-        Button(
-            onClick = onOpenCombined,
-            enabled = !state.isWorking,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("View combined spending") }
-        OutlinedButton(
-            onClick = onOpenDebts,
-            enabled = !state.isWorking,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Partner debts") }
-    }
-
-    // The invite code is only useful until someone redeems it.
     if (couple.isAwaitingPartner) {
         val context = LocalContext.current
         Card(Modifier.fillMaxWidth()) {

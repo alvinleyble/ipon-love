@@ -16,24 +16,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import com.iponlove.app.core.ui.IponFilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -51,67 +45,51 @@ import com.iponlove.app.feature.partnerdebt.domain.model.DebtNet
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtPaymentItem
 import com.iponlove.app.feature.partnerdebt.domain.model.NetDirection
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Chrome-less Debts body — no Scaffold/TopAppBar/FAB. The Couple tab host ([CoupleScreen])
+ * provides the scaffold and an Add-debt FAB (visible only on this tab while paired).
+ * The dialogs are rendered here so the ViewModel stays the sole owner of dialog state.
+ */
 @Composable
-fun PartnerDebtScreen(
-    onBack: () -> Unit,
+fun PartnerDebtBody(
+    modifier: Modifier = Modifier,
     viewModel: PartnerDebtViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Partner debts") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+    Box(modifier.fillMaxSize()) {
+        when {
+            state.isLoading ->
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
+
+            !state.isPaired ->
+                EmptyState(
+                    title = "Not paired yet",
+                    body = "Pair with your partner to track who owes whom.",
+                    modifier = Modifier.align(Alignment.Center),
+                )
+
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item { NetSummaryCard(state.net) }
+                if (state.debts.isEmpty()) {
+                    item {
+                        EmptyState(
+                            title = "No debts yet",
+                            body = "Add an IOU when one of you covers something for the other.",
+                            modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                        )
                     }
-                },
-            )
-        },
-        floatingActionButton = {
-            if (state.isPaired) {
-                FloatingActionButton(onClick = viewModel::startAddDebt) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add debt")
-                }
-            }
-        },
-    ) { padding ->
-        Box(Modifier.padding(padding).fillMaxSize()) {
-            when {
-                state.isLoading ->
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
-
-                !state.isPaired ->
-                    EmptyState(
-                        title = "Not paired yet",
-                        body = "Pair with your partner to track who owes whom.",
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    item { NetSummaryCard(state.net) }
-                    if (state.debts.isEmpty()) {
-                        item {
-                            EmptyState(
-                                title = "No debts yet",
-                                body = "Add an IOU when one of you covers something for the other.",
-                                modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                            )
-                        }
-                    } else {
-                        items(state.debts, key = { it.id }) { debt ->
-                            DebtCard(
-                                debt = debt,
-                                onSettle = { viewModel.startSettle(debt) },
-                                onReceive = { payment -> viewModel.startReceive(debt, payment) },
-                                onDelete = { viewModel.removeDebt(debt.id) },
-                            )
-                        }
+                } else {
+                    items(state.debts, key = { it.id }) { debt ->
+                        DebtCard(
+                            debt = debt,
+                            onSettle = { viewModel.startSettle(debt) },
+                            onReceive = { payment -> viewModel.startReceive(debt, payment) },
+                            onDelete = { viewModel.removeDebt(debt.id) },
+                        )
                     }
                 }
             }

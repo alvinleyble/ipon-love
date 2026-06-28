@@ -17,22 +17,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,73 +48,61 @@ import com.iponlove.app.feature.transactions.domain.model.TransactionType
 
 private val IncomeColor = Color(0xFF2E7D32)
 
+/**
+ * Chrome-less Combined body — no Scaffold/TopAppBar. The Couple tab host
+ * ([CoupleScreen]) provides the single scaffold; this renders the pull-to-refresh
+ * list + budget editor dialog only.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CombinedScreen(
-    onBack: () -> Unit,
+fun CombinedBody(
+    modifier: Modifier = Modifier,
     viewModel: CombinedViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Combined") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+    PullToRefreshBox(
+        isRefreshing = state.isRefreshing,
+        onRefresh = viewModel::sync,
+        modifier = modifier.fillMaxSize(),
+    ) {
+        when {
+            state.isLoading ->
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
+
+            !state.isPaired ->
+                EmptyState(
+                    title = "Not paired yet",
+                    body = "Pair with your partner to see your shared spending here.",
+                    modifier = Modifier.align(Alignment.Center),
+                )
+
+            else -> {
+                val colors = state.members.associate { it.id to it.accentColor }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item {
+                        CoupleBudgetCard(
+                            budget = state.coupleBudget,
+                            monthLabel = state.monthLabel,
+                            onSet = viewModel::startEditBudget,
+                            onClear = viewModel::clearBudget,
+                        )
                     }
-                },
-            )
-        },
-    ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = state.isRefreshing,
-            onRefresh = viewModel::sync,
-            modifier = Modifier.padding(padding).fillMaxSize(),
-        ) {
-            when {
-                state.isLoading ->
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
-
-                !state.isPaired ->
-                    EmptyState(
-                        title = "Not paired yet",
-                        body = "Pair with your partner to see your shared spending here.",
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-
-                else -> {
-                    // Member accent colors are resolved once, here, so both the spending
-                    // chips and the stream attribution stay consistent.
-                    val colors = state.members.associate { it.id to it.accentColor }
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
+                    item { SpendingChips(state.monthLabel, state.members) }
+                    if (state.entries.isEmpty()) {
                         item {
-                            CoupleBudgetCard(
-                                budget = state.coupleBudget,
-                                monthLabel = state.monthLabel,
-                                onSet = viewModel::startEditBudget,
-                                onClear = viewModel::clearBudget,
+                            EmptyState(
+                                title = "No shared activity yet",
+                                body = "Your and your partner's non-private transactions show up here.",
+                                modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
                             )
                         }
-                        item {
-                            SpendingChips(state.monthLabel, state.members)
-                        }
-                        if (state.entries.isEmpty()) {
-                            item {
-                                EmptyState(
-                                    title = "No shared activity yet",
-                                    body = "Your and your partner's non-private transactions show up here.",
-                                    modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                                )
-                            }
-                        } else {
-                            items(state.entries, key = { it.id }) { entry ->
-                                CombinedRow(entry = entry, ownerColor = ownerColor(colors[entry.ownerId], entry.isMine))
-                            }
+                    } else {
+                        items(state.entries, key = { it.id }) { entry ->
+                            CombinedRow(entry = entry, ownerColor = ownerColor(colors[entry.ownerId], entry.isMine))
                         }
                     }
                 }
