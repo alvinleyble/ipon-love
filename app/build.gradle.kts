@@ -51,8 +51,18 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(prop("RELEASE_STORE_FILE"))
+            storePassword = prop("RELEASE_STORE_PASSWORD")
+            keyAlias = prop("RELEASE_KEY_ALIAS")
+            keyPassword = prop("RELEASE_KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

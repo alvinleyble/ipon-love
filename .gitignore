@@ -5,6 +5,7 @@ build/
 
 # Android Studio / IntelliJ
 .idea/
+.vscode/
 *.iml
 captures/
 .externalNativeBuild/
@@ -35,3 +36,4 @@ secrets.properties
 # personal dev files
 dev-installgradle.md
 dev-secrets.md
+store-listing.md
