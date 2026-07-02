@@ -28,6 +28,7 @@ class SeedStarterDataUseCaseTest {
             writeLog += "category:${category.name}"
             savedCategories += category
         }
+        override suspend fun reorderCategories(orderedIds: List<String>) = Unit
         override suspend fun setArchived(id: String, archived: Boolean) = Unit
         override suspend fun deleteCategory(id: String) = Unit
         override suspend fun shareCategory(id: String, coupleId: String) = Unit
@@ -44,6 +45,7 @@ class SeedStarterDataUseCaseTest {
             writeLog += "account:${account.name}"
             savedAccounts += account
         }
+        override suspend fun reorderAccounts(orderedIds: List<String>) = Unit
         override suspend fun setArchived(id: String, archived: Boolean) = Unit
         override suspend fun deleteAccount(id: String) = Unit
         override suspend fun shareAccount(id: String, coupleId: String) = Unit

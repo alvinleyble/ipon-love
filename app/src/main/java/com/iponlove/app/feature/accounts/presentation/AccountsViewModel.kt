@@ -7,6 +7,7 @@ import com.iponlove.app.feature.accounts.domain.model.AccountType
 import com.iponlove.app.feature.accounts.domain.usecase.ArchiveAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.DeleteAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
+import com.iponlove.app.feature.accounts.domain.usecase.ReorderAccountsUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.ShareAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.UnshareAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.UpsertAccountUseCase
@@ -35,6 +36,7 @@ class AccountsViewModel @Inject constructor(
     private val deleteAccount: DeleteAccountUseCase,
     private val shareAccount: ShareAccountUseCase,
     private val unshareAccount: UnshareAccountUseCase,
+    private val reorderAccounts: ReorderAccountsUseCase,
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<AccountEditorState?>(null)
@@ -136,6 +138,11 @@ class AccountsViewModel @Inject constructor(
 
     fun archive(id: String, archived: Boolean) {
         viewModelScope.launch { archiveAccount(id, archived) }
+    }
+
+    /** Persist a drag-handle reorder from the Manage tab (item 9b) — [orderedIds] top-to-bottom. */
+    fun reorder(orderedIds: List<String>) {
+        viewModelScope.launch { reorderAccounts(orderedIds) }
     }
 
     fun delete(id: String) {

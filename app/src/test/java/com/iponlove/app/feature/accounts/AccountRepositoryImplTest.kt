@@ -106,6 +106,50 @@ class AccountRepositoryImplTest {
         assertThat(accounts.map { it.name }).containsExactly("Cash")
     }
 
+    // ---- manual reorder (item 9b) -----------------------------------------------------
+
+    @Test
+    fun reorderAccounts_writesIndexAsPosition_andMarksOnlyChangedRowsDirty() = runTest {
+        dao.store["a"] = accountEntity(id = "a", position = 0, updatedAt = Instant.ofEpochMilli(1_000))
+        dao.store["b"] = accountEntity(id = "b", position = 1, updatedAt = Instant.ofEpochMilli(1_000))
+        dao.store["c"] = accountEntity(id = "c", position = 2, updatedAt = Instant.ofEpochMilli(1_000))
+
+        repository.reorderAccounts(listOf("c", "a", "b"))
+
+        assertThat(dao.store.getValue("c").position).isEqualTo(0)
+        assertThat(dao.store.getValue("a").position).isEqualTo(1)
+        assertThat(dao.store.getValue("b").position).isEqualTo(2)
+        // "a" moved from index 0 to 1, "b" from 1 to 2 — dirtied and re-stamped.
+        assertThat(dao.store.getValue("a").pendingSync).isTrue()
+        assertThat(dao.store.getValue("a").updatedAt).isEqualTo(now)
+        assertThat(dao.store.getValue("b").pendingSync).isTrue()
+        // "c" moved from index 2 to 0 — also changed.
+        assertThat(dao.store.getValue("c").pendingSync).isTrue()
+    }
+
+    @Test
+    fun reorderAccounts_skipsRowsWhosePositionIsUnchanged() = runTest {
+        dao.store["a"] = accountEntity(id = "a", position = 0, updatedAt = Instant.ofEpochMilli(1_000), pendingSync = false)
+        dao.store["b"] = accountEntity(id = "b", position = 1, updatedAt = Instant.ofEpochMilli(1_000), pendingSync = false)
+
+        repository.reorderAccounts(listOf("a", "b"))
+
+        // Order matches current positions exactly — nothing should be re-stamped or dirtied.
+        assertThat(dao.store.getValue("a").pendingSync).isFalse()
+        assertThat(dao.store.getValue("a").updatedAt).isEqualTo(Instant.ofEpochMilli(1_000))
+        assertThat(dao.store.getValue("b").pendingSync).isFalse()
+    }
+
+    @Test
+    fun reorderAccounts_ignoresUnknownIds() = runTest {
+        dao.store["a"] = accountEntity(id = "a", position = 0)
+
+        repository.reorderAccounts(listOf("ghost", "a"))
+
+        assertThat(dao.store.getValue("a").position).isEqualTo(1)
+        assertThat(dao.store.keys).containsExactly("a")
+    }
+
     // ---- shared accounts (ADR-0018) -------------------------------------------------
 
     @Test

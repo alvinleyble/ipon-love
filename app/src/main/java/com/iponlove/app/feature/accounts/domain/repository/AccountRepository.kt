@@ -21,6 +21,12 @@ interface AccountRepository {
     /** Create (id unseen) or edit (id exists) an account. */
     suspend fun upsertAccount(account: Account)
 
+    /**
+     * Persist a manual drag-handle ordering from Manage (item 9b) — [orderedIds] top-to-bottom.
+     * Writes `position = index` for each row whose position actually changed.
+     */
+    suspend fun reorderAccounts(orderedIds: List<String>)
+
     suspend fun setArchived(id: String, archived: Boolean)
 
     /** Soft delete — sets `is_deleted = true`; never a hard delete (ADR-0010). */

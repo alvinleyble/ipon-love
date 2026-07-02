@@ -26,6 +26,7 @@ class ShouldShowOnboardingUseCaseTest {
         override suspend fun getCategory(id: String): Category? = null
         override suspend fun countOwnedCategories(): Int = ownedCategories
         override suspend fun upsertCategory(category: Category) = Unit
+        override suspend fun reorderCategories(orderedIds: List<String>) = Unit
         override suspend fun setArchived(id: String, archived: Boolean) = Unit
         override suspend fun deleteCategory(id: String) = Unit
         override suspend fun shareCategory(id: String, coupleId: String) = Unit
@@ -39,6 +40,7 @@ class ShouldShowOnboardingUseCaseTest {
         override suspend fun getAccount(id: String): Account? = null
         override suspend fun countOwnedAccounts(): Int = ownedAccounts
         override suspend fun upsertAccount(account: Account) = Unit
+        override suspend fun reorderAccounts(orderedIds: List<String>) = Unit
         override suspend fun setArchived(id: String, archived: Boolean) = Unit
         override suspend fun deleteAccount(id: String) = Unit
         override suspend fun shareAccount(id: String, coupleId: String) = Unit

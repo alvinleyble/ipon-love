@@ -130,6 +130,7 @@ class MaterializeRecurringRulesUseCaseTest {
         override suspend fun getCategory(id: String): Category? = supply().firstOrNull { it.id == id }
         override suspend fun countOwnedCategories(): Int = error("unused")
         override suspend fun upsertCategory(category: Category) = error("unused")
+        override suspend fun reorderCategories(orderedIds: List<String>) = error("unused")
         override suspend fun setArchived(id: String, archived: Boolean) = error("unused")
         override suspend fun deleteCategory(id: String) = error("unused")
         override suspend fun shareCategory(id: String, coupleId: String) = error("unused")

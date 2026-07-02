@@ -26,6 +26,12 @@ interface CategoryRepository {
 
     suspend fun upsertCategory(category: Category)
 
+    /**
+     * Persist a manual drag-handle ordering from Manage (item 9b) — [orderedIds] top-to-bottom.
+     * Writes `position = index` for each row whose position actually changed.
+     */
+    suspend fun reorderCategories(orderedIds: List<String>)
+
     suspend fun setArchived(id: String, archived: Boolean)
 
     /** Soft delete — sets `is_deleted = true`; never a hard delete (ADR-0010). */

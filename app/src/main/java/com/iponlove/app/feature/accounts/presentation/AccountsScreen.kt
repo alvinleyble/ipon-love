@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.accounts.presentation
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,12 +16,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -36,17 +38,23 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.EntityColorPicker
 import com.iponlove.app.core.ui.SharedBadge
@@ -55,6 +63,7 @@ import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.IconPicker
 import com.iponlove.app.core.ui.parseHexColor
+import com.iponlove.app.core.util.movedTo
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.model.AccountType
 import java.math.BigDecimal
@@ -63,6 +72,12 @@ import java.math.BigDecimal
  * Chrome-less Accounts body — no Scaffold/TopAppBar/FAB. The Manage host
  * ([feature/manage/presentation/ManageScreen.kt]) provides the single scaffold + page-aware FAB
  * (which calls [AccountsViewModel.startCreate]); this renders only the list + editor dialog.
+ *
+ * The list supports drag-handle reordering (item 9b): [localOrder] is a composable-owned working
+ * copy of [AccountsUiState.accounts] that mutates live during a drag (same "composable-owned
+ * draft" approach as the notes editor, V1.5 slice 1B) and is only persisted via
+ * [AccountsViewModel.reorder] when the drag ends. It resyncs from the ViewModel whenever nothing
+ * is being dragged, so external changes (edits, archive, another device's sync) still show up.
  */
 @Composable
 fun AccountsBody(
@@ -70,6 +85,13 @@ fun AccountsBody(
     viewModel: AccountsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    var localOrder by remember { mutableStateOf(state.accounts) }
+    var draggingId by remember { mutableStateOf<String?>(null) }
+    var dragAccum by remember { mutableFloatStateOf(0f) }
+    val rowPitchPx = with(LocalDensity.current) { 88.dp.toPx() }
+    LaunchedEffect(state.accounts) {
+        if (draggingId == null) localOrder = state.accounts
+    }
 
     Column(modifier = modifier) {
         // Personal accounts only (own accounts, own or shared-by-me) — never wire this into
@@ -84,7 +106,7 @@ fun AccountsBody(
                 state.isLoading ->
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-                state.accounts.isEmpty() ->
+                localOrder.isEmpty() ->
                     EmptyState(Modifier.align(Alignment.Center))
 
                 else -> LazyColumn(
@@ -92,17 +114,62 @@ fun AccountsBody(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(state.accounts, key = { it.id }) { account ->
-                        AccountCard(
-                            account = account,
-                            balance = state.balances[account.id] ?: account.openingBalance,
-                            isPaired = state.isPaired,
-                            onClick = { viewModel.startEdit(account) },
-                            onToggleArchive = { viewModel.archive(account.id, !account.isArchived) },
-                            onShare = { viewModel.share(account.id) },
-                            onUnshare = { viewModel.unshare(account.id) },
-                            onDelete = { viewModel.delete(account.id) },
-                        )
+                    itemsIndexed(localOrder, key = { _, account -> account.id }) { _, account ->
+                        val dragging = draggingId == account.id
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .zIndex(if (dragging) 1f else 0f)
+                                .graphicsLayer { translationY = if (dragging) dragAccum else 0f },
+                        ) {
+                            Icon(
+                                Icons.Filled.DragHandle,
+                                contentDescription = "Reorder ${account.name}",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .pointerInput(account.id) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = { draggingId = account.id; dragAccum = 0f },
+                                            onDragEnd = {
+                                                draggingId = null
+                                                dragAccum = 0f
+                                                viewModel.reorder(localOrder.map { it.id })
+                                            },
+                                            onDragCancel = { draggingId = null; dragAccum = 0f },
+                                            onDrag = { change, drag ->
+                                                change.consume()
+                                                dragAccum += drag.y
+                                                val from = localOrder.indexOfFirst { it.id == account.id }
+                                                if (from < 0) return@detectDragGesturesAfterLongPress
+                                                when {
+                                                    dragAccum > rowPitchPx / 2 && from < localOrder.lastIndex -> {
+                                                        localOrder = localOrder.movedTo(from, from + 1)
+                                                        dragAccum -= rowPitchPx
+                                                    }
+                                                    dragAccum < -rowPitchPx / 2 && from > 0 -> {
+                                                        localOrder = localOrder.movedTo(from, from - 1)
+                                                        dragAccum += rowPitchPx
+                                                    }
+                                                }
+                                            },
+                                        )
+                                    },
+                            )
+                            Box(modifier = Modifier.weight(1f)) {
+                                AccountCard(
+                                    account = account,
+                                    balance = state.balances[account.id] ?: account.openingBalance,
+                                    isPaired = state.isPaired,
+                                    onClick = { viewModel.startEdit(account) },
+                                    onToggleArchive = { viewModel.archive(account.id, !account.isArchived) },
+                                    onShare = { viewModel.share(account.id) },
+                                    onUnshare = { viewModel.unshare(account.id) },
+                                    onDelete = { viewModel.delete(account.id) },
+                                )
+                            }
+                        }
                     }
                 }
             }

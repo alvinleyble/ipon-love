@@ -80,6 +80,47 @@ class CategoryRepositoryImplTest {
         assertThat(categories.map { it.name }).containsExactly("Bills")
     }
 
+    // ---- manual reorder (item 9b) -----------------------------------------------------
+
+    @Test
+    fun reorderCategories_writesIndexAsPosition_andMarksOnlyChangedRowsDirty() = runTest {
+        dao.store["a"] = categoryEntity(id = "a", position = 0, updatedAt = Instant.ofEpochMilli(1_000))
+        dao.store["b"] = categoryEntity(id = "b", position = 1, updatedAt = Instant.ofEpochMilli(1_000))
+        dao.store["c"] = categoryEntity(id = "c", position = 2, updatedAt = Instant.ofEpochMilli(1_000))
+
+        repository.reorderCategories(listOf("c", "a", "b"))
+
+        assertThat(dao.store.getValue("c").position).isEqualTo(0)
+        assertThat(dao.store.getValue("a").position).isEqualTo(1)
+        assertThat(dao.store.getValue("b").position).isEqualTo(2)
+        assertThat(dao.store.getValue("a").pendingSync).isTrue()
+        assertThat(dao.store.getValue("a").updatedAt).isEqualTo(now)
+        assertThat(dao.store.getValue("b").pendingSync).isTrue()
+        assertThat(dao.store.getValue("c").pendingSync).isTrue()
+    }
+
+    @Test
+    fun reorderCategories_skipsRowsWhosePositionIsUnchanged() = runTest {
+        dao.store["a"] = categoryEntity(id = "a", position = 0, updatedAt = Instant.ofEpochMilli(1_000), pendingSync = false)
+        dao.store["b"] = categoryEntity(id = "b", position = 1, updatedAt = Instant.ofEpochMilli(1_000), pendingSync = false)
+
+        repository.reorderCategories(listOf("a", "b"))
+
+        assertThat(dao.store.getValue("a").pendingSync).isFalse()
+        assertThat(dao.store.getValue("a").updatedAt).isEqualTo(Instant.ofEpochMilli(1_000))
+        assertThat(dao.store.getValue("b").pendingSync).isFalse()
+    }
+
+    @Test
+    fun reorderCategories_ignoresUnknownIds() = runTest {
+        dao.store["a"] = categoryEntity(id = "a", position = 0)
+
+        repository.reorderCategories(listOf("ghost", "a"))
+
+        assertThat(dao.store.getValue("a").position).isEqualTo(1)
+        assertThat(dao.store.keys).containsExactly("a")
+    }
+
     // ---- shared categories (ADR-0018) -----------------------------------------------
 
     @Test

@@ -7,6 +7,7 @@ import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.categories.domain.usecase.ArchiveCategoryUseCase
 import com.iponlove.app.feature.categories.domain.usecase.DeleteCategoryUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
+import com.iponlove.app.feature.categories.domain.usecase.ReorderCategoriesUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ShareCategoryUseCase
 import com.iponlove.app.feature.categories.domain.usecase.UnshareCategoryUseCase
 import com.iponlove.app.feature.categories.domain.usecase.UpsertCategoryUseCase
@@ -31,6 +32,7 @@ class CategoriesViewModel @Inject constructor(
     private val deleteCategory: DeleteCategoryUseCase,
     private val shareCategory: ShareCategoryUseCase,
     private val unshareCategory: UnshareCategoryUseCase,
+    private val reorderCategories: ReorderCategoriesUseCase,
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<CategoryEditorState?>(null)
@@ -132,6 +134,11 @@ class CategoriesViewModel @Inject constructor(
 
     fun archive(id: String, archived: Boolean) {
         viewModelScope.launch { archiveCategory(id, archived) }
+    }
+
+    /** Persist a drag-handle reorder from the Manage tab (item 9b) — [orderedIds] top-to-bottom. */
+    fun reorder(orderedIds: List<String>) {
+        viewModelScope.launch { reorderCategories(orderedIds) }
     }
 
     fun delete(id: String) {

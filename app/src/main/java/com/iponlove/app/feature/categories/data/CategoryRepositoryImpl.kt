@@ -61,6 +61,23 @@ class CategoryRepositoryImpl @Inject constructor(
         syncTrigger.requestPush()
     }
 
+    override suspend fun reorderCategories(orderedIds: List<String>) {
+        var changed = false
+        orderedIds.forEachIndexed { index, id ->
+            val existing = dao.getById(id) ?: return@forEachIndexed
+            if (existing.position == index) return@forEachIndexed
+            dao.upsert(
+                existing.copy(
+                    position = index,
+                    updatedAt = clock.stamp(existing.updatedAt),
+                    pendingSync = true,
+                ),
+            )
+            changed = true
+        }
+        if (changed) syncTrigger.requestPush()
+    }
+
     override suspend fun shareCategory(id: String, coupleId: String) {
         val existing = dao.getById(id) ?: return
         if (existing.coupleId != null) return // already shared

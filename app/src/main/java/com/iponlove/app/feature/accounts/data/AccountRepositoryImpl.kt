@@ -60,6 +60,23 @@ class AccountRepositoryImpl @Inject constructor(
         syncTrigger.requestPush()
     }
 
+    override suspend fun reorderAccounts(orderedIds: List<String>) {
+        var changed = false
+        orderedIds.forEachIndexed { index, id ->
+            val existing = dao.getById(id) ?: return@forEachIndexed
+            if (existing.position == index) return@forEachIndexed
+            dao.upsert(
+                existing.copy(
+                    position = index,
+                    updatedAt = clock.stamp(existing.updatedAt),
+                    pendingSync = true,
+                ),
+            )
+            changed = true
+        }
+        if (changed) syncTrigger.requestPush()
+    }
+
     override suspend fun shareAccount(id: String, coupleId: String) {
         val existing = dao.getById(id) ?: return
         if (existing.coupleId != null) return // already shared
