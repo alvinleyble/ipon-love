@@ -1,6 +1,7 @@
 package com.iponlove.app.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Favorite
@@ -64,10 +65,11 @@ object NavRegistry {
     val COMBINED = NavDestination("combined", "Combined", Icons.Filled.People, "combined", requiresPaired = true)
     val PARTNER_DEBT = NavDestination("partner_debt", "Debts", Icons.Filled.Handshake, "partner_debt", requiresPaired = true)
     val SETTINGS = NavDestination("settings", "Settings", Icons.Filled.Settings, "settings")
+    val CALCULATOR = NavDestination("calculator", "Calculator", Icons.Filled.Calculate, "calculator")
 
     /** Registry order — drives the editor's "available" list and the More grid. */
     val all: List<NavDestination> = listOf(
-        RECORDS, ANALYSIS, MANAGE, COUPLE, SETTINGS,
+        RECORDS, ANALYSIS, MANAGE, COUPLE, SETTINGS, CALCULATOR,
     )
 
     val byId: Map<String, NavDestination> = all.associateBy { it.id }
