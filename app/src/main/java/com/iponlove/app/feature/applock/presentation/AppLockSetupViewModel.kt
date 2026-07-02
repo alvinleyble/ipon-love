@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iponlove.app.feature.applock.domain.model.AppLockPreferences
 import com.iponlove.app.feature.applock.domain.usecase.EnableBiometricUseCase
+import com.iponlove.app.feature.applock.domain.usecase.MarkBiometricNudgeShownUseCase
 import com.iponlove.app.feature.applock.domain.usecase.ObserveAppLockUseCase
 import com.iponlove.app.feature.applock.domain.usecase.SetPinUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,6 +20,7 @@ import javax.inject.Inject
 class AppLockSetupViewModel @Inject constructor(
     private val setPin: SetPinUseCase,
     private val enableBiometric: EnableBiometricUseCase,
+    private val markNudgeShown: MarkBiometricNudgeShownUseCase,
     observeAppLock: ObserveAppLockUseCase,
 ) : ViewModel() {
 
@@ -75,6 +77,12 @@ class AppLockSetupViewModel @Inject constructor(
 
     fun onBiometricToggle(enabled: Boolean) {
         viewModelScope.launch { enableBiometric(enabled) }
+    }
+
+    /** Records that the post-setup "enable biometric?" nudge (item 13) has been shown, so it
+     *  never nags again on a later PIN change. */
+    fun markBiometricNudgeShown() {
+        viewModelScope.launch { markNudgeShown() }
     }
 
     fun resetPinSetSuccess() = _uiState.update {

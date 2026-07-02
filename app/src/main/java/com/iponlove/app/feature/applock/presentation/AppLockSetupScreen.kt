@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -18,13 +20,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
@@ -36,9 +43,23 @@ fun AppLockSetupScreen(
 ) {
     val prefs by viewModel.preferences.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    var showBiometricNudge by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.pinSetSuccess) {
-        if (uiState.pinSetSuccess) viewModel.resetPinSetSuccess()
+        if (uiState.pinSetSuccess) {
+            // Item 13: one-time nudge to enable biometric, only when the device can actually use it
+            // (hardware present + credential enrolled), the app's biometric preference is still off,
+            // and the nudge hasn't been shown before. Read before resetPinSetSuccess() clears state.
+            if (BiometricAvailability.isReady(context) &&
+                !prefs.isBiometricEnabled &&
+                !prefs.biometricNudgeShown
+            ) {
+                showBiometricNudge = true
+            }
+            viewModel.resetPinSetSuccess()
+        }
     }
 
     Scaffold(
@@ -118,5 +139,35 @@ fun AppLockSetupScreen(
             Spacer(Modifier.height(24.dp))
             Numpad(onDigit = viewModel::onDigit, onDelete = viewModel::onDelete)
         }
+    }
+
+    if (showBiometricNudge) {
+        AlertDialog(
+            onDismissRequest = {
+                viewModel.markBiometricNudgeShown()
+                showBiometricNudge = false
+            },
+            icon = { Icon(Icons.Filled.Fingerprint, contentDescription = null) },
+            title = { Text("Unlock with biometrics?") },
+            text = {
+                Text(
+                    "Use your fingerprint or face to unlock the app faster. Your PIN still works " +
+                        "as a backup any time.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.onBiometricToggle(true)
+                    viewModel.markBiometricNudgeShown()
+                    showBiometricNudge = false
+                }) { Text("Enable") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    viewModel.markBiometricNudgeShown()
+                    showBiometricNudge = false
+                }) { Text("Not now") }
+            },
+        )
     }
 }

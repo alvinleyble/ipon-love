@@ -24,6 +24,7 @@ class AppLockRepositoryImpl @Inject constructor(
         AppLockPreferences(
             isPinSet = prefs[KEY_PIN_HASH] != null,
             isBiometricEnabled = prefs[KEY_BIOMETRIC] ?: false,
+            biometricNudgeShown = prefs[KEY_NUDGE_SHOWN] ?: false,
         )
     }
 
@@ -47,11 +48,16 @@ class AppLockRepositoryImpl @Inject constructor(
         dataStore.edit { it[KEY_BIOMETRIC] = enabled }
     }
 
+    override suspend fun markBiometricNudgeShown() {
+        dataStore.edit { it[KEY_NUDGE_SHOWN] = true }
+    }
+
     override suspend fun clearPin() {
         dataStore.edit {
             it.remove(KEY_PIN_HASH)
             it.remove(KEY_SALT)
             it[KEY_BIOMETRIC] = false
+            it.remove(KEY_NUDGE_SHOWN)
         }
     }
 
@@ -71,5 +77,6 @@ class AppLockRepositoryImpl @Inject constructor(
         private val KEY_PIN_HASH = stringPreferencesKey("pin_hash")
         private val KEY_SALT = stringPreferencesKey("pin_salt")
         private val KEY_BIOMETRIC = booleanPreferencesKey("biometric_enabled")
+        private val KEY_NUDGE_SHOWN = booleanPreferencesKey("biometric_nudge_shown")
     }
 }

@@ -89,4 +89,34 @@ class AppLockRepositoryImplTest {
         assertThat(repo.verifyPin("1111")).isFalse()
         assertThat(repo.verifyPin("2222")).isTrue()
     }
+
+    @Test
+    fun biometricNudgeShown_defaultsFalse() = runTest {
+        repo().observe().test {
+            assertThat(awaitItem().biometricNudgeShown).isFalse()
+            cancel()
+        }
+    }
+
+    @Test
+    fun markBiometricNudgeShown_reflectedInPrefs() = runTest {
+        val repo = repo()
+        repo.markBiometricNudgeShown()
+        repo.observe().test {
+            assertThat(awaitItem().biometricNudgeShown).isTrue()
+            cancel()
+        }
+    }
+
+    @Test
+    fun clearPin_resetsBiometricNudgeShown() = runTest {
+        val repo = repo()
+        repo.setPin("1234")
+        repo.markBiometricNudgeShown()
+        repo.clearPin()
+        repo.observe().test {
+            assertThat(awaitItem().biometricNudgeShown).isFalse()
+            cancel()
+        }
+    }
 }

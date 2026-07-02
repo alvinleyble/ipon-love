@@ -8,5 +8,6 @@ interface AppLockRepository {
     suspend fun setPin(rawPin: String)
     suspend fun verifyPin(rawPin: String): Boolean
     suspend fun setBiometricEnabled(enabled: Boolean)
+    suspend fun markBiometricNudgeShown()
     suspend fun clearPin()
 }
