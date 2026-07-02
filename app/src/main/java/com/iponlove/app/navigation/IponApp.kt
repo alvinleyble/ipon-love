@@ -66,6 +66,8 @@ import com.iponlove.app.feature.notes.presentation.NotesScreen
 import com.iponlove.app.feature.recurring.presentation.RecurringScreen
 import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
 import com.iponlove.app.feature.settings.presentation.ProfileScreen
+import com.iponlove.app.feature.transactions.presentation.AddTransactionScreen
+import com.iponlove.app.feature.transactions.presentation.AddTransactionViewModel.Companion.TXN_ID_KEY
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
 import kotlinx.coroutines.launch
 
@@ -75,6 +77,8 @@ private const val PROFILE_ROUTE = "profile"
 private const val NAV_EDITOR_ROUTE = "nav_editor"
 private const val HELP_ROUTE = "help"
 private const val BETA_FEEDBACK_ROUTE = "beta_feedback"
+private const val ADD_TRANSACTION_ROUTE = "add_transaction"
+private const val EDIT_TRANSACTION_ROUTE = "edit_transaction"
 
 /**
  * App root: a bottom-nav [Scaffold] whose bar is built dynamically from the user's pinned
@@ -149,7 +153,18 @@ private fun IponAppContent(
                 TransactionsScreen(
                     onOpenRecurring = { navController.navigate(NavRegistry.RECURRING.route) },
                     onOpenNotes = { navController.navigate(NavRegistry.NOTES.route) },
+                    onAddTransaction = { navController.navigate(ADD_TRANSACTION_ROUTE) },
+                    onEditTransaction = { id -> navController.navigate("$EDIT_TRANSACTION_ROUTE/$id") },
                 )
+            }
+            composable(ADD_TRANSACTION_ROUTE) {
+                AddTransactionScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                route = "$EDIT_TRANSACTION_ROUTE/{$TXN_ID_KEY}",
+                arguments = listOf(navArgument(TXN_ID_KEY) { type = NavType.StringType }),
+            ) {
+                AddTransactionScreen(onBack = { navController.popBackStack() })
             }
             composable(NavRegistry.ANALYSIS.route) { AnalysisScreen() }
             composable(NavRegistry.MANAGE.route) { ManageScreen() }
