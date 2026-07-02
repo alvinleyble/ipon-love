@@ -115,3 +115,37 @@ _Avoid_: covered, fronted
 **Settlement (debt)**:
 Repaying a partner debt as real money movement: two ledger legs — the payor's outflow (their account) and the receiver's inflow (their account, an optional inline affordance on the debt board). Both legs are EXPENSE/INCOME flagged `is_settlement` so balances move but Analysis excludes them. Distinct from a bare [[Partner debt payment]], which need not touch any account. See ADR-0019.
 _Avoid_: payback transaction, repayment transfer
+
+### Goals
+
+**Savings goal**:
+A target amount a user (or [[Couple]]) is saving toward, e.g. "Japan trip — ₱80,000". Personal by default, optionally a [[Shared record]] via the generic sharing layer. Metadata (name, target, date) is **creator-owned** to avoid an LWW clobber on the target. Its own pinnable module, not a Manage tab. See ADR-0025.
+_Avoid_: wishlist, wish, shopping list (a goal is *reached*, not *purchased*)
+
+**Goal contribution**:
+An append-only row recording an amount put toward a [[Savings goal]], owned by whoever contributed it. Standalone bookkeeping — in V1 it does **not** move real money out of any account (that is the deferred "savings envelopes" feature). Independent rows never conflict under [[Last-write-wins (LWW)]], unlike a shared mutable counter would. See ADR-0025.
+_Avoid_: deposit, payment, saving
+
+**Saved amount**:
+The progress of a [[Savings goal]], **derived** as the sum of its non-deleted [[Goal contribution]]s — never a stored field. Same derivation discipline as [[Opening balance]] / account balance (ADR-0007), chosen so concurrent partner contributions can't clobber each other. _reached_ is likewise derived (`saved ≥ target`).
+_Avoid_: progress, balance, total saved (as a stored column)
+
+### Analysis
+
+**Budget period**:
+The window over which income, expense, and budgets are computed — in V1 hard-coded to the **calendar month**. Net is strictly *same-period* (`this-month income − this-month expense`), never a cross-period subtraction; last month's income is shown as a separate context stat so an empty pre-payday month isn't alarming. A **payday-anchored** period (cycle starts on payday) is the planned post-V1 fix that dissolves the empty-before-payday problem at the source.
+_Avoid_: month (ambiguous), pay cycle (until built), reporting period
+
+### App shell
+
+**Lock overlay**:
+The app lock rendered as an opaque full-screen layer *above* an always-composed app, rather than a branch that replaces it. Preserves navigation state and ViewModels across a lock so in-progress drafts survive; drafts also use `SavedStateHandle` for process death. See ADR-0023.
+_Avoid_: lock screen route, lock gate
+
+**Onboarding**:
+The first-run-only flow for a brand-new account: value-prop → pair-or-solo → starter-template picker → home (pairing before templates). See ADR-0024.
+_Avoid_: setup wizard, intro, tutorial
+
+**New-user gate**:
+The condition that triggers [[Onboarding]] and starter seeding: owned categories *and* accounts both empty **after the first sync has successfully completed** — not raw local emptiness (which would duplicate-seed a reinstalling or second-device user). An `onboardingDone` flag only suppresses re-prompting. See ADR-0024.
+_Avoid_: first launch, is-new-user flag
