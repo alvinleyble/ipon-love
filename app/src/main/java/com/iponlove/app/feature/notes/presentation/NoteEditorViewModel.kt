@@ -39,6 +39,7 @@ class NoteEditorViewModel @Inject constructor(
     observePairingState: ObservePairingStateUseCase,
 ) : ViewModel() {
 
+    private val saved = savedStateHandle
     private val argId: String = savedStateHandle[NOTE_ID_KEY] ?: NEW_NOTE
     private val isNew: Boolean = argId == NEW_NOTE
 
@@ -47,8 +48,13 @@ class NoteEditorViewModel @Inject constructor(
 
     init {
         if (isNew) {
-            val noteId = UUID.randomUUID().toString()
-            _uiState.update { it.copy(loaded = true, noteId = noteId) }
+            // The generated id must be stable across process death, otherwise the recreated VM
+            // would mint a new id and orphan any attachments already saved under the old one.
+            val noteId = saved.get<String>(KEY_NOTE_ID)
+                ?: UUID.randomUUID().toString().also { saved[KEY_NOTE_ID] = it }
+            _uiState.update {
+                it.copy(loaded = true, noteId = noteId, isShared = saved[KEY_SHARED] ?: false)
+            }
             collectAttachments(noteId)
         } else {
             viewModelScope.launch {
@@ -115,8 +121,11 @@ class NoteEditorViewModel @Inject constructor(
         if (_uiState.value.isPartnerNote) return
         _uiState.value.noteId ?: return
         if (isNew) {
-            // Note doesn't exist yet — just track intent locally; save() will call shareNote().
-            _uiState.update { it.copy(isShared = !it.isShared) }
+            // Note doesn't exist yet — track intent locally (and in saved state so it survives
+            // process death); save() will call shareNote().
+            val next = !_uiState.value.isShared
+            saved[KEY_SHARED] = next
+            _uiState.update { it.copy(isShared = next) }
             return
         }
         val coupleId = _uiState.value.coupleId ?: return
@@ -146,5 +155,11 @@ class NoteEditorViewModel @Inject constructor(
     companion object {
         const val NOTE_ID_KEY = "noteId"
         const val NEW_NOTE = "new"
+
+        // Draft persistence for a not-yet-saved new note (survives process death). Title + HTML
+        // live in the composable's rememberSaveable; only the stable id and share intent — which
+        // the composable can't own — are mirrored here.
+        private const val KEY_NOTE_ID = "draft_note_id"
+        private const val KEY_SHARED = "draft_shared"
     }
 }

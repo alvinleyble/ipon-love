@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.notes.presentation
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,7 +42,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,22 +69,45 @@ fun NoteEditorScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val richTextState = rememberRichTextState()
-    var title by remember { mutableStateOf("") }
-    var seeded by remember { mutableStateOf(false) }
+    // Draft lives in rememberSaveable so the in-progress edit survives rotation AND process death
+    // (Slice 1B). null = not yet seeded; once seeded these hold the live edit. The RichTextState
+    // itself isn't saveable, so its HTML is mirrored into `draftHtml` and re-seeded on recreation.
+    var title by rememberSaveable { mutableStateOf<String?>(null) }
+    var draftHtml by rememberSaveable { mutableStateOf<String?>(null) }
+    var contentSeeded by remember { mutableStateOf(false) }
 
     val pickMedia = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri -> uri?.let { viewModel.addImage(it) } }
 
     LaunchedEffect(state.loaded) {
-        if (state.loaded && !seeded) {
-            title = state.initialTitle
-            richTextState.setHtml(state.initialHtml)
-            seeded = true
+        if (!state.loaded) return@LaunchedEffect
+        // Prefer a restored draft over the loaded DB values so recreation doesn't clobber edits.
+        if (title == null) title = state.initialTitle
+        if (!contentSeeded) {
+            richTextState.setHtml(draftHtml ?: state.initialHtml)
+            contentSeeded = true
         }
     }
 
-    val saveAndExit: () -> Unit = { viewModel.save(title, richTextState.toHtml(), onBack) }
+    // Mirror every rich-text edit into the saveable holder so it's captured for process death.
+    LaunchedEffect(contentSeeded) {
+        if (contentSeeded) {
+            snapshotFlow { richTextState.toHtml() }.collect { draftHtml = it }
+        }
+    }
+
+    // The nav bar arrow and the Android system back both save on exit. Guard on `contentSeeded`
+    // so a back-press during load can't fire save() with empty content (which would hit the
+    // blank-note branch and delete an existing note) — before seeding, just leave without saving.
+    val saveAndExit: () -> Unit = {
+        if (contentSeeded) {
+            viewModel.save(title.orEmpty(), richTextState.toHtml(), onBack)
+        } else {
+            onBack()
+        }
+    }
+    BackHandler { saveAndExit() }
 
     Scaffold(
         topBar = {
@@ -140,7 +166,7 @@ fun NoteEditorScreen(
 
                 else -> Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                     OutlinedTextField(
-                        value = title,
+                        value = title.orEmpty(),
                         onValueChange = { if (!state.isPartnerNote) title = it },
                         label = { Text("Title") },
                         singleLine = true,
