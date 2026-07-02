@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.EntityColorPicker
 import com.iponlove.app.core.ui.SharedBadge
+import com.iponlove.app.core.ui.SummaryHeader
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.IconPicker
@@ -70,30 +71,39 @@ fun AccountsBody(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    Box(modifier = modifier) {
-        when {
-            state.isLoading ->
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
+    Column(modifier = modifier) {
+        // Personal accounts only (own accounts, own or shared-by-me) — never wire this into
+        // the Combined view (ADR-0011).
+        if (!state.isLoading && state.accounts.isNotEmpty()) {
+            val netAssets = state.balances.values.fold(BigDecimal.ZERO, BigDecimal::add)
+            SummaryHeader(label = "Net assets", amount = netAssets)
+        }
 
-            state.accounts.isEmpty() ->
-                EmptyState(Modifier.align(Alignment.Center))
+        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+            when {
+                state.isLoading ->
+                    CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(state.accounts, key = { it.id }) { account ->
-                    AccountCard(
-                        account = account,
-                        balance = state.balances[account.id] ?: account.openingBalance,
-                        isPaired = state.isPaired,
-                        onClick = { viewModel.startEdit(account) },
-                        onToggleArchive = { viewModel.archive(account.id, !account.isArchived) },
-                        onShare = { viewModel.share(account.id) },
-                        onUnshare = { viewModel.unshare(account.id) },
-                        onDelete = { viewModel.delete(account.id) },
-                    )
+                state.accounts.isEmpty() ->
+                    EmptyState(Modifier.align(Alignment.Center))
+
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(state.accounts, key = { it.id }) { account ->
+                        AccountCard(
+                            account = account,
+                            balance = state.balances[account.id] ?: account.openingBalance,
+                            isPaired = state.isPaired,
+                            onClick = { viewModel.startEdit(account) },
+                            onToggleArchive = { viewModel.archive(account.id, !account.isArchived) },
+                            onShare = { viewModel.share(account.id) },
+                            onUnshare = { viewModel.unshare(account.id) },
+                            onDelete = { viewModel.delete(account.id) },
+                        )
+                    }
                 }
             }
         }
