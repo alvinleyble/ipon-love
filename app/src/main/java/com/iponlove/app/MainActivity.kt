@@ -23,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -127,44 +129,62 @@ class MainActivity : FragmentActivity() {
                 }
                 when (val current = status) {
                     is AuthStatus.Authenticated -> {
-                        if (appLockPrefs.isPinSet && isLocked) {
-                            LockScreen(isBiometricEnabled = appLockPrefs.isBiometricEnabled)
-                        } else {
-                            var initialSyncDone by remember(current.userId) { mutableStateOf(false) }
-                            LaunchedEffect(current.userId) {
-                                // Defensive net for a sign-out that never wiped (crash, reinstall,
-                                // restored session): purge stale local data before the first sync
-                                // if a different account is now signed in (ADR-0021).
-                                accountSwitchGuard.onAuthenticated(current.userId)
-                                ensureCurrentUserRow()
-                                runCatching { syncEngine.sync() }
-                                initialSyncDone = true
-                                materializeRecurringRules()
-                                val wm = WorkManager.getInstance(applicationContext)
-                                wm.enqueueUniqueWork(
-                                    SyncWorker.WORK_NAME,
-                                    ExistingWorkPolicy.KEEP,
-                                    SyncWorker.buildRequest(),
+                        var initialSyncDone by remember(current.userId) { mutableStateOf(false) }
+                        LaunchedEffect(current.userId) {
+                            // Defensive net for a sign-out that never wiped (crash, reinstall,
+                            // restored session): purge stale local data before the first sync
+                            // if a different account is now signed in (ADR-0021).
+                            accountSwitchGuard.onAuthenticated(current.userId)
+                            ensureCurrentUserRow()
+                            runCatching { syncEngine.sync() }
+                            initialSyncDone = true
+                            materializeRecurringRules()
+                            val wm = WorkManager.getInstance(applicationContext)
+                            wm.enqueueUniqueWork(
+                                SyncWorker.WORK_NAME,
+                                ExistingWorkPolicy.KEEP,
+                                SyncWorker.buildRequest(),
+                            )
+                            wm.enqueueUniqueWork(
+                                BudgetAlertWorker.WORK_NAME,
+                                ExistingWorkPolicy.REPLACE,
+                                BudgetAlertWorker.buildRequest(),
+                            )
+                            BalanceWidget().updateAll(applicationContext)
+                        }
+                        LaunchedEffect(current.userId) { watchUnpair() }
+                        // Keep IponApp always composed — never a branch swap. Swapping the
+                        // NavHost out on lock tears down the NavController and every nav-scoped
+                        // ViewModel, destroying in-progress drafts app-wide on unlock (ADR-0023).
+                        if (initialSyncDone) {
+                            val form by authViewModel.form.collectAsState()
+                            IponApp(onSignOut = authViewModel::signOut)
+                            if (form.signOutPendingConfirm) {
+                                SignOutPendingDialog(
+                                    onConfirm = authViewModel::confirmSignOutDiscardingChanges,
+                                    onDismiss = authViewModel::cancelSignOut,
                                 )
-                                wm.enqueueUniqueWork(
-                                    BudgetAlertWorker.WORK_NAME,
-                                    ExistingWorkPolicy.REPLACE,
-                                    BudgetAlertWorker.buildRequest(),
-                                )
-                                BalanceWidget().updateAll(applicationContext)
                             }
-                            LaunchedEffect(current.userId) { watchUnpair() }
-                            if (initialSyncDone) {
-                                val form by authViewModel.form.collectAsState()
-                                IponApp(onSignOut = authViewModel::signOut)
-                                if (form.signOutPendingConfirm) {
-                                    SignOutPendingDialog(
-                                        onConfirm = authViewModel::confirmSignOutDiscardingChanges,
-                                        onDismiss = authViewModel::cancelSignOut,
-                                    )
-                                }
-                            } else {
-                                SplashScreen()
+                        } else {
+                            SplashScreen()
+                        }
+                        // The lock must render as its own platform Window (a Dialog), not a Box
+                        // sibling inside the same window as IponApp: any AlertDialog/Dialog open
+                        // underneath (e.g. an in-progress transaction editor) is its own top-level
+                        // Window that always draws above the Activity's main window content, so a
+                        // same-window Box overlay would leave that draft's sensitive data visible
+                        // on top of the lock screen. A Dialog window, added after those, is
+                        // guaranteed to stack above every window opened before it.
+                        if (appLockPrefs.isPinSet && isLocked) {
+                            Dialog(
+                                onDismissRequest = {},
+                                properties = DialogProperties(
+                                    usePlatformDefaultWidth = false,
+                                    dismissOnBackPress = false,
+                                    dismissOnClickOutside = false,
+                                ),
+                            ) {
+                                LockScreen(isBiometricEnabled = appLockPrefs.isBiometricEnabled)
                             }
                         }
                     }

@@ -22,6 +22,17 @@ class AppLockViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AppLockUiState())
     val uiState: StateFlow<AppLockUiState> = _uiState
 
+    init {
+        // This ViewModel is activity-scoped, so it survives every lock/unlock cycle. Without
+        // this, a verified PIN's filled dots leak into the next lock (onDigit early-returns at
+        // length 4, so the pad looks stuck). Clear the entry whenever the lock re-engages.
+        viewModelScope.launch {
+            appLockManager.isLocked.collect { locked ->
+                if (locked) _uiState.update { it.copy(pin = "", error = null) }
+            }
+        }
+    }
+
     fun onDigit(digit: Char) {
         val current = _uiState.value
         if (current.pin.length >= 4) return
@@ -35,6 +46,7 @@ class AppLockViewModel @Inject constructor(
     private fun verify(pin: String) {
         viewModelScope.launch {
             if (verifyPin(pin)) {
+                _uiState.update { it.copy(pin = "", error = null) }
                 appLockManager.unlock()
             } else {
                 _uiState.update { it.copy(pin = "", error = "Incorrect PIN") }
