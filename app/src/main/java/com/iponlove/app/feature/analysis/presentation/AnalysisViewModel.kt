@@ -11,15 +11,20 @@ import com.iponlove.app.feature.analysis.domain.usecase.ExpenseFlowCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.FlowMetricsCalculator
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveBudgetsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
+import com.iponlove.app.feature.couple.domain.model.PairingState
+import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
+import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
 import com.iponlove.app.feature.user.domain.model.User
 import com.iponlove.app.feature.user.domain.usecase.ObserveCurrentUserUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.YearMonth
@@ -39,6 +44,8 @@ class AnalysisViewModel @Inject constructor(
     observeCategories: ObserveCategoriesUseCase,
     observeBudgets: ObserveBudgetsUseCase,
     observeCurrentUser: ObserveCurrentUserUseCase,
+    observePairingState: ObservePairingStateUseCase,
+    private val onboardingRepository: OnboardingRepository,
 ) : ViewModel() {
 
     private val anchor = MutableStateFlow(LocalDate.now())
@@ -47,6 +54,13 @@ class AnalysisViewModel @Inject constructor(
     // createdAt is effectively immutable — reading .value as a snapshot in the combine is safe.
     private val currentUser: StateFlow<User?> = observeCurrentUser()
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Unpaired-nudge card visibility (ADR-0024) — kept as its own combine so the main state
+     *  combine below doesn't have to grow past Kotlin's typed 5-flow [combine] overload. */
+    private val showPairingCard: Flow<Boolean> = combine(
+        observePairingState(),
+        onboardingRepository.observePairingCardDismissed(),
+    ) { pairing, dismissed -> pairing !is PairingState.Paired && !dismissed }
 
     val uiState: StateFlow<AnalysisUiState> =
         combine(
@@ -70,9 +84,16 @@ class AnalysisViewModel @Inject constructor(
             val calendarNet: CalendarNetUi?
             val calendarBiggestSpendDay: Int?
             val calendarNoSpendDayCount: Int
+            val lastMonthIncome: BigDecimal?
             if (selectedPeriod == AnalysisPeriod.MONTH) {
                 val startDate = window.startInclusive.atZone(zone).toLocalDate()
                 val yearMonthStr = YearMonth.of(startDate.year, startDate.month).toString()
+                // Context stat only — never subtracted into Net, which stays same-period
+                // (income − expense both from `window`). This is the fix for "income reads
+                // ₱0 before payday": show last month's actual income alongside it instead.
+                val previousMonthAnchor = AnalysisPeriodRange.step(startDate, AnalysisPeriod.MONTH, forward = false)
+                val previousWindow = AnalysisPeriodRange.windowFor(previousMonthAnchor, AnalysisPeriod.MONTH, zone)
+                lastMonthIncome = AnalysisCalculator.analyze(transactions, previousWindow).totalIncome
                 val budgetTotal = budgets
                     .filter { it.yearMonth == yearMonthStr }
                     .fold(BigDecimal.ZERO) { acc, b -> acc + b.amount }
@@ -136,6 +157,7 @@ class AnalysisViewModel @Inject constructor(
                 calendarNet = null
                 calendarBiggestSpendDay = null
                 calendarNoSpendDayCount = 0
+                lastMonthIncome = null
             }
 
             AnalysisUiState(
@@ -160,12 +182,18 @@ class AnalysisViewModel @Inject constructor(
                 calendarNet = calendarNet,
                 calendarBiggestSpendDay = calendarBiggestSpendDay,
                 calendarNoSpendDayCount = calendarNoSpendDayCount,
+                lastMonthIncome = lastMonthIncome,
             )
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            initialValue = AnalysisUiState(),
-        )
+        }.combine(showPairingCard) { state, showCard -> state.copy(showPairingCard = showCard) }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+                initialValue = AnalysisUiState(),
+            )
+
+    fun dismissPairingCard() {
+        viewModelScope.launch { onboardingRepository.dismissPairingCard() }
+    }
 
     /** Switch granularity, keeping the same anchor date (the window snaps around it). */
     fun selectPeriod(newPeriod: AnalysisPeriod) {

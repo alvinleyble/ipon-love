@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.analysis.presentation
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,9 +18,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import com.iponlove.app.core.ui.IponFilterChip
 import androidx.compose.material3.Icon
@@ -59,13 +62,18 @@ import java.math.BigDecimal
 private val IncomeColor = Color(0xFF2E7D32)
 
 @Composable
-fun AnalysisScreen(viewModel: AnalysisViewModel = hiltViewModel()) {
+fun AnalysisScreen(
+    onOpenCouple: () -> Unit = {},
+    viewModel: AnalysisViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsState()
     AnalysisContent(
         state = state,
         onSelectPeriod = viewModel::selectPeriod,
         onPrevious = viewModel::previous,
         onNext = viewModel::next,
+        onOpenCouple = onOpenCouple,
+        onDismissPairingCard = viewModel::dismissPairingCard,
     )
 }
 
@@ -76,6 +84,8 @@ private fun AnalysisContent(
     onSelectPeriod: (AnalysisPeriod) -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onOpenCouple: () -> Unit,
+    onDismissPairingCard: () -> Unit,
 ) {
     Scaffold(topBar = { TopAppBar(title = { Text("Analysis") }) }) { padding ->
         Column(
@@ -94,7 +104,18 @@ private fun AnalysisContent(
                 return@Column
             }
 
-            SummaryCard(income = state.totalIncome, expense = state.totalExpense, net = state.net)
+            // The one activation-event entry point for unpaired users now that pairing has
+            // moved out of the main nav into Settings → Couple (ADR-0024).
+            if (state.showPairingCard) {
+                PairingNudgeCard(onOpen = onOpenCouple, onDismiss = onDismissPairingCard)
+            }
+
+            SummaryCard(
+                income = state.totalIncome,
+                expense = state.totalExpense,
+                net = state.net,
+                lastMonthIncome = state.lastMonthIncome,
+            )
 
             if (state.period == AnalysisPeriod.MONTH) {
                 MonthTabLayout(state = state, modifier = Modifier.weight(1f))
@@ -233,17 +254,70 @@ private fun PeriodStepper(label: String, onPrevious: () -> Unit, onNext: () -> U
 }
 
 @Composable
-private fun SummaryCard(income: BigDecimal, expense: BigDecimal, net: BigDecimal) {
+private fun PairingNudgeCard(onOpen: () -> Unit, onDismiss: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable(onClick = onOpen),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp)) {
+                Text(
+                    "Track money together",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    "Pair with your partner for a combined view, shared budgets & IOUs.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Dismiss",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryCard(
+    income: BigDecimal,
+    expense: BigDecimal,
+    net: BigDecimal,
+    lastMonthIncome: BigDecimal? = null,
+) {
     Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            SummaryItem("Income", income, IncomeColor, Modifier.weight(1f))
-            SummaryItem("Expense", expense, MaterialTheme.colorScheme.error, Modifier.weight(1f))
-            SummaryItem(
-                label = "Net",
-                amount = net,
-                color = if (net.signum() < 0) MaterialTheme.colorScheme.error else IncomeColor,
-                modifier = Modifier.weight(1f),
-            )
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                SummaryItem("Income", income, IncomeColor, Modifier.weight(1f))
+                SummaryItem("Expense", expense, MaterialTheme.colorScheme.error, Modifier.weight(1f))
+                SummaryItem(
+                    label = "Net",
+                    amount = net,
+                    color = if (net.signum() < 0) MaterialTheme.colorScheme.error else IncomeColor,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (lastMonthIncome != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Last month income: ${formatPhp(lastMonthIncome)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }

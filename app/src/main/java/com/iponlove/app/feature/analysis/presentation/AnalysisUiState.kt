@@ -24,6 +24,15 @@ data class AnalysisUiState(
     val calendarBiggestSpendDay: Int? = null,
     /** Count of elapsed days with neither income nor expense. MONTH only. */
     val calendarNoSpendDayCount: Int = 0,
+    /**
+     * Total income for the calendar month before this one — a context stat, never subtracted
+     * into [net]. Net stays strictly same-period (this month's income minus this month's
+     * expense), even when that reads negative before payday; this field is the actual fix for
+     * "income reads ₱0" pre-payday. MONTH only; null for DAY/WEEK.
+     */
+    val lastMonthIncome: BigDecimal? = null,
+    /** Unpaired + not-yet-dismissed — shows the pairing nudge card (ADR-0024). */
+    val showPairingCard: Boolean = false,
 ) {
     val hasExpenses: Boolean get() = totalExpense.signum() > 0
 }
