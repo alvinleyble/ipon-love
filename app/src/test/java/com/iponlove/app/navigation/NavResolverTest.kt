@@ -7,21 +7,37 @@ class NavResolverTest {
 
     @Test
     fun visiblePinIds_returnsKnownPinsInConfigOrder() {
-        // All current modules are returned in the order stored in config.
-        val config = NavConfig(listOf("records", "analysis", "couple"))
+        // When paired, all pins render in config order. When unpaired, the paired-only Couple pin
+        // is replaced in place by its understudy (Manage) so the bar keeps its item count.
+        val config = NavConfig(listOf("analysis", "records", "couple"))
         assertThat(NavResolver.visiblePinIds(config, isPaired = false))
-            .containsExactly("records", "analysis", "couple").inOrder()
+            .containsExactly("analysis", "records", "manage").inOrder()
         assertThat(NavResolver.visiblePinIds(config, isPaired = true))
-            .containsExactly("records", "analysis", "couple").inOrder()
+            .containsExactly("analysis", "records", "couple").inOrder()
     }
 
     @Test
-    fun visiblePinIds_preservesConfigIds() {
-        // Stored pin ids survive the resolver (UI's mapNotNull later drops any unknown ids).
+    fun visiblePinIds_promotesUnderstudyInPlaceForHiddenPairedOnlyPin() {
+        // Couple is paired-only with Manage as understudy: unpaired shows Manage in Couple's slot,
+        // paired shows Couple. The understudy sits exactly where the hidden pin was.
         val config = NavConfig(listOf("couple", "records"))
         assertThat(NavResolver.visiblePinIds(config, isPaired = false))
+            .containsExactly("manage", "records").inOrder()
+        assertThat(NavResolver.visiblePinIds(config, isPaired = true))
             .containsExactly("couple", "records").inOrder()
+        // The saved config is never mutated by the substitution.
         assertThat(config.pinnedIds).containsExactly("couple", "records").inOrder()
+    }
+
+    @Test
+    fun visiblePinIds_doesNotDuplicateUnderstudyAlreadyPinned() {
+        // If Manage is already pinned, hiding Couple must not add a second Manage — the slot just
+        // collapses instead.
+        val config = NavConfig(listOf("manage", "couple", "records"))
+        assertThat(NavResolver.visiblePinIds(config, isPaired = false))
+            .containsExactly("manage", "records").inOrder()
+        assertThat(NavResolver.visiblePinIds(config, isPaired = true))
+            .containsExactly("manage", "couple", "records").inOrder()
     }
 
     @Test
@@ -32,18 +48,20 @@ class NavResolverTest {
     }
 
     @Test
-    fun visibleModuleIds_containsAllCurrentModules() {
-        // No paired-only modules exist in the current registry; all are reachable regardless.
+    fun visibleModuleIds_containsNonPairedModulesWhenUnpaired() {
         val all = NavResolver.visibleModuleIds(isPaired = false)
-        assertThat(all).containsAtLeast("records", "analysis", "manage", "couple", "settings")
+        assertThat(all).containsAtLeast("records", "analysis", "manage", "settings")
+        // Couple is paired-only now (ADR-0026) — hidden from the catalog while unpaired.
+        assertThat(all).doesNotContain("couple")
         // combined and partner_debt are now internal Couple tabs, not standalone modules.
         assertThat(all).containsNoneOf("combined", "partner_debt")
     }
 
     @Test
-    fun coupleIsAlwaysVisible_evenUnpaired() {
-        // Couple doubles as the pairing entry point, so it is not paired-only.
-        assertThat(NavResolver.visibleModuleIds(isPaired = false)).contains("couple")
+    fun coupleAppearsInCatalogOnlyWhenPaired() {
+        // Couple is paired-only (ADR-0026): hidden while unpaired, present once paired.
+        assertThat(NavResolver.visibleModuleIds(isPaired = false)).doesNotContain("couple")
+        assertThat(NavResolver.visibleModuleIds(isPaired = true)).contains("couple")
     }
 
     @Test
@@ -74,8 +92,15 @@ class NavResolverTest {
 
     @Test
     fun startRoute_isFirstNonPairedOnlyPin() {
+        // Couple is paired-only, so it is skipped as home even when pinned first; Records wins.
         val config = NavConfig(listOf("couple", "records"))
-        assertThat(NavResolver.startRoute(config)).isEqualTo(NavRegistry.COUPLE.route)
+        assertThat(NavResolver.startRoute(config)).isEqualTo(NavRegistry.RECORDS.route)
+    }
+
+    @Test
+    fun startRoute_defaultConfigIsAnalysis() {
+        // DEFAULT_PINS is analysis-first (ADR-0026), so a fresh install lands on Analysis.
+        assertThat(NavResolver.startRoute(NavConfig())).isEqualTo(NavRegistry.ANALYSIS.route)
     }
 
     @Test

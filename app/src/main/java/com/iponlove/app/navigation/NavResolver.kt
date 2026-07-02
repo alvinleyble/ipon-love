@@ -8,14 +8,30 @@ package com.iponlove.app.navigation
 object NavResolver {
 
     /**
-     * Pinned ids that should appear in the bar right now: config order, paired-only entries
-     * dropped while unpaired, capped at [NavRegistry.MAX_PINS]. May be empty if every pin is a
-     * paired-only destination and the user is unpaired — callers supply a fallback.
+     * Pinned ids that should appear in the bar right now: config order, capped at
+     * [NavRegistry.MAX_PINS]. A paired-only pin that's hidden while unpaired is replaced in place
+     * by its [NavDestination.understudyId] (e.g. Manage stands in for Couple) so the bar keeps its
+     * item count — unless that understudy is itself pinned/already visible, in which case the slot
+     * simply collapses. May be empty if a hidden pin has no usable understudy — callers supply a
+     * fallback.
      */
-    fun visiblePinIds(config: NavConfig, isPaired: Boolean): List<String> =
-        config.pinnedIds
-            .filter { it !in NavRegistry.pairedOnlyIds || isPaired }
-            .take(NavRegistry.MAX_PINS)
+    fun visiblePinIds(config: NavConfig, isPaired: Boolean): List<String> {
+        val result = mutableListOf<String>()
+        for (id in config.pinnedIds) {
+            if (id !in NavRegistry.pairedOnlyIds || isPaired) {
+                result += id
+            } else {
+                val understudy = NavRegistry.byId[id]?.understudyId
+                if (understudy != null &&
+                    understudy !in result &&
+                    understudy !in config.pinnedIds
+                ) {
+                    result += understudy
+                }
+            }
+        }
+        return result.take(NavRegistry.MAX_PINS)
+    }
 
     /** Every module reachable right now (for the editor's catalog), paired-only gated. */
     fun visibleModuleIds(isPaired: Boolean): List<String> =

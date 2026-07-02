@@ -20,16 +20,17 @@ class NavConfigTest {
 
     @Test
     fun pin_isNoOpWhenAtMax() {
-        val config = NavConfig(listOf("records", "analysis", "manage", "couple"))
+        val config = NavConfig(listOf("records", "analysis", "manage"))
         assertThat(config.pin("notes").pinnedIds).hasSize(NavRegistry.MAX_PINS)
         assertThat(config.pin("notes").pinnedIds).doesNotContain("notes")
     }
 
     @Test
-    fun pin_isNoOpForNonPinnableModule() {
-        // Settings is non-pinnable — it lives only in the More sheet (ADR-0017).
+    fun pin_allowsSettingsNowThatItIsPinnable() {
+        // Settings flipped to pinnable in ADR-0026, so it can now sit on the bar.
         val config = NavConfig(listOf("records"))
-        assertThat(config.pin("settings").pinnedIds).containsExactly("records")
+        assertThat(config.pin("settings").pinnedIds)
+            .containsExactly("records", "settings").inOrder()
     }
 
     @Test
@@ -65,16 +66,16 @@ class NavConfigTest {
     @Test
     fun deserialize_dropsUnknownAndDuplicateIdsAndCaps() {
         val config = NavConfig.deserialize("records, bogus,analysis,records, manage ,couple,notes")
-        // bogus dropped, duplicate "records" deduped, capped to MAX_PINS
+        // bogus dropped, duplicate "records" deduped, capped to MAX_PINS (3)
         assertThat(config.pinnedIds)
-            .containsExactly("records", "analysis", "manage", "couple").inOrder()
+            .containsExactly("records", "analysis", "manage").inOrder()
     }
 
     @Test
-    fun deserialize_dropsNonPinnableIds() {
-        // A stale/hand-edited "settings" pin must not survive into the bar.
+    fun deserialize_keepsSettingsNowThatItIsPinnable() {
+        // Settings is pinnable as of ADR-0026, so a saved "settings" pin survives.
         val config = NavConfig.deserialize("records,settings,analysis")
-        assertThat(config.pinnedIds).containsExactly("records", "analysis").inOrder()
+        assertThat(config.pinnedIds).containsExactly("records", "settings", "analysis").inOrder()
     }
 
     @Test

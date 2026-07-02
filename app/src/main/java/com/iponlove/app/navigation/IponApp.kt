@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -42,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -82,9 +86,10 @@ private const val EDIT_TRANSACTION_ROUTE = "edit_transaction"
 
 /**
  * App root: a bottom-nav [Scaffold] whose bar is built dynamically from the user's pinned
- * [NavConfig] (ADR-0017) — up to [NavRegistry.MAX_PINS] reorderable pins plus an always-present
- * "More". The [NavHost] declares *every* registry destination so `saveState`/`restoreState`
- * work across the dynamic pin set; pinning only changes which destinations the bar surfaces.
+ * [NavConfig] (ADR-0017) — up to [NavRegistry.MAX_PINS] reorderable pins, a fixed accented center
+ * ⊕ Add (ADR-0026) that routes to add-transaction, plus an always-present "More". The [NavHost]
+ * declares *every* registry destination so `saveState`/`restoreState` work across the dynamic pin
+ * set; pinning only changes which destinations the bar surfaces.
  */
 @Composable
 fun IponApp(
@@ -126,13 +131,35 @@ private fun IponAppContent(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             NavigationBar {
-                visiblePins.forEach { dest ->
-                    NavigationBarItem(
-                        selected = currentRoute == dest.route,
-                        onClick = { navController.switchTab(dest.route) },
-                        icon = { Icon(dest.icon, contentDescription = dest.label) },
-                        label = { Text(dest.label) },
-                    )
+                // The fixed center ⊕ Add sits in the middle of the bar (ADR-0026): render the
+                // first half of the pins, the accented Add slot, then the rest, then More.
+                val splitIndex = ((visiblePins.size + 2) / 2).coerceAtMost(visiblePins.size)
+                visiblePins.take(splitIndex).forEach { dest ->
+                    PinBarItem(dest, currentRoute, navController)
+                }
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { navController.navigate(ADD_TRANSACTION_ROUTE) },
+                    icon = {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = "Add transaction",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        }
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = Color.Transparent,
+                    ),
+                )
+                visiblePins.drop(splitIndex).forEach { dest ->
+                    PinBarItem(dest, currentRoute, navController)
                 }
                 val onModuleRoute = NavRegistry.all.any { it.route == currentRoute }
                 NavigationBarItem(
@@ -232,6 +259,21 @@ private fun IponAppContent(
             onDismiss = { showMore = false },
         )
     }
+}
+
+/** One pinned bottom-bar destination — extracted so the center ⊕ can split the pin list. */
+@Composable
+private fun RowScope.PinBarItem(
+    dest: NavDestination,
+    currentRoute: String?,
+    navController: NavHostController,
+) {
+    NavigationBarItem(
+        selected = currentRoute == dest.route,
+        onClick = { navController.switchTab(dest.route) },
+        icon = { Icon(dest.icon, contentDescription = dest.label) },
+        label = { Text(dest.label) },
+    )
 }
 
 /** Top-level tab switch: single instance per destination, each tab's state saved/restored. */
