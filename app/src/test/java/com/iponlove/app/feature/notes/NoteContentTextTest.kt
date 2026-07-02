@@ -28,6 +28,25 @@ class NoteContentTextTest {
     }
 
     @Test
+    fun plainText_decodesPunctuationNamedEntities() {
+        // The rich editor escapes ordinary punctuation as HTML5 named entities; the preview must
+        // decode them instead of leaking the raw &comma;/&lpar; codes.
+        val html = "<p>Buy eggs&comma; milk &lpar;2L&rpar; &amp; bread&period;</p>"
+        assertThat(NoteContentText.plainText(html)).isEqualTo("Buy eggs, milk (2L) & bread.")
+    }
+
+    @Test
+    fun plainText_decodesNumericAndHexRefs() {
+        assertThat(NoteContentText.plainText("caf&#233; &#x2014; open")).isEqualTo("café — open")
+    }
+
+    @Test
+    fun plainText_leavesUnknownEntityUntouched() {
+        // An unrecognised code is left as-is rather than mangled.
+        assertThat(NoteContentText.plainText("a &bogus; b")).isEqualTo("a &bogus; b")
+    }
+
+    @Test
     fun plainText_emptyOrTagOnly_isEmpty() {
         assertThat(NoteContentText.plainText(null)).isEmpty()
         assertThat(NoteContentText.plainText("")).isEmpty()
