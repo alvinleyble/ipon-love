@@ -32,6 +32,8 @@ class CategoryRepositoryImpl @Inject constructor(
 
     override suspend fun getCategory(id: String): Category? = dao.getById(id)?.toDomain()
 
+    override suspend fun countOwnedCategories(): Int = dao.countOwned(currentUser.userId())
+
     override suspend fun upsertCategory(category: Category) {
         val existing = dao.getById(category.id)
         val updatedAt = clock.stamp(existing?.updatedAt)

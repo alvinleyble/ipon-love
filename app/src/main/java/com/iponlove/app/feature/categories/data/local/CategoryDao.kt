@@ -36,6 +36,10 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE id = :id")
     suspend fun getById(id: String): CategoryEntity?
 
+    /** Personal (non-shared) row count for the new-user onboarding gate (ADR-0024). */
+    @Query("SELECT COUNT(*) FROM categories WHERE userId = :userId AND isDeleted = 0")
+    suspend fun countOwned(userId: String): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(category: CategoryEntity)
 

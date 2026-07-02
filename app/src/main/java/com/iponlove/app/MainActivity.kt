@@ -35,6 +35,7 @@ import androidx.work.WorkManager
 import com.iponlove.app.core.session.AccountSwitchGuard
 import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.SyncEngine
+import com.iponlove.app.core.sync.SyncState
 import com.iponlove.app.core.sync.SyncWorker
 import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
 import com.iponlove.app.core.ui.theme.IponTheme
@@ -46,6 +47,7 @@ import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.presentation.AuthScreen
 import com.iponlove.app.feature.auth.presentation.AuthViewModel
 import com.iponlove.app.feature.couple.domain.usecase.WatchUnpairUseCase
+import com.iponlove.app.feature.onboarding.domain.usecase.ShouldShowOnboardingUseCase
 import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRulesUseCase
 import com.iponlove.app.feature.settings.data.ThemeDraftRepository
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
@@ -54,6 +56,7 @@ import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
 import androidx.glance.appwidget.updateAll
 import com.iponlove.app.feature.widget.presentation.BalanceWidget
 import com.iponlove.app.navigation.IponApp
+import com.iponlove.app.navigation.OnboardingGraph
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -71,6 +74,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var materializeRecurringRules: MaterializeRecurringRulesUseCase
     @Inject lateinit var ensureCurrentUserRow: EnsureCurrentUserRowUseCase
     @Inject lateinit var watchUnpair: WatchUnpairUseCase
+    @Inject lateinit var shouldShowOnboarding: ShouldShowOnboardingUseCase
     @Inject lateinit var observeThemePreferences: ObserveThemePreferencesUseCase
     @Inject lateinit var observeAppLock: ObserveAppLockUseCase
     @Inject lateinit var appLockManager: AppLockManager
@@ -130,6 +134,7 @@ class MainActivity : FragmentActivity() {
                 when (val current = status) {
                     is AuthStatus.Authenticated -> {
                         var initialSyncDone by remember(current.userId) { mutableStateOf(false) }
+                        var showOnboarding by remember(current.userId) { mutableStateOf(false) }
                         LaunchedEffect(current.userId) {
                             // Defensive net for a sign-out that never wiped (crash, reinstall,
                             // restored session): purge stale local data before the first sync
@@ -137,7 +142,12 @@ class MainActivity : FragmentActivity() {
                             accountSwitchGuard.onAuthenticated(current.userId)
                             ensureCurrentUserRow()
                             runCatching { syncEngine.sync() }
+                            // The new-user gate (ADR-0024) reads this *first* sync's outcome —
+                            // never local emptiness, which would duplicate-seed a reinstall or
+                            // second device. A failed/offline sync defers to the next launch.
+                            val syncSucceeded = syncEngine.state.value is SyncState.Success
                             initialSyncDone = true
+                            showOnboarding = shouldShowOnboarding(syncSucceeded)
                             materializeRecurringRules()
                             val wm = WorkManager.getInstance(applicationContext)
                             wm.enqueueUniqueWork(
@@ -157,13 +167,17 @@ class MainActivity : FragmentActivity() {
                         // NavHost out on lock tears down the NavController and every nav-scoped
                         // ViewModel, destroying in-progress drafts app-wide on unlock (ADR-0023).
                         if (initialSyncDone) {
-                            val form by authViewModel.form.collectAsState()
-                            IponApp(onSignOut = authViewModel::signOut)
-                            if (form.signOutPendingConfirm) {
-                                SignOutPendingDialog(
-                                    onConfirm = authViewModel::confirmSignOutDiscardingChanges,
-                                    onDismiss = authViewModel::cancelSignOut,
-                                )
+                            if (showOnboarding) {
+                                OnboardingGraph(onComplete = { showOnboarding = false })
+                            } else {
+                                val form by authViewModel.form.collectAsState()
+                                IponApp(onSignOut = authViewModel::signOut)
+                                if (form.signOutPendingConfirm) {
+                                    SignOutPendingDialog(
+                                        onConfirm = authViewModel::confirmSignOutDiscardingChanges,
+                                        onDismiss = authViewModel::cancelSignOut,
+                                    )
+                                }
                             }
                         } else {
                             SplashScreen()

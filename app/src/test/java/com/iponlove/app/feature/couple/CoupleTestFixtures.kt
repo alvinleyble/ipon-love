@@ -28,6 +28,7 @@ internal class CountingAccountRepo : AccountRepository {
     var purgeCount = 0
     override fun observeAccounts(includeArchived: Boolean): Flow<List<Account>> = emptyFlow()
     override suspend fun getAccount(id: String): Account? = null
+    override suspend fun countOwnedAccounts(): Int = 0
     override suspend fun upsertAccount(account: Account) = Unit
     override suspend fun setArchived(id: String, archived: Boolean) = Unit
     override suspend fun deleteAccount(id: String) = Unit
@@ -41,6 +42,7 @@ internal class CountingCategoryRepo : CategoryRepository {
     override fun observeCategories(includeArchived: Boolean): Flow<List<Category>> = emptyFlow()
     override fun observeAllCategories(): Flow<List<Category>> = emptyFlow()
     override suspend fun getCategory(id: String): Category? = null
+    override suspend fun countOwnedCategories(): Int = 0
     override suspend fun upsertCategory(category: Category) = Unit
     override suspend fun setArchived(id: String, archived: Boolean) = Unit
     override suspend fun deleteCategory(id: String) = Unit

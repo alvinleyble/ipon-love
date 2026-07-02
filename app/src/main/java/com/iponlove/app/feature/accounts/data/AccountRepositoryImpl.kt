@@ -29,6 +29,8 @@ class AccountRepositoryImpl @Inject constructor(
 
     override suspend fun getAccount(id: String): Account? = dao.getById(id)?.toDomain()
 
+    override suspend fun countOwnedAccounts(): Int = dao.countOwned(currentUser.userId())
+
     override suspend fun upsertAccount(account: Account) {
         val existing = dao.getById(account.id)
         val updatedAt = clock.stamp(existing?.updatedAt)

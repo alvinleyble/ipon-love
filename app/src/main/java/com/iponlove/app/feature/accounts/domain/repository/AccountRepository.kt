@@ -15,6 +15,9 @@ interface AccountRepository {
 
     suspend fun getAccount(id: String): Account?
 
+    /** Count of this user's personal (non-shared) accounts — the onboarding gate (ADR-0024). */
+    suspend fun countOwnedAccounts(): Int
+
     /** Create (id unseen) or edit (id exists) an account. */
     suspend fun upsertAccount(account: Account)
 

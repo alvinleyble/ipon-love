@@ -50,6 +50,7 @@ fun PersonalizeScreen(
     onBack: () -> Unit,
     onOpenProfile: () -> Unit = {},
     onOpenSecurity: () -> Unit = {},
+    onOpenCouple: () -> Unit = {},
     onOpenNavbar: () -> Unit = {},
     onOpenHelp: () -> Unit = {},
     onOpenBetaFeedback: () -> Unit = {},
@@ -134,6 +135,15 @@ fun PersonalizeScreen(
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
                     },
                     modifier = Modifier.clickable(onClick = onOpenSecurity),
+                )
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("Couple") },
+                    supportingContent = { Text("Pairing, invite code & unpair") },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable(onClick = onOpenCouple),
                 )
                 HorizontalDivider()
                 ListItem(

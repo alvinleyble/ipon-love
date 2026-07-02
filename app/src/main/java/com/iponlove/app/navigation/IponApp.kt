@@ -60,6 +60,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.iponlove.app.feature.analysis.presentation.AnalysisScreen
 import com.iponlove.app.feature.applock.presentation.AppLockSetupScreen
+import com.iponlove.app.feature.calculator.presentation.CalculatorScreen
 import com.iponlove.app.feature.couple.presentation.CoupleScreen
 import com.iponlove.app.feature.feedback.presentation.BetaFeedbackScreen
 import com.iponlove.app.feature.help.presentation.HelpScreen
@@ -70,6 +71,7 @@ import com.iponlove.app.feature.notes.presentation.NotesScreen
 import com.iponlove.app.feature.recurring.presentation.RecurringScreen
 import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
 import com.iponlove.app.feature.settings.presentation.ProfileScreen
+import com.iponlove.app.feature.settings.presentation.SettingsCoupleScreen
 import com.iponlove.app.feature.transactions.presentation.AddTransactionScreen
 import com.iponlove.app.feature.transactions.presentation.AddTransactionViewModel.Companion.TXN_ID_KEY
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
@@ -78,6 +80,7 @@ import kotlinx.coroutines.launch
 private const val APP_LOCK_SETUP_ROUTE = "app_lock_setup"
 private const val NOTE_EDITOR_ROUTE = "note_editor"
 private const val PROFILE_ROUTE = "profile"
+private const val SETTINGS_COUPLE_ROUTE = "settings_couple"
 private const val NAV_EDITOR_ROUTE = "nav_editor"
 private const val HELP_ROUTE = "help"
 private const val BETA_FEEDBACK_ROUTE = "beta_feedback"
@@ -193,7 +196,9 @@ private fun IponAppContent(
             ) {
                 AddTransactionScreen(onBack = { navController.popBackStack() })
             }
-            composable(NavRegistry.ANALYSIS.route) { AnalysisScreen() }
+            composable(NavRegistry.ANALYSIS.route) {
+                AnalysisScreen(onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) })
+            }
             composable(NavRegistry.MANAGE.route) { ManageScreen() }
             composable(NavRegistry.NOTES.route) {
                 NotesScreen(
@@ -205,11 +210,13 @@ private fun IponAppContent(
                 RecurringScreen(onBack = { navController.popBackStack() })
             }
             composable(NavRegistry.COUPLE.route) { CoupleScreen() }
+            composable(NavRegistry.CALCULATOR.route) { CalculatorScreen() }
             composable(NavRegistry.SETTINGS.route) {
                 PersonalizeScreen(
                     onBack = { navController.popBackStack() },
                     onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
                     onOpenSecurity = { navController.navigate(APP_LOCK_SETUP_ROUTE) },
+                    onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) },
                     onOpenNavbar = { navController.navigate(NAV_EDITOR_ROUTE) },
                     onOpenHelp = { navController.navigate(HELP_ROUTE) },
                     onOpenBetaFeedback = { navController.navigate(BETA_FEEDBACK_ROUTE) },
@@ -218,6 +225,9 @@ private fun IponAppContent(
             }
             composable(PROFILE_ROUTE) {
                 ProfileScreen(onBack = { navController.popBackStack() })
+            }
+            composable(SETTINGS_COUPLE_ROUTE) {
+                SettingsCoupleScreen(onBack = { navController.popBackStack() })
             }
             composable(APP_LOCK_SETUP_ROUTE) {
                 AppLockSetupScreen(onBack = { navController.popBackStack() })

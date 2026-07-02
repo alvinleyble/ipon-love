@@ -29,6 +29,9 @@ class FakeCategoryDao : CategoryDao {
 
     override suspend fun getById(id: String): CategoryEntity? = store[id]
 
+    override suspend fun countOwned(userId: String): Int =
+        store.values.count { it.userId == userId && !it.isDeleted }
+
     override suspend fun deleteById(id: String) {
         store.remove(id)
         changes.value++

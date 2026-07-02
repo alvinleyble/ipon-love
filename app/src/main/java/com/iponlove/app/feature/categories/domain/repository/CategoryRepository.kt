@@ -21,6 +21,9 @@ interface CategoryRepository {
 
     suspend fun getCategory(id: String): Category?
 
+    /** Count of this user's personal (non-shared) categories — the onboarding gate (ADR-0024). */
+    suspend fun countOwnedCategories(): Int
+
     suspend fun upsertCategory(category: Category)
 
     suspend fun setArchived(id: String, archived: Boolean)
