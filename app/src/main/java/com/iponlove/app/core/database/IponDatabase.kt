@@ -24,6 +24,10 @@ import com.iponlove.app.feature.partnerdebt.data.local.PartnerDebtDao
 import com.iponlove.app.feature.partnerdebt.data.local.PartnerDebtEntity
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleDao
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleEntity
+import com.iponlove.app.feature.savings.data.local.GoalContributionDao
+import com.iponlove.app.feature.savings.data.local.GoalContributionEntity
+import com.iponlove.app.feature.savings.data.local.SavingsGoalDao
+import com.iponlove.app.feature.savings.data.local.SavingsGoalEntity
 import com.iponlove.app.feature.transactions.data.local.TransactionDao
 import com.iponlove.app.feature.transactions.data.local.TransactionEntity
 import com.iponlove.app.feature.user.data.local.UserDao
@@ -49,8 +53,10 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         NoteAttachmentEntity::class,
         PartnerDebtEntity::class,
         DebtPaymentEntity::class,
+        SavingsGoalEntity::class,
+        GoalContributionEntity::class,
     ],
-    version = 17,
+    version = 18,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 10, to = 11),
@@ -60,6 +66,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AutoMigration(from = 14, to = 15),
         AutoMigration(from = 15, to = 16),
         AutoMigration(from = 16, to = 17),
+        AutoMigration(from = 17, to = 18),
     ],
 )
 @TypeConverters(IponConverters::class)
@@ -74,6 +81,8 @@ abstract class IponDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
     abstract fun noteAttachmentDao(): NoteAttachmentDao
     abstract fun partnerDebtDao(): PartnerDebtDao
+    abstract fun savingsGoalDao(): SavingsGoalDao
+    abstract fun goalContributionDao(): GoalContributionDao
 
     /**
      * Wipe every table — the local source of truth for one account. Called on sign-out and on

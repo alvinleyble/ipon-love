@@ -16,9 +16,12 @@ class PurgePartnerReplicaUseCaseTest {
     private val noteAttachments = CountingNoteAttachmentRepo()
     private val budgets = CountingBudgetRepo()
     private val partnerDebts = CountingPartnerDebtRepo()
+    private val savingsGoals = CountingSavingsGoalRepo()
+    private val goalContributions = CountingGoalContributionRepo()
     private val cursors = InMemoryCursorStore()
     private val useCase = PurgePartnerReplicaUseCase(
-        accounts, categories, transactions, notes, noteAttachments, budgets, partnerDebts, cursors,
+        accounts, categories, transactions, notes, noteAttachments, budgets, partnerDebts,
+        savingsGoals, goalContributions, cursors,
     )
 
     @Test
@@ -32,6 +35,8 @@ class PurgePartnerReplicaUseCaseTest {
         assertThat(noteAttachments.purgeCount).isEqualTo(1)
         assertThat(budgets.purgeCount).isEqualTo(1)
         assertThat(partnerDebts.purgeCount).isEqualTo(1)
+        assertThat(savingsGoals.purgeCount).isEqualTo(1)
+        assertThat(goalContributions.purgeCount).isEqualTo(1)
     }
 
     @Test
@@ -49,5 +54,7 @@ class PurgePartnerReplicaUseCaseTest {
         assertThat(cursors.cursor(SyncTable.PARTNER_TRANSACTIONS)).isEqualTo(0)
         assertThat(cursors.cursor(SyncTable.PARTNER_NOTES)).isEqualTo(0)
         assertThat(cursors.cursor(SyncTable.PARTNER_NOTE_IMAGES)).isEqualTo(0)
+        assertThat(cursors.cursor(SyncTable.PARTNER_SAVINGS_GOALS)).isEqualTo(0)
+        assertThat(cursors.cursor(SyncTable.PARTNER_GOAL_CONTRIBUTIONS)).isEqualTo(0)
     }
 }

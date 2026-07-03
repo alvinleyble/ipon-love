@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -66,10 +67,12 @@ object NavRegistry {
     val PARTNER_DEBT = NavDestination("partner_debt", "Debts", Icons.Filled.Handshake, "partner_debt", requiresPaired = true)
     val SETTINGS = NavDestination("settings", "Settings", Icons.Filled.Settings, "settings")
     val CALCULATOR = NavDestination("calculator", "Calculator", Icons.Filled.Calculate, "calculator")
+    // Shared savings goals — own pinnable module, in More by default (ADR-0025), not a Manage tab.
+    val SAVINGS = NavDestination("savings", "Savings", Icons.Filled.Savings, "savings")
 
     /** Registry order — drives the editor's "available" list and the More grid. */
     val all: List<NavDestination> = listOf(
-        RECORDS, ANALYSIS, MANAGE, COUPLE, SETTINGS, CALCULATOR,
+        RECORDS, ANALYSIS, MANAGE, COUPLE, SETTINGS, CALCULATOR, SAVINGS,
     )
 
     val byId: Map<String, NavDestination> = all.associateBy { it.id }

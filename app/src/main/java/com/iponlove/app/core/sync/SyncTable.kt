@@ -25,10 +25,17 @@ enum class SyncTable {
     DEBT_PAYMENTS,
     NOTES,
     NOTE_IMAGES,
+    // Savings goals + their append-only contribution ledger (ADR-0025). Goal (parent) before
+    // contributions (child) so push lands the FK parent first.
+    SAVINGS_GOALS,
+    GOAL_CONTRIBUTIONS,
     // Partner views pull after the matching owned tables so FK parents are already present.
     PARTNER_ACCOUNTS,
     PARTNER_CATEGORIES,
     PARTNER_TRANSACTIONS,
     PARTNER_NOTES,
     PARTNER_NOTE_IMAGES,
+    // Partner's shared goals + their contributions (redacting views, ADR-0005).
+    PARTNER_SAVINGS_GOALS,
+    PARTNER_GOAL_CONTRIBUTIONS,
 }

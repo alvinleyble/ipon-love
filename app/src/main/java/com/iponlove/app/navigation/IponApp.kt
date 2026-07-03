@@ -69,6 +69,10 @@ import com.iponlove.app.feature.notes.presentation.NoteEditorScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion.NOTE_ID_KEY
 import com.iponlove.app.feature.notes.presentation.NotesScreen
 import com.iponlove.app.feature.recurring.presentation.RecurringScreen
+import com.iponlove.app.feature.savings.presentation.GoalDetailScreen
+import com.iponlove.app.feature.savings.presentation.GoalEditorScreen
+import com.iponlove.app.feature.savings.presentation.GoalEditorViewModel.Companion.GOAL_ID_KEY
+import com.iponlove.app.feature.savings.presentation.SavingsGoalsScreen
 import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
 import com.iponlove.app.feature.settings.presentation.ProfileScreen
 import com.iponlove.app.feature.settings.presentation.SettingsCoupleScreen
@@ -86,6 +90,8 @@ private const val HELP_ROUTE = "help"
 private const val BETA_FEEDBACK_ROUTE = "beta_feedback"
 private const val ADD_TRANSACTION_ROUTE = "add_transaction"
 private const val EDIT_TRANSACTION_ROUTE = "edit_transaction"
+private const val GOAL_EDITOR_ROUTE = "goal_editor"
+private const val GOAL_DETAIL_ROUTE = "goal_detail"
 
 /**
  * App root: a bottom-nav [Scaffold] whose bar is built dynamically from the user's pinned
@@ -211,6 +217,30 @@ private fun IponAppContent(
             }
             composable(NavRegistry.COUPLE.route) { CoupleScreen() }
             composable(NavRegistry.CALCULATOR.route) { CalculatorScreen() }
+            composable(NavRegistry.SAVINGS.route) {
+                SavingsGoalsScreen(
+                    onCreateGoal = { navController.navigate(GOAL_EDITOR_ROUTE) },
+                    onOpenGoal = { id -> navController.navigate("$GOAL_DETAIL_ROUTE/$id") },
+                )
+            }
+            composable(GOAL_EDITOR_ROUTE) {
+                GoalEditorScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                route = "$GOAL_EDITOR_ROUTE/{$GOAL_ID_KEY}",
+                arguments = listOf(navArgument(GOAL_ID_KEY) { type = NavType.StringType }),
+            ) {
+                GoalEditorScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                route = "$GOAL_DETAIL_ROUTE/{$GOAL_ID_KEY}",
+                arguments = listOf(navArgument(GOAL_ID_KEY) { type = NavType.StringType }),
+            ) {
+                GoalDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    onEditGoal = { id -> navController.navigate("$GOAL_EDITOR_ROUTE/$id") },
+                )
+            }
             composable(NavRegistry.SETTINGS.route) {
                 PersonalizeScreen(
                     onBack = { navController.popBackStack() },

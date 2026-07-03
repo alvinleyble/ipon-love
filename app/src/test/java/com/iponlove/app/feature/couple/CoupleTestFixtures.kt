@@ -13,6 +13,12 @@ import com.iponlove.app.feature.notes.domain.repository.NoteRepository
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtPayment
 import com.iponlove.app.feature.partnerdebt.domain.model.PartnerDebt
 import com.iponlove.app.feature.partnerdebt.domain.repository.PartnerDebtRepository
+import com.iponlove.app.feature.savings.domain.model.GoalContribution
+import com.iponlove.app.feature.savings.domain.model.SavingsGoal
+import com.iponlove.app.feature.savings.domain.repository.GoalContributionRepository
+import com.iponlove.app.feature.savings.domain.repository.SavingsGoalRepository
+import java.math.BigDecimal
+import java.time.Instant
 import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
@@ -109,6 +115,29 @@ internal class CountingPartnerDebtRepo : PartnerDebtRepository {
     override suspend fun upsertPayment(payment: DebtPayment) = Unit
     override suspend fun stampReceiverTxn(paymentId: String, receiverTxnId: String) = Unit
     override suspend fun purgeCoupleDebts() { purgeCount++ }
+}
+
+internal class CountingSavingsGoalRepo : SavingsGoalRepository {
+    var purgeCount = 0
+    override fun observeGoals(): Flow<List<SavingsGoal>> = emptyFlow()
+    override suspend fun getGoal(id: String): SavingsGoal? = null
+    override suspend fun upsertGoal(goal: SavingsGoal) = Unit
+    override suspend fun setArchived(id: String, archived: Boolean) = Unit
+    override suspend fun deleteGoal(id: String) = Unit
+    override suspend fun shareGoal(id: String, coupleId: String) = Unit
+    override suspend fun unshareGoal(id: String) = Unit
+    override suspend fun purgePartnerData(userId: String) { purgeCount++ }
+}
+
+internal class CountingGoalContributionRepo : GoalContributionRepository {
+    var purgeCount = 0
+    override fun observeAllActive(): Flow<List<GoalContribution>> = emptyFlow()
+    override fun observeByGoal(goalId: String): Flow<List<GoalContribution>> = emptyFlow()
+    override suspend fun addContribution(goalId: String, amount: BigDecimal, date: Instant, note: String?) = Unit
+    override suspend fun editContribution(id: String, amount: BigDecimal, date: Instant, note: String?) = Unit
+    override suspend fun deleteContribution(id: String) = Unit
+    override suspend fun softDeleteOwnForGoal(goalId: String) = Unit
+    override suspend fun purgePartnerData(userId: String) { purgeCount++ }
 }
 
 /** A [UserRepository] whose current-user emissions the test drives via [currentUser]. */

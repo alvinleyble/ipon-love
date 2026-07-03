@@ -261,6 +261,51 @@ create table note_images (
     server_rev  bigint
 );
 
+-- ---------- savings_goals ---------------------------------------------------
+-- Personal-by-default savings goal, optionally shared to the couple via the generic
+-- sharing layer (is_shared + couple_id), exactly like notes. saved_amount is NOT a column:
+-- it is DERIVED from goal_contributions (ADR-0025), so concurrent contributions from both
+-- partners never clobber a shared mutable counter under row-level LWW (ADR-0001/0007).
+-- Metadata (name/target/date/icon/color) is creator-owned; only the creator edits it.
+-- Un-sharing sets is_shared=false but RETAINS couple_id so the transition still reaches the
+-- partner's redacting view as a purge signal (ADR-0005); only unpair nulls couple_id.
+create table savings_goals (
+    id            uuid primary key default gen_random_uuid(),
+    user_id       uuid not null references users(id) on delete cascade,   -- creator / owner
+    couple_id     uuid references couples(id) on delete set null,
+    is_shared     boolean not null default false,
+    name          text not null,
+    target_amount numeric(14,2) not null,
+    target_date   date,                                                   -- optional deadline
+    icon          text,
+    color         text,
+    is_archived   boolean not null default false,
+    created_at    timestamptz not null default now(),
+    updated_at    timestamptz not null default now(),
+    is_deleted    boolean not null default false,
+    server_rev    bigint
+);
+
+-- ---------- goal_contributions ----------------------------------------------
+-- Append-only ledger backing a goal's DERIVED saved_amount. Each row is owned by its
+-- CONTRIBUTOR (user_id), so on a shared goal BOTH partners contribute, each writing their
+-- own independent rows — distinct ids never conflict under LWW (ADR-0025), which a shared
+-- stored counter would. No couple_id / is_shared column: a contribution inherits its
+-- shared-ness from its parent goal (single source of truth), gated via the join in
+-- partner_goal_contributions below.
+create table goal_contributions (
+    id         uuid primary key default gen_random_uuid(),
+    goal_id    uuid not null references savings_goals(id) on delete cascade,
+    user_id    uuid not null references users(id) on delete cascade,   -- contributor
+    amount     numeric(14,2) not null,
+    note       text,
+    date       timestamptz not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    is_deleted boolean not null default false,
+    server_rev bigint
+);
+
 -- ---------- no private spend on a shared account (ADR-0018) -----------------
 -- A shared account's balance is shown to both partners, which is only computable
 -- because ALL its activity is non-private (the principled carve-out from ADR-0011).
@@ -300,6 +345,8 @@ create trigger trg_rev_partner_debts      before insert or update on partner_deb
 create trigger trg_rev_debt_payments      before insert or update on partner_debt_payments for each row execute function set_server_rev();
 create trigger trg_rev_notes              before insert or update on notes               for each row execute function set_server_rev();
 create trigger trg_rev_note_images        before insert or update on note_images         for each row execute function set_server_rev();
+create trigger trg_rev_savings_goals      before insert or update on savings_goals       for each row execute function set_server_rev();
+create trigger trg_rev_goal_contributions before insert or update on goal_contributions  for each row execute function set_server_rev();
 
 -- ---------- Indexes (sync cursor + common queries) --------------------------
 -- Pull is "where server_rev > cursor order by server_rev", so every synced
@@ -315,6 +362,8 @@ create index idx_partner_debts_rev    on partner_debts(server_rev);
 create index idx_debt_payments_rev    on partner_debt_payments(server_rev);
 create index idx_notes_rev            on notes(server_rev);
 create index idx_note_images_rev      on note_images(server_rev);
+create index idx_savings_goals_rev        on savings_goals(server_rev);
+create index idx_goal_contributions_rev   on goal_contributions(server_rev);
 
 create index idx_accounts_user        on accounts(user_id);
 create index idx_accounts_couple      on accounts(couple_id);
@@ -330,6 +379,10 @@ create index idx_debt_payments_debt   on partner_debt_payments(debt_id);
 create index idx_notes_user           on notes(user_id);
 create index idx_notes_couple         on notes(couple_id);
 create index idx_note_images_note     on note_images(note_id);
+create index idx_savings_goals_user       on savings_goals(user_id);
+create index idx_savings_goals_couple     on savings_goals(couple_id);
+create index idx_goal_contributions_goal  on goal_contributions(goal_id);
+create index idx_goal_contributions_user  on goal_contributions(user_id);
 
 -- ============================================================================
 --  Row Level Security
@@ -359,6 +412,8 @@ alter table partner_debts           enable row level security;
 alter table partner_debt_payments   enable row level security;
 alter table notes                   enable row level security;
 alter table note_images             enable row level security;
+alter table savings_goals           enable row level security;
+alter table goal_contributions      enable row level security;
 
 -- ---- users -----------------------------------------------------------------
 -- Same-couple read is fine: users rows carry no private content (just name +
@@ -432,6 +487,39 @@ create policy debt_payments_couple on partner_debt_payments for all
 create policy note_images_owner on note_images for all
     using (note_id in (select id from notes where user_id = auth.uid()))
     with check (note_id in (select id from notes where user_id = auth.uid()));
+
+-- ---- savings_goals ---------------------------------------------------------
+-- Writes are owner-only (the creator owns the metadata — name/target/date/icon/color).
+-- SELECT is broader — own goals PLUS goals shared into the caller's couple — because the
+-- partner must read a shared goal's BASE row so a goal_contributions insert can reference
+-- it (the redacting partner_savings_goals view can't satisfy an RLS sub-select). A shared
+-- goal has no per-field privacy, so exposing its base row leaks nothing the redacting view
+-- wasn't already showing. INSERT/UPDATE/DELETE stay owner-only.                 [ADR-0025]
+create policy savings_goals_select on savings_goals for select
+    using (user_id = auth.uid() or (couple_id = auth_couple_id() and is_shared));
+create policy savings_goals_insert on savings_goals for insert
+    with check (user_id = auth.uid());
+create policy savings_goals_update on savings_goals for update
+    using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy savings_goals_delete on savings_goals for delete
+    using (user_id = auth.uid());
+
+-- ---- goal_contributions ----------------------------------------------------
+-- You read/edit/delete only your OWN contribution rows (`using`); partner contributions
+-- arrive via the partner_goal_contributions view, never this base table. You may INSERT a
+-- contribution only against a goal you can access — your own, or a goal shared into your
+-- couple — so both partners fund a shared goal (`with check`). The savings_goals sub-select
+-- is satisfied by savings_goals_select above.                                   [ADR-0025]
+create policy goal_contributions_author on goal_contributions for all
+    using (user_id = auth.uid())
+    with check (
+        user_id = auth.uid()
+        and goal_id in (
+            select id from savings_goals
+            where user_id = auth.uid()
+               or (couple_id = auth_couple_id() and is_shared)
+        )
+    );
 
 -- ============================================================================
 --  Redacting partner views  [ADR-0005]
@@ -541,6 +629,50 @@ create view partner_note_images with (security_invoker = false) as
 grant select on partner_transactions, partner_accounts, partner_categories,
                 partner_notes, partner_note_images to authenticated;
 
+-- A savings goal is hidden from the partner when unshared or deleted; its row still crosses
+-- (couple_id retained on un-share) so the client purges its local copy. A shared goal has no
+-- per-field privacy beyond the shared/deleted gate — name/target are the point of sharing.
+create view partner_savings_goals with (security_invoker = false) as
+    select
+        g.id,
+        g.user_id,
+        case when g.is_shared = false or g.is_deleted then null else g.name          end as name,
+        case when g.is_shared = false or g.is_deleted then null else g.target_amount  end as target_amount,
+        case when g.is_shared = false or g.is_deleted then null else g.target_date    end as target_date,
+        case when g.is_shared = false or g.is_deleted then null else g.icon           end as icon,
+        case when g.is_shared = false or g.is_deleted then null else g.color          end as color,
+        case when g.is_shared = false or g.is_deleted then null else g.is_archived    end as is_archived,
+        g.is_shared,
+        g.is_deleted,
+        g.couple_id,
+        g.updated_at,
+        g.server_rev
+    from savings_goals g
+    where g.user_id <> auth.uid()
+      and g.couple_id = auth_couple_id();
+
+-- The partner's contributions to any goal shared in the couple (whether they or you own the
+-- goal). amount/note/date are nulled once the contribution is deleted OR its parent goal is
+-- unshared/deleted, so the removal propagates to the partner's replica as a purge signal
+-- (ADR-0005). A contribution carries no couple_id — its shared-ness is the goal's, via the join.
+create view partner_goal_contributions with (security_invoker = false) as
+    select
+        gc.id,
+        gc.goal_id,
+        gc.user_id,
+        case when gc.is_deleted or g.is_deleted or g.is_shared = false then null else gc.amount end as amount,
+        case when gc.is_deleted or g.is_deleted or g.is_shared = false then null else gc.note   end as note,
+        case when gc.is_deleted or g.is_deleted or g.is_shared = false then null else gc.date   end as date,
+        gc.is_deleted,
+        gc.updated_at,
+        gc.server_rev
+    from goal_contributions gc
+    join savings_goals g on g.id = gc.goal_id
+    where gc.user_id <> auth.uid()
+      and g.couple_id = auth_couple_id();
+
+grant select on partner_savings_goals, partner_goal_contributions to authenticated;
+
 -- ============================================================================
 --  Pairing / unpairing RPCs  [ADR-0006, 0008]
 --  SECURITY DEFINER: they must touch rows the caller's RLS can't (e.g. join a
@@ -644,8 +776,8 @@ end;
 $$;
 
 -- Dissolve the caller's couple: both leave, shared budgets soft-deleted, shared
--- notes revert to private-to-owner, shared accounts & categories revert-to-creator,
--- couple soft-deleted. Each client then bulk-purges replicated non-owned rows on
+-- notes + savings goals revert to private-to-owner, shared accounts & categories
+-- revert-to-creator, couple soft-deleted. Each client then bulk-purges replicated non-owned rows on
 -- seeing its own couple_id go null.                                     [ADR-0008, 0018]
 create or replace function unpair()
 returns void
@@ -676,6 +808,13 @@ begin
     update notes set is_shared = false, couple_id = null, updated_at = now()
         where couple_id = v_couple_id and is_shared = true;
 
+    -- Shared savings goals revert to the creator's personal goals (ADR-0025), like notes.
+    -- Goal contributions are untouched: each is owned by its contributor, and each client
+    -- purges the OTHER partner's contribution replicas when it sees couple_id clear. Own
+    -- contributions to an ex-partner's goal are left as benign, invisible orphans.
+    update savings_goals set is_shared = false, couple_id = null, updated_at = now()
+        where couple_id = v_couple_id and is_shared = true;
+
     -- Shared accounts & categories revert to their creator's personal rows (ADR-0018):
     -- the creator keeps the account with its balance/history; the other partner's client
     -- purges its replica (created_by <> self) when it sees couple_id clear.
@@ -684,6 +823,26 @@ begin
 
     update categories set user_id = created_by, couple_id = null, updated_at = now()
         where couple_id = v_couple_id and created_by is not null;
+
+    -- Ring the live-sync bell (ADR-0015) from the DATABASE, inside this same transaction, so the
+    -- partner who did NOT initiate the unpair pulls immediately instead of waiting for a coarse
+    -- trigger (app resume / periodic background sync / manual pull-to-refresh). This is the only
+    -- server-side broadcast in the schema, and it has to be one: the instant unpair() commits the
+    -- initiator's own auth_couple_id() goes null (ADR-0008), so a CLIENT ping after the RPC is
+    -- RLS-blocked by couple_channel_members, and pinging before the RPC races the mutation.
+    -- realtime.send() runs inside this SECURITY DEFINER (postgres-owned => BYPASSRLS) function, so
+    -- it is exempt from that per-broadcaster RLS by construction; emitting it BEFORE we null
+    -- couple_id also keeps the channel predicate satisfied even if that exemption were ever removed.
+    -- Payload is an EMPTY object: the ping carries zero row data (ADR-0015 redaction) and the
+    -- partner reacts by PULLING through the redacting views (ADR-0005). private=true matches the
+    -- client's isPrivate channel, and Realtime fans the message out only after COMMIT, so the
+    -- partner never pulls before the mutation lands.
+    perform realtime.send(
+        '{}'::jsonb,                     -- payload: empty, content-less bell (ADR-0015)
+        'changed',                       -- event: matches SupabaseCoupleBell.EVENT
+        'couple:' || v_couple_id::text,  -- topic: this dissolving couple's channel
+        true                             -- private: matches the client's isPrivate = true
+    );
 
     update users set couple_id = null, updated_at = now() where couple_id = v_couple_id;
 

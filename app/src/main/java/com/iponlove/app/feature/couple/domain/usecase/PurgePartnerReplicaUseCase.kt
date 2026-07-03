@@ -8,6 +8,8 @@ import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import com.iponlove.app.feature.notes.domain.repository.NoteAttachmentRepository
 import com.iponlove.app.feature.notes.domain.repository.NoteRepository
 import com.iponlove.app.feature.partnerdebt.domain.repository.PartnerDebtRepository
+import com.iponlove.app.feature.savings.domain.repository.GoalContributionRepository
+import com.iponlove.app.feature.savings.domain.repository.SavingsGoalRepository
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import javax.inject.Inject
 
@@ -34,6 +36,8 @@ class PurgePartnerReplicaUseCase @Inject constructor(
     private val noteAttachmentRepository: NoteAttachmentRepository,
     private val budgetRepository: BudgetRepository,
     private val partnerDebtRepository: PartnerDebtRepository,
+    private val savingsGoalRepository: SavingsGoalRepository,
+    private val goalContributionRepository: GoalContributionRepository,
     private val cursors: SyncCursorStore,
 ) {
     suspend operator fun invoke(userId: String) {
@@ -44,11 +48,19 @@ class PurgePartnerReplicaUseCase @Inject constructor(
         noteAttachmentRepository.purgePartnerData(userId)
         budgetRepository.purgeSharedBudgets()
         partnerDebtRepository.purgeCoupleDebts()
+        // Shared goals revert to the ex-partner's personal goals server-side (unpair RPC); this
+        // device purges the partner's replicated goals + contributions (ADR-0025). Own
+        // contributions to the ex-partner's goal are left as benign orphans (ignored by the
+        // calculator once the goal is gone).
+        savingsGoalRepository.purgePartnerData(userId)
+        goalContributionRepository.purgePartnerData(userId)
 
         cursors.setCursor(SyncTable.PARTNER_ACCOUNTS, 0)
         cursors.setCursor(SyncTable.PARTNER_CATEGORIES, 0)
         cursors.setCursor(SyncTable.PARTNER_TRANSACTIONS, 0)
         cursors.setCursor(SyncTable.PARTNER_NOTES, 0)
         cursors.setCursor(SyncTable.PARTNER_NOTE_IMAGES, 0)
+        cursors.setCursor(SyncTable.PARTNER_SAVINGS_GOALS, 0)
+        cursors.setCursor(SyncTable.PARTNER_GOAL_CONTRIBUTIONS, 0)
     }
 }
