@@ -58,6 +58,35 @@ class SyncEngineTest {
     }
 
     @Test
+    fun sync_pushFailureIsIsolated_stillPushesOthersAndPulls_thenRethrows() = runTest {
+        // F1: a table whose push is RLS-rejected must NOT abort the run before the pull phase —
+        // otherwise the client never learns why (e.g. a goal was unshared) and the poisoned row
+        // wedges every future sync. The failure is remembered and rethrown after pull.
+        val log = mutableListOf<String>()
+        val poison = object : TableSyncer {
+            override val table = SyncTable.GOAL_CONTRIBUTIONS
+            override suspend fun push(): Boolean {
+                log += "push:GOAL_CONTRIBUTIONS"
+                throw IllegalStateException("rls-reject")
+            }
+            override suspend fun pull() { log += "pull:GOAL_CONTRIBUTIONS" }
+        }
+        val engine = SyncEngine(
+            setOf(RecordingSyncer(SyncTable.USERS, log), poison, RecordingSyncer(SyncTable.NOTES, log)),
+        )
+
+        val result = runCatching { engine.sync() }
+
+        assertThat(result.isFailure).isTrue()
+        assertThat(engine.state.value).isEqualTo(SyncState.Error("rls-reject"))
+        // Every table still got its push attempt, and every table still pulled.
+        assertThat(log).containsAtLeast("push:USERS", "push:GOAL_CONTRIBUTIONS", "push:NOTES")
+        assertThat(log.filter { it.startsWith("pull:") }).containsExactlyElementsIn(
+            listOf("pull:USERS", "pull:GOAL_CONTRIBUTIONS", "pull:NOTES"),
+        )
+    }
+
+    @Test
     fun sync_emptySyncers_isNoOpSuccess() = runTest {
         val engine = SyncEngine(emptySet())
 

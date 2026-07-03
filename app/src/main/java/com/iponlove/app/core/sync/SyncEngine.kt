@@ -63,10 +63,17 @@ class SyncEngine(
             // Upload pending files before pushing rows so rows carry the Storage URL.
             for (step in preSyncSteps) step.run()
             // Push parent→child (sequential, FK-ordered) so the server sees parents first.
-            for (syncer in ordered) syncer.push()
+            // Per-table isolation: one table's rejected push (e.g. an RLS reject on a
+            // goal_contribution whose goal was unshared out from under a pending offline row —
+            // F1) must NOT abort the run before the pull phase, or the client never learns the
+            // goal is gone and the poisoned row wedges every subsequent sync forever. Remember
+            // the first failure, keep pushing the rest, still pull, then rethrow so error/retry
+            // semantics are unchanged (ADR-0002, ADR-0009).
+            val pushError = pushAllIsolated()
             // Pull all tables in parallel — independent SELECTs, each manages its own cursor.
             pullAllParallel()
             calibrateClock()
+            pushError?.let { throw it }
             _state.value = SyncState.Success(now())
             return true
         } catch (t: Throwable) {
@@ -96,9 +103,17 @@ class SyncEngine(
         try {
             for (step in preSyncSteps) step.run()
             var pushedAnything = false
+            var pushError: Throwable? = null
+            // Same per-table isolation as [sync] (F1): a rejected table can't stop the others
+            // from pushing; remember the first failure and rethrow after attempting all tables.
             for (syncer in ordered) {
-                if (syncer.push()) pushedAnything = true
+                try {
+                    if (syncer.push()) pushedAnything = true
+                } catch (t: Throwable) {
+                    if (pushError == null) pushError = t
+                }
             }
+            pushError?.let { throw it }
             return pushedAnything
         } finally {
             inFlight.unlock()
@@ -122,6 +137,23 @@ class SyncEngine(
         } finally {
             inFlight.unlock()
         }
+    }
+
+    /**
+     * Push every table in FK order, isolating each table's failure: a rejected push is caught so
+     * the remaining (and, in [sync], the pull) still run. Returns the FIRST failure, or null when
+     * every table pushed cleanly — the caller rethrows it to preserve error/retry semantics.
+     */
+    private suspend fun pushAllIsolated(): Throwable? {
+        var pushError: Throwable? = null
+        for (syncer in ordered) {
+            try {
+                syncer.push()
+            } catch (t: Throwable) {
+                if (pushError == null) pushError = t
+            }
+        }
+        return pushError
     }
 
     /** Fires all table pulls concurrently and waits for every one to finish. */

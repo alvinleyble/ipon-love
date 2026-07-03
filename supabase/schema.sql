@@ -505,13 +505,18 @@ create policy savings_goals_delete on savings_goals for delete
     using (user_id = auth.uid());
 
 -- ---- goal_contributions ----------------------------------------------------
--- You read/edit/delete only your OWN contribution rows (`using`); partner contributions
--- arrive via the partner_goal_contributions view, never this base table. You may INSERT a
--- contribution only against a goal you can access — your own, or a goal shared into your
--- couple — so both partners fund a shared goal (`with check`). The savings_goals sub-select
--- is satisfied by savings_goals_select above.                                   [ADR-0025]
-create policy goal_contributions_author on goal_contributions for all
-    using (user_id = auth.uid())
+-- You read/edit/delete only your OWN contribution rows; partner contributions arrive via the
+-- partner_goal_contributions view, never this base table. Split per-command (not `for all`) so
+-- goal membership is re-validated on INSERT ONLY: you may INSERT a contribution only against a
+-- goal you can access — your own, or a goal shared into your couple — so both partners fund a
+-- shared goal. UPDATE/DELETE are ownership-only and deliberately NOT re-gated on goal membership:
+-- an author must always be able to edit or tombstone their own row even after the goal is
+-- unshared/unpaired out from under a pending offline contribution — otherwise that row can never
+-- be corrected and would wedge the author's whole sync (F1). The savings_goals sub-select is
+-- satisfied by savings_goals_select above.                                       [ADR-0025]
+create policy goal_contributions_select on goal_contributions for select
+    using (user_id = auth.uid());
+create policy goal_contributions_insert on goal_contributions for insert
     with check (
         user_id = auth.uid()
         and goal_id in (
@@ -520,6 +525,10 @@ create policy goal_contributions_author on goal_contributions for all
                or (couple_id = auth_couple_id() and is_shared)
         )
     );
+create policy goal_contributions_update on goal_contributions for update
+    using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy goal_contributions_delete on goal_contributions for delete
+    using (user_id = auth.uid());
 
 -- ============================================================================
 --  Redacting partner views  [ADR-0005]

@@ -25,6 +25,13 @@ interface SavingsGoalDao {
     @Query("SELECT * FROM savings_goals WHERE id = :id")
     suspend fun getById(id: String): SavingsGoalEntity?
 
+    /** Ids of goals this user may still push a contribution against — own goals, or goals shared
+     *  into the couple — mirroring the server's `goal_contributions` INSERT check (ADR-0025). Lets
+     *  the contribution syncer skip pushing a contribution whose goal was unshared/deleted out from
+     *  under a pending offline row, which would otherwise be RLS-rejected forever (F1). */
+    @Query("SELECT id FROM savings_goals WHERE (userId = :userId OR isShared = 1) AND isDeleted = 0")
+    suspend fun pushableGoalIds(userId: String): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(goal: SavingsGoalEntity)
 
