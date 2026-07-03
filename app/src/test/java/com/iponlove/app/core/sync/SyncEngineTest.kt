@@ -112,15 +112,88 @@ class SyncEngineTest {
         runCurrent() // let the first run start and park at the gate
 
         assertThat(engine.state.value).isEqualTo(SyncState.Syncing)
-        // A second trigger while in flight must not start a second pass.
-        assertThat(engine.sync()).isFalse()
-        assertThat(runs.get()).isEqualTo(1)
+        // A second trigger while in flight must not start a second pass — it awaits the
+        // in-flight run's own terminal result instead of returning immediately (F4), so a
+        // caller gating a decision on this call never sees a premature/stale answer.
+        var secondResult: Boolean? = null
+        val second = launch { secondResult = engine.sync() }
+        runCurrent()
+        assertThat(runs.get()).isEqualTo(1) // still only the one pass parked at the gate
 
         gate.complete(Unit)
         first.join()
+        second.join()
 
         assertThat(runs.get()).isEqualTo(1)
+        assertThat(secondResult).isTrue()
         assertThat(engine.state.value).isInstanceOf(SyncState.Success::class.java)
+    }
+
+    @Test
+    fun sync_coalescedCall_propagatesFailure_ofTheRunItRacedWith() = runTest {
+        // F4: a coalesced sync() must see the *actual* outcome of the run it raced with,
+        // not silently report success/false when that run actually failed.
+        val gate = CompletableDeferred<Unit>()
+        val gated = object : TableSyncer {
+            override val table = SyncTable.USERS
+            override suspend fun push() = false
+            override suspend fun pull() {
+                gate.await()
+                throw IllegalStateException("boom")
+            }
+        }
+        val engine = SyncEngine(setOf(gated))
+
+        val first = launch { runCatching { engine.sync() } }
+        runCurrent() // first run parks at the gate, holding the lock
+
+        var secondResult: Result<Boolean>? = null
+        val second = launch { secondResult = runCatching { engine.sync() } }
+        runCurrent()
+
+        gate.complete(Unit)
+        first.join()
+        second.join()
+
+        assertThat(secondResult?.isFailure).isTrue()
+        assertThat(engine.state.value).isEqualTo(SyncState.Error("boom"))
+    }
+
+    @Test
+    fun sync_coalescingWithInFlightPushOnly_doesNotReadStaleResult_fromAPriorSync() = runTest {
+        // A sync() that coalesces against an in-flight pushOnly() (not another sync()) must
+        // not report a long-finished earlier sync's leftover Success as if it were the
+        // outcome of the run it just raced with — it has no terminal result to await, so it
+        // correctly falls back to false.
+        val gate = CompletableDeferred<Unit>()
+        var gateArmed = false
+        val gated = object : TableSyncer {
+            override val table = SyncTable.USERS
+            override suspend fun push(): Boolean {
+                if (gateArmed) gate.await()
+                return false
+            }
+            override suspend fun pull() {}
+        }
+        val engine = SyncEngine(setOf(gated))
+
+        // First run completes cleanly, publishing a Success result.
+        assertThat(engine.sync()).isTrue()
+
+        // pushOnly() takes the lock and parks mid-flight, holding no terminal-result deferred.
+        gateArmed = true
+        val pushRun = launch { engine.pushOnly() }
+        runCurrent()
+
+        var syncResult: Boolean? = null
+        val coalescedSync = launch { syncResult = engine.sync() }
+        runCurrent()
+
+        gate.complete(Unit)
+        pushRun.join()
+        coalescedSync.join()
+
+        assertThat(syncResult).isFalse()
     }
 
     @Test

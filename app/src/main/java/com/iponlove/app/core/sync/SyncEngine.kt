@@ -1,6 +1,7 @@
 package com.iponlove.app.core.sync
 
 import com.iponlove.app.core.sync.data.ClockOffsetStore
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,15 +50,27 @@ class SyncEngine(
 
     private val inFlight = Mutex()
 
+    // The in-flight (or just-completed) sync's terminal result, published for callers whose
+    // own sync() call coalesces (F4): they await the *actual* outcome of the run they raced
+    // with instead of sampling [state], which can be stale (a prior user's/prior run's
+    // Success) or premature (still Syncing because this caller's own attempt lost the race).
+    // Cleared whenever pushOnly()/pullOnly() take the lock so a coalescing sync() never reports
+    // an unrelated older sync's result as if it were the outcome of the run it just raced with.
+    @Volatile private var currentRun: CompletableDeferred<Boolean>? = null
+
     private val _state = MutableStateFlow<SyncState>(SyncState.Idle)
     val state: StateFlow<SyncState> = _state.asStateFlow()
 
     /**
-     * Run one full sync. Coalesces with any in-flight run (returns false if one was
-     * already running); returns true if this call performed the sync.
+     * Run one full sync. Coalesces with any in-flight run: if one is already running, this
+     * call awaits *that* run's terminal result (throwing if it failed) instead of returning
+     * immediately, so every caller — whether it won the race or not — sees the actual outcome
+     * of the run it participated in (F4). Returns true if that run succeeded.
      */
     suspend fun sync(): Boolean {
-        if (!inFlight.tryLock()) return false
+        if (!inFlight.tryLock()) return currentRun?.await() ?: false
+        val deferred = CompletableDeferred<Boolean>()
+        currentRun = deferred
         try {
             _state.value = SyncState.Syncing
             // Upload pending files before pushing rows so rows carry the Storage URL.
@@ -75,9 +88,11 @@ class SyncEngine(
             calibrateClock()
             pushError?.let { throw it }
             _state.value = SyncState.Success(now())
+            deferred.complete(true)
             return true
         } catch (t: Throwable) {
             _state.value = SyncState.Error(t.message ?: t.javaClass.simpleName)
+            deferred.completeExceptionally(t)
             throw t
         } finally {
             inFlight.unlock()
@@ -100,6 +115,9 @@ class SyncEngine(
      */
     suspend fun pushOnly(): Boolean {
         if (!inFlight.tryLock()) return false
+        // Not a full sync() run, so it has no terminal Boolean to publish — clear any stale
+        // deferred so a coalescing sync() call doesn't await an unrelated older run's result.
+        currentRun = null
         try {
             for (step in preSyncSteps) step.run()
             var pushedAnything = false
@@ -131,6 +149,8 @@ class SyncEngine(
      */
     suspend fun pullOnly(): Boolean {
         if (!inFlight.tryLock()) return false
+        // Not a full sync() run — see [pushOnly]'s comment.
+        currentRun = null
         try {
             pullAllParallel()
             return true

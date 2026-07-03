@@ -35,7 +35,6 @@ import androidx.work.WorkManager
 import com.iponlove.app.core.session.AccountSwitchGuard
 import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.SyncEngine
-import com.iponlove.app.core.sync.SyncState
 import com.iponlove.app.core.sync.SyncWorker
 import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
 import com.iponlove.app.core.ui.theme.IponTheme
@@ -141,11 +140,16 @@ class MainActivity : FragmentActivity() {
                             // if a different account is now signed in (ADR-0021).
                             accountSwitchGuard.onAuthenticated(current.userId)
                             ensureCurrentUserRow()
-                            runCatching { syncEngine.sync() }
-                            // The new-user gate (ADR-0024) reads this *first* sync's outcome —
-                            // never local emptiness, which would duplicate-seed a reinstall or
-                            // second device. A failed/offline sync defers to the next launch.
-                            val syncSucceeded = syncEngine.state.value is SyncState.Success
+                            // The new-user gate (ADR-0024) reads *this call's own* outcome —
+                            // never local emptiness (would duplicate-seed a reinstall/second
+                            // device) and never the shared syncEngine.state snapshot (F4: a
+                            // concurrent onStart() sync can coalesce this call and leave state
+                            // pointing at a stale Syncing/prior-user Success read at the wrong
+                            // instant). sync() now awaits the actual result of whichever run
+                            // this call raced with, so the Boolean it returns is always the
+                            // right answer for this login. A failed/offline sync defers to the
+                            // next launch.
+                            val syncSucceeded = runCatching { syncEngine.sync() }.getOrDefault(false)
                             initialSyncDone = true
                             showOnboarding = shouldShowOnboarding(syncSucceeded)
                             materializeRecurringRules()
