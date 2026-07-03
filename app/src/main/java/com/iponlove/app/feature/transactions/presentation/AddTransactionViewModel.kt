@@ -17,7 +17,7 @@ import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.AttachReceiptUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.GetTransactionUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.UpsertTransactionUseCase
-import com.iponlove.app.feature.widget.presentation.BalanceWidget
+import com.iponlove.app.feature.widget.presentation.AddTransactionWidget
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -176,7 +176,7 @@ class AddTransactionViewModel @Inject constructor(
                     upsertTransaction(result.transaction)
                 }
                 clearDraft()
-                BalanceWidget().updateAll(context)
+                AddTransactionWidget().updateAll(context)
                 onDone()
             }
         }

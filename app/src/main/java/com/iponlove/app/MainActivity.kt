@@ -53,7 +53,7 @@ import com.iponlove.app.feature.settings.domain.model.ThemePreferences
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
 import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
 import androidx.glance.appwidget.updateAll
-import com.iponlove.app.feature.widget.presentation.BalanceWidget
+import com.iponlove.app.feature.widget.presentation.AddTransactionWidget
 import com.iponlove.app.navigation.IponApp
 import com.iponlove.app.navigation.OnboardingGraph
 import dagger.hilt.android.AndroidEntryPoint
@@ -171,7 +171,7 @@ class MainActivity : FragmentActivity() {
                                 ExistingWorkPolicy.REPLACE,
                                 BudgetAlertWorker.buildRequest(),
                             )
-                            BalanceWidget().updateAll(applicationContext)
+                            AddTransactionWidget().updateAll(applicationContext)
                         }
                         LaunchedEffect(current.userId) { watchUnpair() }
                         // Keep IponApp always composed — never a branch swap. Swapping the

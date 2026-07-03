@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.glance.appwidget.updateAll
 import com.iponlove.app.core.sync.SyncEngine
-import com.iponlove.app.feature.widget.presentation.BalanceWidget
+import com.iponlove.app.feature.widget.presentation.AddTransactionWidget
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
@@ -73,7 +73,7 @@ class TransactionsViewModel @Inject constructor(
     fun delete(id: String) {
         viewModelScope.launch {
             deleteTransaction(id)
-            BalanceWidget().updateAll(context)
+            AddTransactionWidget().updateAll(context)
         }
     }
 

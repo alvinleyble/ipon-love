@@ -93,7 +93,7 @@ class QuickAddViewModel @Inject constructor(
                     isPrivate = false,
                 ),
             )
-            BalanceWidget().updateAll(context)
+            AddTransactionWidget().updateAll(context)
             onSaved()
         }
     }

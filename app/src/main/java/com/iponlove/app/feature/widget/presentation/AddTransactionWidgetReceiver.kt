@@ -3,6 +3,6 @@ package com.iponlove.app.feature.widget.presentation
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 
-class BalanceWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = BalanceWidget()
+class AddTransactionWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = AddTransactionWidget()
 }
