@@ -21,6 +21,7 @@ class AppLockSetupViewModel @Inject constructor(
     private val setPin: SetPinUseCase,
     private val enableBiometric: EnableBiometricUseCase,
     private val markNudgeShown: MarkBiometricNudgeShownUseCase,
+    private val appLockManager: AppLockManager,
     observeAppLock: ObserveAppLockUseCase,
 ) : ViewModel() {
 
@@ -71,6 +72,7 @@ class AppLockSetupViewModel @Inject constructor(
         }
         viewModelScope.launch {
             setPin(newPin)
+            appLockManager.unlock()
             _uiState.update { it.copy(pinSetSuccess = true) }
         }
     }
