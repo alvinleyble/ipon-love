@@ -664,14 +664,27 @@ create view partner_savings_goals with (security_invoker = false) as
 -- goal). amount/note/date are nulled once the contribution is deleted OR its parent goal is
 -- unshared/deleted, so the removal propagates to the partner's replica as a purge signal
 -- (ADR-0005). A contribution carries no couple_id — its shared-ness is the goal's, via the join.
+--
+-- Content is ALSO nulled when the contributor is no longer a current member of the goal's couple
+-- (F3): a goal keeps its contribution rows forever, so re-sharing an old goal into a DIFFERENT
+-- couple would otherwise resurface an ex-partner's amount + note to the new partner and re-add it
+-- to the derived total on both devices. Gating on live membership (`users.couple_id = g.couple_id`)
+-- keeps the legitimate same-couple unshare→reshare case intact (the partner is still a member) and
+-- redacts only ex-members, which the mapper/syncer already treat as a purge (null amount → deleted).
 create view partner_goal_contributions with (security_invoker = false) as
     select
         gc.id,
         gc.goal_id,
         gc.user_id,
-        case when gc.is_deleted or g.is_deleted or g.is_shared = false then null else gc.amount end as amount,
-        case when gc.is_deleted or g.is_deleted or g.is_shared = false then null else gc.note   end as note,
-        case when gc.is_deleted or g.is_deleted or g.is_shared = false then null else gc.date   end as date,
+        case when gc.is_deleted or g.is_deleted or g.is_shared = false
+                  or gc.user_id not in (select id from users where couple_id = g.couple_id)
+             then null else gc.amount end as amount,
+        case when gc.is_deleted or g.is_deleted or g.is_shared = false
+                  or gc.user_id not in (select id from users where couple_id = g.couple_id)
+             then null else gc.note   end as note,
+        case when gc.is_deleted or g.is_deleted or g.is_shared = false
+                  or gc.user_id not in (select id from users where couple_id = g.couple_id)
+             then null else gc.date   end as date,
         gc.is_deleted,
         gc.updated_at,
         gc.server_rev
