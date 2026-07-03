@@ -41,7 +41,13 @@ class NavbarViewModel @Inject constructor(
         NavUiState(loaded = true, isPaired = paired, config = config)
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
+        // Eagerly, not WhileSubscribed: this VM is Activity-scoped and drives the always-present
+        // bottom bar. WhileSubscribed(5s) let the cached value freeze stale whenever the sole
+        // subscriber (IponApp) was off-composition for longer than the grace window — e.g. the
+        // whole onboarding flow — so a pairing that landed during that gap never reached the bar
+        // until a full process restart (F11). The upstream is two cheap Room/DataStore flows, so
+        // observing continuously for the session costs nothing and can't go stale.
+        started = SharingStarted.Eagerly,
         initialValue = NavUiState(),
     )
 

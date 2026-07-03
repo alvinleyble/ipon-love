@@ -142,7 +142,7 @@ private fun IponAppContent(
             NavigationBar {
                 // The fixed center ⊕ Add sits in the middle of the bar (ADR-0026): render the
                 // first half of the pins, the accented Add slot, then the rest, then More.
-                val splitIndex = ((visiblePins.size + 2) / 2).coerceAtMost(visiblePins.size)
+                val splitIndex = ((visiblePins.size + 1) / 2).coerceAtMost(visiblePins.size)
                 visiblePins.take(splitIndex).forEach { dest ->
                     PinBarItem(dest, currentRoute, navController)
                 }

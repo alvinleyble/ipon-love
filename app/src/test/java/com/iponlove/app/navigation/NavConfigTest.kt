@@ -6,43 +6,36 @@ import org.junit.Test
 class NavConfigTest {
 
     @Test
-    fun pin_appendsWhenRoomAndNotPresent() {
-        val config = NavConfig(listOf("records", "analysis"))
-        assertThat(config.pin("manage").pinnedIds)
-            .containsExactly("records", "analysis", "manage").inOrder()
+    fun replace_swapsPinInPlaceKeepingCount() {
+        val config = NavConfig(listOf("records", "analysis", "couple"))
+        assertThat(config.replace("analysis", "manage").pinnedIds)
+            .containsExactly("records", "manage", "couple").inOrder()
     }
 
     @Test
-    fun pin_isNoOpWhenAlreadyPinned() {
-        val config = NavConfig(listOf("records", "analysis"))
-        assertThat(config.pin("records").pinnedIds).isEqualTo(config.pinnedIds)
+    fun replace_isNoOpWhenOldIdNotPinned() {
+        val config = NavConfig(listOf("records", "analysis", "couple"))
+        assertThat(config.replace("manage", "savings").pinnedIds).isEqualTo(config.pinnedIds)
     }
 
     @Test
-    fun pin_isNoOpWhenAtMax() {
-        val config = NavConfig(listOf("records", "analysis", "manage"))
-        assertThat(config.pin("notes").pinnedIds).hasSize(NavRegistry.MAX_PINS)
-        assertThat(config.pin("notes").pinnedIds).doesNotContain("notes")
+    fun replace_isNoOpWhenNewIdAlreadyPinned() {
+        // Swapping in an already-pinned module would shrink the bar / duplicate — rejected.
+        val config = NavConfig(listOf("records", "analysis", "couple"))
+        assertThat(config.replace("records", "analysis").pinnedIds).isEqualTo(config.pinnedIds)
     }
 
     @Test
-    fun pin_allowsSettingsNowThatItIsPinnable() {
-        // Settings flipped to pinnable in ADR-0026, so it can now sit on the bar.
-        val config = NavConfig(listOf("records"))
-        assertThat(config.pin("settings").pinnedIds)
-            .containsExactly("records", "settings").inOrder()
+    fun replace_isNoOpWhenNewIdNotPinnable() {
+        // Unknown/non-pinnable ids can't be swapped onto the bar.
+        val config = NavConfig(listOf("records", "analysis", "couple"))
+        assertThat(config.replace("records", "bogus").pinnedIds).isEqualTo(config.pinnedIds)
     }
 
     @Test
-    fun unpin_removesWhenMoreThanOne() {
-        val config = NavConfig(listOf("records", "analysis"))
-        assertThat(config.unpin("records").pinnedIds).containsExactly("analysis")
-    }
-
-    @Test
-    fun unpin_isNoOpOnLastPin() {
-        val config = NavConfig(listOf("records"))
-        assertThat(config.unpin("records").pinnedIds).containsExactly("records")
+    fun replace_alwaysKeepsExactlyMaxPins() {
+        val config = NavConfig(listOf("records", "analysis", "couple"))
+        assertThat(config.replace("couple", "savings").pinnedIds).hasSize(NavRegistry.MAX_PINS)
     }
 
     @Test
@@ -76,6 +69,24 @@ class NavConfigTest {
         // Settings is pinnable as of ADR-0026, so a saved "settings" pin survives.
         val config = NavConfig.deserialize("records,settings,analysis")
         assertThat(config.pinnedIds).containsExactly("records", "settings", "analysis").inOrder()
+    }
+
+    @Test
+    fun deserialize_padsLegacyOneIdConfigUpToMaxPins() {
+        // Legacy config predating the fixed-count rule: a single valid id is padded to exactly
+        // MAX_PINS using registry order (records, analysis, manage, couple, ...).
+        val config = NavConfig.deserialize("records")
+        assertThat(config.pinnedIds).hasSize(NavRegistry.MAX_PINS)
+        assertThat(config.pinnedIds).containsExactly("records", "analysis", "manage").inOrder()
+    }
+
+    @Test
+    fun deserialize_padsLegacyTwoIdConfigPreservingIntentOrder() {
+        // The stored ids keep their order and position; only the missing slots are filled from the
+        // registry-order fallback (independent of pairing state, so paired-only "couple" is kept).
+        val config = NavConfig.deserialize("couple,records")
+        assertThat(config.pinnedIds).hasSize(NavRegistry.MAX_PINS)
+        assertThat(config.pinnedIds).containsExactly("couple", "records", "analysis").inOrder()
     }
 
     @Test

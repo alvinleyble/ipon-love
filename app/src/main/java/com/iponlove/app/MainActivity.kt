@@ -132,8 +132,15 @@ class MainActivity : FragmentActivity() {
                 }
                 when (val current = status) {
                     is AuthStatus.Authenticated -> {
-                        var initialSyncDone by remember(current.userId) { mutableStateOf(false) }
-                        var showOnboarding by remember(current.userId) { mutableStateOf(false) }
+                        // One atomic decision, not two states: null = undecided (splash), true =
+                        // onboard, false = main app. Splitting this into a separate `syncDone` flag
+                        // plus a lagging `showOnboarding` opened a one-frame window where the gate
+                        // read "done but not onboarding" and mounted IponApp for a brand-new,
+                        // not-yet-paired user — constructing the Activity-scoped NavbarViewModel too
+                        // early, which then froze its pairing state stale across onboarding (F11).
+                        var onboardingDecision by remember(current.userId) {
+                            mutableStateOf<Boolean?>(null)
+                        }
                         LaunchedEffect(current.userId) {
                             // Defensive net for a sign-out that never wiped (crash, reinstall,
                             // restored session): purge stale local data before the first sync
@@ -150,8 +157,8 @@ class MainActivity : FragmentActivity() {
                             // right answer for this login. A failed/offline sync defers to the
                             // next launch.
                             val syncSucceeded = runCatching { syncEngine.sync() }.getOrDefault(false)
-                            initialSyncDone = true
-                            showOnboarding = shouldShowOnboarding(syncSucceeded)
+                            // Single write — the gate never observes "decided" without the answer.
+                            onboardingDecision = shouldShowOnboarding(syncSucceeded)
                             materializeRecurringRules()
                             val wm = WorkManager.getInstance(applicationContext)
                             wm.enqueueUniqueWork(
@@ -170,10 +177,10 @@ class MainActivity : FragmentActivity() {
                         // Keep IponApp always composed — never a branch swap. Swapping the
                         // NavHost out on lock tears down the NavController and every nav-scoped
                         // ViewModel, destroying in-progress drafts app-wide on unlock (ADR-0023).
-                        if (initialSyncDone) {
-                            if (showOnboarding) {
-                                OnboardingGraph(onComplete = { showOnboarding = false })
-                            } else {
+                        when (onboardingDecision) {
+                            null -> SplashScreen()
+                            true -> OnboardingGraph(onComplete = { onboardingDecision = false })
+                            false -> {
                                 val form by authViewModel.form.collectAsState()
                                 IponApp(onSignOut = authViewModel::signOut)
                                 if (form.signOutPendingConfirm) {
@@ -183,8 +190,6 @@ class MainActivity : FragmentActivity() {
                                     )
                                 }
                             }
-                        } else {
-                            SplashScreen()
                         }
                         // The lock must render as its own platform Window (a Dialog), not a Box
                         // sibling inside the same window as IponApp: any AlertDialog/Dialog open

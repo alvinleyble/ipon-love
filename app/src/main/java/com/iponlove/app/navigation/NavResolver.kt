@@ -8,27 +8,47 @@ package com.iponlove.app.navigation
 object NavResolver {
 
     /**
-     * Pinned ids that should appear in the bar right now: config order, capped at
-     * [NavRegistry.MAX_PINS]. A paired-only pin that's hidden while unpaired is replaced in place
-     * by its [NavDestination.understudyId] (e.g. Manage stands in for Couple) so the bar keeps its
-     * item count — unless that understudy is itself pinned/already visible, in which case the slot
-     * simply collapses. May be empty if a hidden pin has no usable understudy — callers supply a
-     * fallback.
+     * The ids that render as bar pins right now — **always exactly [NavRegistry.MAX_PINS]** (floor
+     * == ceiling; ADR-0017 addendum 2026-07-03). Two-pass generic resolution, so this one path
+     * covers both "a pin is hidden by pairing state" and "a legacy config holds fewer than MAX_PINS
+     * ids":
+     *
+     *  1. Walk [NavConfig.pinnedIds] in order; each pin that is currently available (known,
+     *     pinnable, and not paired-only-while-unpaired) keeps its slot.
+     *  2. Every remaining slot — a slot vacated by a hidden pin, or a slot missing because the
+     *     config was short — is back-filled by the next module in registry order that is available
+     *     and not already chosen. In practice Manage back-fills Couple's slot when unpaired.
+     *
+     * Returns fewer than [NavRegistry.MAX_PINS] only in the degenerate case where the registry
+     * can't supply enough available modules (never happens with the real registry) — callers still
+     * treat the result as the full pin set.
      */
     fun visiblePinIds(config: NavConfig, isPaired: Boolean): List<String> {
+        fun isAvailable(id: String): Boolean {
+            val dest = NavRegistry.byId[id] ?: return false
+            if (!dest.pinnable) return false
+            return dest.id !in NavRegistry.pairedOnlyIds || isPaired
+        }
+
+        // Registry-order back-fill pool: available modules not already claimed by a stored pin.
+        val backfill = NavRegistry.all
+            .map { it.id }
+            .filter { isAvailable(it) && it !in config.pinnedIds }
+            .toMutableList()
+        fun nextBackfill(): String? = if (backfill.isEmpty()) null else backfill.removeAt(0)
+
         val result = mutableListOf<String>()
         for (id in config.pinnedIds) {
-            if (id !in NavRegistry.pairedOnlyIds || isPaired) {
+            if (result.size >= NavRegistry.MAX_PINS) break
+            if (isAvailable(id) && id !in result) {
                 result += id
             } else {
-                val understudy = NavRegistry.byId[id]?.understudyId
-                if (understudy != null &&
-                    understudy !in result &&
-                    understudy !in config.pinnedIds
-                ) {
-                    result += understudy
-                }
+                nextBackfill()?.let { result += it }
             }
+        }
+        // Config shorter than MAX_PINS (legacy) — keep filling from the registry-order pool.
+        while (result.size < NavRegistry.MAX_PINS) {
+            result += nextBackfill() ?: break
         }
         return result.take(NavRegistry.MAX_PINS)
     }

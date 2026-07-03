@@ -20,19 +20,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
  * destinations only show in the bar/picker while the user is paired (ADR-0017 "hide +
  * graceful collapse"), but their pin stays in the config so re-pairing restores the layout.
  *
- * Note: Couple is paired-only (ADR-0026). When unpaired it auto-hides, and its [understudyId]
- * (Manage) is promoted into the freed slot so the bar keeps its item count instead of shrinking:
- * paired bar = Analysis · Records · ⊕ · Couple · More; unpaired = Analysis · Records · ⊕ · Manage
- * · More. Pairing for unpaired users lives in Settings → Couple plus the dismissible Analysis-home
- * pairing card (Slice 3), not on the bar.
+ * Note: Couple is paired-only (ADR-0026). When unpaired it auto-hides. The bar always shows
+ * exactly [NavRegistry.MAX_PINS] pins (ADR-0017 addendum 2026-07-03), so any hidden slot is
+ * back-filled by the next available module in registry order — there is no per-destination
+ * understudy any more; [NavResolver] owns the one generic fallback. In practice Manage (near the
+ * top of the registry) still ends up standing in for Couple: paired bar = Analysis · Records · ⊕ ·
+ * Couple · More; unpaired = Analysis · Records · ⊕ · Manage · More. Pairing for unpaired users
+ * lives in Settings → Couple plus the dismissible Analysis-home pairing card (Slice 3), not on the
+ * bar.
  *
  * [pinnable] = false means the module can never sit on the bottom bar — it lives permanently in
  * the More sheet so it stays reachable without ever consuming a precious pin slot (ADR-0017).
- *
- * [understudyId] names a module that stands in for this one on the bar whenever this pin is
- * hidden (currently only the paired-only case). The [NavResolver] promotes it into the vacated
- * slot unless it's already pinned/visible. Purely a bar-rendering concept — the saved config is
- * untouched, so re-pairing restores the original pin.
  */
 data class NavDestination(
     val id: String,
@@ -41,7 +39,6 @@ data class NavDestination(
     val route: String,
     val requiresPaired: Boolean = false,
     val pinnable: Boolean = true,
-    val understudyId: String? = null,
 )
 
 /**
@@ -62,7 +59,7 @@ object NavRegistry {
     val MANAGE = NavDestination("manage", "Manage", Icons.Filled.Dashboard, "manage")
     val NOTES = NavDestination("notes", "Notes", Icons.Filled.Description, "notes")
     val RECURRING = NavDestination("recurring", "Recurring", Icons.Filled.Repeat, "recurring")
-    val COUPLE = NavDestination("couple", "Couple", Icons.Filled.Favorite, "couple", requiresPaired = true, understudyId = MANAGE.id)
+    val COUPLE = NavDestination("couple", "Couple", Icons.Filled.Favorite, "couple", requiresPaired = true)
     val COMBINED = NavDestination("combined", "Combined", Icons.Filled.People, "combined", requiresPaired = true)
     val PARTNER_DEBT = NavDestination("partner_debt", "Debts", Icons.Filled.Handshake, "partner_debt", requiresPaired = true)
     val SETTINGS = NavDestination("settings", "Settings", Icons.Filled.Settings, "settings")
@@ -82,8 +79,9 @@ object NavRegistry {
 
     /**
      * Factory defaults for a fresh install — analysis-first so Analysis is home (ADR-0026).
-     * Paired bar: Analysis · Records · ⊕ · Couple · More; unpaired: Analysis · Records · ⊕ ·
-     * Manage · More (Couple hidden, its understudy Manage promoted — see [NavResolver]).
+     * Exactly [MAX_PINS] ids. Paired bar: Analysis · Records · ⊕ · Couple · More; unpaired:
+     * Analysis · Records · ⊕ · Manage · More (Couple hidden, back-filled by the next available
+     * registry module — see [NavResolver]).
      */
     val DEFAULT_PINS: List<String> = listOf(ANALYSIS.id, RECORDS.id, COUPLE.id)
 }
