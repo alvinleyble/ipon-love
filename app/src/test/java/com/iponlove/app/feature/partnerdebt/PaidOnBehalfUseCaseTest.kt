@@ -124,6 +124,29 @@ class PaidOnBehalfUseCaseTest {
     }
 
     @Test
+    fun defaultDebtId_isDeterministicFromSourceTransaction_soReSaveDoesNotDoubleCount() = runTest {
+        // Simulates process death between the debt commit and clearDraft(): the draft
+        // (with the same stable transaction.id) survives and the user saves again.
+        useCase(
+            transaction = expense("t-1", "1000.00"),
+            amountOwed = BigDecimal("1000.00"),
+            borrowerId = "partner",
+            lenderId = "me",
+            coupleId = "c-1",
+        )
+        useCase(
+            transaction = expense("t-1", "1000.00"),
+            amountOwed = BigDecimal("1000.00"),
+            borrowerId = "partner",
+            lenderId = "me",
+            coupleId = "c-1",
+        )
+
+        // One debt, not two — the second call upserted the same deterministic id.
+        assertThat(dao.debts).hasSize(1)
+    }
+
+    @Test
     fun rejectsNonPositiveOwed_andDoesNotRecordTransaction() = runTest {
         val error = runCatching {
             useCase(

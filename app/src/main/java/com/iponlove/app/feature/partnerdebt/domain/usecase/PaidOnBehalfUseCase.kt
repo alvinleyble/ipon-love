@@ -1,10 +1,10 @@
 package com.iponlove.app.feature.partnerdebt.domain.usecase
 
+import com.iponlove.app.core.util.DeterministicUuid
 import com.iponlove.app.feature.partnerdebt.domain.model.PartnerDebt
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.usecase.UpsertTransactionUseCase
 import java.math.BigDecimal
-import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -17,6 +17,11 @@ import javax.inject.Inject
  * only — **fire-and-forget**: later editing or deleting the transaction never touches the
  * debt. Creating the debt runs through [UpsertPartnerDebtUseCase], so it immediately feeds
  * the FIFO auto-netting against any opposing open debts (ADR-0019 #9).
+ *
+ * [debtId] defaults to [DeterministicUuid.v5] of the transaction's stable id rather than a
+ * random UUID: `transaction.id` survives process death via the draft, so a re-save after a
+ * mid-save process kill computes the same debt id and upserts idempotently instead of
+ * double-counting (F5).
  */
 class PaidOnBehalfUseCase @Inject constructor(
     private val upsertTransaction: UpsertTransactionUseCase,
@@ -28,7 +33,7 @@ class PaidOnBehalfUseCase @Inject constructor(
         borrowerId: String,
         lenderId: String,
         coupleId: String,
-        debtId: String = UUID.randomUUID().toString(),
+        debtId: String = DeterministicUuid.v5("paid-on-behalf:${transaction.id}").toString(),
     ) {
         require(amountOwed.signum() > 0) { "Amount owed must be greater than zero" }
         require(amountOwed <= transaction.amount) {
