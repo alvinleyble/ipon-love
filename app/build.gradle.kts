@@ -25,8 +25,8 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "1.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -47,7 +47,12 @@ android {
             applicationId = "com.iponlove.app"
             buildConfigField("String", "SUPABASE_URL", "\"${prop("PROD_SUPABASE_URL")}\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${prop("PROD_SUPABASE_ANON_KEY")}\"")
-            buildConfigField("Boolean", "IS_BETA_BUILD", "false")
+            // Play Console locked the app listing's applicationId to this flavor, so it's
+            // currently the only distribution channel for internal testers too — not yet real
+            // paying customers (prod Supabase doesn't even exist yet, see staging-prod-environment
+            // memory). true for now so beta testers keep the feedback row; flip back to false
+            // right before the actual public production launch.
+            buildConfigField("Boolean", "IS_BETA_BUILD", "true")
         }
     }
 
