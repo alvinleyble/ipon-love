@@ -29,6 +29,10 @@ class OnboardingRepositoryImpl @Inject constructor(
         dataStore.edit { it[KEY_PAIRING_CARD_DISMISSED] = true }
     }
 
+    override suspend fun reset() {
+        dataStore.edit { it.clear() }
+    }
+
     private companion object {
         val KEY_ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val KEY_PAIRING_CARD_DISMISSED = booleanPreferencesKey("pairing_card_dismissed")

@@ -10,3 +10,9 @@ The new-user signal is **not** local Room emptiness and **not** a device flag �
 - An `onboardingDone` DataStore flag is **only** a re-prompt suppressor for this device, not the new-user signal.
 - The pairing step is an explicit fork — *"Invite my partner"* (`create_couple`) vs *"I have a code"* (`redeem_invite`, ADR-0006/0008) — so two partners both onboarding don't each create a separate couple. Solo is a first-class exit; skipping pairing here is caught later by the unpaired home-screen pairing card.
 - Starter seeding inserts personal `CategoryEntity`/`AccountEntity` rows (`pending_sync=true`), is idempotent, and pushes in FK order (ADR-0009).
+
+## Addendum (2026-07-03): onboarding flags reclassified per-account, not per-device
+
+Originally the `onboardingDone`/`pairingCardDismissed` DataStore flags were deliberately excluded from `LocalDataWiper` (per-device, like theme/app-lock prefs) — see git history on `OnboardingModule.kt`. Manual multi-account testing on one device (three different accounts signed in sequentially on the same emulator) surfaced the consequence: once any account completed onboarding, every subsequent *different* account signing in on that device silently skipped the graph — including the starter-template seeding step — landing in an empty app with no accounts/categories and no explanation.
+
+Reclassified as per-account: `LocalDataWiper.wipe()` now also calls `OnboardingRepository.reset()`, alongside Room/cursors/nav config. A device shared across accounts (family tablet, QA/dev device) now re-runs onboarding — including seeding — for each newly-signed-in account, same as the very first account did. The post-sync-emptiness signal (this ADR's core decision) is unchanged: the flag remains a pure re-prompt suppressor, just scoped to "this account has completed onboarding" rather than "this device has, ever, for anyone."

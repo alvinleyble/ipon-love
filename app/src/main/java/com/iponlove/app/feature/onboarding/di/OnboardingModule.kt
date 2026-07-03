@@ -19,8 +19,8 @@ import javax.inject.Singleton
 @Qualifier
 annotation class OnboardingDataStore
 
-// Deliberately not touched by LocalDataWiper (ADR-0021) — like theme/app-lock prefs, these
-// flags are per-device, not per-account (ADR-0024).
+// Reset by LocalDataWiper on sign-out/account-switch (ADR-0021) — these flags are per-account
+// re-prompt suppressors, not a one-time-per-device tutorial (ADR-0024 addendum).
 private val Context.onboardingDataStore: DataStore<Preferences> by preferencesDataStore(name = "onboarding_prefs")
 
 @Module
