@@ -14,7 +14,10 @@ class BetaFeedbackViewModel @Inject constructor(
 
     val feedbackUrl: String = BetaFeedbackConfig.buildPrefillUrl(
         versionName = BuildConfig.VERSION_NAME,
-        flavor = BuildConfig.FLAVOR,
+        // Hardcoded: this screen is only reachable when IS_BETA_BUILD is true, but the "prod"
+        // flavor is currently also the Play Console internal-testing build (see
+        // staging-prod-environment memory), so BuildConfig.FLAVOR would misleadingly say "prod".
+        flavor = "beta",
         device = "${Build.MANUFACTURER} ${Build.MODEL}",
         androidVersion = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
         testerName = currentUser.displayName() ?: currentUser.userId(),
