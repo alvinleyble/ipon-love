@@ -55,4 +55,13 @@ class TransactionMapperTest {
 
         assertThat(roundTripped).isEqualTo(original.copy(pendingSync = false))
     }
+
+    @Test
+    fun transferFeeTransactionId_carriedThroughDomainDtoAndEntity() {
+        val entity = transactionEntity(id = "t").copy(transferFeeTransactionId = "fee-1")
+
+        assertThat(entity.toDomain().transferFeeTransactionId).isEqualTo("fee-1")
+        assertThat(entity.toDto().transferFeeTransactionId).isEqualTo("fee-1")
+        assertThat(entity.toDto().toEntity().transferFeeTransactionId).isEqualTo("fee-1")
+    }
 }

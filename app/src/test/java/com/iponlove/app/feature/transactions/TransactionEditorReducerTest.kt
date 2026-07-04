@@ -20,6 +20,7 @@ class TransactionEditorReducerTest {
         isPrivate: Boolean = false,
         paidForPartner: Boolean = false,
         amountOwedText: String = "",
+        transferFeeText: String = "",
     ) = TransactionEditorState(
         id = "txn-1",
         type = type,
@@ -30,6 +31,7 @@ class TransactionEditorReducerTest {
         isPrivate = isPrivate,
         paidForPartner = paidForPartner,
         amountOwedText = amountOwedText,
+        transferFeeText = transferFeeText,
     )
 
     @Test
@@ -45,6 +47,29 @@ class TransactionEditorReducerTest {
         val start = draft(paidForPartner = true)
         val result = TransactionEditorReducer.onType(start, TransactionType.INCOME)
         assertThat(result.paidForPartner).isFalse()
+    }
+
+    @Test
+    fun onType_awayFromTransfer_clearsTransferFeeText() {
+        val start = draft(type = TransactionType.TRANSFER, transferFeeText = "50")
+        val result = TransactionEditorReducer.onType(start, TransactionType.EXPENSE)
+        assertThat(result.transferFeeText).isEmpty()
+    }
+
+    @Test
+    fun onType_toTransfer_keepsTransferFeeText() {
+        val start = draft(type = TransactionType.EXPENSE, transferFeeText = "")
+        val withFee = start.copy(transferFeeText = "50")
+        val result = TransactionEditorReducer.onType(withFee, TransactionType.TRANSFER)
+        assertThat(result.transferFeeText).isEqualTo("50")
+    }
+
+    @Test
+    fun onTransferFee_updatesTextAndClearsError() {
+        val start = draft().copy(transferFeeError = true)
+        val result = TransactionEditorReducer.onTransferFee(start, "25.00")
+        assertThat(result.transferFeeText).isEqualTo("25.00")
+        assertThat(result.transferFeeError).isFalse()
     }
 
     @Test
@@ -105,5 +130,55 @@ class TransactionEditorReducerTest {
         val result = TransactionEditorReducer.build(start, emptySet(), canPayForPartner = false)
         assertThat(result).isInstanceOf(BuildResult.Ready::class.java)
         assertThat((result as BuildResult.Ready).amountOwed).isNull()
+    }
+
+    @Test
+    fun build_transfer_blankFee_isReadyWithZeroFee() {
+        val start = draft(
+            type = TransactionType.TRANSFER,
+            toAccountId = "acc-2",
+            categoryId = null,
+            transferFeeText = "",
+        )
+        val result = TransactionEditorReducer.build(start, emptySet(), canPayForPartner = false)
+        assertThat(result).isInstanceOf(BuildResult.Ready::class.java)
+        assertThat((result as BuildResult.Ready).transferFee).isEqualTo(BigDecimal.ZERO)
+    }
+
+    @Test
+    fun build_transfer_withFee_isReadyWithThatFee() {
+        val start = draft(
+            type = TransactionType.TRANSFER,
+            toAccountId = "acc-2",
+            categoryId = null,
+            transferFeeText = "15.50",
+        )
+        val result = TransactionEditorReducer.build(start, emptySet(), canPayForPartner = false)
+        assertThat(result).isInstanceOf(BuildResult.Ready::class.java)
+        assertThat((result as BuildResult.Ready).transferFee).isEqualTo(BigDecimal("15.50"))
+    }
+
+    @Test
+    fun build_transfer_negativeFee_isTransferFeeInvalid() {
+        val start = draft(
+            type = TransactionType.TRANSFER,
+            toAccountId = "acc-2",
+            categoryId = null,
+            transferFeeText = "-5.00",
+        )
+        val result = TransactionEditorReducer.build(start, emptySet(), canPayForPartner = false)
+        assertThat(result).isEqualTo(BuildResult.TransferFeeInvalid)
+    }
+
+    @Test
+    fun build_transfer_garbageFeeText_isTransferFeeInvalid() {
+        val start = draft(
+            type = TransactionType.TRANSFER,
+            toAccountId = "acc-2",
+            categoryId = null,
+            transferFeeText = "abc",
+        )
+        val result = TransactionEditorReducer.build(start, emptySet(), canPayForPartner = false)
+        assertThat(result).isEqualTo(BuildResult.TransferFeeInvalid)
     }
 }

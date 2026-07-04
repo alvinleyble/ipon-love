@@ -154,6 +154,7 @@ create table transactions (
     recurring_rule_id uuid references recurring_rules(id) on delete set null,
     attachment_url    text,                                                -- Supabase Storage URL for receipt photo (post-V1)
     is_settlement     boolean not null default false,                      -- partner-debt settlement leg: counts toward balance, excluded from Analysis (ADR-0019 #14)
+    transfer_fee_transaction_id uuid,                                      -- linked "Transfer fees" expense row for this transfer's fee (ADR-0031). No FK: same pull-order tolerance as the rest of this table (a pulled batch can arrive out of dependency order), and the client owns the cascade.
     created_at        timestamptz not null default now(),
     updated_at        timestamptz not null default now(),
     is_deleted        boolean not null default false,

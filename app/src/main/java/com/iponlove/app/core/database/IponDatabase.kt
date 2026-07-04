@@ -56,7 +56,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         SavingsGoalEntity::class,
         GoalContributionEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 10, to = 11),
@@ -67,6 +67,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AutoMigration(from = 15, to = 16),
         AutoMigration(from = 16, to = 17),
         AutoMigration(from = 17, to = 18),
+        AutoMigration(from = 18, to = 19),
     ],
 )
 @TypeConverters(IponConverters::class)

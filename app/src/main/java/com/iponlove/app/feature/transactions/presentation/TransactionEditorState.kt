@@ -32,4 +32,7 @@ data class TransactionEditorState(
     /** What the partner owes; defaults to the full amount, editable down. Blank = full amount. */
     val amountOwedText: String = "",
     val amountOwedError: Boolean = false,
+    /** Optional fee on a TRANSFER, recorded as a linked expense (ADR-0031). Blank = no fee. */
+    val transferFeeText: String = "",
+    val transferFeeError: Boolean = false,
 )

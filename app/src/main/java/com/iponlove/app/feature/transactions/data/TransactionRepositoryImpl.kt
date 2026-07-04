@@ -71,6 +71,7 @@ class TransactionRepositoryImpl @Inject constructor(
                 attachmentUrl = transaction.attachmentUrl,
                 attachmentLocalPath = transaction.attachmentLocalPath ?: existing?.attachmentLocalPath,
                 isSettlement = transaction.isSettlement,
+                transferFeeTransactionId = transaction.transferFeeTransactionId,
                 createdAt = existing?.createdAt ?: updatedAt,
                 updatedAt = updatedAt,
                 isDeleted = existing?.isDeleted ?: false,

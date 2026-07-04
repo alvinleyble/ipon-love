@@ -24,6 +24,7 @@ data class TransactionDto(
     @SerialName("recurring_rule_id") val recurringRuleId: String?,
     @SerialName("attachment_url") val attachmentUrl: String? = null,
     @SerialName("is_settlement") val isSettlement: Boolean = false,
+    @SerialName("transfer_fee_transaction_id") val transferFeeTransactionId: String? = null,
     @SerialName("created_at")
     @Serializable(with = InstantSerializer::class) val createdAt: Instant,
     @SerialName("updated_at")

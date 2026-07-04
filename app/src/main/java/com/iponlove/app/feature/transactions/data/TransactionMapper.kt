@@ -19,6 +19,7 @@ fun TransactionEntity.toDomain(): Transaction = Transaction(
     attachmentUrl = attachmentUrl,
     attachmentLocalPath = attachmentLocalPath,
     isSettlement = isSettlement,
+    transferFeeTransactionId = transferFeeTransactionId,
 )
 
 /** Entity → DTO for push. Drops `pendingSync` (local-only, ADR-0002). */
@@ -36,6 +37,7 @@ fun TransactionEntity.toDto(): TransactionDto = TransactionDto(
     recurringRuleId = recurringRuleId,
     attachmentUrl = attachmentUrl,
     isSettlement = isSettlement,
+    transferFeeTransactionId = transferFeeTransactionId,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,
@@ -61,6 +63,7 @@ fun TransactionDto.toEntity(): TransactionEntity = TransactionEntity(
     attachmentUrl = attachmentUrl,
     attachmentLocalPath = null,
     isSettlement = isSettlement,
+    transferFeeTransactionId = transferFeeTransactionId,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,

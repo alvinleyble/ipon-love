@@ -35,4 +35,13 @@ data class Transaction(
      * calendar) excludes them. They also carry no category.
      */
     val isSettlement: Boolean = false,
+    /**
+     * Set only on a TRANSFER row with a non-zero fee (ADR-0031): the id of the linked EXPENSE
+     * row that carries the fee (auto-categorized under "Transfer fees" so it's real, groupable
+     * spend in Analysis — unlike [isSettlement], which is deliberately excluded there). Null
+     * means no fee. Maintained by [com.iponlove.app.feature.transactions.domain.usecase.SaveTransferUseCase],
+     * which cascades: editing the fee replaces the linked row, deleting the transfer
+     * ([com.iponlove.app.feature.transactions.domain.usecase.DeleteTransactionUseCase]) retires it too.
+     */
+    val transferFeeTransactionId: String? = null,
 )

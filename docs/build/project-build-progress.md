@@ -8,7 +8,7 @@
 
 ## Current state (as of 2026-07-04)
 
-**V1 through V1.6 are all committed on `main`.** Nothing pending on the V1.5 post-ship audit (all 11 items closed, see [v1.5-post-ship-audit.md](v1.5-post-ship-audit.md)). [V1.6.1](v1.6.1.md) is in progress: Item 1 is `DONE fa3bff4` (misleading "(prod)" beta-feedback version tag). Item 4 is `DONE 8fe6c83` (navbar pairing redesign, grew to also fix a cross-account PIN/data leak). Item 5 is `DONE f909697` (Settings "Beta" section + Upcoming features page). Item 8 is `DONE a5b12d2` (PIN lockout — 5-attempt threshold + 30s cooldown). Item 11 is `DONE d212361` (Analysis period presets — Quarter/Semi-annual/Annual/All-time, redesigned period selector). Item 2 is `DONE 20a2482` (Records/Combined bounded to a stepped calendar month with sticky day headers, shared `core/date/MonthWindow.kt`/`DayGrouping.kt` math — ADR-0032). Item 9 (version-mismatch gate) is built and green, awaiting Alvin's on-device test. Remaining items are still `TODO`/`NEEDS DECISION`.
+**V1 through V1.6 are all committed on `main`.** Nothing pending on the V1.5 post-ship audit (all 11 items closed, see [v1.5-post-ship-audit.md](v1.5-post-ship-audit.md)). [V1.6.1](v1.6.1.md) is in progress: Item 1 is `DONE fa3bff4` (misleading "(prod)" beta-feedback version tag). Item 4 is `DONE 8fe6c83` (navbar pairing redesign, grew to also fix a cross-account PIN/data leak). Item 5 is `DONE f909697` (Settings "Beta" section + Upcoming features page). Item 8 is `DONE a5b12d2` (PIN lockout — 5-attempt threshold + 30s cooldown). Item 11 is `DONE d212361` (Analysis period presets — Quarter/Semi-annual/Annual/All-time, redesigned period selector). Item 2 is `DONE 20a2482` (Records/Combined bounded to a stepped calendar month with sticky day headers, shared `core/date/MonthWindow.kt`/`DayGrouping.kt` math — ADR-0032). Item 9 (version-mismatch gate) is built and green, awaiting Alvin's on-device test. Item 12 is `DONE` (transfer fee as a cascading linked expense, new `SaveTransferUseCase`, Room v19 — ADR-0031), confirmed on-device by Alvin. Remaining items are still `TODO`/`NEEDS DECISION`.
 
 | Version | What | Doc |
 |---|---|---|
@@ -59,7 +59,7 @@ All confirmed applied live as of their respective commits. `supabase/schema.sql`
 
 ### Room version
 
-**v18** (V1.5 slice 9: `savings_goals` + `goal_contributions` via `@AutoMigration(17→18)`). History: v10 baseline (V1 slice K) → v11 (slice E, note images) → v12 (slice F, note sharing) → v13 (V1.3 #13, receipts) → v14 (V1.3 #9, debt netting) → v15 (V1.3 #12, paid-on-behalf) → v16 (V1.3 #14, settlements) → v17 (V1.3 #11, shared accounts/categories) → v18 (V1.5 #9, savings goals).
+**v19** (V1.6.1 Item 12: `transactions.transferFeeTransactionId` via `@AutoMigration(18→19)`). History: v10 baseline (V1 slice K) → v11 (slice E, note images) → v12 (slice F, note sharing) → v13 (V1.3 #13, receipts) → v14 (V1.3 #9, debt netting) → v15 (V1.3 #12, paid-on-behalf) → v16 (V1.3 #14, settlements) → v17 (V1.3 #11, shared accounts/categories) → v18 (V1.5 #9, savings goals) → v19 (V1.6.1 #12, transfer fee link).
 
 ### supabase-kt 3.x API notes
 

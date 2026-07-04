@@ -92,6 +92,7 @@ fun AddTransactionScreen(
         onPrivateChange = viewModel::onPrivateChange,
         onPaidForPartnerChange = viewModel::onPaidForPartnerChange,
         onAmountOwedChange = viewModel::onAmountOwedChange,
+        onTransferFeeChange = viewModel::onTransferFeeChange,
         onDateChange = viewModel::onDateChange,
         onReceiptPicked = viewModel::onReceiptPicked,
         onRemoveReceipt = viewModel::onRemoveReceipt,
@@ -113,6 +114,7 @@ private fun AddTransactionContent(
     onPrivateChange: (Boolean) -> Unit,
     onPaidForPartnerChange: (Boolean) -> Unit,
     onAmountOwedChange: (String) -> Unit,
+    onTransferFeeChange: (String) -> Unit,
     onDateChange: (Instant) -> Unit,
     onReceiptPicked: (Uri) -> Unit,
     onRemoveReceipt: () -> Unit,
@@ -158,6 +160,7 @@ private fun AddTransactionContent(
                 onPrivateChange = onPrivateChange,
                 onPaidForPartnerChange = onPaidForPartnerChange,
                 onAmountOwedChange = onAmountOwedChange,
+                onTransferFeeChange = onTransferFeeChange,
                 onDateChange = onDateChange,
                 onReceiptPicked = onReceiptPicked,
                 onRemoveReceipt = onRemoveReceipt,
@@ -180,6 +183,7 @@ private fun EditorForm(
     onPrivateChange: (Boolean) -> Unit,
     onPaidForPartnerChange: (Boolean) -> Unit,
     onAmountOwedChange: (String) -> Unit,
+    onTransferFeeChange: (String) -> Unit,
     onDateChange: (Instant) -> Unit,
     onReceiptPicked: (Uri) -> Unit,
     onRemoveReceipt: () -> Unit,
@@ -240,6 +244,20 @@ private fun EditorForm(
                 options = accountOptions.filter { it.id != editor.accountId },
                 selectedId = editor.toAccountId,
                 onSelect = onToAccountChange,
+            )
+            Spacer(Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = editor.transferFeeText,
+                onValueChange = onTransferFeeChange,
+                label = { Text("Transfer fee (₱, optional)") },
+                supportingText = {
+                    Text("Recorded as a separate expense under \"Transfer fees\".")
+                },
+                singleLine = true,
+                isError = editor.transferFeeError,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
             )
         } else {
             FieldLabel("Category")

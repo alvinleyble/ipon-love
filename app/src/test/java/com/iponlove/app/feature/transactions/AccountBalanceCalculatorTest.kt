@@ -56,6 +56,22 @@ class AccountBalanceCalculatorTest {
     }
 
     @Test
+    fun transferFee_isJustAnotherExpenseOnTheSourceAccount() {
+        // ADR-0031: the linked fee expense carries no special flag — the calculator needs no
+        // new code path, it's real spend like any other EXPENSE row.
+        val txns = listOf(
+            txn("t1", TransactionType.TRANSFER, "100.00", accountId = "acc-1", toAccountId = "acc-2"),
+            txn("fee-1", TransactionType.EXPENSE, "5.00", accountId = "acc-1", categoryId = "fee-cat"),
+        )
+        val opening = mapOf("acc-1" to bd("500.00"), "acc-2" to bd("50.00"))
+
+        val balances = AccountBalanceCalculator.balances(opening, txns)
+
+        assertThat(balances.getValue("acc-1")).isEqualTo(bd("395.00")) // 500 - 100 - 5
+        assertThat(balances.getValue("acc-2")).isEqualTo(bd("150.00"))
+    }
+
+    @Test
     fun unrelatedAccount_isUnaffected() {
         val txns = listOf(txn("t1", TransactionType.EXPENSE, "200.00", accountId = "acc-1"))
         val balance = AccountBalanceCalculator.balanceOf("acc-2", bd("999.00"), txns)

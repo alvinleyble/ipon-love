@@ -16,6 +16,7 @@ import com.iponlove.app.feature.partnerdebt.domain.usecase.PaidOnBehalfUseCase
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.AttachReceiptUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.GetTransactionUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.SaveTransferUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.UpsertTransactionUseCase
 import com.iponlove.app.feature.widget.presentation.AddTransactionWidget
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,6 +47,7 @@ class AddTransactionViewModel @Inject constructor(
     private val getTransaction: GetTransactionUseCase,
     private val upsertTransaction: UpsertTransactionUseCase,
     private val paidOnBehalf: PaidOnBehalfUseCase,
+    private val saveTransfer: SaveTransferUseCase,
     private val attachReceipt: AttachReceiptUseCase,
 ) : ViewModel() {
 
@@ -60,6 +62,10 @@ class AddTransactionViewModel @Inject constructor(
     private var coupleId: String? = null
     private var myId: String? = null
     private var partnerId: String? = null
+    // The transfer's currently-linked fee expense id, loaded from DB when editing (ADR-0031).
+    // Null for a new transfer or one that never had a fee; survives process death via
+    // SavedStateHandle so a resumed save still retires the correct old row.
+    private var existingTransferFeeId: String? = null
 
     private data class Sources(
         val accounts: List<Account>,
@@ -98,7 +104,10 @@ class AddTransactionViewModel @Inject constructor(
     init {
         val restored = hydrateFromSaved()
         when {
-            restored != null -> editor.value = restored
+            restored != null -> {
+                editor.value = restored
+                existingTransferFeeId = saved[KEY_LINKED_FEE_ID]
+            }
             !isEditing -> setEditor(
                 TransactionEditorState(id = UUID.randomUUID().toString(), date = Instant.now()),
             )
@@ -107,6 +116,12 @@ class AddTransactionViewModel @Inject constructor(
                 if (t == null) {
                     missing.value = true
                 } else {
+                    existingTransferFeeId = t.transferFeeTransactionId
+                    val feeAmountText = t.transferFeeTransactionId
+                        ?.let { getTransaction(it) }
+                        ?.amount
+                        ?.toPlainString()
+                        .orEmpty()
                     setEditor(
                         TransactionEditorState(
                             id = t.id,
@@ -121,6 +136,7 @@ class AddTransactionViewModel @Inject constructor(
                             date = t.date,
                             attachmentUrl = t.attachmentUrl,
                             attachmentLocalPath = t.attachmentLocalPath,
+                            transferFeeText = feeAmountText,
                         ),
                     )
                 }
@@ -145,6 +161,7 @@ class AddTransactionViewModel @Inject constructor(
     fun onPrivateChange(value: Boolean) = mutate { it.copy(isPrivate = value) }
     fun onPaidForPartnerChange(value: Boolean) = mutate { TransactionEditorReducer.onPaidForPartner(it, value) }
     fun onAmountOwedChange(value: String) = mutate { it.copy(amountOwedText = value, amountOwedError = false) }
+    fun onTransferFeeChange(value: String) = mutate { TransactionEditorReducer.onTransferFee(it, value) }
     fun onDateChange(date: Instant) = mutate { it.copy(date = date) }
 
     fun onReceiptPicked(uri: Uri) {
@@ -162,18 +179,23 @@ class AddTransactionViewModel @Inject constructor(
         when (val result = TransactionEditorReducer.build(s, sharedAccountIds(), uiState.value.canPayForPartner)) {
             is TransactionEditorReducer.BuildResult.Invalid -> setEditor(s.copy(errors = result.errors))
             TransactionEditorReducer.BuildResult.OwedInvalid -> setEditor(s.copy(amountOwedError = true))
+            TransactionEditorReducer.BuildResult.TransferFeeInvalid -> setEditor(s.copy(transferFeeError = true))
             is TransactionEditorReducer.BuildResult.Ready -> viewModelScope.launch {
                 val owed = result.amountOwed
-                if (owed != null) {
-                    paidOnBehalf(
+                val fee = result.transferFee
+                when {
+                    owed != null -> paidOnBehalf(
                         transaction = result.transaction,
                         amountOwed = owed,
                         borrowerId = partnerId!!,
                         lenderId = myId!!,
                         coupleId = coupleId!!,
                     )
-                } else {
-                    upsertTransaction(result.transaction)
+                    fee != null -> saveTransfer(
+                        result.transaction.copy(transferFeeTransactionId = existingTransferFeeId),
+                        fee,
+                    )
+                    else -> upsertTransaction(result.transaction)
                 }
                 clearDraft()
                 AddTransactionWidget().updateAll(context)
@@ -200,14 +222,17 @@ class AddTransactionViewModel @Inject constructor(
         saved[KEY_URL] = state.attachmentUrl
         saved[KEY_PAID_FOR_PARTNER] = state.paidForPartner
         saved[KEY_AMOUNT_OWED] = state.amountOwedText
+        saved[KEY_TRANSFER_FEE] = state.transferFeeText
+        saved[KEY_LINKED_FEE_ID] = existingTransferFeeId
     }
 
     private fun clearDraft() {
         listOf(
             KEY_ID, KEY_IS_EDITING, KEY_TYPE, KEY_AMOUNT, KEY_ACCOUNT, KEY_TO_ACCOUNT,
             KEY_CATEGORY, KEY_NOTE, KEY_PRIVATE, KEY_DATE, KEY_LOCAL_PATH, KEY_URL,
-            KEY_PAID_FOR_PARTNER, KEY_AMOUNT_OWED,
+            KEY_PAID_FOR_PARTNER, KEY_AMOUNT_OWED, KEY_TRANSFER_FEE, KEY_LINKED_FEE_ID,
         ).forEach { saved.remove<Any>(it) }
+        existingTransferFeeId = null
     }
 
     private fun hydrateFromSaved(): TransactionEditorState? {
@@ -227,6 +252,7 @@ class AddTransactionViewModel @Inject constructor(
             attachmentUrl = saved[KEY_URL],
             paidForPartner = saved[KEY_PAID_FOR_PARTNER] ?: false,
             amountOwedText = saved[KEY_AMOUNT_OWED] ?: "",
+            transferFeeText = saved[KEY_TRANSFER_FEE] ?: "",
         )
     }
 
@@ -248,6 +274,8 @@ class AddTransactionViewModel @Inject constructor(
         private const val KEY_URL = "draft_url"
         private const val KEY_PAID_FOR_PARTNER = "draft_paid_for_partner"
         private const val KEY_AMOUNT_OWED = "draft_amount_owed"
+        private const val KEY_TRANSFER_FEE = "draft_transfer_fee"
+        private const val KEY_LINKED_FEE_ID = "draft_linked_fee_id"
 
         private const val STOP_TIMEOUT_MS = 5_000L
     }
