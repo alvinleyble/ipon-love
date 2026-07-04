@@ -8,7 +8,7 @@
 
 ## Current state (as of 2026-07-04)
 
-**V1 through V1.6 are all committed on `main`.** Nothing pending on the V1.5 post-ship audit (all 11 items closed, see [v1.5-post-ship-audit.md](v1.5-post-ship-audit.md)). [V1.6.1](v1.6.1.md) is in progress: Item 1 is `DONE fa3bff4` (misleading "(prod)" beta-feedback version tag). Item 4 is `DONE 8fe6c83` (navbar pairing redesign, grew to also fix a cross-account PIN/data leak). Item 5 is `DONE f909697` (Settings "Beta" section + Upcoming features page). Item 8 is `DONE a5b12d2` (PIN lockout — 5-attempt threshold + 30s cooldown). Item 11 is `DONE` (Analysis period presets — Quarter/Semi-annual/Annual/All-time, redesigned period selector). Item 9 (version-mismatch gate) is built and green, awaiting Alvin's on-device test. Remaining items are still `TODO`/`NEEDS DECISION`.
+**V1 through V1.6 are all committed on `main`.** Nothing pending on the V1.5 post-ship audit (all 11 items closed, see [v1.5-post-ship-audit.md](v1.5-post-ship-audit.md)). [V1.6.1](v1.6.1.md) is in progress: Item 1 is `DONE fa3bff4` (misleading "(prod)" beta-feedback version tag). Item 4 is `DONE 8fe6c83` (navbar pairing redesign, grew to also fix a cross-account PIN/data leak). Item 5 is `DONE f909697` (Settings "Beta" section + Upcoming features page). Item 8 is `DONE a5b12d2` (PIN lockout — 5-attempt threshold + 30s cooldown). Item 11 is `DONE d212361` (Analysis period presets — Quarter/Semi-annual/Annual/All-time, redesigned period selector). Item 9 (version-mismatch gate) is built and green, awaiting Alvin's on-device test. Remaining items are still `TODO`/`NEEDS DECISION`.
 
 | Version | What | Doc |
 |---|---|---|
