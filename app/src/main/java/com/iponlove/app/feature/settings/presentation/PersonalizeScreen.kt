@@ -58,6 +58,7 @@ fun PersonalizeScreen(
     onOpenHelp: () -> Unit = {},
     onOpenBetaFeedback: () -> Unit = {},
     onOpenUpcomingFeatures: () -> Unit = {},
+    onReplayTutorial: () -> Unit = {},
     onSignOut: () -> Unit = {},
     viewModel: PersonalizeViewModel = hiltViewModel(),
 ) {
@@ -172,6 +173,15 @@ fun PersonalizeScreen(
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
                     },
                     modifier = Modifier.clickable(onClick = onOpenHelp),
+                )
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("Replay tutorial") },
+                    supportingContent = { Text("Take the quick app walkthrough again") },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable(onClick = onReplayTutorial),
                 )
                 HorizontalDivider()
                 ListItem(

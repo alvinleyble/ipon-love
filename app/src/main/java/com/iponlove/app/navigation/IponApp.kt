@@ -35,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +51,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.CoachMarkOverlay
+import com.iponlove.app.core.ui.CoachMarkState
+import com.iponlove.app.core.ui.coachMarkTarget
+import com.iponlove.app.feature.tutorial.presentation.TutorialScript
+import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
+import com.iponlove.app.feature.tutorial.presentation.TutorialViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -150,6 +157,17 @@ private fun IponAppContent(
 
     var showMore by rememberSaveable { mutableStateOf(false) }
 
+    // First-run tutorial (ADR-0034): a generic coach-mark overlay anchored to the real app shell.
+    val tutorialViewModel: TutorialViewModel = hiltViewModel()
+    val tutorialState by tutorialViewModel.uiState.collectAsState()
+    val coachState = remember { CoachMarkState() }
+    // Fire the tour once per shell mount when the local gate hasn't been satisfied.
+    LaunchedEffect(Unit) { tutorialViewModel.maybeStart() }
+    // The "tap More" step advances by *observing* the sheet actually open, not by driving it.
+    LaunchedEffect(showMore) {
+        if (showMore) tutorialViewModel.onTargetActivated(TutorialTargets.MORE)
+    }
+
     val visiblePins = state.visiblePinIds.mapNotNull { NavRegistry.byId[it] }
         .ifEmpty { listOf(NavRegistry.RECORDS) }
 
@@ -158,10 +176,11 @@ private fun IponAppContent(
     fun isInGraph(dest: NavDestination): Boolean =
         currentDestination?.hierarchy?.any { it.route == dest.graphRoute() } == true
 
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            NavigationBar {
+            NavigationBar(modifier = Modifier.coachMarkTarget(TutorialTargets.PINS, coachState)) {
                 // The fixed center ⊕ Add sits in the middle of the bar (ADR-0026): render the
                 // first half of the pins, the accented Add slot, then the rest, then More.
                 val splitIndex = ((visiblePins.size + 1) / 2).coerceAtMost(visiblePins.size)
@@ -169,6 +188,7 @@ private fun IponAppContent(
                     PinBarItem(dest, isInGraph(dest)) { navController.switchTab(dest) }
                 }
                 NavigationBarItem(
+                    modifier = Modifier.coachMarkTarget(TutorialTargets.ADD, coachState),
                     selected = false,
                     onClick = { navController.navigate(ADD_TRANSACTION_ROUTE) },
                     icon = {
@@ -196,6 +216,7 @@ private fun IponAppContent(
                 // (e.g. Settings and its sub-screens while Settings is unpinned).
                 val inSomeModuleGraph = NavRegistry.all.any { isInGraph(it) }
                 NavigationBarItem(
+                    modifier = Modifier.coachMarkTarget(TutorialTargets.MORE, coachState),
                     selected = inSomeModuleGraph && visiblePins.none { isInGraph(it) },
                     onClick = { showMore = true },
                     icon = { Icon(Icons.Filled.MoreHoriz, contentDescription = "More") },
@@ -303,6 +324,7 @@ private fun IponAppContent(
                         onOpenHelp = { navController.navigate(HELP_ROUTE) },
                         onOpenBetaFeedback = { navController.navigate(BETA_FEEDBACK_ROUTE) },
                         onOpenUpcomingFeatures = { navController.navigate(UPCOMING_FEATURES_ROUTE) },
+                        onReplayTutorial = { tutorialViewModel.replay() },
                         onSignOut = onSignOut,
                     )
                 }
@@ -346,6 +368,19 @@ private fun IponAppContent(
                 AddTransactionScreen(onBack = { navController.popBackStack() })
             }
         }
+    }
+        // Coach-mark overlay draws above the Scaffold (bar included), sharing its coordinate root
+        // so it can anchor to the tagged bar targets. Transparent to touches outside its tooltip.
+        CoachMarkOverlay(
+            state = coachState,
+            step = if (tutorialState.active) {
+                TutorialScript.stepAt(tutorialState.stepIndex)?.coachMark
+            } else {
+                null
+            },
+            onPrimary = tutorialViewModel::next,
+            onSkip = tutorialViewModel::skip,
+        )
     }
 
     if (showMore) {
