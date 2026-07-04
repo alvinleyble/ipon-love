@@ -5,8 +5,9 @@ package com.iponlove.app.navigation
  * reorder rules are JVM-testable without DataStore or Compose. Invariant the mutations keep:
  *  - always exactly [NavRegistry.MAX_PINS] distinct pinnable ids (floor == ceiling — ADR-0017
  *    addendum 2026-07-03; users may only *replace* a pin, never remove down to fewer)
- * Paired-only filtering is NOT done here — config is layout intent and survives unpair; the
- * runtime hide/back-fill happens in [NavResolver].
+ * Pairing state never filters or rewrites the config (2026-07-04 redesign): pinned modules
+ * always render, so config and bar are always the same three ids. The couple flow may pin
+ * Couple explicitly on create/join via [ensurePinned]; unpairing changes nothing.
  */
 data class NavConfig(
     val pinnedIds: List<String> = NavRegistry.DEFAULT_PINS,
@@ -25,6 +26,19 @@ data class NavConfig(
         val mutable = pinnedIds.toMutableList()
         mutable[index] = newId
         return copy(pinnedIds = mutable)
+    }
+
+    /**
+     * Guarantee [id] holds a pin slot, swapping out [preferredOutgoingId] if pinned, else the
+     * last pin. No-op if [id] is already pinned or isn't a pinnable module. Used by the couple
+     * flow to pin Couple (in Manage's place on a default layout) the moment the user creates or
+     * joins a couple — the one deliberate, user-initiated config rewrite tied to pairing; passive
+     * pairing-state changes never touch the config.
+     */
+    fun ensurePinned(id: String, preferredOutgoingId: String): NavConfig {
+        if (id in pinnedIds) return this
+        val outgoing = if (preferredOutgoingId in pinnedIds) preferredOutgoingId else pinnedIds.last()
+        return replace(outgoing, id)
     }
 
     /** Move the pin at [from] to index [to], shifting the rest. No-op on out-of-range. */
@@ -60,9 +74,8 @@ data class NavConfig(
         fun serialize(config: NavConfig): String = config.pinnedIds.joinToString(",")
 
         /**
-         * Pad [ids] up to exactly [NavRegistry.MAX_PINS] using registry-order pinnable fallbacks,
-         * independent of pairing state — config stores layout *intent*, which can already include a
-         * paired-only id while unpaired (ADR-0017). Truncates if given more than [MAX_PINS].
+         * Pad [ids] up to exactly [NavRegistry.MAX_PINS] using registry-order pinnable fallbacks.
+         * Truncates if given more than [MAX_PINS].
          */
         private fun padToMaxPins(ids: List<String>): List<String> {
             if (ids.size >= NavRegistry.MAX_PINS) return ids.take(NavRegistry.MAX_PINS)

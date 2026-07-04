@@ -16,15 +16,16 @@ import javax.inject.Inject
 /**
  * Resolved navbar state for the dynamic bottom bar, the More sheet, and the editor.
  * [visiblePinIds]/[startRoute] are derived purely via [NavResolver]; the UI maps ids back to
- * [NavDestination] through [NavRegistry].
+ * [NavDestination] through [NavRegistry]. [isPaired] only feeds the editor's informational
+ * "Paired only" caption — it never changes what renders (2026-07-04 redesign).
  */
 data class NavUiState(
     val loaded: Boolean = false,
     val isPaired: Boolean = false,
     val config: NavConfig = NavConfig(),
 ) {
-    val visiblePinIds: List<String> get() = NavResolver.visiblePinIds(config, isPaired)
-    val moreModuleIds: List<String> get() = NavResolver.moreModuleIds(config, isPaired)
+    val visiblePinIds: List<String> get() = NavResolver.visiblePinIds(config)
+    val moreModuleIds: List<String> get() = NavResolver.moreModuleIds(config)
     val startRoute: String get() = NavResolver.startRoute(config)
 }
 

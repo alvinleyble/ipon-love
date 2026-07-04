@@ -16,18 +16,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
  * One navigable top-level module. [id] is the stable key persisted in the nav config
- * (DataStore) — never change it once shipped; [route] is the NavHost route. [requiresPaired]
- * destinations only show in the bar/picker while the user is paired (ADR-0017 "hide +
- * graceful collapse"), but their pin stays in the config so re-pairing restores the layout.
+ * (DataStore) — never change it once shipped; [route] is the NavHost route.
  *
- * Note: Couple is paired-only (ADR-0026). When unpaired it auto-hides. The bar always shows
- * exactly [NavRegistry.MAX_PINS] pins (ADR-0017 addendum 2026-07-03), so any hidden slot is
- * back-filled by the next available module in registry order — there is no per-destination
- * understudy any more; [NavResolver] owns the one generic fallback. In practice Manage (near the
- * top of the registry) still ends up standing in for Couple: paired bar = Analysis · Records · ⊕ ·
- * Couple · More; unpaired = Analysis · Records · ⊕ · Manage · More. Pairing for unpaired users
- * lives in Settings → Couple plus the dismissible Analysis-home pairing card (Slice 3), not on the
- * bar.
+ * [requiresPaired] is *informational metadata only* (2026-07-04 redesign): it drives the
+ * "Paired only" caption in the navbar editor, nothing else. It no longer hides the module from
+ * the bar, the More sheet, or the editor — a pinned module always renders, and Couple opens its
+ * own pairing (create/join) page when unpaired. Pairing state never rewrites the bar; the only
+ * config change tied to pairing is the explicit pin-on-create/join in the couple flow.
  *
  * [pinnable] = false means the module can never sit on the bottom bar — it lives permanently in
  * the More sheet so it stays reachable without ever consuming a precious pin slot (ADR-0017).
@@ -74,14 +69,12 @@ object NavRegistry {
 
     val byId: Map<String, NavDestination> = all.associateBy { it.id }
 
-    /** Ids that only render while paired — kept as a set for the pure [NavResolver]. */
-    val pairedOnlyIds: Set<String> = all.filter { it.requiresPaired }.map { it.id }.toSet()
-
     /**
      * Factory defaults for a fresh install — analysis-first so Analysis is home (ADR-0026).
-     * Exactly [MAX_PINS] ids. Paired bar: Analysis · Records · ⊕ · Couple · More; unpaired:
-     * Analysis · Records · ⊕ · Manage · More (Couple hidden, back-filled by the next available
-     * registry module — see [NavResolver]).
+     * Exactly [MAX_PINS] ids. Solo users start without Couple pinned (bar: Analysis · Records ·
+     * ⊕ · Manage · More); creating or joining a couple explicitly pins Couple in Manage's place
+     * (see [NavConfig.ensurePinned] + the couple flow). Couple stays reachable from the More
+     * sheet regardless.
      */
-    val DEFAULT_PINS: List<String> = listOf(ANALYSIS.id, RECORDS.id, COUPLE.id)
+    val DEFAULT_PINS: List<String> = listOf(ANALYSIS.id, RECORDS.id, MANAGE.id)
 }

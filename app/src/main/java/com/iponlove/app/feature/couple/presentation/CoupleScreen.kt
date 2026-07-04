@@ -22,15 +22,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.partnerdebt.presentation.PartnerDebtBody
 import com.iponlove.app.feature.partnerdebt.presentation.PartnerDebtViewModel
 import kotlinx.coroutines.launch
 
 /**
- * Couple module — paired-only (ADR-0024): reachable from the nav bar/More sheet only while
- * paired (`NavRegistry.COUPLE.requiresPaired`), so there is no unpaired state to render here
- * any more. Pairing/unpair now lives in Settings → Couple ([SettingsCoupleScreen]); the
- * dismissible Analysis-home card is the activation entry point for unpaired users.
+ * Couple module — always reachable (2026-07-04 redesign, superseding the ADR-0024/0026
+ * paired-only gating): when the user is fully paired it shows the Combined | Debts tabs; in any
+ * other pairing state it renders [CoupleOverviewBody] — the same create/join (or
+ * share-code-while-waiting) pairing page Settings → Couple uses — so tapping Couple while
+ * unpaired lands on pairing instead of the module hiding itself from the bar.
  *
  * Two tabs, Combined | Debts, default Combined. The Debts FAB is owned here (not in
  * [PartnerDebtBody]) so the host controls the single FAB slot.
@@ -38,9 +40,25 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoupleScreen(
+    coupleViewModel: CoupleViewModel = hiltViewModel(),
     combinedViewModel: CombinedViewModel = hiltViewModel(),
     debtViewModel: PartnerDebtViewModel = hiltViewModel(),
 ) {
+    val coupleState by coupleViewModel.state.collectAsState()
+    val pairing = coupleState.pairing
+    val fullyPaired = pairing is PairingState.Paired && pairing.partner != null
+
+    if (!fullyPaired) {
+        Scaffold(topBar = { TopAppBar(title = { Text("Couple") }) }) { padding ->
+            CoupleOverviewBody(
+                state = coupleState,
+                viewModel = coupleViewModel,
+                modifier = Modifier.padding(padding).fillMaxSize(),
+            )
+        }
+        return
+    }
+
     val debtState by debtViewModel.uiState.collectAsState()
 
     val tabLabels = listOf("Combined", "Debts")

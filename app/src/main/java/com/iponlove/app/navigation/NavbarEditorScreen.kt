@@ -74,7 +74,7 @@ fun NavbarEditorScreen(
 
     val pinned = config.pinnedIds.mapNotNull { NavRegistry.byId[it] }
     val available = NavRegistry.all.filter {
-        it.pinnable && it.id !in config.pinnedIds && (!it.requiresPaired || isPaired)
+        it.pinnable && it.id !in config.pinnedIds
     }
 
     Scaffold(
@@ -125,7 +125,7 @@ fun NavbarEditorScreen(
                 )
             } else {
                 available.forEach { dest ->
-                    AvailableRow(dest = dest, onReplace = { replaceTarget = dest })
+                    AvailableRow(dest = dest, isPaired = isPaired, onReplace = { replaceTarget = dest })
                 }
             }
         }
@@ -230,7 +230,7 @@ private fun ReorderablePins(
 }
 
 @Composable
-private fun AvailableRow(dest: NavDestination, onReplace: () -> Unit) {
+private fun AvailableRow(dest: NavDestination, isPaired: Boolean, onReplace: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -243,7 +243,16 @@ private fun AvailableRow(dest: NavDestination, onReplace: () -> Unit) {
         Box(Modifier.width(40.dp), contentAlignment = Alignment.Center) {
             Icon(dest.icon, contentDescription = null)
         }
-        Text(dest.label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(dest.label, style = MaterialTheme.typography.bodyLarge)
+            if (dest.requiresPaired && !isPaired) {
+                Text(
+                    "Paired only",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         IconButton(onClick = onReplace) {
             Icon(Icons.Filled.SwapHoriz, contentDescription = "Replace a pin with ${dest.label}")
         }

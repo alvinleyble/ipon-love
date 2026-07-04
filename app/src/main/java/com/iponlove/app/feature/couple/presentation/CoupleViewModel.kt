@@ -10,6 +10,7 @@ import com.iponlove.app.feature.couple.domain.usecase.RotateInviteCodeUseCase
 import com.iponlove.app.feature.couple.domain.usecase.UnpairUseCase
 import com.iponlove.app.feature.user.domain.repository.UserRepository
 import com.iponlove.app.feature.user.domain.usecase.UpdateAccentColorUseCase
+import com.iponlove.app.navigation.PinCoupleShortcutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,6 +29,7 @@ class CoupleViewModel @Inject constructor(
     private val rotateInviteCodeUseCase: RotateInviteCodeUseCase,
     private val unpairUseCase: UnpairUseCase,
     private val updateAccentColorUseCase: UpdateAccentColorUseCase,
+    private val pinCoupleShortcutUseCase: PinCoupleShortcutUseCase,
     private val userRepository: UserRepository,
 ) : ViewModel() {
 
@@ -53,11 +55,14 @@ class CoupleViewModel @Inject constructor(
     fun createCouple() = mutate(clearInput = Input.NAME) {
         createCoupleUseCase(local.value.nameInput)
         local.value.selectedColor?.let { updateAccentColorUseCase(it) }
+        // The user just expressed couple intent — surface Couple on the bar (B/C flows).
+        pinCoupleShortcutUseCase()
     }
 
     fun redeemInvite() = mutate(clearInput = Input.CODE) {
         redeemInviteUseCase(local.value.codeInput)
         local.value.selectedColor?.let { updateAccentColorUseCase(it) }
+        pinCoupleShortcutUseCase()
     }
 
     fun rotateInviteCode() = mutate(clearInput = null) { rotateInviteCodeUseCase() }

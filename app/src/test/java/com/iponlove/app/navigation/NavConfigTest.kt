@@ -39,6 +39,34 @@ class NavConfigTest {
     }
 
     @Test
+    fun ensurePinned_replacesPreferredOutgoingWhenPinned() {
+        // The B/C pairing flows: a default solo bar (analysis, records, manage) pins Couple in
+        // Manage's place on create/join.
+        val config = NavConfig(listOf("analysis", "records", "manage"))
+        assertThat(config.ensurePinned("couple", "manage").pinnedIds)
+            .containsExactly("analysis", "records", "couple").inOrder()
+    }
+
+    @Test
+    fun ensurePinned_replacesLastPinWhenPreferredOutgoingNotPinned() {
+        val config = NavConfig(listOf("analysis", "records", "savings"))
+        assertThat(config.ensurePinned("couple", "manage").pinnedIds)
+            .containsExactly("analysis", "records", "couple").inOrder()
+    }
+
+    @Test
+    fun ensurePinned_isNoOpWhenAlreadyPinned() {
+        val config = NavConfig(listOf("couple", "records", "analysis"))
+        assertThat(config.ensurePinned("couple", "manage").pinnedIds).isEqualTo(config.pinnedIds)
+    }
+
+    @Test
+    fun ensurePinned_isNoOpForNonPinnableId() {
+        val config = NavConfig(listOf("analysis", "records", "manage"))
+        assertThat(config.ensurePinned("bogus", "manage").pinnedIds).isEqualTo(config.pinnedIds)
+    }
+
+    @Test
     fun move_reordersAndShiftsTheRest() {
         val config = NavConfig(listOf("records", "analysis", "manage", "couple"))
         // move first to last
