@@ -53,6 +53,7 @@ class ShouldShowOnboardingUseCaseTest {
         override suspend fun setOnboardingDone() { onboardingDone = true }
         override fun observePairingCardDismissed(): Flow<Boolean> = flowOf(false)
         override suspend fun dismissPairingCard() = Unit
+        override suspend fun reset() { onboardingDone = false }
     }
 
     private val useCase =

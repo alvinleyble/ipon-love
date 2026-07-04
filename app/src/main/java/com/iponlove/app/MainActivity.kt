@@ -2,15 +2,23 @@ package com.iponlove.app
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.fragment.app.FragmentActivity
@@ -42,6 +52,7 @@ import com.iponlove.app.feature.applock.domain.model.AppLockPreferences
 import com.iponlove.app.feature.applock.domain.usecase.ObserveAppLockUseCase
 import com.iponlove.app.feature.applock.presentation.AppLockManager
 import com.iponlove.app.feature.applock.presentation.LockScreen
+import com.iponlove.app.feature.appupdate.presentation.AppVersionGateManager
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.presentation.AuthScreen
 import com.iponlove.app.feature.auth.presentation.AuthViewModel
@@ -77,6 +88,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var observeThemePreferences: ObserveThemePreferencesUseCase
     @Inject lateinit var observeAppLock: ObserveAppLockUseCase
     @Inject lateinit var appLockManager: AppLockManager
+    @Inject lateinit var appVersionGateManager: AppVersionGateManager
     @Inject lateinit var syncEngine: SyncEngine
     @Inject lateinit var coupleChannelManager: CoupleChannelManager
     @Inject lateinit var themeDraft: ThemeDraftRepository
@@ -92,6 +104,13 @@ class MainActivity : FragmentActivity() {
             override fun onStart(owner: LifecycleOwner) {
                 appLockManager.cancelAutoLock()
                 coupleChannelManager.setForeground(true)
+                if (BuildConfig.IS_BETA_BUILD) {
+                    // Own coroutine, separate from the sync/materialize flow below — a slow
+                    // or offline version check must never delay those (fail-open, ADR-0029).
+                    lifecycleScope.launch {
+                        appVersionGateManager.check(BuildConfig.VERSION_CODE)
+                    }
+                }
                 lifecycleScope.launch {
                     // Full refresh on every foreground resume — not only on login — so a
                     // partner's changes (and our own pending rows) converge immediately on
@@ -215,6 +234,32 @@ class MainActivity : FragmentActivity() {
                     AuthStatus.Unauthenticated -> AuthScreen(viewModel = authViewModel)
                     AuthStatus.Loading -> SplashScreen()
                 }
+
+                // Declared last so this Window stacks above every other Dialog opened above
+                // (including the AppLock lock screen) — a stale beta build blocks everything,
+                // not just the authenticated app shell. Beta-only; runs pre-login too, since
+                // the onStart observer that populates it is registered unconditionally.
+                if (BuildConfig.IS_BETA_BUILD) {
+                    val isVersionMismatched by appVersionGateManager.isBlocked.collectAsState()
+                    if (isVersionMismatched) {
+                        Dialog(
+                            onDismissRequest = {},
+                            properties = DialogProperties(
+                                usePlatformDefaultWidth = false,
+                                dismissOnBackPress = false,
+                                dismissOnClickOutside = false,
+                            ),
+                        ) {
+                            UpdateRequiredScreen(
+                                onUpdateClick = {
+                                    startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse(PLAY_STORE_URL)),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -234,6 +279,34 @@ private fun SplashScreen() {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
+        }
+    }
+}
+
+// The web URL degrades gracefully via a browser if the Play Store app isn't installed;
+// every tester who could see this dialog is already enrolled in internal testing, since
+// that's the only way to have the app installed at all (ADR-0029).
+private const val PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.iponlove.app"
+
+/** Hard, non-dismissable block shown when the installed build doesn't exact-match the
+ * Supabase-published required version (ADR-0029, beta only). */
+@Composable
+private fun UpdateRequiredScreen(onUpdateClick: () -> Unit) {
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("Update required", style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "This beta build is out of date. Update to the latest version from the Play " +
+                    "Store to keep testing.",
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(24.dp))
+            Button(onClick = onUpdateClick) { Text("Update") }
         }
     }
 }
