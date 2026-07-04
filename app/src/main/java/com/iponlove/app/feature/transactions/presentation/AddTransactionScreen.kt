@@ -299,6 +299,11 @@ private fun EditorForm(
                 Text("Private", modifier = Modifier.weight(1f))
                 Switch(checked = editor.isPrivate, onCheckedChange = onPrivateChange)
             }
+            Text(
+                "Hides this transaction from ${state.partnerName}'s combined view.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         if (state.canPayForPartner && editor.type == TransactionType.EXPENSE) {
