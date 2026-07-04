@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.time.Instant
 
 class AppLockRepositoryImplTest {
 
@@ -116,6 +117,60 @@ class AppLockRepositoryImplTest {
         repo.clearPin()
         repo.observe().test {
             assertThat(awaitItem().biometricNudgeShown).isFalse()
+            cancel()
+        }
+    }
+
+    @Test
+    fun setPinAttemptState_reflectedInPrefs() = runTest {
+        val repo = repo()
+        val lockoutUntil = Instant.parse("2026-07-04T00:00:30Z")
+        repo.setPinAttemptState(5, lockoutUntil)
+        repo.observe().test {
+            val prefs = awaitItem()
+            assertThat(prefs.failedPinAttempts).isEqualTo(5)
+            assertThat(prefs.pinLockoutUntil).isEqualTo(lockoutUntil)
+            cancel()
+        }
+    }
+
+    @Test
+    fun setPinAttemptState_zeroAttemptsAndNullLockout_clearsState() = runTest {
+        val repo = repo()
+        repo.setPinAttemptState(5, Instant.parse("2026-07-04T00:00:30Z"))
+        repo.setPinAttemptState(0, null)
+        repo.observe().test {
+            val prefs = awaitItem()
+            assertThat(prefs.failedPinAttempts).isEqualTo(0)
+            assertThat(prefs.pinLockoutUntil).isNull()
+            cancel()
+        }
+    }
+
+    @Test
+    fun setPin_resetsAnyExistingLockoutState() = runTest {
+        val repo = repo()
+        repo.setPin("1234")
+        repo.setPinAttemptState(5, Instant.parse("2026-07-04T00:00:30Z"))
+        repo.setPin("5678")
+        repo.observe().test {
+            val prefs = awaitItem()
+            assertThat(prefs.failedPinAttempts).isEqualTo(0)
+            assertThat(prefs.pinLockoutUntil).isNull()
+            cancel()
+        }
+    }
+
+    @Test
+    fun clearPin_resetsLockoutState() = runTest {
+        val repo = repo()
+        repo.setPin("1234")
+        repo.setPinAttemptState(5, Instant.parse("2026-07-04T00:00:30Z"))
+        repo.clearPin()
+        repo.observe().test {
+            val prefs = awaitItem()
+            assertThat(prefs.failedPinAttempts).isEqualTo(0)
+            assertThat(prefs.pinLockoutUntil).isNull()
             cancel()
         }
     }

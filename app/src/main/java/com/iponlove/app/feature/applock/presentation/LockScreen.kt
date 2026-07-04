@@ -52,13 +52,20 @@ fun LockScreen(
     // out of their own app (ADR-0023). rememberSaveable keeps the user on the pad across a rotation
     // once they've fallen back to it.
     var showPinPad by rememberSaveable { mutableStateOf(!isBiometricEnabled) }
+    // Distinct from the PIN's own lockout message below — this one is set only when the OS itself
+    // reports ERROR_LOCKOUT/ERROR_LOCKOUT_PERMANENT (item 8), instead of silently falling back to
+    // the PIN pad with no explanation.
+    var biometricLockoutMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     fun launchBiometric() {
         val activity = context as? FragmentActivity ?: run { showPinPad = true; return }
         showBiometricPrompt(
             activity,
             onSuccess = viewModel::onBiometricSuccess,
-            onFallbackToPin = { showPinPad = true },
+            onFallbackToPin = { lockoutMessage ->
+                showPinPad = true
+                biometricLockoutMessage = lockoutMessage
+            },
         )
     }
 
@@ -93,9 +100,10 @@ fun LockScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     PinDots(length = uiState.pin.length)
                     Spacer(Modifier.height(8.dp))
-                    if (uiState.error != null) {
+                    val message = uiState.error ?: biometricLockoutMessage
+                    if (message != null) {
                         Text(
-                            uiState.error!!,
+                            message,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -115,7 +123,10 @@ fun LockScreen(
                 modifier = Modifier.padding(bottom = 48.dp),
             ) {
                 if (showPinPad) {
-                    Numpad(onDigit = viewModel::onDigit, onDelete = viewModel::onDelete)
+                    Numpad(
+                        onDigit = { digit -> biometricLockoutMessage = null; viewModel.onDigit(digit) },
+                        onDelete = viewModel::onDelete,
+                    )
                     Spacer(Modifier.height(16.dp))
                     if (isBiometricEnabled) {
                         TextButton(onClick = { launchBiometric() }) {
@@ -211,7 +222,7 @@ private fun ForgotPinDialog(
 private fun showBiometricPrompt(
     activity: FragmentActivity,
     onSuccess: () -> Unit,
-    onFallbackToPin: () -> Unit,
+    onFallbackToPin: (lockoutMessage: String?) -> Unit,
 ) {
     val executor = ContextCompat.getMainExecutor(activity)
     val callback = object : BiometricPrompt.AuthenticationCallback() {
@@ -222,16 +233,24 @@ private fun showBiometricPrompt(
         // Every non-success terminal outcome — negative button ("Use PIN"), user cancel, hardware
         // error, ERROR_LOCKOUT / ERROR_LOCKOUT_PERMANENT — must surface the PIN pad. Biometric is a
         // convenience layer over the PIN, never a replacement; wiring only onAuthenticationSucceeded
-        // (the old behaviour) would lock the user out on any biometric failure (ADR-0023).
+        // (the old behaviour) would lock the user out on any biometric failure (ADR-0023). The OS's
+        // own lockout codes (item 8) get a distinct message instead of silently falling back.
         override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-            onFallbackToPin()
+            val lockoutMessage = if (
+                errorCode == BiometricPrompt.ERROR_LOCKOUT || errorCode == BiometricPrompt.ERROR_LOCKOUT_PERMANENT
+            ) {
+                "Biometric temporarily locked out — use your PIN"
+            } else {
+                null
+            }
+            onFallbackToPin(lockoutMessage)
         }
 
         // A single unrecognized fingerprint leaves the system prompt open for more tries; surfacing
         // the PIN pad underneath is harmless and keeps the fallback one tap (the negative button)
         // away.
         override fun onAuthenticationFailed() {
-            onFallbackToPin()
+            onFallbackToPin(null)
         }
     }
     BiometricPrompt(activity, executor, callback).authenticate(

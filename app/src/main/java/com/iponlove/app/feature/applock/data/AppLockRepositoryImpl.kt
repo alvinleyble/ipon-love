@@ -4,6 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.iponlove.app.feature.applock.di.AppLockDataStore
 import com.iponlove.app.feature.applock.domain.model.AppLockPreferences
@@ -13,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.time.Instant
 import java.util.Base64
 import javax.inject.Inject
 
@@ -25,6 +28,8 @@ class AppLockRepositoryImpl @Inject constructor(
             isPinSet = prefs[KEY_PIN_HASH] != null,
             isBiometricEnabled = prefs[KEY_BIOMETRIC] ?: false,
             biometricNudgeShown = prefs[KEY_NUDGE_SHOWN] ?: false,
+            failedPinAttempts = prefs[KEY_FAILED_ATTEMPTS] ?: 0,
+            pinLockoutUntil = prefs[KEY_LOCKOUT_UNTIL]?.let(Instant::ofEpochSecond),
         )
     }
 
@@ -34,6 +39,8 @@ class AppLockRepositoryImpl @Inject constructor(
         dataStore.edit {
             it[KEY_SALT] = salt
             it[KEY_PIN_HASH] = hash
+            it.remove(KEY_FAILED_ATTEMPTS)
+            it.remove(KEY_LOCKOUT_UNTIL)
         }
     }
 
@@ -58,6 +65,15 @@ class AppLockRepositoryImpl @Inject constructor(
             it.remove(KEY_SALT)
             it[KEY_BIOMETRIC] = false
             it.remove(KEY_NUDGE_SHOWN)
+            it.remove(KEY_FAILED_ATTEMPTS)
+            it.remove(KEY_LOCKOUT_UNTIL)
+        }
+    }
+
+    override suspend fun setPinAttemptState(failedAttempts: Int, lockoutUntil: Instant?) {
+        dataStore.edit {
+            if (failedAttempts == 0) it.remove(KEY_FAILED_ATTEMPTS) else it[KEY_FAILED_ATTEMPTS] = failedAttempts
+            if (lockoutUntil == null) it.remove(KEY_LOCKOUT_UNTIL) else it[KEY_LOCKOUT_UNTIL] = lockoutUntil.epochSecond
         }
     }
 
@@ -78,5 +94,7 @@ class AppLockRepositoryImpl @Inject constructor(
         private val KEY_SALT = stringPreferencesKey("pin_salt")
         private val KEY_BIOMETRIC = booleanPreferencesKey("biometric_enabled")
         private val KEY_NUDGE_SHOWN = booleanPreferencesKey("biometric_nudge_shown")
+        private val KEY_FAILED_ATTEMPTS = intPreferencesKey("pin_failed_attempts")
+        private val KEY_LOCKOUT_UNTIL = longPreferencesKey("pin_lockout_until_epoch_sec")
     }
 }
