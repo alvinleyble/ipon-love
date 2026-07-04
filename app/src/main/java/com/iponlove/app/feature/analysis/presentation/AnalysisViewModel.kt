@@ -209,6 +209,7 @@ class AnalysisViewModel @Inject constructor(
     }
 
     private fun labelFor(window: AnalysisWindow, zone: ZoneId): String {
+        if (window.period == AnalysisPeriod.ALL_TIME) return "All Time"
         val start = window.startInclusive.atZone(zone).toLocalDate()
         return when (window.period) {
             AnalysisPeriod.DAY -> start.format(DAY_FORMAT)
@@ -217,6 +218,10 @@ class AnalysisViewModel @Inject constructor(
                 val lastDay = window.endExclusive.atZone(zone).toLocalDate().minusDays(1)
                 "${start.format(WEEK_FORMAT)} – ${lastDay.format(WEEK_FORMAT)}"
             }
+            AnalysisPeriod.QUARTER -> "Q${(start.monthValue - 1) / 3 + 1} ${start.year}"
+            AnalysisPeriod.SEMI_ANNUAL -> "${if (start.monthValue == 1) "H1" else "H2"} ${start.year}"
+            AnalysisPeriod.ANNUAL -> "${start.year}"
+            AnalysisPeriod.ALL_TIME -> "All Time"
         }
     }
 

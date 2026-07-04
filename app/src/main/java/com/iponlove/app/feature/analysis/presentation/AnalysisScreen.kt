@@ -24,11 +24,11 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import com.iponlove.app.core.ui.IponFilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
@@ -95,7 +95,12 @@ private fun AnalysisContent(
         ) {
             // Persistent header — always visible regardless of period or tab.
             PeriodSelector(selected = state.period, onSelect = onSelectPeriod)
-            PeriodStepper(label = state.periodLabel, onPrevious = onPrevious, onNext = onNext)
+            PeriodStepper(
+                label = state.periodLabel,
+                onPrevious = onPrevious,
+                onNext = onNext,
+                canStep = state.period != AnalysisPeriod.ALL_TIME,
+            )
 
             if (state.isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -216,30 +221,33 @@ private fun CalendarTab(state: AnalysisUiState) {
 
 // ─── Persistent header composables ──────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PeriodSelector(selected: AnalysisPeriod, onSelect: (AnalysisPeriod) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    val periods = AnalysisPeriod.entries
+    ScrollableTabRow(
+        selectedTabIndex = periods.indexOf(selected),
+        edgePadding = 16.dp,
+        divider = {},
     ) {
-        AnalysisPeriod.entries.forEach { period ->
-            IponFilterChip(
+        periods.forEach { period ->
+            Tab(
                 selected = selected == period,
                 onClick = { onSelect(period) },
-                label = { Text(period.label()) },
+                text = { Text(period.shortLabel(), style = MaterialTheme.typography.labelLarge) },
             )
         }
     }
 }
 
 @Composable
-private fun PeriodStepper(label: String, onPrevious: () -> Unit, onNext: () -> Unit) {
+private fun PeriodStepper(label: String, onPrevious: () -> Unit, onNext: () -> Unit, canStep: Boolean = true) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        IconButton(onClick = onPrevious) {
+        IconButton(onClick = onPrevious, enabled = canStep) {
             Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous period")
         }
         Text(
@@ -247,7 +255,7 @@ private fun PeriodStepper(label: String, onPrevious: () -> Unit, onNext: () -> U
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
-        IconButton(onClick = onNext) {
+        IconButton(onClick = onNext, enabled = canStep) {
             Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next period")
         }
     }
@@ -579,8 +587,12 @@ private fun DayDetailCard(day: Int, dayUi: CalendarDayUi) {
     }
 }
 
-private fun AnalysisPeriod.label(): String = when (this) {
-    AnalysisPeriod.DAY -> "Day"
-    AnalysisPeriod.WEEK -> "Week"
-    AnalysisPeriod.MONTH -> "Month"
+private fun AnalysisPeriod.shortLabel(): String = when (this) {
+    AnalysisPeriod.DAY -> "1D"
+    AnalysisPeriod.WEEK -> "1W"
+    AnalysisPeriod.MONTH -> "1M"
+    AnalysisPeriod.QUARTER -> "3M"
+    AnalysisPeriod.SEMI_ANNUAL -> "6M"
+    AnalysisPeriod.ANNUAL -> "12M"
+    AnalysisPeriod.ALL_TIME -> "ALL"
 }
