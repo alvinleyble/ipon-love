@@ -411,7 +411,7 @@ Not built in v1. Architecture must not block these. Reconciled 2026-07-04 agains
 |---|---|
 | Google Sign-In | Supabase OAuth + Android Credential Manager; needs Google Cloud Console setup |
 | Facebook Login | Supabase OAuth + Facebook SDK; needs Facebook Developer App setup |
-| AI companion | User provides own API key; stored in EncryptedDataStore; new `feature/ai` module |
+| AI companion | Hybrid: app-funded capped tier (cheap model) by default + opt-in BYOK (key stored in EncryptedDataStore) for unlimited use; new `feature/ai` module |
 | Password vault | New `feature/vault` module; SQLCipher or EncryptedDataStore |
 | Voice recording storage | New `feature/recordings` module; Supabase Storage for upload |
 | iOS | Evaluate Kotlin Multiplatform — domain layer is pure Kotlin already, head start exists |

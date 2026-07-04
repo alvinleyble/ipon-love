@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
@@ -56,7 +55,6 @@ private val IncomeColor = Color(0xFF2E7D32)
 @Composable
 fun TransactionsScreen(
     onOpenRecurring: () -> Unit,
-    onOpenNotes: () -> Unit,
     onAddTransaction: () -> Unit,
     onEditTransaction: (String) -> Unit,
     viewModel: TransactionsViewModel = hiltViewModel(),
@@ -65,7 +63,6 @@ fun TransactionsScreen(
     TransactionsContent(
         state = state,
         onOpenRecurring = onOpenRecurring,
-        onOpenNotes = onOpenNotes,
         onSync = viewModel::sync,
         onAdd = onAddTransaction,
         onEdit = onEditTransaction,
@@ -80,7 +77,6 @@ fun TransactionsScreen(
 private fun TransactionsContent(
     state: TransactionsUiState,
     onOpenRecurring: () -> Unit,
-    onOpenNotes: () -> Unit,
     onSync: () -> Unit,
     onAdd: () -> Unit,
     onEdit: (String) -> Unit,
@@ -93,9 +89,6 @@ private fun TransactionsContent(
             TopAppBar(
                 title = { Text("Records") },
                 actions = {
-                    IconButton(onClick = onOpenNotes) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Notes")
-                    }
                     IconButton(onClick = onOpenRecurring) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Recurring rules")
                     }

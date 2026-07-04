@@ -53,47 +53,47 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             Spacer(Modifier.height(20.dp))
 
             RoadmapCard(
-                title = "Google Sign-In",
+                title = "Google Sign-In (Q3 2026)",
                 description = "Sign up and log in with your Google account.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Facebook Login",
+                title = "Facebook Login (Q3 2026)",
                 description = "Sign up and log in with your Facebook account.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "AI companion (BYOK)",
+                title = "AI companion (BYOK) (Q4 2026)",
                 description = "Ask questions about your spending using your own AI provider key.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Password vault",
+                title = "Password vault (idk, why even)",
                 description = "Store your passwords securely alongside your finances.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Voice recording storage",
+                title = "Voice recording storage (Q4 2026)",
                 description = "Attach voice notes to your notes and transactions.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "iOS",
+                title = "iOS (idk, mahal kasi eh $99 per year)",
                 description = "Love, Ipon on iPhone.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "CSV / PDF export",
+                title = "CSV / PDF export (need ba tO?)",
                 description = "Export your transactions and reports for backup or sharing.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Custom fonts",
+                title = "Custom fonts (Q3 2026)",
                 description = "Personalize the app's typography, not just its colors.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Profile & couple photo upload",
+                title = "Profile & couple photo upload (Q4 2026)",
                 description = "Upload a real photo instead of accent color + initials.",
             )
         }

@@ -154,8 +154,8 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 - All features available from first launch after purchase
 
 ### Future: AI Add-On
-- User provides their own API key (Claude / OpenAI / etc.)
-- No additional cost on the app side; API usage is the user's own expense
+- Hybrid model, not pure BYOK: a capped, app-funded free tier (cheap model, small monthly allowance) for mass-market sub-features, since the target audience is non-technical and won't self-serve an API key
+- BYOK (bring your own key) offered as an opt-in unlock for unlimited/heavy use
 
 ---
 
@@ -176,7 +176,7 @@ Reconciled 2026-07-04 against `docs/build/project-build-progress.md` and `ARCHIT
 |---|---|
 | Google Sign-In | Supabase OAuth + Android Credential Manager |
 | Facebook Login | Supabase OAuth + Facebook SDK |
-| AI financial companion | User's own API key; spending advice, savings trajectory, friendly assistant persona |
+| AI financial companion | Hybrid: capped app-funded free tier (cheap model) + opt-in BYOK for unlimited use; spending advice, savings trajectory, friendly assistant persona |
 | Password vault | Encrypted local vault |
 | Voice recording storage | Extension of the notes system |
 | iOS version | Evaluate Kotlin Multiplatform or Flutter at that point |

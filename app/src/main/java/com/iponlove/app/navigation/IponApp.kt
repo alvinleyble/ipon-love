@@ -50,12 +50,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.iponlove.app.feature.analysis.presentation.AnalysisScreen
@@ -96,6 +98,18 @@ private const val GOAL_EDITOR_ROUTE = "goal_editor"
 private const val GOAL_DETAIL_ROUTE = "goal_detail"
 
 /**
+ * Suffix distinguishing a module's *nested graph* route from its root screen route (ADR-0033).
+ * Every pinnable module is wrapped in its own nested graph so tab switches preserve each module's
+ * back stack (behavior 1) and re-tapping the active tab pops it back to root (behavior 2). The
+ * graph route is what the bottom bar / More sheet navigate to; the root screen route is that
+ * graph's start destination.
+ */
+private const val GRAPH_SUFFIX = "_graph"
+
+/** A module's own nested-graph route (see [GRAPH_SUFFIX]). */
+private fun NavDestination.graphRoute(): String = route + GRAPH_SUFFIX
+
+/**
  * App root: a bottom-nav [Scaffold] whose bar is built dynamically from the user's pinned
  * [NavConfig] (ADR-0017) — up to [NavRegistry.MAX_PINS] reorderable pins, a fixed accented center
  * ⊕ Add (ADR-0026) that routes to add-transaction, plus an always-present "More". The [NavHost]
@@ -127,16 +141,22 @@ private fun IponAppContent(
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route
+    val currentDestination = backStackEntry?.destination
 
     // NavHost can't swap its start without rebuilding the graph (wiping the back stack), so the
-    // home destination is captured once. Reordering pins later updates the bar, not home.
-    val startRoute = rememberSaveable { state.startRoute }
+    // home destination is captured once. Reordering pins later updates the bar, not home. The
+    // start is a module *graph* route (ADR-0033), which resolves to that module's root screen.
+    val startGraphRoute = rememberSaveable { state.startRoute + GRAPH_SUFFIX }
 
     var showMore by rememberSaveable { mutableStateOf(false) }
 
     val visiblePins = state.visiblePinIds.mapNotNull { NavRegistry.byId[it] }
         .ifEmpty { listOf(NavRegistry.RECORDS) }
+
+    // A tab is "selected" whenever the current destination sits anywhere inside that module's
+    // nested graph — so Records stays highlighted while on its Recurring sub-screen, etc.
+    fun isInGraph(dest: NavDestination): Boolean =
+        currentDestination?.hierarchy?.any { it.route == dest.graphRoute() } == true
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -146,7 +166,7 @@ private fun IponAppContent(
                 // first half of the pins, the accented Add slot, then the rest, then More.
                 val splitIndex = ((visiblePins.size + 1) / 2).coerceAtMost(visiblePins.size)
                 visiblePins.take(splitIndex).forEach { dest ->
-                    PinBarItem(dest, currentRoute, navController)
+                    PinBarItem(dest, isInGraph(dest)) { navController.switchTab(dest) }
                 }
                 NavigationBarItem(
                     selected = false,
@@ -170,11 +190,13 @@ private fun IponAppContent(
                     ),
                 )
                 visiblePins.drop(splitIndex).forEach { dest ->
-                    PinBarItem(dest, currentRoute, navController)
+                    PinBarItem(dest, isInGraph(dest)) { navController.switchTab(dest) }
                 }
-                val onModuleRoute = NavRegistry.all.any { it.route == currentRoute }
+                // More is selected when we're inside a module graph that isn't a visible pin
+                // (e.g. Settings and its sub-screens while Settings is unpinned).
+                val inSomeModuleGraph = NavRegistry.all.any { isInGraph(it) }
                 NavigationBarItem(
-                    selected = onModuleRoute && visiblePins.none { it.route == currentRoute },
+                    selected = inSomeModuleGraph && visiblePins.none { isInGraph(it) },
                     onClick = { showMore = true },
                     icon = { Icon(Icons.Filled.MoreHoriz, contentDescription = "More") },
                     label = { Text("More") },
@@ -184,17 +206,136 @@ private fun IponAppContent(
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = startRoute,
+            startDestination = startGraphRoute,
             modifier = Modifier.padding(padding),
         ) {
-            composable(NavRegistry.RECORDS.route) {
-                TransactionsScreen(
-                    onOpenRecurring = { navController.navigate(NavRegistry.RECURRING.route) },
-                    onOpenNotes = { navController.navigate(NavRegistry.NOTES.route) },
-                    onAddTransaction = { navController.navigate(ADD_TRANSACTION_ROUTE) },
-                    onEditTransaction = { id -> navController.navigate("$EDIT_TRANSACTION_ROUTE/$id") },
-                )
+            // Each pinnable module is its own nested graph (ADR-0033) so its back stack survives
+            // tab switches (saveState/restoreState) and re-tapping the tab pops it back to root.
+
+            // Records: root + Recurring (Notes moved to its own top-level module — Item 13).
+            navigation(startDestination = NavRegistry.RECORDS.route, route = NavRegistry.RECORDS.graphRoute()) {
+                composable(NavRegistry.RECORDS.route) {
+                    TransactionsScreen(
+                        onOpenRecurring = { navController.navigate(NavRegistry.RECURRING.route) },
+                        onAddTransaction = { navController.navigate(ADD_TRANSACTION_ROUTE) },
+                        onEditTransaction = { id -> navController.navigate("$EDIT_TRANSACTION_ROUTE/$id") },
+                    )
+                }
+                composable(NavRegistry.RECURRING.route) {
+                    RecurringScreen(onBack = { navController.popBackStack() })
+                }
             }
+
+            // Notes: root + note editor. Own module graph (Item 13), no back arrow at root.
+            navigation(startDestination = NavRegistry.NOTES.route, route = NavRegistry.NOTES.graphRoute()) {
+                composable(NavRegistry.NOTES.route) {
+                    NotesScreen(
+                        onOpenNote = { noteId -> navController.navigate("$NOTE_EDITOR_ROUTE/$noteId") },
+                    )
+                }
+                composable(
+                    route = "$NOTE_EDITOR_ROUTE/{$NOTE_ID_KEY}",
+                    arguments = listOf(navArgument(NOTE_ID_KEY) { type = NavType.StringType }),
+                ) {
+                    NoteEditorScreen(onBack = { navController.popBackStack() })
+                }
+            }
+
+            // Analysis: single-node graph (uniform nesting per ADR-0033 decision 1).
+            navigation(startDestination = NavRegistry.ANALYSIS.route, route = NavRegistry.ANALYSIS.graphRoute()) {
+                composable(NavRegistry.ANALYSIS.route) {
+                    AnalysisScreen(onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) })
+                }
+            }
+
+            // Manage: single-node graph.
+            navigation(startDestination = NavRegistry.MANAGE.route, route = NavRegistry.MANAGE.graphRoute()) {
+                composable(NavRegistry.MANAGE.route) { ManageScreen() }
+            }
+
+            // Couple: single-node graph (handles unpaired inside its own screen).
+            navigation(startDestination = NavRegistry.COUPLE.route, route = NavRegistry.COUPLE.graphRoute()) {
+                composable(NavRegistry.COUPLE.route) { CoupleScreen() }
+            }
+
+            // Calculator: single-node graph.
+            navigation(startDestination = NavRegistry.CALCULATOR.route, route = NavRegistry.CALCULATOR.graphRoute()) {
+                composable(NavRegistry.CALCULATOR.route) { CalculatorScreen() }
+            }
+
+            // Savings: root + goal editor + goal detail.
+            navigation(startDestination = NavRegistry.SAVINGS.route, route = NavRegistry.SAVINGS.graphRoute()) {
+                composable(NavRegistry.SAVINGS.route) {
+                    SavingsGoalsScreen(
+                        onCreateGoal = { navController.navigate(GOAL_EDITOR_ROUTE) },
+                        onOpenGoal = { id -> navController.navigate("$GOAL_DETAIL_ROUTE/$id") },
+                    )
+                }
+                composable(GOAL_EDITOR_ROUTE) {
+                    GoalEditorScreen(onBack = { navController.popBackStack() })
+                }
+                composable(
+                    route = "$GOAL_EDITOR_ROUTE/{$GOAL_ID_KEY}",
+                    arguments = listOf(navArgument(GOAL_ID_KEY) { type = NavType.StringType }),
+                ) {
+                    GoalEditorScreen(onBack = { navController.popBackStack() })
+                }
+                composable(
+                    route = "$GOAL_DETAIL_ROUTE/{$GOAL_ID_KEY}",
+                    arguments = listOf(navArgument(GOAL_ID_KEY) { type = NavType.StringType }),
+                ) {
+                    GoalDetailScreen(
+                        onBack = { navController.popBackStack() },
+                        onEditGoal = { id -> navController.navigate("$GOAL_EDITOR_ROUTE/$id") },
+                    )
+                }
+            }
+
+            // Settings: root + all its sub-screens.
+            navigation(startDestination = NavRegistry.SETTINGS.route, route = NavRegistry.SETTINGS.graphRoute()) {
+                composable(NavRegistry.SETTINGS.route) {
+                    PersonalizeScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
+                        onOpenSecurity = { navController.navigate(APP_LOCK_SETUP_ROUTE) },
+                        onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) },
+                        onOpenNavbar = { navController.navigate(NAV_EDITOR_ROUTE) },
+                        onOpenHelp = { navController.navigate(HELP_ROUTE) },
+                        onOpenBetaFeedback = { navController.navigate(BETA_FEEDBACK_ROUTE) },
+                        onOpenUpcomingFeatures = { navController.navigate(UPCOMING_FEATURES_ROUTE) },
+                        onSignOut = onSignOut,
+                    )
+                }
+                composable(PROFILE_ROUTE) {
+                    ProfileScreen(onBack = { navController.popBackStack() })
+                }
+                composable(SETTINGS_COUPLE_ROUTE) {
+                    SettingsCoupleScreen(onBack = { navController.popBackStack() })
+                }
+                composable(APP_LOCK_SETUP_ROUTE) {
+                    AppLockSetupScreen(onBack = { navController.popBackStack() })
+                }
+                composable(NAV_EDITOR_ROUTE) {
+                    NavbarEditorScreen(
+                        initialConfig = state.config,
+                        isPaired = state.isPaired,
+                        onApply = navViewModel::applyConfig,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+                composable(HELP_ROUTE) {
+                    HelpScreen(onBack = { navController.popBackStack() })
+                }
+                composable(BETA_FEEDBACK_ROUTE) {
+                    BetaFeedbackScreen(onBack = { navController.popBackStack() })
+                }
+                composable(UPCOMING_FEATURES_ROUTE) {
+                    UpcomingFeaturesScreen(onBack = { navController.popBackStack() })
+                }
+            }
+
+            // Add/Edit Transaction stays a standalone top-level route (ADR-0033 decision 2) — it's
+            // reached from the global ⊕ button, so it must not inherit any tab's reset-on-retap.
             composable(ADD_TRANSACTION_ROUTE) {
                 AddTransactionScreen(onBack = { navController.popBackStack() })
             }
@@ -204,90 +345,6 @@ private fun IponAppContent(
             ) {
                 AddTransactionScreen(onBack = { navController.popBackStack() })
             }
-            composable(NavRegistry.ANALYSIS.route) {
-                AnalysisScreen(onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) })
-            }
-            composable(NavRegistry.MANAGE.route) { ManageScreen() }
-            composable(NavRegistry.NOTES.route) {
-                NotesScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenNote = { noteId -> navController.navigate("$NOTE_EDITOR_ROUTE/$noteId") },
-                )
-            }
-            composable(NavRegistry.RECURRING.route) {
-                RecurringScreen(onBack = { navController.popBackStack() })
-            }
-            composable(NavRegistry.COUPLE.route) { CoupleScreen() }
-            composable(NavRegistry.CALCULATOR.route) { CalculatorScreen() }
-            composable(NavRegistry.SAVINGS.route) {
-                SavingsGoalsScreen(
-                    onCreateGoal = { navController.navigate(GOAL_EDITOR_ROUTE) },
-                    onOpenGoal = { id -> navController.navigate("$GOAL_DETAIL_ROUTE/$id") },
-                )
-            }
-            composable(GOAL_EDITOR_ROUTE) {
-                GoalEditorScreen(onBack = { navController.popBackStack() })
-            }
-            composable(
-                route = "$GOAL_EDITOR_ROUTE/{$GOAL_ID_KEY}",
-                arguments = listOf(navArgument(GOAL_ID_KEY) { type = NavType.StringType }),
-            ) {
-                GoalEditorScreen(onBack = { navController.popBackStack() })
-            }
-            composable(
-                route = "$GOAL_DETAIL_ROUTE/{$GOAL_ID_KEY}",
-                arguments = listOf(navArgument(GOAL_ID_KEY) { type = NavType.StringType }),
-            ) {
-                GoalDetailScreen(
-                    onBack = { navController.popBackStack() },
-                    onEditGoal = { id -> navController.navigate("$GOAL_EDITOR_ROUTE/$id") },
-                )
-            }
-            composable(NavRegistry.SETTINGS.route) {
-                PersonalizeScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
-                    onOpenSecurity = { navController.navigate(APP_LOCK_SETUP_ROUTE) },
-                    onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) },
-                    onOpenNavbar = { navController.navigate(NAV_EDITOR_ROUTE) },
-                    onOpenHelp = { navController.navigate(HELP_ROUTE) },
-                    onOpenBetaFeedback = { navController.navigate(BETA_FEEDBACK_ROUTE) },
-                    onOpenUpcomingFeatures = { navController.navigate(UPCOMING_FEATURES_ROUTE) },
-                    onSignOut = onSignOut,
-                )
-            }
-            composable(PROFILE_ROUTE) {
-                ProfileScreen(onBack = { navController.popBackStack() })
-            }
-            composable(SETTINGS_COUPLE_ROUTE) {
-                SettingsCoupleScreen(onBack = { navController.popBackStack() })
-            }
-            composable(APP_LOCK_SETUP_ROUTE) {
-                AppLockSetupScreen(onBack = { navController.popBackStack() })
-            }
-            composable(NAV_EDITOR_ROUTE) {
-                NavbarEditorScreen(
-                    initialConfig = state.config,
-                    isPaired = state.isPaired,
-                    onApply = navViewModel::applyConfig,
-                    onBack = { navController.popBackStack() },
-                )
-            }
-            composable(HELP_ROUTE) {
-                HelpScreen(onBack = { navController.popBackStack() })
-            }
-            composable(BETA_FEEDBACK_ROUTE) {
-                BetaFeedbackScreen(onBack = { navController.popBackStack() })
-            }
-            composable(UPCOMING_FEATURES_ROUTE) {
-                UpcomingFeaturesScreen(onBack = { navController.popBackStack() })
-            }
-            composable(
-                route = "$NOTE_EDITOR_ROUTE/{$NOTE_ID_KEY}",
-                arguments = listOf(navArgument(NOTE_ID_KEY) { type = NavType.StringType }),
-            ) {
-                NoteEditorScreen(onBack = { navController.popBackStack() })
-            }
         }
     }
 
@@ -296,7 +353,7 @@ private fun IponAppContent(
             modules = state.moreModuleIds.mapNotNull { NavRegistry.byId[it] },
             onModule = { dest ->
                 showMore = false
-                navController.switchTab(dest.route)
+                navController.switchTab(dest)
             },
             onEditNavbar = {
                 showMore = false
@@ -311,23 +368,34 @@ private fun IponAppContent(
 @Composable
 private fun RowScope.PinBarItem(
     dest: NavDestination,
-    currentRoute: String?,
-    navController: NavHostController,
+    selected: Boolean,
+    onClick: () -> Unit,
 ) {
     NavigationBarItem(
-        selected = currentRoute == dest.route,
-        onClick = { navController.switchTab(dest.route) },
+        selected = selected,
+        onClick = onClick,
         icon = { Icon(dest.icon, contentDescription = dest.label) },
         label = { Text(dest.label) },
     )
 }
 
-/** Top-level tab switch: single instance per destination, each tab's state saved/restored. */
-private fun NavHostController.switchTab(route: String) {
-    navigate(route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
-        launchSingleTop = true
-        restoreState = true
+/**
+ * Tab switch across module nested graphs (ADR-0033):
+ *  - Behavior 1 (preserve place): navigating to another module's graph saves the current graph's
+ *    back stack and restores the target's, so each module resumes where it was left.
+ *  - Behavior 2 (reset to root): tapping the tab for the module you're already inside pops that
+ *    module's graph back to its root screen (`popBackStack` to the graph's start destination).
+ */
+private fun NavHostController.switchTab(dest: NavDestination) {
+    val alreadyInModule = currentDestination?.hierarchy?.any { it.route == dest.graphRoute() } == true
+    if (alreadyInModule) {
+        popBackStack(dest.route, inclusive = false)
+    } else {
+        navigate(dest.graphRoute()) {
+            popUpTo(graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
     }
 }
 

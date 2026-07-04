@@ -136,6 +136,26 @@ _Avoid_: progress, balance, total saved (as a stored column)
 An optional fee on a `TRANSFER` transaction, represented as a second, linked `EXPENSE` transaction (not a plain field on the transfer row) auto-assigned to a dedicated built-in category so it's groupable in Analysis. Deliberately **not** modeled like a partner-debt settlement leg (ADR-0019) despite the surface similarity — it does **not** carry `is_settlement` (that flag makes Analysis *exclude* a row; a transfer fee must be *included*, since it's real incidental spending, not a repayment), and it **cascades** with its parent transfer (editing the fee amount or deleting the transfer updates/soft-deletes the linked expense too) rather than being fire-and-forget like the debt link — an orphaned fee-expense after its parent transfer is deleted would silently corrupt balance and Analysis totals. See ADR-0031.
 _Avoid_: settlement leg, linked debt, transfer expense
 
+### Recurring
+
+**Paused (recurring rule)**:
+An indefinite suspension of a recurring rule — no occurrences materialize while paused. Resuming jumps `nextDate` forward to the next occurrence from today; it never backfills whatever was missed during the pause (unlike a plain schedule resume, which would materialize a backlog of backdated transactions). Distinct from deleting a rule, which is permanent. See ADR-0035.
+_Avoid_: disabled, inactive, suspended
+
+**Skip (recurring occurrence)**:
+A one-shot action that advances a recurring rule's `nextDate` past a single upcoming occurrence without materializing a transaction for it — the rule keeps generating normally afterward. Lighter than [[Paused (recurring rule)|pausing]]: no persisted flag, affects exactly one occurrence. See ADR-0035.
+_Avoid_: dismiss, cancel occurrence, delete occurrence
+
+### Budgets
+
+**Rollover (budget)**:
+An opt-in, per-budget property (`rolloverEnabled`) under which both unused amount *and* overspend carry forward into the next month, symmetrically — a real running ledger, not a one-way "leftover only" perk. Deliberately has **no floor**: a carried deficit can push the effective limit below ₱0, and the UI must surface that plainly rather than clamping it. The chain **breaks at a gap month** (no budget row at all for that category/month) — carry-forward resets to ₱0 at the next month that has a row, rather than skipping through the gap. See ADR-0036.
+_Avoid_: carryover, budget ledger, leftover budget
+
+**Effective limit**:
+The actual spending ceiling for a budget in a given month once [[Rollover (budget)]] is applied: `amount + carriedFromPreviousMonth`. Computed at read time by chaining backward through consecutive `yearMonth` rows — never persisted, so changing the rollover rule doesn't require rewriting history. Distinct from the budget's own stored `amount`, which never changes regardless of rollover.
+_Avoid_: adjusted budget, actual limit, real budget
+
 ### Analysis
 
 **Budget period**:
@@ -173,3 +193,19 @@ _Avoid_: PIN throttling, brute-force protection
 **Version-mismatch gate**:
 A hard, non-dismissable block shown to beta testers whenever their installed `versionCode` doesn't **exactly** match the single row in `app_release_info` (a manually-updated, public-read Supabase table) — exact-match rather than a "not behind" floor, because the goal is every tester on the identical build for comparable bug reports, not merely "not outdated." Checked on the same foreground/resume cadence as `AppLock`. Fails **open** (lets the user in) if the check itself can't complete — never blocks the app over a failed network call. Beta-only (`BuildConfig.IS_BETA_BUILD`). See ADR-0029.
 _Avoid_: force update, version check
+
+**Module graph**:
+The per-module nested `NavGraph` every pinnable module (Records, Analysis, Manage, Couple, Settings, Calculator, Savings) is wrapped in, uniformly — even ones with only a single screen today. Switching tabs saves/restores each module's own back stack independently, so leaving a module mid-flow (e.g. Records → Recurring) and returning later resumes exactly there, not at the module's root. Add/Edit Transaction is a deliberate exception: a standalone route outside every module graph, since it's reached from the global ⊕ button as well as from inside Records. See ADR-0033.
+_Avoid_: tab graph, nested graph (ambiguous with Android's generic term), sub-graph
+
+**Reset-to-root**:
+The behavior when re-tapping the bottom-nav tab for the module you're already inside: pops that module's own back stack to its start destination, discarding any pushed sub-screen. Scoped to the back stack only — it does not reset scroll position, viewed month/period, or any other in-screen state. See ADR-0033.
+_Avoid_: reset tab, tab reset, go home
+
+**Coach mark**:
+A single step of the first-run tutorial: an anchored tooltip pointing at one real, on-screen UI target, advancing only when the user taps that actual target (not a generic "Next" button) — teaches muscle memory rather than playing a slideshow. Deliberately not a dimmed-cutout "spotlight" effect. The generic engine (target highlighting, tooltip rendering, step sequencing) lives in `core/ui/CoachMark.kt`; the Ipon-specific step script lives in `feature/tutorial/`. See ADR-0034.
+_Avoid_: spotlight, walkthrough step, tooltip tour
+
+**Tutorial gate (`tutorial_seen`)**:
+A local-only DataStore flag, independent of [[New-user gate]]/`isOnboardingDone`, that fires the first-run coach-mark tutorial once per local install. Naturally re-arms whenever local storage is cleared (covers both a brand-new user and an existing user who reinstalled/wiped storage, with one mechanism) — the opposite of onboarding's gate, which is deliberately keyed off synced server state to *avoid* re-triggering for a returning user. A manual "Replay tutorial" entry point in Settings re-runs the sequence without touching this flag. See ADR-0034.
+_Avoid_: onboarding flag, tutorial flag, has_seen_tutorial

@@ -39,7 +39,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import android.net.Uri
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.theme.paletteColorScheme
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
@@ -60,6 +63,7 @@ fun PersonalizeScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val liveColorScheme = paletteColorScheme(state.draftPalette, state.draftIsDark)
+    val context = LocalContext.current
 
     MaterialTheme(
         colorScheme = liveColorScheme,
@@ -170,6 +174,18 @@ fun PersonalizeScreen(
                     modifier = Modifier.clickable(onClick = onOpenHelp),
                 )
                 HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("Privacy Policy") },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable(onClick = {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)),
+                        )
+                    }),
+                )
+                HorizontalDivider()
 
                 if (BuildConfig.IS_BETA_BUILD) {
                     Spacer(Modifier.height(24.dp))
@@ -267,3 +283,5 @@ private fun PaletteSwatch(
         Text(palette.label, style = MaterialTheme.typography.labelSmall)
     }
 }
+
+private const val PRIVACY_POLICY_URL = "https://alvinleyble.github.io/ipon-love-legal/privacy-policy.html"

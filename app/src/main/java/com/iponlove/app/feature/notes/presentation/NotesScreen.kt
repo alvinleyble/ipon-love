@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
@@ -53,21 +52,13 @@ private val DATE_LABEL: DateTimeFormatter =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesScreen(
-    onBack: () -> Unit,
     onOpenNote: (String) -> Unit,
     viewModel: NotesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Notes") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
+            TopAppBar(title = { Text("Notes") })
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { onOpenNote(NEW_NOTE) }) {
