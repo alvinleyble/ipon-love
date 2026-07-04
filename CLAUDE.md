@@ -174,7 +174,7 @@ When in doubt: favor thin, composable layers over shortcuts. Three constraints t
 - Voice recording
 - CSV / PDF export
 - iOS
-- Custom fonts / custom category icon packs (themes are color-only in V1)
+- Custom fonts (typography only — category/account icon customization already shipped in V1.3; themes remain color-only otherwise)
 - Profile / couple photo upload (avatars are accent color + initials in V1)
 
 ---

@@ -774,6 +774,16 @@ begin
 
     update couples set user2_id = auth.uid(), updated_at = now() where id = v_couple.id;
     update users   set couple_id = v_couple.id, updated_at = now() where id = auth.uid();
+
+    -- Re-stamp the inviter's (user1's) row so its server_rev jumps ABOVE the redeemer's
+    -- already-advanced users pull cursor. Without this, redeem_invite touches only the
+    -- redeemer's own row + the couples row, so the inviter's row keeps its pre-pairing
+    -- server_rev — below the redeemer's cursor — and the redeemer's incremental pull
+    -- (server_rev > cursor, ADR-0002) never re-fetches it. The partner row then never lands
+    -- locally, so CoupleMembers.partner stays null: no combined-view attribution and no
+    -- "Paid for partner" toggle. `updated_at = updated_at` fires trg_rev_users (server_rev =
+    -- nextval) WITHOUT disturbing the client-authoritative LWW key (ADR-0001).
+    update users   set updated_at = updated_at where id = v_couple.user1_id;
     return v_couple.id;
 end;
 $$;

@@ -170,16 +170,18 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 
 ## 9. Future Enhancements (Post-V1)
 
+Reconciled 2026-07-04 against `docs/build/project-build-progress.md` and `ARCHITECTURE.md` (previously out of sync — see that doc's "Post-V1 Horizon" list).
+
 | Feature | Notes |
 |---|---|
+| Google Sign-In | Supabase OAuth + Android Credential Manager |
+| Facebook Login | Supabase OAuth + Facebook SDK |
 | AI financial companion | User's own API key; spending advice, savings trajectory, friendly assistant persona |
-| Receipt / photo attachment on transactions | Requires Supabase Storage integration |
 | Password vault | Encrypted local vault |
 | Voice recording storage | Extension of the notes system |
 | iOS version | Evaluate Kotlin Multiplatform or Flutter at that point |
 | CSV / PDF export | For power users and accountants |
-| Shared lists (groceries, trip budgets) | Extension of the shared notes feature |
-| Custom fonts & category icon packs | Theme customization beyond the built-in color themes |
+| Custom fonts | Typography customization beyond the built-in color themes (category/account icon customization already shipped in V1.3) |
 | Profile & couple photo upload | Avatar / banner images via Supabase Storage |
 
 ---

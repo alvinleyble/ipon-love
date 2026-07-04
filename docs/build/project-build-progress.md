@@ -22,7 +22,7 @@
 | V1.6 | Prod-flavor redeploy fix (beta feedback visibility, version bump, savings-goal backfill) | [v1.6.md](v1.6.md) |
 | V1.6.1 | Planning — beta version tag, Records compactness, forgot password, navbar editor bug, Settings "Beta" section | [v1.6.1-plan.md](v1.6.1-plan.md) |
 
-**Post-V1 Horizon** — the only work beyond the numbered versions above, unscheduled by design (could land before or after production launch depending on priority/capacity):
+**Post-V1 Horizon** — the only work beyond the numbered versions above, unscheduled by design (could land before or after production launch depending on priority/capacity). Reconciled 2026-07-04 against `PRD.md`/`ARCHITECTURE.md` (which had drifted out of sync with each other and with this list — see `v1.6.1-plan.md` Item 5):
 
 1. **Google Sign-In** — Supabase OAuth + Android Credential Manager
 2. **Facebook Login** — Supabase OAuth + Facebook SDK
@@ -31,9 +31,10 @@
 5. **Voice recording storage** — new `feature/recordings` module + Supabase Storage
 6. **iOS** — evaluate Kotlin Multiplatform (domain layer already pure Kotlin)
 7. **CSV / PDF export** — data already structured for it
-8. **Delete account** — user-initiated permanent account deletion (Settings). Not yet designed/grilled. Non-obvious cross-cutting concerns to grill first: Supabase Auth user deletion (needs a server-side/edge function, can't self-delete via client SDK), couple unpair/cleanup if paired (reuse `unpair()` RPC, ADR-0006/0008), cascade behavior for owned rows (hard delete vs. soft-delete-forever per ADR-0010 — this is likely the one legitimate exception), partner's replicated copies, and local Room wipe (`LocalDataWiper`, already exists for sign-out/account-switch). Likely Opus + `/grilling` given the ADR-0010/ADR-0006 interactions.
+8. **Custom fonts** — typography customization beyond the built-in color themes. (Category/account icon customization already shipped in V1.3 — see the V1.3 row above — so this is fonts only now, not icon packs.)
+9. **Profile & couple photo upload** — avatar/banner images via Supabase Storage
 
-No timeline or grilled design exists for any of the 8 yet.
+No timeline or grilled design exists for any of the 9 yet.
 
 ---
 

@@ -405,15 +405,16 @@ Transaction entry → Add / Edit (bottom sheet modal over any tab)
 
 ## 10. Post-V1 Enhancements
 
-Not built in v1. Architecture must not block these.
+Not built in v1. Architecture must not block these. Reconciled 2026-07-04 against `docs/build/project-build-progress.md` and `PRD.md` (previously out of sync — see that doc's "Post-V1 Horizon" list).
 
 | Feature | Note |
 |---|---|
 | Google Sign-In | Supabase OAuth + Android Credential Manager; needs Google Cloud Console setup |
 | Facebook Login | Supabase OAuth + Facebook SDK; needs Facebook Developer App setup |
 | AI companion | User provides own API key; stored in EncryptedDataStore; new `feature/ai` module |
-| Receipt photo on transactions | `photo_url` column on transactions; Supabase Storage already available |
 | Password vault | New `feature/vault` module; SQLCipher or EncryptedDataStore |
 | Voice recording storage | New `feature/recordings` module; Supabase Storage for upload |
 | iOS | Evaluate Kotlin Multiplatform — domain layer is pure Kotlin already, head start exists |
 | CSV / PDF export | Power user feature, data already structured for it |
+| Custom fonts | Typography customization beyond built-in color themes; category/account icon picking already shipped in V1.3 |
+| Profile & couple photo upload | Avatar/banner images via Supabase Storage |

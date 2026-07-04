@@ -130,11 +130,21 @@ _Avoid_: deposit, payment, saving
 The progress of a [[Savings goal]], **derived** as the sum of its non-deleted [[Goal contribution]]s — never a stored field. Same derivation discipline as [[Opening balance]] / account balance (ADR-0007), chosen so concurrent partner contributions can't clobber each other. _reached_ is likewise derived (`saved ≥ target`).
 _Avoid_: progress, balance, total saved (as a stored column)
 
+### Transactions
+
+**Transfer fee**:
+An optional fee on a `TRANSFER` transaction, represented as a second, linked `EXPENSE` transaction (not a plain field on the transfer row) auto-assigned to a dedicated built-in category so it's groupable in Analysis. Deliberately **not** modeled like a partner-debt settlement leg (ADR-0019) despite the surface similarity — it does **not** carry `is_settlement` (that flag makes Analysis *exclude* a row; a transfer fee must be *included*, since it's real incidental spending, not a repayment), and it **cascades** with its parent transfer (editing the fee amount or deleting the transfer updates/soft-deletes the linked expense too) rather than being fire-and-forget like the debt link — an orphaned fee-expense after its parent transfer is deleted would silently corrupt balance and Analysis totals. See ADR-0031.
+_Avoid_: settlement leg, linked debt, transfer expense
+
 ### Analysis
 
 **Budget period**:
 The window over which income, expense, and budgets are computed — in V1 hard-coded to the **calendar month**. Net is strictly *same-period* (`this-month income − this-month expense`), never a cross-period subtraction; last month's income is shown as a separate context stat so an empty pre-payday month isn't alarming. A **payday-anchored** period (cycle starts on payday) is the planned post-V1 fix that dissolves the empty-before-payday problem at the source.
 _Avoid_: month (ambiguous), pay cycle (until built), reporting period
+
+**Analysis period**:
+A **steppable calendar bucket** for the Analysis screen's time-range filter — Day, Week, Month, Quarter, Semi-annual, Annual, or All-time — each pageable to the literal previous/next calendar instance via `PeriodStepper` (e.g. Quarter steps between Jan–Mar, Apr–Jun, ...). Deliberately **not** a crypto-app-style trailing window anchored to "now" (there is no "previous 3 months ending today" concept here) — reviewing a specific past period (e.g. "what did March look like") is a real use case for a finance app, unlike a price chart. Labels are kept short for layout reasons only; the short label does not imply trailing-window semantics. All-time's start boundary is a fixed, arbitrarily-early `Instant`, not a query for the actual earliest transaction. See ADR-0030.
+_Avoid_: trailing window, rolling period, lookback window
 
 ### App shell
 
@@ -149,3 +159,17 @@ _Avoid_: setup wizard, intro, tutorial
 **New-user gate**:
 The condition that triggers [[Onboarding]] and starter seeding: owned categories *and* accounts both empty **after the first sync has successfully completed** — not raw local emptiness (which would duplicate-seed a reinstalling or second-device user). An `onboardingDone` flag only suppresses re-prompting. See ADR-0024.
 _Avoid_: first launch, is-new-user flag
+
+**Password recovery**:
+A distinct `AuthStatus` state, entered only when the SDK session originates from a password-reset deep link (`session.type == "recovery"`) rather than an ordinary sign-in. Routes to a dedicated "set new password" screen instead of the app shell, and short-circuits the `Authenticated` cascade (sync, onboarding decision, WorkManager enqueues) until the recovery is resolved. Ends in a forced sign-out back to ordinary sign-in, never an auto-continue into the app. See ADR-0027.
+_Avoid_: recovery session, reset gate
+
+**PIN lockout**:
+A flat 5-wrong-attempt threshold on the PIN path, followed by a 30-second timed cooldown. The counter persists in DataStore (survives a force-kill) and resets only on a successful unlock, never on elapsed time alone. "Forgot PIN" (email+password re-auth) stays available throughout as an opt-in escape hatch — the lockout never forces it. Biometric's OS-level lockout (`ERROR_LOCKOUT`/`ERROR_LOCKOUT_PERMANENT`) is surfaced with a message rather than silently falling back to the PIN pad. See ADR-0028.
+_Avoid_: PIN throttling, brute-force protection
+
+### Beta testing
+
+**Version-mismatch gate**:
+A hard, non-dismissable block shown to beta testers whenever their installed `versionCode` doesn't **exactly** match the single row in `app_release_info` (a manually-updated, public-read Supabase table) — exact-match rather than a "not behind" floor, because the goal is every tester on the identical build for comparable bug reports, not merely "not outdated." Checked on the same foreground/resume cadence as `AppLock`. Fails **open** (lets the user in) if the check itself can't complete — never blocks the app over a failed network call. Beta-only (`BuildConfig.IS_BETA_BUILD`). See ADR-0029.
+_Avoid_: force update, version check

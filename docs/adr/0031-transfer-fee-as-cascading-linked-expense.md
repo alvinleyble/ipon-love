@@ -1,0 +1,12 @@
+# Transfer fee is a cascading linked expense, not a settlement-style leg or a plain field
+
+**Context.** Transfers are a single `Transaction` row (`accountId` source, optional `toAccountId` destination) — there's no existing linked-row mechanism for transfers the way partner-debt settlements have one (ADR-0019: `is_settlement`-flagged legs, fire-and-forget from their parent transaction). Alvin wants an optional transfer fee that's visible in Analysis's expense totals and category breakdown, which a plain `transferFee: BigDecimal?` field can't deliver — `AnalysisCalculator` only sees category-tagged rows, and a `TRANSFER` row isn't one.
+
+**Decision.** A non-zero transfer fee spawns a second, linked `EXPENSE` transaction, auto-assigned to a new dedicated built-in category (e.g. "Transfer fees") — not user-picked, since the fee is incidental to the transfer, not something worth a separate categorization step. `TransactionValidator.kt`'s `CATEGORY_REQUIRED` check is satisfied normally (no waiver needed, since the category is auto-assigned rather than left blank). This deliberately diverges from the ADR-0019 settlement pattern in two ways:
+
+1. **No `is_settlement` flag.** That flag exists specifically so Analysis *excludes* the row (a repayment isn't spending). A transfer fee is real incidental spending and must be *included* — reusing the flag would hide it, defeating the entire point of this feature.
+2. **Cascades, not fire-and-forget.** Settlement legs deliberately don't track their parent transaction after creation (editing/deleting the source transaction leaves the debt untouched — a debt is a separate ledger concept). A transfer fee isn't separate — it's the same money movement. Editing the transfer's fee amount updates the linked expense; deleting the transfer soft-deletes the linked expense too. Without cascading, a deleted transfer would leave an orphaned fee-expense still affecting account balance and Analysis totals — a real correctness bug, not a display quirk.
+
+Validation is non-negative only — no ceiling, no "must be less than the transferred principal" rule; a larger-than-principal fee is implausible but not corrupting if it ever occurred.
+
+**Rejected:** a plain `transferFee` field on the transfer row (simpler, matches how transfers work today, but invisible to Analysis — doesn't satisfy the actual requirement); reusing the `is_settlement` linked-transaction pattern as-is (wrong Analysis visibility and wrong cascade semantics for this use case).
