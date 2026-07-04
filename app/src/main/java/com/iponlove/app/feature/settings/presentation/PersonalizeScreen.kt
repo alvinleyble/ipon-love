@@ -54,6 +54,7 @@ fun PersonalizeScreen(
     onOpenNavbar: () -> Unit = {},
     onOpenHelp: () -> Unit = {},
     onOpenBetaFeedback: () -> Unit = {},
+    onOpenUpcomingFeatures: () -> Unit = {},
     onSignOut: () -> Unit = {},
     viewModel: PersonalizeViewModel = hiltViewModel(),
 ) {
@@ -168,7 +169,12 @@ fun PersonalizeScreen(
                     },
                     modifier = Modifier.clickable(onClick = onOpenHelp),
                 )
+                HorizontalDivider()
+
                 if (BuildConfig.IS_BETA_BUILD) {
+                    Spacer(Modifier.height(24.dp))
+                    Text("Beta", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(4.dp))
                     HorizontalDivider()
                     ListItem(
                         headlineContent = { Text("Beta feedback") },
@@ -178,8 +184,17 @@ fun PersonalizeScreen(
                         },
                         modifier = Modifier.clickable(onClick = onOpenBetaFeedback),
                     )
+                    HorizontalDivider()
+                    ListItem(
+                        headlineContent = { Text("Upcoming features") },
+                        supportingContent = { Text("See what's on our roadmap") },
+                        trailingContent = {
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                        },
+                        modifier = Modifier.clickable(onClick = onOpenUpcomingFeatures),
+                    )
+                    HorizontalDivider()
                 }
-                HorizontalDivider()
 
                 Spacer(Modifier.height(8.dp))
                 TextButton(

@@ -130,7 +130,7 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 - Light / dark mode is a separate toggle from palette — 12 combinations total
 - Personalize screen: visual swatch grid with live preview before applying
 - Couple attribution color (blue vs pink in combined view) is separate from personal theme palette; chosen during the pairing flow
-- Post-V1: custom font styles, custom category icon packs
+- Post-V1: custom font styles (category/account icon customization shipped in V1.3)
 
 ### 6.6 Home Screen Widget
 

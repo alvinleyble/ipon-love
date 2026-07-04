@@ -64,6 +64,7 @@ import com.iponlove.app.feature.calculator.presentation.CalculatorScreen
 import com.iponlove.app.feature.couple.presentation.CoupleScreen
 import com.iponlove.app.feature.feedback.presentation.BetaFeedbackScreen
 import com.iponlove.app.feature.help.presentation.HelpScreen
+import com.iponlove.app.feature.help.presentation.UpcomingFeaturesScreen
 import com.iponlove.app.feature.manage.presentation.ManageScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion.NOTE_ID_KEY
@@ -88,6 +89,7 @@ private const val SETTINGS_COUPLE_ROUTE = "settings_couple"
 private const val NAV_EDITOR_ROUTE = "nav_editor"
 private const val HELP_ROUTE = "help"
 private const val BETA_FEEDBACK_ROUTE = "beta_feedback"
+private const val UPCOMING_FEATURES_ROUTE = "upcoming_features"
 private const val ADD_TRANSACTION_ROUTE = "add_transaction"
 private const val EDIT_TRANSACTION_ROUTE = "edit_transaction"
 private const val GOAL_EDITOR_ROUTE = "goal_editor"
@@ -250,6 +252,7 @@ private fun IponAppContent(
                     onOpenNavbar = { navController.navigate(NAV_EDITOR_ROUTE) },
                     onOpenHelp = { navController.navigate(HELP_ROUTE) },
                     onOpenBetaFeedback = { navController.navigate(BETA_FEEDBACK_ROUTE) },
+                    onOpenUpcomingFeatures = { navController.navigate(UPCOMING_FEATURES_ROUTE) },
                     onSignOut = onSignOut,
                 )
             }
@@ -275,6 +278,9 @@ private fun IponAppContent(
             }
             composable(BETA_FEEDBACK_ROUTE) {
                 BetaFeedbackScreen(onBack = { navController.popBackStack() })
+            }
+            composable(UPCOMING_FEATURES_ROUTE) {
+                UpcomingFeaturesScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 route = "$NOTE_EDITOR_ROUTE/{$NOTE_ID_KEY}",

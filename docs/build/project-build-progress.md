@@ -8,7 +8,7 @@
 
 ## Current state (as of 2026-07-04)
 
-**V1 through V1.6 are all committed on `main`.** Nothing pending on the V1.5 post-ship audit (all 11 items closed, see [v1.5-post-ship-audit.md](v1.5-post-ship-audit.md)). [V1.6.1](v1.6.1-plan.md) is in planning: Item 1 (misleading "(prod)" beta-feedback version tag) is fixed but **uncommitted** (`BetaFeedbackViewModel.kt`); Items 2–5 are still `TODO`/`NEEDS DECISION`.
+**V1 through V1.6 are all committed on `main`.** Nothing pending on the V1.5 post-ship audit (all 11 items closed, see [v1.5-post-ship-audit.md](v1.5-post-ship-audit.md)). [V1.6.1](v1.6.1.md) is in progress: Item 4 is `DONE 8fe6c83` (navbar pairing redesign, grew to also fix a cross-account PIN/data leak). Item 1 (misleading "(prod)" beta-feedback version tag) is fixed but **uncommitted** (`BetaFeedbackViewModel.kt`). Item 5 (Settings "Beta" section + Upcoming features page) is built, on-device tested, and **uncommitted**. Item 9 (version-mismatch gate) is built and green, awaiting Alvin's on-device test. Remaining items are still `TODO`/`NEEDS DECISION`.
 
 | Version | What | Doc |
 |---|---|---|
@@ -20,9 +20,9 @@
 | V1.5 | Beta Feedback Round 1 (12 slices — app-lock overlay, onboarding, 3-pin navbar, shared savings goals) | [v1.5.md](v1.5.md) |
 | V1.5 post-ship audit | 11-item cross-cutting bug/edge-case audit, all closed | [v1.5-post-ship-audit.md](v1.5-post-ship-audit.md) |
 | V1.6 | Prod-flavor redeploy fix (beta feedback visibility, version bump, savings-goal backfill) | [v1.6.md](v1.6.md) |
-| V1.6.1 | Planning — beta version tag, Records compactness, forgot password, navbar editor bug, Settings "Beta" section | [v1.6.1-plan.md](v1.6.1-plan.md) |
+| V1.6.1 | In progress — Item 4 done (navbar pairing redesign + PIN/data-leak fix); rest planned | [v1.6.1.md](v1.6.1.md) |
 
-**Post-V1 Horizon** — the only work beyond the numbered versions above, unscheduled by design (could land before or after production launch depending on priority/capacity). Reconciled 2026-07-04 against `PRD.md`/`ARCHITECTURE.md` (which had drifted out of sync with each other and with this list — see `v1.6.1-plan.md` Item 5):
+**Post-V1 Horizon** — the only work beyond the numbered versions above, unscheduled by design (could land before or after production launch depending on priority/capacity). Reconciled 2026-07-04 against `PRD.md`/`ARCHITECTURE.md` (which had drifted out of sync with each other and with this list — see `v1.6.1.md` Item 5):
 
 1. **Google Sign-In** — Supabase OAuth + Android Credential Manager
 2. **Facebook Login** — Supabase OAuth + Facebook SDK
