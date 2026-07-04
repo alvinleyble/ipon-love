@@ -52,6 +52,7 @@ class RecurringRuleRepositoryImpl @Inject constructor(
                 isDeleted = existing?.isDeleted ?: false,
                 serverRev = existing?.serverRev,
                 pendingSync = true,
+                isPaused = rule.isPaused,
             ),
         )
         syncTrigger.requestPush()

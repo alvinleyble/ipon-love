@@ -55,6 +55,7 @@ fun rule(
     accountId: String = "acc-1",
     categoryId: String = "cat-1",
     note: String? = null,
+    isPaused: Boolean = false,
 ) = RecurringRule(
     id = id,
     frequency = frequency,
@@ -67,6 +68,7 @@ fun rule(
         categoryId = categoryId,
         note = note,
     ),
+    isPaused = isPaused,
 )
 
 fun ruleEntity(

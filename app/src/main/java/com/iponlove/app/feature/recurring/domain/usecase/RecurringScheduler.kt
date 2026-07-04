@@ -71,6 +71,7 @@ object RecurringScheduler {
             RecurringFrequency.DAILY -> date.plusDays(step)
             RecurringFrequency.WEEKLY -> date.plusWeeks(step)
             RecurringFrequency.MONTHLY -> date.plusMonths(step)
+            RecurringFrequency.YEARLY -> date.plusYears(step)
         }
     }
 }

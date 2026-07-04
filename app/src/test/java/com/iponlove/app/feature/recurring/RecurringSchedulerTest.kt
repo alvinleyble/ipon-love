@@ -72,6 +72,33 @@ class RecurringSchedulerTest {
     }
 
     @Test
+    fun yearly_stepsByYears() {
+        val r = rule("r", frequency = RecurringFrequency.YEARLY, nextDate = LocalDate.of(2024, 3, 1))
+
+        val run = RecurringScheduler.run(r, asOf = LocalDate.of(2026, 6, 1))
+
+        assertThat(run.occurrences).containsExactly(
+            LocalDate.of(2024, 3, 1),
+            LocalDate.of(2025, 3, 1),
+            LocalDate.of(2026, 3, 1),
+        ).inOrder()
+        assertThat(run.nextDate).isEqualTo(LocalDate.of(2027, 3, 1))
+    }
+
+    @Test
+    fun yearly_clampsLeapDay() {
+        // Feb 29 2024 + 1 year clamps to Feb 28 2025 (non-leap), matching plusMonths month-end behaviour.
+        val r = rule("r", frequency = RecurringFrequency.YEARLY, nextDate = LocalDate.of(2024, 2, 29))
+
+        val run = RecurringScheduler.run(r, asOf = LocalDate.of(2025, 3, 1))
+
+        assertThat(run.occurrences).containsExactly(
+            LocalDate.of(2024, 2, 29),
+            LocalDate.of(2025, 2, 28),
+        ).inOrder()
+    }
+
+    @Test
     fun endDate_isInclusive_andStopsGeneration() {
         val r = rule(
             "r",

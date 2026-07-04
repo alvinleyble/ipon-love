@@ -52,7 +52,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -62,11 +61,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.iponlove.app.core.ui.IponFilterChip
+import com.iponlove.app.core.ui.EntityChipRow
+import com.iponlove.app.core.ui.EntityGrid
+import com.iponlove.app.core.ui.EntityPickerOption
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
-import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.TransactionError
@@ -189,13 +189,13 @@ private fun EditorForm(
     onRemoveReceipt: () -> Unit,
 ) {
     val accountOptions = state.accounts.map {
-        PickerOption(it.id, it.name, it.icon?.let { k -> ACCOUNT_ICONS[k] }, it.color)
+        EntityPickerOption(it.id, it.name, it.icon?.let { k -> ACCOUNT_ICONS[k] }, it.color)
     }
     // Filtered by the current type; the grid takes an already-filtered list so a search box is a
     // drop-in later (Slice 1 design note).
     val categoryOptions = state.categories
         .filter { it.type == editor.type.matchingCategoryType() }
-        .map { PickerOption(it.id, it.name, it.icon?.let { k -> CATEGORY_ICONS[k] }, it.color) }
+        .map { EntityPickerOption(it.id, it.name, it.icon?.let { k -> CATEGORY_ICONS[k] }, it.color) }
 
     // Spend touching a shared account is forced non-private (ADR-0018): hide the toggle then.
     val sharedAccountIds = state.accounts.filter { it.isShared }.map { it.id }.toSet()
@@ -216,8 +216,8 @@ private fun EditorForm(
             .padding(16.dp),
     ) {
         FieldLabel("Type")
-        ChipRow(
-            options = TransactionType.entries.map { PickerOption(it.name, it.label()) },
+        EntityChipRow(
+            options = TransactionType.entries.map { EntityPickerOption(it.name, it.label()) },
             selectedId = editor.type.name,
             onSelect = { onTypeChange(TransactionType.valueOf(it)) },
         )
@@ -235,12 +235,12 @@ private fun EditorForm(
         Spacer(Modifier.height(16.dp))
 
         FieldLabel("Account")
-        ChipRow(options = accountOptions, selectedId = editor.accountId, onSelect = onAccountChange)
+        EntityChipRow(options = accountOptions, selectedId = editor.accountId, onSelect = onAccountChange)
         Spacer(Modifier.height(16.dp))
 
         if (editor.type == TransactionType.TRANSFER) {
             FieldLabel("To account")
-            ChipRow(
+            EntityChipRow(
                 options = accountOptions.filter { it.id != editor.accountId },
                 selectedId = editor.toAccountId,
                 onSelect = onToAccountChange,
@@ -261,7 +261,7 @@ private fun EditorForm(
             )
         } else {
             FieldLabel("Category")
-            CategoryGrid(
+            EntityGrid(
                 options = categoryOptions,
                 selectedId = editor.categoryId,
                 onSelect = onCategoryChange,
@@ -374,134 +374,10 @@ private fun EditorForm(
     }
 }
 
-private data class PickerOption(
-    val id: String,
-    val label: String,
-    val icon: ImageVector? = null,
-    val colorHex: String? = null,
-)
-
 @Composable
 private fun FieldLabel(text: String) {
     Text(text, style = MaterialTheme.typography.labelLarge)
     Spacer(Modifier.height(6.dp))
-}
-
-/** Tap-to-select pills — used for type and accounts. No dropdown (Slice 1 design). */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ChipRow(
-    options: List<PickerOption>,
-    selectedId: String?,
-    onSelect: (String) -> Unit,
-) {
-    if (options.isEmpty()) {
-        Text(
-            "None available",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        return
-    }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        options.forEach { option ->
-            val selected = option.id == selectedId
-            val accent = parseHexColor(option.colorHex) ?: MaterialTheme.colorScheme.primary
-            IponFilterChip(
-                selected = selected,
-                onClick = { onSelect(option.id) },
-                label = { Text(option.label) },
-                leadingIcon = option.icon?.let { vector ->
-                    {
-                        Icon(
-                            imageVector = vector,
-                            contentDescription = null,
-                            tint = accent,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                },
-            )
-        }
-    }
-}
-
-/** Wrapping grid of icon+color tiles, tap-to-select. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun CategoryGrid(
-    options: List<PickerOption>,
-    selectedId: String?,
-    onSelect: (String) -> Unit,
-) {
-    if (options.isEmpty()) {
-        Text(
-            "None available",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        return
-    }
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        options.forEach { option ->
-            CategoryTile(
-                option = option,
-                selected = option.id == selectedId,
-                onClick = { onSelect(option.id) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun CategoryTile(option: PickerOption, selected: Boolean, onClick: () -> Unit) {
-    val accent = parseHexColor(option.colorHex) ?: MaterialTheme.colorScheme.primary
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.width(72.dp).clickable(onClick = onClick),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(if (selected) accent.copy(alpha = 0.18f) else Color.Transparent)
-                .border(
-                    BorderStroke(
-                        width = if (selected) 2.dp else 1.dp,
-                        color = if (selected) accent else MaterialTheme.colorScheme.outlineVariant,
-                    ),
-                    CircleShape,
-                ),
-        ) {
-            if (option.icon != null) {
-                Icon(
-                    imageVector = option.icon,
-                    contentDescription = null,
-                    tint = if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                Text(
-                    text = option.label.take(1).uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Text(
-            text = option.label,
-            style = MaterialTheme.typography.labelSmall,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            color = if (selected) accent else MaterialTheme.colorScheme.onSurface,
-        )
-    }
 }
 
 @Composable

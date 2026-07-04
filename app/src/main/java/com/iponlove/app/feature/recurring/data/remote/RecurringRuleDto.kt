@@ -27,6 +27,7 @@ data class RecurringRuleDto(
     @Serializable(with = InstantSerializer::class) val updatedAt: Instant,
     @SerialName("is_deleted") val isDeleted: Boolean,
     @SerialName("server_rev") val serverRev: Long?,
+    @SerialName("is_paused") val isPaused: Boolean = false,
 )
 
 /** Maps to the rule's `template` jsonb (amount, account_id, category_id, note). */

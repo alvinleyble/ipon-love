@@ -12,4 +12,5 @@ enum class RecurringFrequency {
     DAILY,
     WEEKLY,
     MONTHLY,
+    YEARLY,
 }

@@ -1,7 +1,6 @@
 package com.iponlove.app.feature.recurring.presentation
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,7 +33,6 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import com.iponlove.app.core.ui.IponFilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,7 +58,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.EntityChipRow
+import com.iponlove.app.core.ui.EntityGrid
+import com.iponlove.app.core.ui.EntityPickerOption
 import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
+import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
 import com.iponlove.app.feature.recurring.domain.model.RecurringFrequency
 import com.iponlove.app.feature.recurring.domain.usecase.RecurringError
 import com.iponlove.app.feature.recurring.presentation.components.RecurringCalendarChart
@@ -139,6 +142,9 @@ fun RecurringScreen(
                         RecurringRow(
                             item = item,
                             onClick = { viewModel.startEdit(item.id) },
+                            onPause = { viewModel.pause(item.id) },
+                            onResume = { viewModel.resume(item.id) },
+                            onSkipNext = { viewModel.skipNext(item.id) },
                             onDelete = { viewModel.delete(item.id) },
                         )
                     }
@@ -277,6 +283,9 @@ private fun DayRulesCard(
 private fun RecurringRow(
     item: RecurringRuleListItem,
     onClick: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onSkipNext: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -309,6 +318,21 @@ private fun RecurringRow(
                     Icon(Icons.Filled.MoreVert, contentDescription = "More options")
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    if (item.isPaused) {
+                        DropdownMenuItem(
+                            text = { Text("Resume") },
+                            onClick = { menuOpen = false; onResume() },
+                        )
+                    } else {
+                        DropdownMenuItem(
+                            text = { Text("Pause") },
+                            onClick = { menuOpen = false; onPause() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Skip next") },
+                            onClick = { menuOpen = false; onSkipNext() },
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text("Delete") },
                         onClick = { menuOpen = false; onDelete() },
@@ -334,8 +358,12 @@ private fun RecurringEditorDialog(
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    val accountOptions = state.accounts.map { PickerOption(it.id, it.name) }
-    val categoryOptions = state.categories.map { PickerOption(it.id, it.name) }
+    val accountOptions = state.accounts.map {
+        EntityPickerOption(it.id, it.name, it.icon?.let { k -> ACCOUNT_ICONS[k] }, it.color)
+    }
+    val categoryOptions = state.categories.map {
+        EntityPickerOption(it.id, it.name, it.icon?.let { k -> CATEGORY_ICONS[k] }, it.color)
+    }
 
     AlertDialog(
         onDismissRequest = onCancel,
@@ -352,23 +380,23 @@ private fun RecurringEditorDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(12.dp))
-                ChipRow(
-                    label = "Account",
+                PickerLabel("Account")
+                EntityChipRow(
                     options = accountOptions,
                     selectedId = editor.accountId,
                     onSelect = onAccountChange,
                 )
                 Spacer(Modifier.height(12.dp))
-                ChipRow(
-                    label = "Category",
+                PickerLabel("Category")
+                EntityGrid(
                     options = categoryOptions,
                     selectedId = editor.categoryId,
                     onSelect = onCategoryChange,
                 )
                 Spacer(Modifier.height(12.dp))
-                ChipRow(
-                    label = "Repeats",
-                    options = RecurringFrequency.entries.map { PickerOption(it.name, it.label()) },
+                PickerLabel("Repeats")
+                EntityChipRow(
+                    options = RecurringFrequency.entries.map { EntityPickerOption(it.name, it.label()) },
                     selectedId = editor.frequency.name,
                     onSelect = { onFrequencyChange(RecurringFrequency.valueOf(it)) },
                 )
@@ -421,37 +449,10 @@ private fun RecurringEditorDialog(
     )
 }
 
-private data class PickerOption(val id: String, val label: String)
-
 @Composable
-private fun ChipRow(
-    label: String,
-    options: List<PickerOption>,
-    selectedId: String?,
-    onSelect: (String) -> Unit,
-) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(4.dp))
-        if (options.isEmpty()) {
-            Text(
-                text = "None available",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                options.forEachIndexed { index, option ->
-                    if (index > 0) Spacer(Modifier.width(8.dp))
-                    IponFilterChip(
-                        selected = option.id == selectedId,
-                        onClick = { onSelect(option.id) },
-                        label = { Text(option.label) },
-                    )
-                }
-            }
-        }
-    }
+private fun PickerLabel(text: String) {
+    Text(text, style = MaterialTheme.typography.labelLarge)
+    Spacer(Modifier.height(6.dp))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -533,12 +534,14 @@ private fun RecurringFrequency.label(): String = when (this) {
     RecurringFrequency.DAILY -> "Daily"
     RecurringFrequency.WEEKLY -> "Weekly"
     RecurringFrequency.MONTHLY -> "Monthly"
+    RecurringFrequency.YEARLY -> "Annually"
 }
 
 private fun RecurringFrequency.unit(): String = when (this) {
     RecurringFrequency.DAILY -> "days"
     RecurringFrequency.WEEKLY -> "weeks"
     RecurringFrequency.MONTHLY -> "months"
+    RecurringFrequency.YEARLY -> "years"
 }
 
 private fun RecurringError.message(): String = when (this) {

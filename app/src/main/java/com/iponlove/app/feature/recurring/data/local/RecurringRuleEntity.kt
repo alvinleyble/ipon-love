@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.recurring.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.iponlove.app.core.sync.SyncMeta
@@ -31,4 +32,5 @@ data class RecurringRuleEntity(
     override val isDeleted: Boolean,
     override val serverRev: Long?,
     override val pendingSync: Boolean,
+    @ColumnInfo(defaultValue = "0") val isPaused: Boolean = false,
 ) : SyncMeta

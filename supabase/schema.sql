@@ -38,7 +38,7 @@ $$;
 create type account_type        as enum ('CASH', 'CARD', 'BANK', 'EWALLET');
 create type category_type       as enum ('INCOME', 'EXPENSE');
 create type transaction_type    as enum ('INCOME', 'EXPENSE', 'TRANSFER');
-create type recurring_frequency as enum ('DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM');
+create type recurring_frequency as enum ('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY', 'CUSTOM');
 
 -- ---------- couples ---------------------------------------------------------
 -- Created before users because users.couple_id references it. user1/user2 FKs
@@ -136,7 +136,8 @@ create table recurring_rules (
     created_at  timestamptz not null default now(),
     updated_at  timestamptz not null default now(),
     is_deleted  boolean not null default false,
-    server_rev  bigint
+    server_rev  bigint,
+    is_paused   boolean not null default false    -- paused indefinitely (ADR-0035; skip advances next_date)
 );
 
 -- ---------- transactions ----------------------------------------------------

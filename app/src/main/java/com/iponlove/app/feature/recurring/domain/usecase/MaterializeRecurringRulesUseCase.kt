@@ -39,6 +39,8 @@ class MaterializeRecurringRulesUseCase @Inject constructor(
             .associate { it.id to it.type }
 
         for (rule in rules) {
+            if (rule.isPaused) continue
+
             val type = categoryTypes[rule.template.categoryId]?.toTransactionType() ?: continue
             val outcome = RecurringScheduler.run(rule, asOf)
             if (outcome.occurrences.isEmpty()) continue

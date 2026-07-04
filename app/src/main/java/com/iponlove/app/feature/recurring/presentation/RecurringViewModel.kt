@@ -11,6 +11,9 @@ import com.iponlove.app.feature.recurring.domain.model.RecurringTemplate
 import com.iponlove.app.feature.recurring.domain.usecase.DeleteRecurringRuleUseCase
 import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRulesUseCase
 import com.iponlove.app.feature.recurring.domain.usecase.ObserveRecurringRulesUseCase
+import com.iponlove.app.feature.recurring.domain.usecase.PauseRecurringRuleUseCase
+import com.iponlove.app.feature.recurring.domain.usecase.ResumeRecurringRuleUseCase
+import com.iponlove.app.feature.recurring.domain.usecase.SkipNextRecurringOccurrenceUseCase
 import com.iponlove.app.feature.recurring.domain.usecase.RecurringScheduler
 import com.iponlove.app.feature.recurring.domain.usecase.RecurringValidator
 import com.iponlove.app.feature.recurring.domain.usecase.UpsertRecurringRuleUseCase
@@ -37,6 +40,9 @@ class RecurringViewModel @Inject constructor(
     private val upsertRule: UpsertRecurringRuleUseCase,
     private val deleteRule: DeleteRecurringRuleUseCase,
     private val materializeRules: MaterializeRecurringRulesUseCase,
+    private val pauseRule: PauseRecurringRuleUseCase,
+    private val resumeRule: ResumeRecurringRuleUseCase,
+    private val skipNextOccurrence: SkipNextRecurringOccurrenceUseCase,
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<RecurringEditorState?>(null)
@@ -175,6 +181,18 @@ class RecurringViewModel @Inject constructor(
         viewModelScope.launch { deleteRule(id) }
     }
 
+    fun pause(id: String) {
+        viewModelScope.launch { pauseRule(id) }
+    }
+
+    fun resume(id: String) {
+        viewModelScope.launch { resumeRule(id) }
+    }
+
+    fun skipNext(id: String) {
+        viewModelScope.launch { skipNextOccurrence(id) }
+    }
+
     fun toggleViewMode() {
         calendarNav.update {
             it.copy(
@@ -219,9 +237,14 @@ class RecurringViewModel @Inject constructor(
             id = id,
             title = categoryNames[template.categoryId] ?: "Category",
             scheduleLabel = scheduleLabel(),
-            nextLabel = if (ended) "Ended" else "Next: ${nextDate.format(DATE_FORMATTER)}",
+            nextLabel = when {
+                isPaused -> "Paused"
+                ended -> "Ended"
+                else -> "Next: ${nextDate.format(DATE_FORMATTER)}"
+            },
             amount = template.amount,
             type = categoryTypes[template.categoryId]?.toTransactionType() ?: TransactionType.EXPENSE,
+            isPaused = isPaused,
         )
     }
 
@@ -229,6 +252,7 @@ class RecurringViewModel @Inject constructor(
         RecurringFrequency.DAILY -> if (interval == 1) "Daily" else "Every $interval days"
         RecurringFrequency.WEEKLY -> if (interval == 1) "Weekly" else "Every $interval weeks"
         RecurringFrequency.MONTHLY -> if (interval == 1) "Monthly" else "Every $interval months"
+        RecurringFrequency.YEARLY -> if (interval == 1) "Annually" else "Every $interval years"
     }
 
     private fun CategoryType.toTransactionType(): TransactionType = when (this) {

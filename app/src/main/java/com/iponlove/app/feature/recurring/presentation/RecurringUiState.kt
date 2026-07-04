@@ -37,6 +37,7 @@ data class RecurringRuleListItem(
     val nextLabel: String,
     val amount: BigDecimal,
     val type: TransactionType,
+    val isPaused: Boolean = false,
 )
 
 /**

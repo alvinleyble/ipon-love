@@ -96,6 +96,16 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
                 title = "Profile & couple photo upload (Q4 2026)",
                 description = "Upload a real photo instead of accent color + initials.",
             )
+            Spacer(Modifier.height(8.dp))
+            RoadmapCard(
+                title = "Shared accounts (Q4 2026)",
+                description = "Both partners contribute to and track the same account together.",
+            )
+            Spacer(Modifier.height(8.dp))
+            RoadmapCard(
+                title = "Shared budget (Q4 2026)",
+                description = "Set a joint monthly budget you and your partner track together.",
+            )
         }
     }
 }

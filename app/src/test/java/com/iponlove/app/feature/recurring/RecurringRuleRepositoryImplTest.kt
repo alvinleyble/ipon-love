@@ -53,6 +53,17 @@ class RecurringRuleRepositoryImplTest {
     }
 
     @Test
+    fun upsert_carriesThroughPauseField() = runTest {
+        dao.store["r"] = ruleEntity(id = "r")
+
+        repository.upsertRule(rule("r", isPaused = true))
+        assertThat(dao.store.getValue("r").isPaused).isTrue()
+
+        repository.upsertRule(rule("r", isPaused = false))
+        assertThat(dao.store.getValue("r").isPaused).isFalse()
+    }
+
+    @Test
     fun activeRules_excludesTombstones() = runTest {
         dao.store["a"] = ruleEntity(id = "a")
         dao.store["b"] = ruleEntity(id = "b", isDeleted = true)

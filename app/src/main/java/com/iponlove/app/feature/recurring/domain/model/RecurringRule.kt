@@ -17,6 +17,10 @@ import java.time.LocalDate
  *                day is irrelevant to a recurrence.
  *  - [endDate]   inclusive last possible occurrence; null = repeats forever.
  *  - [interval]  every N units of [frequency] (>= 1), e.g. WEEKLY interval 2 = fortnightly.
+ *  - [isPaused]  whether this rule is temporarily suspended (ADR-0035). Resume jumps
+ *                nextDate forward to the next occurrence from today, never backfills.
+ *                "Skip next" is not a stored flag — it just advances [nextDate] one
+ *                interval forward, so the skipped occurrence's cursor is simply moved past.
  */
 data class RecurringRule(
     val id: String,
@@ -25,6 +29,7 @@ data class RecurringRule(
     val nextDate: LocalDate,
     val endDate: LocalDate?,
     val template: RecurringTemplate,
+    val isPaused: Boolean = false,
 )
 
 /** The fixed details every generated occurrence copies. [categoryId] is required (V1). */
