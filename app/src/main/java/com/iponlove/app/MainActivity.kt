@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -56,6 +57,10 @@ import com.iponlove.app.feature.appupdate.presentation.AppVersionGateManager
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.presentation.AuthScreen
 import com.iponlove.app.feature.auth.presentation.AuthViewModel
+import com.iponlove.app.feature.auth.presentation.ForgotPasswordScreen
+import com.iponlove.app.feature.auth.presentation.ForgotPasswordViewModel
+import com.iponlove.app.feature.auth.presentation.ResetPasswordScreen
+import com.iponlove.app.feature.auth.presentation.ResetPasswordViewModel
 import com.iponlove.app.feature.couple.domain.usecase.WatchUnpairUseCase
 import com.iponlove.app.feature.onboarding.domain.usecase.ShouldShowOnboardingUseCase
 import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRulesUseCase
@@ -231,7 +236,29 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
-                    AuthStatus.Unauthenticated -> AuthScreen(viewModel = authViewModel)
+                    is AuthStatus.PasswordRecovery -> {
+                        // Never falls through to the Authenticated branch above — a recovery
+                        // session exists only to let the user set a new password (ADR-0027).
+                        val resetPasswordViewModel: ResetPasswordViewModel = hiltViewModel()
+                        ResetPasswordScreen(viewModel = resetPasswordViewModel)
+                    }
+
+                    AuthStatus.Unauthenticated -> {
+                        var showForgotPassword by remember { mutableStateOf(false) }
+                        if (showForgotPassword) {
+                            val forgotPasswordViewModel: ForgotPasswordViewModel = hiltViewModel()
+                            ForgotPasswordScreen(
+                                viewModel = forgotPasswordViewModel,
+                                onBack = { showForgotPassword = false },
+                            )
+                        } else {
+                            AuthScreen(
+                                viewModel = authViewModel,
+                                onForgotPassword = { showForgotPassword = true },
+                            )
+                        }
+                    }
+
                     AuthStatus.Loading -> SplashScreen()
                 }
 
@@ -270,7 +297,19 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun handleAuthDeepLink(intent: Intent) {
-        supabaseClient.handleDeeplinks(intent)
+        // handleDeeplinks defaults both callbacks to silent no-ops — without them, a parse
+        // failure (e.g. wrong flow type, malformed redirect) leaves no trace anywhere. Logged
+        // temporarily while diagnosing the password-recovery deep link (ADR-0027).
+        Log.d(TAG, "handleAuthDeepLink: action=${intent.action} data=${intent.data}")
+        supabaseClient.handleDeeplinks(
+            intent,
+            { session -> Log.d(TAG, "handleDeeplinks: session established, type=${session.type}") },
+            { error -> Log.w(TAG, "handleDeeplinks: failed to parse deep link", error) },
+        )
+    }
+
+    private companion object {
+        const val TAG = "MainActivity"
     }
 }
 

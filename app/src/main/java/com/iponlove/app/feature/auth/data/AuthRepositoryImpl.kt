@@ -27,7 +27,15 @@ class AuthRepositoryImpl @Inject constructor(
 
     override val status: Flow<AuthStatus> = client.auth.sessionStatus.map { s ->
         when (s) {
-            is SessionStatus.Authenticated -> AuthStatus.Authenticated(s.session.user?.id.orEmpty())
+            is SessionStatus.Authenticated -> {
+                val userId = s.session.user?.id.orEmpty()
+                // A password-recovery deep link authenticates identically to a normal sign-in;
+                // `session.type == "recovery"` is the SDK's only signal that this session exists
+                // solely to let the user set a new password (ADR-0027) — never fold it into a
+                // normal Authenticated status.
+                if (s.session.type == "recovery") AuthStatus.PasswordRecovery(userId)
+                else AuthStatus.Authenticated(userId)
+            }
             is SessionStatus.NotAuthenticated -> AuthStatus.Unauthenticated
             is SessionStatus.Initializing -> AuthStatus.Loading
             is SessionStatus.RefreshFailure -> AuthStatus.Unauthenticated
@@ -57,12 +65,28 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signOut() = mapErrors { client.auth.signOut() }
 
+    override suspend fun sendPasswordReset(email: String) = mapErrors {
+        client.auth.resetPasswordForEmail(email, redirectUrl = PASSWORD_RECOVERY_REDIRECT_URL)
+    }
+
+    override suspend fun updatePassword(newPassword: String) = mapErrors {
+        client.auth.updateUser { password = newPassword }
+        Unit
+    }
+
     /** Run an auth SDK call, translating its failures to a typed [AuthException]. */
     private suspend inline fun <T> mapErrors(block: () -> T): T = try {
         block()
     } catch (e: AuthException) {
         throw e
     } catch (e: Exception) {
+        android.util.Log.w("AuthRepositoryImpl", "auth call failed", e)
         throw AuthException(AuthErrorClassifier.classify(e.message))
+    }
+
+    private companion object {
+        // Same deep link the email-confirmation flow already uses (AndroidManifest.xml); the
+        // Supabase dashboard's reset-password template must be configured to redirect here too.
+        const val PASSWORD_RECOVERY_REDIRECT_URL = "com.iponlove.app://login-callback"
     }
 }

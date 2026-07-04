@@ -31,15 +31,17 @@ import androidx.compose.ui.unit.dp
 import com.iponlove.app.feature.auth.domain.model.AuthError
 
 @Composable
-fun AuthScreen(viewModel: AuthViewModel) {
+fun AuthScreen(viewModel: AuthViewModel, onForgotPassword: () -> Unit) {
     val state by viewModel.form.collectAsState()
     AuthContent(
         state = state,
         onNameChange = viewModel::onNameChange,
         onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
+        onConfirmPasswordChange = viewModel::onConfirmPasswordChange,
         onSubmit = viewModel::submit,
         onToggleMode = viewModel::toggleMode,
+        onForgotPassword = onForgotPassword,
     )
 }
 
@@ -49,8 +51,10 @@ private fun AuthContent(
     onNameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onConfirmPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
     onToggleMode: () -> Unit,
+    onForgotPassword: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -117,7 +121,30 @@ private fun AuthContent(
                 supportingText = state.error?.let { error -> { Text(error.message()) } },
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(Modifier.height(24.dp))
+
+            if (state.mode == AuthMode.SIGN_UP) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = state.confirmPassword,
+                    onValueChange = onConfirmPasswordChange,
+                    label = { Text("Confirm password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            if (state.mode == AuthMode.SIGN_IN) {
+                Spacer(Modifier.height(4.dp))
+                TextButton(onClick = onForgotPassword, enabled = !state.isSubmitting) {
+                    Text("Forgot password?")
+                }
+            }
+            Spacer(Modifier.height(20.dp))
 
             Button(
                 onClick = onSubmit,
@@ -165,13 +192,17 @@ private fun ConfirmationBanner() {
     }
 }
 
-private fun AuthError.message(): String = when (this) {
+internal fun AuthError.message(): String = when (this) {
     AuthError.INVALID_CREDENTIALS -> "Incorrect email or password"
     AuthError.EMAIL_NOT_CONFIRMED -> "Confirm your email first — check your inbox"
     AuthError.EMAIL_ALREADY_REGISTERED -> "That email is already registered — sign in instead"
-    AuthError.WEAK_PASSWORD -> "Password must be at least 6 characters"
+    AuthError.WEAK_PASSWORD ->
+        "Password must be at least 6 characters, with uppercase, lowercase, a number, and a symbol"
     AuthError.INVALID_EMAIL -> "Enter a valid email address"
     AuthError.INVALID_NAME -> "Enter your name (up to 50 characters)"
+    AuthError.PASSWORD_MISMATCH -> "Passwords don't match"
+    AuthError.SAME_AS_OLD_PASSWORD -> "New password must be different from your current password"
+    AuthError.RATE_LIMITED -> "Please wait a bit before making another request"
     AuthError.NETWORK -> "Can't reach the server — check your connection"
     AuthError.UNKNOWN -> "Something went wrong. Please try again"
 }

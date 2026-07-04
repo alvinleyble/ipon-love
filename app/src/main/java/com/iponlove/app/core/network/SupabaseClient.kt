@@ -13,7 +13,15 @@ fun createIponSupabaseClient(): SupabaseClient = createSupabaseClient(
     supabaseUrl = BuildConfig.SUPABASE_URL,
     supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
 ) {
-    install(Auth)
+    install(Auth) {
+        // handleDeeplinks() (MainActivity) silently no-ops unless these match the incoming
+        // URI's scheme/host exactly — they're null by default in the SDK, not inferred from
+        // the manifest's intent-filter. Confirmed via bytecode: without this, every deep link
+        // (email confirmation, password recovery) was being dropped before it even looked at
+        // the fragment. Must match AndroidManifest.xml's login-callback intent-filter.
+        scheme = "com.iponlove.app"
+        host = "login-callback"
+    }
     install(Postgrest)
     install(Storage)
     // Realtime powers the couple "bell" (ADR-0015): a content-less Broadcast ping that

@@ -32,9 +32,25 @@ class AuthCredentialsTest {
     }
 
     @Test
-    fun shortPasswordRejected_sixCharsOk() {
-        assertThat(errorFrom { AuthCredentials.validatePassword("12345") }).isEqualTo(AuthError.WEAK_PASSWORD)
-        AuthCredentials.validatePassword("123456") // exactly the minimum — no throw
+    fun shortPasswordRejected() {
+        assertThat(errorFrom { AuthCredentials.validatePassword("Ab1!") }).isEqualTo(AuthError.WEAK_PASSWORD)
+    }
+
+    @Test
+    fun passwordMissingACharacterClassRejected() {
+        assertThat(errorFrom { AuthCredentials.validatePassword("alllowercase1!") })
+            .isEqualTo(AuthError.WEAK_PASSWORD) // no uppercase
+        assertThat(errorFrom { AuthCredentials.validatePassword("ALLUPPERCASE1!") })
+            .isEqualTo(AuthError.WEAK_PASSWORD) // no lowercase
+        assertThat(errorFrom { AuthCredentials.validatePassword("NoDigitsHere!") })
+            .isEqualTo(AuthError.WEAK_PASSWORD) // no digit
+        assertThat(errorFrom { AuthCredentials.validatePassword("NoSymbols123") })
+            .isEqualTo(AuthError.WEAK_PASSWORD) // no symbol
+    }
+
+    @Test
+    fun passwordMeetingAllRulesPasses() {
+        AuthCredentials.validatePassword("Abcdef1!") // no throw
     }
 
     @Test
@@ -54,5 +70,16 @@ class AuthCredentialsTest {
     fun overLongNameRejected() {
         assertThat(errorFrom { AuthCredentials.validateName("a".repeat(51)) })
             .isEqualTo(AuthError.INVALID_NAME)
+    }
+
+    @Test
+    fun matchingPasswordsPass() {
+        AuthCredentials.validatePasswordsMatch("secret1", "secret1") // no throw
+    }
+
+    @Test
+    fun mismatchedPasswordsRejected() {
+        assertThat(errorFrom { AuthCredentials.validatePasswordsMatch("secret1", "secret2") })
+            .isEqualTo(AuthError.PASSWORD_MISMATCH)
     }
 }

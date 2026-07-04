@@ -14,6 +14,7 @@ data class AuthUiState(
     val name: String = "",
     val email: String = "",
     val password: String = "",
+    val confirmPassword: String = "",
     val isSubmitting: Boolean = false,
     val error: AuthError? = null,
     val confirmationSent: Boolean = false,
@@ -23,6 +24,7 @@ data class AuthUiState(
 ) {
     val canSubmit: Boolean
         get() = email.isNotBlank() && password.isNotBlank() && !isSubmitting &&
-            // A display name is required to register, but not to sign in (ADR-0016).
-            (mode == AuthMode.SIGN_IN || name.isNotBlank())
+            // A display name and a matching confirm-password entry are required to register,
+            // but not to sign in (ADR-0016, ADR-0027 decision 4).
+            (mode == AuthMode.SIGN_IN || (name.isNotBlank() && confirmPassword.isNotBlank()))
 }

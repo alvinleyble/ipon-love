@@ -8,7 +8,7 @@
 
 ## Current state (as of 2026-07-04)
 
-**V1 through V1.6 are all committed on `main`.** Nothing pending on the V1.5 post-ship audit (all 11 items closed, see [v1.5-post-ship-audit.md](v1.5-post-ship-audit.md)). [V1.6.1](v1.6.1.md) is in progress: Item 1 is `DONE fa3bff4` (misleading "(prod)" beta-feedback version tag). Item 4 is `DONE 8fe6c83` (navbar pairing redesign, grew to also fix a cross-account PIN/data leak). Item 5 is `DONE f909697` (Settings "Beta" section + Upcoming features page). Item 8 is `DONE a5b12d2` (PIN lockout — 5-attempt threshold + 30s cooldown). Item 11 is `DONE d212361` (Analysis period presets — Quarter/Semi-annual/Annual/All-time, redesigned period selector). Item 2 is `DONE 20a2482` (Records/Combined bounded to a stepped calendar month with sticky day headers, shared `core/date/MonthWindow.kt`/`DayGrouping.kt` math — ADR-0032). Item 9 (version-mismatch gate) is built and green, awaiting Alvin's on-device test. Item 12 is `DONE a41c154` (transfer fee as a cascading linked expense, new `SaveTransferUseCase`, Room v19 — ADR-0031), confirmed on-device by Alvin. Remaining items are still `TODO`/`NEEDS DECISION`.
+**V1 through V1.6 are all committed on `main`.** Nothing pending on the V1.5 post-ship audit (all 11 items closed, see [v1.5-post-ship-audit.md](v1.5-post-ship-audit.md)). [V1.6.1](v1.6.1.md) is in progress: Item 1 is `DONE fa3bff4` (misleading "(prod)" beta-feedback version tag). Item 4 is `DONE 8fe6c83` (navbar pairing redesign, grew to also fix a cross-account PIN/data leak). Item 5 is `DONE f909697` (Settings "Beta" section + Upcoming features page). Item 8 is `DONE a5b12d2` (PIN lockout — 5-attempt threshold + 30s cooldown). Item 11 is `DONE d212361` (Analysis period presets — Quarter/Semi-annual/Annual/All-time, redesigned period selector). Item 2 is `DONE 20a2482` (Records/Combined bounded to a stepped calendar month with sticky day headers, shared `core/date/MonthWindow.kt`/`DayGrouping.kt` math — ADR-0032). Item 9 (version-mismatch gate) is built and green, awaiting Alvin's on-device test. Item 12 is `DONE a41c154` (transfer fee as a cascading linked expense, new `SaveTransferUseCase`, Room v19 — ADR-0031), confirmed on-device by Alvin. Item 3 is `DONE (pending commit hash)` (forgot-password flow — new `AuthStatus.PasswordRecovery`, `ForgotPasswordScreen`/`ResetPasswordScreen`; live debugging found the `Auth` plugin was missing `scheme`/`host` config, silently dropping every deep link, plus `AuthErrorClassifier` gaps for GoTrue's weak/same-password messages — all fixed), confirmed on-device by Alvin. Remaining items are still `TODO`/`NEEDS DECISION`.
 
 | Version | What | Doc |
 |---|---|---|
@@ -54,6 +54,7 @@ Supabase project `vyjaorlevomfqkidttom.supabase.co` (Singapore, **staging** — 
 5. `2026-07-03_goal_contributions_rls_split.sql` ([F1](v1.5-post-ship-audit.md))
 6. `2026-07-03_partner_goal_contributions_membership.sql` ([F3](v1.5-post-ship-audit.md))
 7. `2026-07-04_backfill_stale_shared_goals.sql` ([V1.6](v1.6.md))
+8. `2026-07-04_transfer_fee.sql` ([V1.6.1 Item 12](v1.6.1.md))
 
 All confirmed applied live as of their respective commits. `supabase/schema.sql` remains the authoritative end-state.
 

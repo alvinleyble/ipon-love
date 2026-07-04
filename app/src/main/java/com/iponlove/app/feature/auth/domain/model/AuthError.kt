@@ -8,6 +8,9 @@ enum class AuthError {
     WEAK_PASSWORD,
     INVALID_EMAIL,
     INVALID_NAME,
+    PASSWORD_MISMATCH,
+    SAME_AS_OLD_PASSWORD,
+    RATE_LIMITED,
     NETWORK,
     UNKNOWN,
 }

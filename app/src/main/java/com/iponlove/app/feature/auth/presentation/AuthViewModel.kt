@@ -55,9 +55,12 @@ class AuthViewModel @Inject constructor(
 
     fun onPasswordChange(value: String) = _form.update { it.copy(password = value, error = null) }
 
+    fun onConfirmPasswordChange(value: String) =
+        _form.update { it.copy(confirmPassword = value, error = null) }
+
     fun toggleMode() = _form.update {
         val next = if (it.mode == AuthMode.SIGN_IN) AuthMode.SIGN_UP else AuthMode.SIGN_IN
-        it.copy(mode = next, error = null, confirmationSent = false)
+        it.copy(mode = next, error = null, confirmationSent = false, confirmPassword = "")
     }
 
     fun submit() {
@@ -68,7 +71,9 @@ class AuthViewModel @Inject constructor(
             try {
                 when (state.mode) {
                     AuthMode.SIGN_IN -> signIn(state.email, state.password)
-                    AuthMode.SIGN_UP -> onSignedUp(signUp(state.name, state.email, state.password))
+                    AuthMode.SIGN_UP -> onSignedUp(
+                        signUp(state.name, state.email, state.password, state.confirmPassword),
+                    )
                 }
                 // On success the status stream flips and the gate swaps screens; clear the
                 // spinner in case we stayed (sign-up awaiting confirmation).
@@ -83,7 +88,12 @@ class AuthViewModel @Inject constructor(
         if (result == SignUpResult.CONFIRMATION_REQUIRED) {
             // Account made but not yet usable — drop back to sign-in with a "check email" note.
             _form.update {
-                it.copy(mode = AuthMode.SIGN_IN, password = "", confirmationSent = true)
+                it.copy(
+                    mode = AuthMode.SIGN_IN,
+                    password = "",
+                    confirmPassword = "",
+                    confirmationSent = true,
+                )
             }
         }
         // SIGNED_IN: confirmation is off server-side; the status stream authenticates us.

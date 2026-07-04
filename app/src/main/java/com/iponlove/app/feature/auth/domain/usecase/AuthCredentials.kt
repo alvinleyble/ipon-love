@@ -34,9 +34,26 @@ internal object AuthCredentials {
         }
     }
 
+    /**
+     * Mirrors this Supabase project's actual password-strength policy (configured server-side,
+     * not a client choice) — length alone isn't enough; the server also rejects a password
+     * missing any of these character classes with `weak_password`. Checking it here avoids a
+     * round trip for the exact rejection the server would give anyway.
+     */
     fun validatePassword(password: String) {
-        if (password.length < MIN_PASSWORD_LENGTH) {
+        val hasLower = password.any { it.isLowerCase() }
+        val hasUpper = password.any { it.isUpperCase() }
+        val hasDigit = password.any { it.isDigit() }
+        val hasSymbol = password.any { !it.isLetterOrDigit() }
+        if (password.length < MIN_PASSWORD_LENGTH || !hasLower || !hasUpper || !hasDigit || !hasSymbol) {
             throw AuthException(AuthError.WEAK_PASSWORD)
+        }
+    }
+
+    /** A typo here costs a whole new recovery-email round trip, so both entries must agree. */
+    fun validatePasswordsMatch(password: String, confirmPassword: String) {
+        if (password != confirmPassword) {
+            throw AuthException(AuthError.PASSWORD_MISMATCH)
         }
     }
 }

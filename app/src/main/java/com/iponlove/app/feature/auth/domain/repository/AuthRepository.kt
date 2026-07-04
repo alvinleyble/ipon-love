@@ -21,4 +21,10 @@ interface AuthRepository {
     suspend fun signIn(email: String, password: String)
 
     suspend fun signOut()
+
+    /** Sends Supabase's password-recovery email; the link lands back on the app's deep link. */
+    suspend fun sendPasswordReset(email: String)
+
+    /** Sets a new password on the current (recovery) session. */
+    suspend fun updatePassword(newPassword: String)
 }
