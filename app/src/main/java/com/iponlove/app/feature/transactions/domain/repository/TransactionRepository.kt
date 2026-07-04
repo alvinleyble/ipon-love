@@ -3,6 +3,7 @@ package com.iponlove.app.feature.transactions.domain.repository
 import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 
 /**
  * Transactions source of truth (Room-backed). All writes funnel through here so the sync
@@ -12,14 +13,24 @@ import kotlinx.coroutines.flow.Flow
  */
 interface TransactionRepository {
 
-    /** Active (non-deleted) transactions, most recent first. */
+    /** Active (non-deleted) transactions, most recent first — unbounded (Analysis/Budgets do their own windowing). */
     fun observeTransactions(): Flow<List<Transaction>>
 
+    /** Records' month-windowed view (ADR-0032) — bounded to [startInclusive, endExclusive) at the query layer. */
+    fun observeTransactions(startInclusive: Instant, endExclusive: Instant): Flow<List<Transaction>>
+
+    /** Whether the current user has ever recorded an active transaction (ADR-0032 empty-state signal). */
+    fun observeHasAnyTransaction(): Flow<Boolean>
+
     /**
-     * The couple's shared ledger: both members' active, non-private transactions tagged
-     * with their owner, most recent first. Drives the combined view (ADR-0011).
+     * The couple's shared ledger, month-windowed (ADR-0032): both members' active, non-private
+     * transactions within [startInclusive, endExclusive), tagged with their owner, most recent
+     * first. Drives the combined view (ADR-0011).
      */
-    fun observeCombinedTransactions(): Flow<List<OwnedTransaction>>
+    fun observeCombinedTransactions(startInclusive: Instant, endExclusive: Instant): Flow<List<OwnedTransaction>>
+
+    /** Whether the couple has ever shared an active transaction (ADR-0032 empty-state signal). */
+    fun observeHasAnyCombinedTransaction(): Flow<Boolean>
 
     /**
      * The ledger used to derive account balances, including couple-owned shared accounts: the

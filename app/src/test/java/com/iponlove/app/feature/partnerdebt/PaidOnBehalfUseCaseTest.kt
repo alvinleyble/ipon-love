@@ -30,7 +30,14 @@ class PaidOnBehalfUseCaseTest {
     private class RecordingTransactionRepository : TransactionRepository {
         val upserted = mutableListOf<Transaction>()
         override fun observeTransactions(): Flow<List<Transaction>> = flowOf(emptyList())
-        override fun observeCombinedTransactions(): Flow<List<OwnedTransaction>> = flowOf(emptyList())
+        override fun observeTransactions(startInclusive: Instant, endExclusive: Instant): Flow<List<Transaction>> =
+            flowOf(emptyList())
+        override fun observeHasAnyTransaction(): Flow<Boolean> = flowOf(false)
+        override fun observeCombinedTransactions(
+            startInclusive: Instant,
+            endExclusive: Instant,
+        ): Flow<List<OwnedTransaction>> = flowOf(emptyList())
+        override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = flowOf(false)
         override fun observeBalanceLedger(): Flow<List<Transaction>> = flowOf(emptyList())
         override suspend fun getTransaction(id: String): Transaction? = upserted.lastOrNull { it.id == id }
         override suspend fun upsertTransaction(transaction: Transaction) { upserted += transaction }

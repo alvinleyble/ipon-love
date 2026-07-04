@@ -62,7 +62,14 @@ internal class CountingCategoryRepo : CategoryRepository {
 internal class CountingTransactionRepo : TransactionRepository {
     var purgeCount = 0
     override fun observeTransactions(): Flow<List<Transaction>> = emptyFlow()
-    override fun observeCombinedTransactions(): Flow<List<OwnedTransaction>> = emptyFlow()
+    override fun observeTransactions(startInclusive: Instant, endExclusive: Instant): Flow<List<Transaction>> =
+        emptyFlow()
+    override fun observeHasAnyTransaction(): Flow<Boolean> = emptyFlow()
+    override fun observeCombinedTransactions(
+        startInclusive: Instant,
+        endExclusive: Instant,
+    ): Flow<List<OwnedTransaction>> = emptyFlow()
+    override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = emptyFlow()
     override fun observeBalanceLedger(): Flow<List<Transaction>> = emptyFlow()
     override suspend fun getTransaction(id: String): Transaction? = null
     override suspend fun upsertTransaction(transaction: Transaction) = Unit

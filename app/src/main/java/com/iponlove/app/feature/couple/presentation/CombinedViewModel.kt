@@ -2,20 +2,28 @@ package com.iponlove.app.feature.couple.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.date.DayGrouping
+import com.iponlove.app.core.date.MonthWindow
 import com.iponlove.app.feature.budgets.domain.model.Budget
 import com.iponlove.app.feature.budgets.domain.usecase.DeleteBudgetUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveSharedBudgetUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.UpsertSharedBudgetUseCase
 import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.feature.categories.domain.usecase.ObserveAllCategoriesUseCase
+import com.iponlove.app.feature.couple.domain.model.CombinedLedger
 import com.iponlove.app.feature.couple.domain.usecase.CombinedLedgerCalculator
 import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
+import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveCombinedTransactionsUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.ObserveHasAnyCombinedTransactionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -29,10 +37,11 @@ import javax.inject.Inject
 
 /**
  * Drives the combined couple view (ADR-0011): the merged transaction stream, per-member
- * monthly spend, and the couple's joint budget for the current month. The derived state is
+ * monthly spend, and the couple's joint budget for the viewed month. The derived state is
  * recomputed on the fly from the live transaction + category + member + shared-budget streams;
- * only the budget editor holds transient UI state. The current-month window is computed from
- * the system clock here so [CombinedLedgerCalculator] stays pure/testable.
+ * only the budget editor and viewed month hold transient UI state. The viewed month defaults
+ * to the current calendar month and steps independently of Records' own (ADR-0032), so
+ * [CombinedLedgerCalculator] stays pure/testable.
  */
 @HiltViewModel
 class CombinedViewModel @Inject constructor(
@@ -40,6 +49,7 @@ class CombinedViewModel @Inject constructor(
     observeAllCategories: ObserveAllCategoriesUseCase,
     observeCoupleMembers: ObserveCoupleMembersUseCase,
     observeSharedBudget: ObserveSharedBudgetUseCase,
+    observeHasAnyCombinedTransaction: ObserveHasAnyCombinedTransactionUseCase,
     private val upsertSharedBudget: UpsertSharedBudgetUseCase,
     private val deleteBudget: DeleteBudgetUseCase,
     private val syncEngine: SyncEngine,
@@ -48,42 +58,47 @@ class CombinedViewModel @Inject constructor(
     private val budgetEditor = MutableStateFlow<BudgetEditorState?>(null)
     private val isRefreshing = MutableStateFlow(false)
 
+    /** The calendar month currently paged to (ADR-0032); independent of Records' own. */
+    private val viewedMonth = MutableStateFlow(LocalDate.now(ZONE).withDayOfMonth(1))
+
     // Captured from the latest emission so the editor's save/clear can act without re-deriving:
     // the couple to stamp ownership on, the month to target, and the existing budget to reuse.
     private var coupleId: String? = null
     private var monthKey: String = YearMonth.now().toString()
     private var currentBudget: Budget? = null
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val combinedTransactionsInRange: Flow<List<OwnedTransaction>> = viewedMonth.flatMapLatest { month ->
+        val window = MonthWindow.windowFor(month, ZONE)
+        observeCombinedTransactions(window.startInclusive, window.endExclusive)
+    }
+
     val uiState: StateFlow<CombinedUiState> =
         combine(
-            observeCombinedTransactions(),
+            combinedTransactionsInRange,
             observeAllCategories(),
             observeCoupleMembers(),
             observeSharedBudget(),
-            budgetEditor,
-        ) { transactions, categories, members, sharedBudgets, editor ->
+            viewedMonth,
+        ) { transactions, categories, members, sharedBudgets, month ->
             if (members == null) {
                 coupleId = null
                 currentBudget = null
                 return@combine CombinedUiState(isLoading = false, isPaired = false)
             }
 
-            val zone = ZoneId.systemDefault()
-            val firstOfMonth = LocalDate.now(zone).withDayOfMonth(1)
-            val monthStart = firstOfMonth.atStartOfDay(zone).toInstant()
-            val monthEnd = firstOfMonth.plusMonths(1).atStartOfDay(zone).toInstant()
-
-            val ledger = CombinedLedgerCalculator.analyze(
+            val window = MonthWindow.windowFor(month, ZONE)
+            val ledger: CombinedLedger = CombinedLedgerCalculator.analyze(
                 transactions = transactions,
                 categoryNames = categories.associateBy({ it.id }, { it.name }),
                 me = members.me,
                 partner = members.partner,
-                monthStartInclusive = monthStart,
-                monthEndExclusive = monthEnd,
+                monthStartInclusive = window.startInclusive,
+                monthEndExclusive = window.endExclusive,
             )
 
             coupleId = members.me.coupleId
-            monthKey = YearMonth.from(firstOfMonth).toString()
+            monthKey = YearMonth.from(month).toString()
 
             // The overall joint budget for the displayed month; combined spend = both members'
             // EXPENSE this month (the same per-member figures shown on the spending chips).
@@ -106,22 +121,42 @@ class CombinedViewModel @Inject constructor(
                 )
             }
 
+            val today = LocalDate.now(ZONE)
+            val isCurrentMonth = YearMonth.from(month) == YearMonth.from(today)
+
             CombinedUiState(
                 isLoading = false,
                 isPaired = true,
-                monthLabel = firstOfMonth.format(MONTH_FORMAT),
+                monthLabel = month.format(MONTH_FORMAT),
                 members = ledger.members,
-                entries = ledger.entries,
+                dayGroups = DayGrouping.groupByDay(
+                    items = ledger.entries,
+                    dateOf = { it.date },
+                    zone = ZONE,
+                    today = today,
+                    isCurrentMonth = isCurrentMonth,
+                ),
                 coupleBudget = coupleBudget,
-                budgetEditor = editor,
             )
         }
-        .combine(isRefreshing) { state, refreshing -> state.copy(isRefreshing = refreshing) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            initialValue = CombinedUiState(),
-        )
+            .combine(budgetEditor) { state, editor -> state.copy(budgetEditor = editor) }
+            .combine(observeHasAnyCombinedTransaction()) { state, hasAnyEver ->
+                state.copy(hasAnySharedActivityEver = hasAnyEver)
+            }
+            .combine(isRefreshing) { state, refreshing -> state.copy(isRefreshing = refreshing) }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+                initialValue = CombinedUiState(),
+            )
+
+    fun previousMonth() {
+        viewedMonth.value = MonthWindow.step(viewedMonth.value, forward = false)
+    }
+
+    fun nextMonth() {
+        viewedMonth.value = MonthWindow.step(viewedMonth.value, forward = true)
+    }
 
     fun sync() {
         viewModelScope.launch {
@@ -179,6 +214,7 @@ class CombinedViewModel @Inject constructor(
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
+        val ZONE: ZoneId = ZoneId.systemDefault()
         val MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
     }
 }

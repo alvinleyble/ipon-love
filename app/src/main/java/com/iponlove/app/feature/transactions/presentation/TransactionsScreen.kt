@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.transactions.presentation
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -44,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.MonthStepperRow
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
@@ -67,10 +70,12 @@ fun TransactionsScreen(
         onAdd = onAddTransaction,
         onEdit = onEditTransaction,
         onDelete = viewModel::delete,
+        onPreviousMonth = viewModel::previousMonth,
+        onNextMonth = viewModel::nextMonth,
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun TransactionsContent(
     state: TransactionsUiState,
@@ -80,6 +85,8 @@ private fun TransactionsContent(
     onAdd: () -> Unit,
     onEdit: (String) -> Unit,
     onDelete: (String) -> Unit,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -103,44 +110,71 @@ private fun TransactionsContent(
             }
         },
     ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = state.isRefreshing,
-            onRefresh = onSync,
-            modifier = Modifier.padding(padding).fillMaxSize(),
-        ) {
-            when {
-                state.isLoading ->
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            if (state.canAdd) {
+                MonthStepperRow(label = state.monthLabel, onPrevious = onPreviousMonth, onNext = onNextMonth)
+            }
+            PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = onSync,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            ) {
+                when {
+                    state.isLoading ->
+                        CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-                !state.canAdd ->
-                    EmptyState(
-                        title = "Create an account first",
-                        body = "Transactions need an account. Add one on the Accounts tab.",
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-
-                state.items.isEmpty() ->
-                    EmptyState(
-                        title = "No transactions yet",
-                        body = "Tap + to record income, an expense, or a transfer.",
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(state.items, key = { it.id }) { item ->
-                        TransactionRow(
-                            item = item,
-                            onClick = { onEdit(item.id) },
-                            onDelete = { onDelete(item.id) },
+                    !state.canAdd ->
+                        EmptyState(
+                            title = "Create an account first",
+                            body = "Transactions need an account. Add one on the Accounts tab.",
+                            modifier = Modifier.align(Alignment.Center),
                         )
+
+                    state.dayGroups.isEmpty() && !state.hasAnyTransactionEver ->
+                        EmptyState(
+                            title = "No transactions yet",
+                            body = "Tap + to record income, an expense, or a transfer.",
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+
+                    state.dayGroups.isEmpty() ->
+                        EmptyState(
+                            title = "No transactions this month",
+                            body = "Nothing recorded yet for ${state.monthLabel}.",
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+
+                    else -> LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        state.dayGroups.forEach { group ->
+                            stickyHeader(key = group.label) { DayHeader(group.label) }
+                            items(group.items, key = { it.id }) { item ->
+                                TransactionRow(
+                                    item = item,
+                                    onClick = { onEdit(item.id) },
+                                    onDelete = { onDelete(item.id) },
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DayHeader(label: String) {
+    Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
     }
 }
 

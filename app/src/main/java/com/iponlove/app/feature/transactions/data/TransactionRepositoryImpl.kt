@@ -10,6 +10,7 @@ import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.time.Instant
 import javax.inject.Inject
 
 /**
@@ -29,9 +30,21 @@ class TransactionRepositoryImpl @Inject constructor(
         dao.observeTransactions(currentUser.userId())
             .map { rows -> rows.map { it.toDomain() } }
 
-    override fun observeCombinedTransactions(): Flow<List<OwnedTransaction>> =
-        dao.observeCombined()
+    override fun observeTransactions(startInclusive: Instant, endExclusive: Instant): Flow<List<Transaction>> =
+        dao.observeTransactions(currentUser.userId(), startInclusive, endExclusive)
+            .map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeHasAnyTransaction(): Flow<Boolean> =
+        dao.observeHasAnyTransaction(currentUser.userId())
+
+    override fun observeCombinedTransactions(
+        startInclusive: Instant,
+        endExclusive: Instant,
+    ): Flow<List<OwnedTransaction>> =
+        dao.observeCombined(startInclusive, endExclusive)
             .map { rows -> rows.map { OwnedTransaction(ownerId = it.userId, transaction = it.toDomain()) } }
+
+    override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = dao.observeHasAnyCombinedTransaction()
 
     override fun observeBalanceLedger(): Flow<List<Transaction>> =
         dao.observeForBalances(currentUser.userId())

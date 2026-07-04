@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.couple.presentation
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,6 +41,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.MonthStepperRow
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.parseHexColor
@@ -50,59 +53,82 @@ private val IncomeColor = Color(0xFF2E7D32)
 
 /**
  * Chrome-less Combined body — no Scaffold/TopAppBar. The Couple tab host
- * ([CoupleScreen]) provides the single scaffold; this renders the pull-to-refresh
- * list + budget editor dialog only.
+ * ([CoupleScreen]) provides the single scaffold; this renders the month stepper, the
+ * pull-to-refresh list, and the budget editor dialog only.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CombinedBody(
     modifier: Modifier = Modifier,
     viewModel: CombinedViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    PullToRefreshBox(
-        isRefreshing = state.isRefreshing,
-        onRefresh = viewModel::sync,
-        modifier = modifier.fillMaxSize(),
-    ) {
-        when {
-            state.isLoading ->
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
+    Column(modifier = modifier.fillMaxSize()) {
+        if (state.isPaired && !state.isLoading) {
+            MonthStepperRow(
+                label = state.monthLabel,
+                onPrevious = viewModel::previousMonth,
+                onNext = viewModel::nextMonth,
+            )
+        }
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = viewModel::sync,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        ) {
+            when {
+                state.isLoading ->
+                    CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-            !state.isPaired ->
-                EmptyState(
-                    title = "Not paired yet",
-                    body = "Pair with your partner to see your shared spending here.",
-                    modifier = Modifier.align(Alignment.Center),
-                )
+                !state.isPaired ->
+                    EmptyState(
+                        title = "Not paired yet",
+                        body = "Pair with your partner to see your shared spending here.",
+                        modifier = Modifier.align(Alignment.Center),
+                    )
 
-            else -> {
-                val colors = state.members.associate { it.id to it.accentColor }
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    item {
-                        CoupleBudgetCard(
-                            budget = state.coupleBudget,
-                            monthLabel = state.monthLabel,
-                            onSet = viewModel::startEditBudget,
-                            onClear = viewModel::clearBudget,
-                        )
-                    }
-                    item { SpendingChips(state.monthLabel, state.members) }
-                    if (state.entries.isEmpty()) {
+                else -> {
+                    val colors = state.members.associate { it.id to it.accentColor }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
                         item {
-                            EmptyState(
-                                title = "No shared activity yet",
-                                body = "Your and your partner's non-private transactions show up here.",
-                                modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                            CoupleBudgetCard(
+                                budget = state.coupleBudget,
+                                monthLabel = state.monthLabel,
+                                onSet = viewModel::startEditBudget,
+                                onClear = viewModel::clearBudget,
                             )
                         }
-                    } else {
-                        items(state.entries, key = { it.id }) { entry ->
-                            CombinedRow(entry = entry, ownerColor = ownerColor(colors[entry.ownerId], entry.isMine))
+                        item { SpendingChips(state.monthLabel, state.members) }
+                        if (state.dayGroups.isEmpty()) {
+                            item {
+                                EmptyState(
+                                    title = if (state.hasAnySharedActivityEver) {
+                                        "No shared activity this month"
+                                    } else {
+                                        "No shared activity yet"
+                                    },
+                                    body = if (state.hasAnySharedActivityEver) {
+                                        "Nothing shared between you this month."
+                                    } else {
+                                        "Your and your partner's non-private transactions show up here."
+                                    },
+                                    modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                                )
+                            }
+                        } else {
+                            state.dayGroups.forEach { group ->
+                                stickyHeader(key = group.label) { DayHeader(group.label) }
+                                items(group.items, key = { it.id }) { entry ->
+                                    CombinedRow(
+                                        entry = entry,
+                                        ownerColor = ownerColor(colors[entry.ownerId], entry.isMine),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -116,6 +142,18 @@ fun CombinedBody(
             onAmountChange = viewModel::onBudgetAmountChange,
             onSave = viewModel::saveBudget,
             onCancel = viewModel::cancelBudgetEdit,
+        )
+    }
+}
+
+@Composable
+private fun DayHeader(label: String) {
+    Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 8.dp),
         )
     }
 }

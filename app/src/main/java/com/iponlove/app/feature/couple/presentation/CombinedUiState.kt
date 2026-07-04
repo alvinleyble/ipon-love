@@ -1,12 +1,16 @@
 package com.iponlove.app.feature.couple.presentation
 
+import com.iponlove.app.core.date.DayGrouping
 import com.iponlove.app.feature.couple.domain.model.CombinedEntry
 import com.iponlove.app.feature.couple.domain.model.MemberSpend
 import java.math.BigDecimal
 
 /**
  * Screen state for the combined couple view. [isPaired] is false when the user has no
- * partner (the screen is normally only reachable while paired, but guards the edge).
+ * partner (the screen is normally only reachable while paired, but guards the edge). Bounded
+ * to a single stepped calendar month, day-grouped for sticky headers (ADR-0032) —
+ * [hasAnySharedActivityEver] distinguishes "never shared anything" from "nothing shared this
+ * month."
  */
 data class CombinedUiState(
     val isLoading: Boolean = true,
@@ -14,7 +18,8 @@ data class CombinedUiState(
     val isRefreshing: Boolean = false,
     val monthLabel: String = "",
     val members: List<MemberSpend> = emptyList(),
-    val entries: List<CombinedEntry> = emptyList(),
+    val dayGroups: List<DayGrouping.DayGroup<CombinedEntry>> = emptyList(),
+    val hasAnySharedActivityEver: Boolean = false,
     /** The couple's joint budget for the displayed month, or null if none is set yet. */
     val coupleBudget: CoupleBudgetUi? = null,
     /** Non-null while the set/edit budget dialog is open. */

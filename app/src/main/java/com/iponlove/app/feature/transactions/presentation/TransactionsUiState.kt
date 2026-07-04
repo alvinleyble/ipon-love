@@ -1,14 +1,22 @@
 package com.iponlove.app.feature.transactions.presentation
 
+import com.iponlove.app.core.date.DayGrouping
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import java.math.BigDecimal
 import java.time.Instant
 
-/** Screen state for the Records tab. The editor now lives on its own route (see [AddTransactionUiState]). */
+/**
+ * Screen state for the Records tab. The editor now lives on its own route (see
+ * [AddTransactionUiState]). Bounded to a single stepped calendar month, day-grouped for
+ * sticky headers (ADR-0032) — [hasAnyTransactionEver] distinguishes a brand-new user's
+ * empty state from an existing user with no activity in the viewed month.
+ */
 data class TransactionsUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
-    val items: List<TransactionListItem> = emptyList(),
+    val monthLabel: String = "",
+    val dayGroups: List<DayGrouping.DayGroup<TransactionListItem>> = emptyList(),
+    val hasAnyTransactionEver: Boolean = false,
     /** A transaction needs at least one account to exist. */
     val canAdd: Boolean = false,
 )

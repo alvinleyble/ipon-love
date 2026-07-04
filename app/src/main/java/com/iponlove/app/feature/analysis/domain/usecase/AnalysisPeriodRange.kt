@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.analysis.domain.usecase
 
+import com.iponlove.app.core.date.MonthWindow
 import com.iponlove.app.feature.analysis.domain.model.AnalysisPeriod
 import com.iponlove.app.feature.analysis.domain.model.AnalysisWindow
 import java.time.DayOfWeek
@@ -14,7 +15,8 @@ import java.time.temporal.TemporalAdjusters
  *
  * The window is timezone-dependent (a transaction's "day" depends on the zone), so [zone]
  * is explicit for deterministic tests; V1 is PH-only, so the app passes the system zone.
- * Weeks start on Monday; quarters start Jan/Apr/Jul/Oct; halves start Jan/Jul.
+ * Weeks start on Monday; quarters start Jan/Apr/Jul/Oct; halves start Jan/Jul. MONTH delegates
+ * to [MonthWindow], shared with the Records/Combined month-windowed views (ADR-0032).
  */
 object AnalysisPeriodRange {
 
@@ -29,23 +31,25 @@ object AnalysisPeriodRange {
                 endExclusive = Instant.MAX,
             )
         }
+        if (period == AnalysisPeriod.MONTH) {
+            val month = MonthWindow.windowFor(anchor, zone)
+            return AnalysisWindow(period = period, startInclusive = month.startInclusive, endExclusive = month.endExclusive)
+        }
         val startDate = when (period) {
             AnalysisPeriod.DAY -> anchor
             AnalysisPeriod.WEEK -> anchor.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-            AnalysisPeriod.MONTH -> anchor.withDayOfMonth(1)
             AnalysisPeriod.QUARTER -> anchor.withMonth(quarterStartMonth(anchor)).withDayOfMonth(1)
             AnalysisPeriod.SEMI_ANNUAL -> anchor.withMonth(if (anchor.monthValue <= 6) 1 else 7).withDayOfMonth(1)
             AnalysisPeriod.ANNUAL -> anchor.withDayOfYear(1)
-            AnalysisPeriod.ALL_TIME -> error("handled above")
+            AnalysisPeriod.MONTH, AnalysisPeriod.ALL_TIME -> error("handled above")
         }
         val endDate = when (period) {
             AnalysisPeriod.DAY -> startDate.plusDays(1)
             AnalysisPeriod.WEEK -> startDate.plusWeeks(1)
-            AnalysisPeriod.MONTH -> startDate.plusMonths(1)
             AnalysisPeriod.QUARTER -> startDate.plusMonths(3)
             AnalysisPeriod.SEMI_ANNUAL -> startDate.plusMonths(6)
             AnalysisPeriod.ANNUAL -> startDate.plusYears(1)
-            AnalysisPeriod.ALL_TIME -> error("handled above")
+            AnalysisPeriod.MONTH, AnalysisPeriod.ALL_TIME -> error("handled above")
         }
         return AnalysisWindow(
             period = period,
@@ -59,15 +63,16 @@ object AnalysisPeriodRange {
      * ALL_TIME has nothing to step to — it's a no-op.
      */
     fun step(anchor: LocalDate, period: AnalysisPeriod, forward: Boolean): LocalDate {
+        if (period == AnalysisPeriod.MONTH) return MonthWindow.step(anchor, forward)
         val n = if (forward) 1L else -1L
         return when (period) {
             AnalysisPeriod.DAY -> anchor.plusDays(n)
             AnalysisPeriod.WEEK -> anchor.plusWeeks(n)
-            AnalysisPeriod.MONTH -> anchor.plusMonths(n)
             AnalysisPeriod.QUARTER -> anchor.plusMonths(n * 3)
             AnalysisPeriod.SEMI_ANNUAL -> anchor.plusMonths(n * 6)
             AnalysisPeriod.ANNUAL -> anchor.plusYears(n)
             AnalysisPeriod.ALL_TIME -> anchor
+            AnalysisPeriod.MONTH -> error("handled above")
         }
     }
 

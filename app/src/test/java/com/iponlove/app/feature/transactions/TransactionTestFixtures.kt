@@ -23,12 +23,29 @@ class FakeTransactionDao : TransactionDao {
                 .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
         }
 
-    override fun observeCombined(): Flow<List<TransactionEntity>> =
+    override fun observeTransactions(
+        userId: String,
+        startInclusive: Instant,
+        endExclusive: Instant,
+    ): Flow<List<TransactionEntity>> =
         changes.map {
             store.values
-                .filter { !it.isDeleted && !it.isPrivate }
+                .filter { it.userId == userId && !it.isDeleted && it.date >= startInclusive && it.date < endExclusive }
                 .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
         }
+
+    override fun observeHasAnyTransaction(userId: String): Flow<Boolean> =
+        changes.map { store.values.any { it.userId == userId && !it.isDeleted } }
+
+    override fun observeCombined(startInclusive: Instant, endExclusive: Instant): Flow<List<TransactionEntity>> =
+        changes.map {
+            store.values
+                .filter { !it.isDeleted && !it.isPrivate && it.date >= startInclusive && it.date < endExclusive }
+                .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
+        }
+
+    override fun observeHasAnyCombinedTransaction(): Flow<Boolean> =
+        changes.map { store.values.any { !it.isDeleted && !it.isPrivate } }
 
     override fun observeForBalances(userId: String): Flow<List<TransactionEntity>> =
         changes.map {

@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 
 @Dao
 interface TransactionDao {
@@ -25,20 +26,47 @@ interface TransactionDao {
     fun observeTransactions(userId: String): Flow<List<TransactionEntity>>
 
     /**
-     * The couple's shared ledger: both members' active, non-private transactions, most
-     * recent first. No owner filter — every row in the table is either the user's own or a
-     * replicated partner row (ADR-0004), and private rows are excluded for both (the
-     * partner's are already purged on redaction, ADR-0005; the user's own are hidden here
-     * so the combined view matches what the partner sees, ADR-0011).
+     * Records' month-windowed view (ADR-0032): same as [observeTransactions], but bounded to
+     * a half-open date range at the query layer so Room only re-emits and re-maps the viewed
+     * month's rows on a write, not the user's entire history.
      */
     @Query(
         """
         SELECT * FROM transactions
-        WHERE isDeleted = 0 AND isPrivate = 0
+        WHERE userId = :userId AND isDeleted = 0 AND date >= :startInclusive AND date < :endExclusive
         ORDER BY date DESC, createdAt DESC
         """,
     )
-    fun observeCombined(): Flow<List<TransactionEntity>>
+    fun observeTransactions(
+        userId: String,
+        startInclusive: Instant,
+        endExclusive: Instant,
+    ): Flow<List<TransactionEntity>>
+
+    /** Whether [userId] has ever recorded an active transaction (ADR-0032 empty-state signal). */
+    @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE userId = :userId AND isDeleted = 0)")
+    fun observeHasAnyTransaction(userId: String): Flow<Boolean>
+
+    /**
+     * The couple's shared ledger, month-windowed (ADR-0032): both members' active, non-private
+     * transactions within a half-open date range, most recent first. No owner filter — every
+     * row in the table is either the user's own or a replicated partner row (ADR-0004), and
+     * private rows are excluded for both (the partner's are already purged on redaction,
+     * ADR-0005; the user's own are hidden here so the combined view matches what the partner
+     * sees, ADR-0011).
+     */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE isDeleted = 0 AND isPrivate = 0 AND date >= :startInclusive AND date < :endExclusive
+        ORDER BY date DESC, createdAt DESC
+        """,
+    )
+    fun observeCombined(startInclusive: Instant, endExclusive: Instant): Flow<List<TransactionEntity>>
+
+    /** Whether the couple has ever shared an active transaction (ADR-0032 empty-state signal). */
+    @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE isDeleted = 0 AND isPrivate = 0)")
+    fun observeHasAnyCombinedTransaction(): Flow<Boolean>
 
     /**
      * The ledger for deriving account balances, including shared accounts (ADR-0018): the
