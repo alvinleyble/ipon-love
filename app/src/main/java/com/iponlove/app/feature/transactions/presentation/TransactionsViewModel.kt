@@ -116,35 +116,50 @@ class TransactionsViewModel @Inject constructor(
         }
     }
 
-    private fun Transaction.toListItem(
-        accountNames: Map<String, String>,
-        categoryNames: Map<String, String>,
-    ): TransactionListItem {
-        val accountName = accountNames[accountId] ?: "Account"
-        val noteSuffix = note?.takeIf { it.isNotBlank() }?.let { "  •  $it" }.orEmpty()
-        return when (type) {
-            TransactionType.TRANSFER -> TransactionListItem(
-                id = id,
-                type = type,
-                amount = amount,
-                title = "Transfer",
-                subtitle = "$accountName → ${accountNames[toAccountId] ?: "Account"}$noteSuffix",
-                date = date,
-            )
-            else -> TransactionListItem(
-                id = id,
-                type = type,
-                amount = amount,
-                title = categoryNames[categoryId] ?: "Uncategorized",
-                subtitle = "$accountName$noteSuffix",
-                date = date,
-            )
-        }
-    }
-
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
         val ZONE: ZoneId = ZoneId.systemDefault()
         val MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
+    }
+}
+
+/**
+ * Maps a [Transaction] to its Records row. Extracted from the ViewModel so the display
+ * logic (in particular the category-less label branches) is unit-testable without Hilt.
+ */
+internal fun Transaction.toListItem(
+    accountNames: Map<String, String>,
+    categoryNames: Map<String, String>,
+): TransactionListItem {
+    val accountName = accountNames[accountId] ?: "Account"
+    val noteSuffix = note?.takeIf { it.isNotBlank() }?.let { "  •  $it" }.orEmpty()
+    return when {
+        type == TransactionType.TRANSFER -> TransactionListItem(
+            id = id,
+            type = type,
+            amount = amount,
+            title = "Transfer",
+            subtitle = "$accountName → ${accountNames[toAccountId] ?: "Account"}$noteSuffix",
+            date = date,
+        )
+        // Debt settlement legs carry categoryId = null + isSettlement = true by design
+        // (ADR-0019 #14 / ADR-0042). Label them off the flag instead of falling to
+        // "Uncategorized", mirroring the TRANSFER branch above.
+        isSettlement -> TransactionListItem(
+            id = id,
+            type = type,
+            amount = amount,
+            title = "Debt settlement",
+            subtitle = "$accountName$noteSuffix",
+            date = date,
+        )
+        else -> TransactionListItem(
+            id = id,
+            type = type,
+            amount = amount,
+            title = categoryNames[categoryId] ?: "Uncategorized",
+            subtitle = "$accountName$noteSuffix",
+            date = date,
+        )
     }
 }
