@@ -420,8 +420,20 @@ private fun RowScope.PinBarItem(
  *    back stack and restores the target's, so each module resumes where it was left.
  *  - Behavior 2 (reset to root): tapping the tab for the module you're already inside pops that
  *    module's graph back to its root screen (`popBackStack` to the graph's start destination).
+ *
+ * Add/Edit-transaction are top-level routes living outside every module graph (ADR-0033 dec. 2).
+ * If one is on top when a tab is tapped, drop it unsaved first (ADR-0039) — otherwise the
+ * subsequent `saveState = true` below would sweep it into the origin tab's saved back stack and
+ * `restoreState = true` would resurrect it the next time that tab is revisited.
  */
 private fun NavHostController.switchTab(dest: NavDestination) {
+    val inSomeModuleGraph = NavRegistry.all.any { module ->
+        currentDestination?.hierarchy?.any { it.route == module.graphRoute() } == true
+    }
+    if (!inSomeModuleGraph) {
+        popBackStack()
+    }
+
     val alreadyInModule = currentDestination?.hierarchy?.any { it.route == dest.graphRoute() } == true
     if (alreadyInModule) {
         popBackStack(dest.route, inclusive = false)
