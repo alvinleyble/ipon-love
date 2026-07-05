@@ -52,6 +52,7 @@ class NoteTableSyncer @Inject constructor(
                 title = "[Conflict Copy] ${local.title.orEmpty()}",
                 content = local.content,
                 isShared = false,
+                isPinned = false,
                 coupleId = null,
                 isConflictCopy = true,
                 createdAt = now,

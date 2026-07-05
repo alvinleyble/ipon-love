@@ -25,6 +25,12 @@ interface NoteRepository {
     suspend fun shareNote(id: String, coupleId: String)
 
     /**
+     * Pin/unpin a note so it hoists into the "Pinned" section (ADR-0040). Synced by LWW
+     * like any other column; pinning a shared note propagates the pin to the partner's copy.
+     */
+    suspend fun setPinned(id: String, isPinned: Boolean)
+
+    /**
      * Unshare a note. Sets `is_shared = false` but RETAINS `couple_id` so the un-share
      * transition still reaches the partner's redacting view (ADR-0005).
      */

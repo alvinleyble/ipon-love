@@ -17,7 +17,7 @@ interface NoteDao {
         """
         SELECT * FROM notes
         WHERE (userId = :userId OR isShared = 1) AND isDeleted = 0
-        ORDER BY updatedAt DESC, createdAt DESC
+        ORDER BY isPinned DESC, updatedAt DESC, createdAt DESC
         """,
     )
     fun observeNotes(userId: String): Flow<List<NoteEntity>>

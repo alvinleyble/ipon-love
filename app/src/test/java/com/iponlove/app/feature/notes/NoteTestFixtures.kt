@@ -19,7 +19,10 @@ class FakeNoteDao : NoteDao {
         changes.map {
             store.values
                 .filter { (it.userId == userId || it.isShared) && !it.isDeleted }
-                .sortedByDescending { it.updatedAt }
+                .sortedWith(
+                    compareByDescending<NoteEntity> { it.isPinned }
+                        .thenByDescending { it.updatedAt },
+                )
         }
 
     override suspend fun getById(id: String): NoteEntity? = store[id]
@@ -64,6 +67,7 @@ fun noteEntity(
     title: String? = "Trip plan",
     content: String? = "<p>Body</p>",
     isShared: Boolean = false,
+    isPinned: Boolean = false,
     coupleId: String? = null,
     isConflictCopy: Boolean = false,
     createdAt: Instant = Instant.ofEpochMilli(1_000),
@@ -77,6 +81,7 @@ fun noteEntity(
     title = title,
     content = content,
     isShared = isShared,
+    isPinned = isPinned,
     coupleId = coupleId,
     isConflictCopy = isConflictCopy,
     createdAt = createdAt,
@@ -92,6 +97,7 @@ fun partnerNoteDto(
     title: String? = "Trip plan",
     content: String? = "<p>Body</p>",
     isShared: Boolean = true,
+    isPinned: Boolean = false,
     coupleId: String? = "c-1",
     updatedAt: Instant = Instant.ofEpochMilli(1_000),
     isDeleted: Boolean = false,
@@ -106,6 +112,7 @@ fun partnerNoteDto(
     coupleId = coupleId,
     updatedAt = updatedAt,
     serverRev = serverRev,
+    isPinned = isPinned,
 )
 
 fun noteDto(
@@ -113,6 +120,7 @@ fun noteDto(
     title: String? = "Trip plan",
     content: String? = "<p>Body</p>",
     isShared: Boolean = false,
+    isPinned: Boolean = false,
     coupleId: String? = null,
     updatedAt: Instant = Instant.ofEpochMilli(1_000),
     isDeleted: Boolean = false,
@@ -123,6 +131,7 @@ fun noteDto(
     title = title,
     content = content,
     isShared = isShared,
+    isPinned = isPinned,
     coupleId = coupleId,
     createdAt = Instant.ofEpochMilli(1_000),
     updatedAt = updatedAt,

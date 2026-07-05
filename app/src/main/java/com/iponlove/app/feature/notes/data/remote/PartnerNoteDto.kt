@@ -22,4 +22,5 @@ data class PartnerNoteDto(
     @SerialName("updated_at")
     @Serializable(with = InstantSerializer::class) val updatedAt: Instant,
     @SerialName("server_rev") val serverRev: Long?,
+    @SerialName("is_pinned") val isPinned: Boolean = false,
 )

@@ -8,6 +8,7 @@ import com.iponlove.app.feature.notes.domain.model.Note
 import com.iponlove.app.feature.notes.domain.usecase.DeleteNoteUseCase
 import com.iponlove.app.feature.notes.domain.usecase.NoteContentText
 import com.iponlove.app.feature.notes.domain.usecase.ObserveNotesUseCase
+import com.iponlove.app.feature.notes.domain.usecase.SetNotePinnedUseCase
 import com.iponlove.app.feature.user.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +27,7 @@ class NotesViewModel @Inject constructor(
     observePairingState: ObservePairingStateUseCase,
     private val userRepository: UserRepository,
     private val deleteNote: DeleteNoteUseCase,
+    private val setNotePinned: SetNotePinnedUseCase,
 ) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -54,12 +56,17 @@ class NotesViewModel @Inject constructor(
         viewModelScope.launch { deleteNote(id) }
     }
 
+    fun setPinned(id: String, isPinned: Boolean) {
+        viewModelScope.launch { setNotePinned(id, isPinned) }
+    }
+
     private fun Note.toListItem(partnerName: String?) = NoteListItem(
         id = id,
         title = title.ifBlank { "Untitled" },
         preview = NoteContentText.plainText(contentHtml).take(PREVIEW_CHARS),
         updatedAt = updatedAt,
         isShared = isShared,
+        isPinned = isPinned,
         isPartnerNote = isPartnerNote,
         partnerName = if (isPartnerNote) partnerName else null,
     )

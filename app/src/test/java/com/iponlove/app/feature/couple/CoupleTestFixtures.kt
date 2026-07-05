@@ -85,6 +85,7 @@ internal class CountingNoteRepo : NoteRepository {
     override suspend fun upsertNote(note: Note) = Unit
     override suspend fun deleteNote(id: String) = Unit
     override suspend fun shareNote(id: String, coupleId: String) = Unit
+    override suspend fun setPinned(id: String, isPinned: Boolean) = Unit
     override suspend fun unshareNote(id: String) = Unit
     override suspend fun purgePartnerData() { purgeCount++ }
 }

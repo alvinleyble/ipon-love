@@ -13,6 +13,7 @@ data class NoteDto(
     val title: String?,
     val content: String?,
     @SerialName("is_shared") val isShared: Boolean,
+    @SerialName("is_pinned") val isPinned: Boolean = false,
     @SerialName("couple_id") val coupleId: String?,
     @SerialName("is_conflict_copy") val isConflictCopy: Boolean = false,
     @SerialName("created_at")

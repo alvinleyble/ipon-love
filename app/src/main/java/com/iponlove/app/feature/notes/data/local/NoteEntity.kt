@@ -23,6 +23,7 @@ data class NoteEntity(
     val title: String?,
     val content: String?,
     val isShared: Boolean,
+    @ColumnInfo(defaultValue = "0") val isPinned: Boolean,
     val coupleId: String?,
     @ColumnInfo(defaultValue = "0") val isConflictCopy: Boolean,
     val createdAt: Instant,

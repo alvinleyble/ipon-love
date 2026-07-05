@@ -21,6 +21,7 @@ data class NoteListItem(
     val preview: String,
     val updatedAt: Instant,
     val isShared: Boolean,
+    val isPinned: Boolean = false,
     val isPartnerNote: Boolean = false,
     val partnerName: String? = null,
 )

@@ -21,6 +21,7 @@ data class Note(
     val title: String,
     val contentHtml: String,
     val isShared: Boolean = false,
+    val isPinned: Boolean = false,
     val isConflictCopy: Boolean = false,
     val updatedAt: Instant = Instant.EPOCH,
     /** True when this note belongs to the partner (replicated via partner_notes view). */

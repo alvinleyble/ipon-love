@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -82,17 +83,37 @@ fun NotesScreen(
                 state.notes.isEmpty() ->
                     EmptyState(Modifier.align(Alignment.Center))
 
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(state.notes, key = { it.id }) { note ->
-                        NoteCard(
-                            note = note,
-                            onClick = { onOpenNote(note.id) },
-                            onDelete = { viewModel.delete(note.id) },
-                        )
+                else -> {
+                    // observeNotes already orders pinned-first, so partitioning keeps order.
+                    val pinned = state.notes.filter { it.isPinned }
+                    val others = state.notes.filterNot { it.isPinned }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        if (pinned.isNotEmpty()) {
+                            item(key = "pinned-header") { SectionHeader("Pinned") }
+                            items(pinned, key = { it.id }) { note ->
+                                NoteCard(
+                                    note = note,
+                                    onClick = { onOpenNote(note.id) },
+                                    onDelete = { viewModel.delete(note.id) },
+                                    onTogglePin = { viewModel.setPinned(note.id, !note.isPinned) },
+                                )
+                            }
+                            if (others.isNotEmpty()) {
+                                item(key = "others-header") { SectionHeader("Others") }
+                            }
+                        }
+                        items(others, key = { it.id }) { note ->
+                            NoteCard(
+                                note = note,
+                                onClick = { onOpenNote(note.id) },
+                                onDelete = { viewModel.delete(note.id) },
+                                onTogglePin = { viewModel.setPinned(note.id, !note.isPinned) },
+                            )
+                        }
                     }
                 }
             }
@@ -101,10 +122,21 @@ fun NotesScreen(
 }
 
 @Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 4.dp),
+    )
+}
+
+@Composable
 private fun NoteCard(
     note: NoteListItem,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onTogglePin: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
@@ -117,6 +149,14 @@ private fun NoteCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
+                    if (note.isPinned) {
+                        Icon(
+                            imageVector = Icons.Filled.PushPin,
+                            contentDescription = "Pinned",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                     Text(
                         text = note.title,
                         style = MaterialTheme.typography.titleMedium,
@@ -159,6 +199,10 @@ private fun NoteCard(
                         Icon(Icons.Filled.MoreVert, contentDescription = "More options")
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(if (note.isPinned) "Unpin" else "Pin") },
+                            onClick = { menuOpen = false; onTogglePin() },
+                        )
                         DropdownMenuItem(
                             text = { Text("Delete") },
                             onClick = { menuOpen = false; onDelete() },

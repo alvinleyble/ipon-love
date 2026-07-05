@@ -5,6 +5,7 @@ import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.feature.notes.data.NoteRepositoryImpl
 import com.iponlove.app.feature.notes.domain.model.Note
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.time.Instant
@@ -65,6 +66,52 @@ class NoteRepositoryImplTest {
         // The editor never touches sharing — it must survive an edit.
         assertThat(row.isShared).isTrue()
         assertThat(row.coupleId).isEqualTo("c-1")
+    }
+
+    @Test
+    fun upsert_existing_preservesPin() = runTest {
+        dao.store["n"] = noteEntity(id = "n", isPinned = true, updatedAt = Instant.ofEpochMilli(1_000))
+
+        repository.upsertNote(Note(id = "n", title = "Edited", contentHtml = "<p>new</p>"))
+
+        // The editor never touches the pin — it must survive an edit.
+        assertThat(dao.store.getValue("n").isPinned).isTrue()
+    }
+
+    @Test
+    fun setPinned_setsFlag_marksDirty() = runTest {
+        dao.store["n"] = noteEntity(id = "n", isPinned = false, updatedAt = Instant.ofEpochMilli(1_000))
+
+        repository.setPinned("n", true)
+
+        val row = dao.store.getValue("n")
+        assertThat(row.isPinned).isTrue()
+        assertThat(row.pendingSync).isTrue()
+    }
+
+    @Test
+    fun setPinned_noOpWhenUnchanged_doesNotReDirty() = runTest {
+        dao.store["n"] = noteEntity(id = "n", isPinned = true, pendingSync = false)
+
+        repository.setPinned("n", true)
+
+        // An idle re-tap must not stamp updated_at or re-dirty the row.
+        assertThat(dao.store.getValue("n").pendingSync).isFalse()
+    }
+
+    @Test
+    fun observeNotes_hoistsPinned_thenRecencyWithinGroup() = runTest {
+        dao.store["old-pinned"] =
+            noteEntity(id = "old-pinned", isPinned = true, updatedAt = Instant.ofEpochMilli(1_000))
+        dao.store["recent-unpinned"] =
+            noteEntity(id = "recent-unpinned", isPinned = false, updatedAt = Instant.ofEpochMilli(9_000))
+        dao.store["mid-unpinned"] =
+            noteEntity(id = "mid-unpinned", isPinned = false, updatedAt = Instant.ofEpochMilli(5_000))
+
+        val ids = repository.observeNotes().first().map { it.id }
+
+        // Pinned hoists above a more-recent unpinned note; unpinned group stays recency-ordered.
+        assertThat(ids).containsExactly("old-pinned", "recent-unpinned", "mid-unpinned").inOrder()
     }
 
     @Test

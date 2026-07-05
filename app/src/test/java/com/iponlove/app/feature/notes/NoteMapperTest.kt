@@ -60,6 +60,30 @@ class NoteMapperTest {
     }
 
     @Test
+    fun entityToDomain_carriesIsPinned() {
+        val domain = noteEntity(id = "n", isPinned = true).toDomain(currentUserId = "user-1")
+
+        assertThat(domain.isPinned).isTrue()
+    }
+
+    @Test
+    fun entityToDto_roundTrips_isPinned() {
+        val original = noteEntity(id = "n", serverRev = 9, isPinned = true)
+
+        val roundTripped = original.toDto().toEntity()
+
+        assertThat(roundTripped.isPinned).isTrue()
+        assertThat(roundTripped).isEqualTo(original.copy(pendingSync = false))
+    }
+
+    @Test
+    fun partnerNoteDtoToEntity_carriesOwnerPin() {
+        val entity = partnerNoteDto(id = "n", isPinned = true).toEntity()
+
+        assertThat(entity.isPinned).isTrue()
+    }
+
+    @Test
     fun partnerNoteDtoToEntity_thenToDomain_isPartnerNoteTrue() {
         val entity = partnerNoteDto(id = "n", userId = "partner-99").toEntity()
         val domain = entity.toDomain(currentUserId = "user-1")

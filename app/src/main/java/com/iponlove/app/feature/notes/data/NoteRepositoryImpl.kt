@@ -45,6 +45,8 @@ class NoteRepositoryImpl @Inject constructor(
                 title = note.title.ifBlank { null },
                 content = note.contentHtml.ifEmpty { null },
                 isShared = existing?.isShared ?: false,
+                // The editor never touches the pin; it survives an edit like sharing does.
+                isPinned = existing?.isPinned ?: false,
                 coupleId = existing?.coupleId,
                 isConflictCopy = existing?.isConflictCopy ?: false,
                 createdAt = existing?.createdAt ?: updatedAt,
@@ -75,6 +77,20 @@ class NoteRepositoryImpl @Inject constructor(
             existing.copy(
                 isShared = true,
                 coupleId = coupleId,
+                updatedAt = clock.stamp(existing.updatedAt),
+                pendingSync = true,
+            ),
+        )
+        syncTrigger.requestPush()
+    }
+
+    override suspend fun setPinned(id: String, isPinned: Boolean) {
+        val existing = dao.getById(id) ?: return
+        // A no-op guard keeps an idle re-tap from stamping updated_at and re-dirtying the row.
+        if (existing.isPinned == isPinned) return
+        dao.upsert(
+            existing.copy(
+                isPinned = isPinned,
                 updatedAt = clock.stamp(existing.updatedAt),
                 pendingSync = true,
             ),

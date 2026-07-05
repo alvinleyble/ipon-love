@@ -193,6 +193,7 @@ create table notes (
     title            text,
     content          jsonb,                             -- rich text delta
     is_shared        boolean not null default false,
+    is_pinned        boolean not null default false,   -- hoists into the "Pinned" section (ADR-0040)
     couple_id        uuid references couples(id) on delete set null,
     is_conflict_copy boolean not null default false,
     created_at       timestamptz not null default now(),
@@ -614,7 +615,8 @@ create view partner_notes with (security_invoker = false) as
         n.is_deleted,
         n.couple_id,
         n.updated_at,
-        n.server_rev
+        n.server_rev,
+        n.is_pinned                                     -- owner's pin propagates to the partner's copy (ADR-0040)
     from notes n
     where n.user_id <> auth.uid()
       and n.couple_id = auth_couple_id();
