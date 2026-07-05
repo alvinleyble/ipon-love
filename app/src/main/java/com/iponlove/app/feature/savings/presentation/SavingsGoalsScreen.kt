@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.SharedBadge
@@ -125,7 +126,13 @@ private fun GoalCard(item: SavingsGoalProgress, onClick: () -> Unit) {
                 Spacer(Modifier.size(12.dp))
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(goal.name, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            goal.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
                         if (goal.isShared) {
                             Spacer(Modifier.size(6.dp))
                             SharedBadge()
