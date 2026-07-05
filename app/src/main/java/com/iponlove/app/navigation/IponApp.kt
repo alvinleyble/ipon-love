@@ -345,14 +345,6 @@ private fun IponAppContent(
                 composable(APP_LOCK_SETUP_ROUTE) {
                     AppLockSetupScreen(onBack = { navController.popBackStack() })
                 }
-                composable(NAV_EDITOR_ROUTE) {
-                    NavbarEditorScreen(
-                        initialConfig = state.config,
-                        isPaired = state.isPaired,
-                        onApply = navViewModel::applyConfig,
-                        onBack = { navController.popBackStack() },
-                    )
-                }
                 composable(HELP_ROUTE) {
                     HelpScreen(onBack = { navController.popBackStack() })
                 }
@@ -368,6 +360,19 @@ private fun IponAppContent(
             // reached from the global ⊕ button, so it must not inherit any tab's reset-on-retap.
             composable(ADD_TRANSACTION_ROUTE) {
                 AddTransactionScreen(onBack = { navController.popBackStack() })
+            }
+            // Navbar editor is also a standalone top-level route (V1.6.3 Item 6): nested inside the
+            // Settings graph it stacked a second module graph over the origin tab, which made
+            // switchTab's popUpTo/restoreState silently no-op for any tab with saved back-stack
+            // state. As a root route, switchTab's !inSomeModuleGraph guard (ADR-0039) pops it before
+            // navigating, same as Add/Edit.
+            composable(NAV_EDITOR_ROUTE) {
+                NavbarEditorScreen(
+                    initialConfig = state.config,
+                    isPaired = state.isPaired,
+                    onApply = navViewModel::applyConfig,
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable(
                 route = "$EDIT_TRANSACTION_ROUTE/{$TXN_ID_KEY}",
