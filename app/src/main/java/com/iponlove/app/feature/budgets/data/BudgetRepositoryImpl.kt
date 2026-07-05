@@ -48,6 +48,7 @@ class BudgetRepositoryImpl @Inject constructor(
                 isDeleted = existing?.isDeleted ?: false,
                 serverRev = existing?.serverRev,
                 pendingSync = true,
+                rolloverEnabled = budget.rolloverEnabled,
             ),
         )
         syncTrigger.requestPush()
@@ -70,6 +71,7 @@ class BudgetRepositoryImpl @Inject constructor(
                 isDeleted = existing?.isDeleted ?: false,
                 serverRev = existing?.serverRev,
                 pendingSync = true,
+                rolloverEnabled = budget.rolloverEnabled,
             ),
         )
         syncTrigger.requestPush()

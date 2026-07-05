@@ -172,6 +172,7 @@ create table budgets (
     category_id uuid references categories(id) on delete set null,   -- null = overall monthly
     amount      numeric(14,2) not null,
     year_month  text not null,                                       -- "2026-06"
+    rollover_enabled boolean not null default false,                 -- carry last month's leftover/deficit into amount, symmetric, no floor (ADR-0036)
     created_at  timestamptz not null default now(),
     updated_at  timestamptz not null default now(),
     is_deleted  boolean not null default false,

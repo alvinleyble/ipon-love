@@ -22,4 +22,5 @@ data class BudgetDto(
     @Serializable(with = InstantSerializer::class) val updatedAt: Instant,
     @SerialName("is_deleted") val isDeleted: Boolean,
     @SerialName("server_rev") val serverRev: Long?,
+    @SerialName("rollover_enabled") val rolloverEnabled: Boolean = false,
 )

@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.budgets.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -27,4 +28,5 @@ data class BudgetEntity(
     override val isDeleted: Boolean,
     override val serverRev: Long?,
     override val pendingSync: Boolean,
+    @ColumnInfo(defaultValue = "0") val rolloverEnabled: Boolean = false,
 ) : SyncMeta

@@ -32,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,8 +48,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.formatPhp
+import java.math.BigDecimal
 
 private const val OVERALL_ID = "__overall__"
+
+/** Like [formatPhp] but keeps a leading `-` legible instead of "₱-200.00" (ADR-0036 decision 2). */
+private fun formatSignedPhp(amount: BigDecimal): String =
+    if (amount.signum() < 0) "-" + formatPhp(amount.negate()) else formatPhp(amount)
 
 /**
  * Chrome-less Budgets body — no Scaffold/TopAppBar/FAB. The Manage host provides the single
@@ -84,8 +90,11 @@ fun BudgetsBody(
                     items(state.rows, key = { it.id }) { row ->
                         BudgetCard(
                             row = row,
+                            nextMonthShortLabel = state.nextMonthShortLabel,
                             onClick = { viewModel.startEdit(row) },
                             onDelete = { viewModel.delete(row.id) },
+                            onResetRollover = { viewModel.resetRollover(row) },
+                            onDuplicate = { viewModel.duplicateToNextMonth(row) },
                         )
                     }
                 }
@@ -99,6 +108,7 @@ fun BudgetsBody(
             state = state,
             onCategoryChange = viewModel::onCategoryChange,
             onAmountChange = viewModel::onAmountChange,
+            onRolloverChange = viewModel::onRolloverToggle,
             onSave = viewModel::save,
             onCancel = viewModel::cancelEdit,
         )
@@ -127,8 +137,16 @@ private fun MonthStepper(label: String, onPrevious: () -> Unit, onNext: () -> Un
 }
 
 @Composable
-private fun BudgetCard(row: BudgetRow, onClick: () -> Unit, onDelete: () -> Unit) {
+private fun BudgetCard(
+    row: BudgetRow,
+    nextMonthShortLabel: String,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    onResetRollover: () -> Unit,
+    onDuplicate: () -> Unit,
+) {
     var menuOpen by remember { mutableStateOf(false) }
+    var confirmReset by remember { mutableStateOf(false) }
     Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -142,6 +160,16 @@ private fun BudgetCard(row: BudgetRow, onClick: () -> Unit, onDelete: () -> Unit
                         Icon(Icons.Filled.MoreVert, contentDescription = "More options")
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        if (row.rolloverEnabled) {
+                            DropdownMenuItem(
+                                text = { Text("Reset rollover") },
+                                onClick = { menuOpen = false; confirmReset = true },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Duplicate for $nextMonthShortLabel") },
+                            onClick = { menuOpen = false; onDuplicate() },
+                        )
                         DropdownMenuItem(
                             text = { Text("Delete") },
                             onClick = { menuOpen = false; onDelete() },
@@ -162,7 +190,7 @@ private fun BudgetCard(row: BudgetRow, onClick: () -> Unit, onDelete: () -> Unit
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "${formatPhp(row.spent)} of ${formatPhp(row.limit)}",
+                    text = "${formatPhp(row.spent)} of ${formatSignedPhp(row.limit)}",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f),
                 )
@@ -180,7 +208,50 @@ private fun BudgetCard(row: BudgetRow, onClick: () -> Unit, onDelete: () -> Unit
                     },
                 )
             }
+            if (row.rolloverEnabled && row.carriedAmount.signum() != 0) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = if (row.carriedAmount.signum() > 0) {
+                        "Base ${formatPhp(row.baseAmount)} + ${formatPhp(row.carriedAmount)} carried over from last month"
+                    } else {
+                        "Base ${formatPhp(row.baseAmount)} − ${formatPhp(row.carriedAmount.abs())} deficit carried over from last month"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (row.carriedAmount.signum() < 0) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+            if (row.limit.signum() < 0) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Limit already ${formatSignedPhp(row.limit)} before this month's spending",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
+    }
+
+    if (confirmReset) {
+        AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            title = { Text("Reset rollover?") },
+            text = {
+                Text(
+                    "Next month starts from its own limit only, ignoring the amount carried " +
+                        "here. You can turn rollover back on afterward for a fresh chain.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { confirmReset = false; onResetRollover() }) { Text("Reset") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmReset = false }) { Text("Cancel") }
+            },
+        )
     }
 }
 
@@ -190,6 +261,7 @@ private fun BudgetEditorDialog(
     state: BudgetsUiState,
     onCategoryChange: (String?) -> Unit,
     onAmountChange: (String) -> Unit,
+    onRolloverChange: (Boolean) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -231,6 +303,21 @@ private fun BudgetEditorDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Roll over from last month", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Unused amount carries forward as extra room; overspending carries forward as a deficit.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = editor.rolloverEnabled, onCheckedChange = onRolloverChange)
+                }
             }
         },
         confirmButton = { TextButton(onClick = onSave) { Text("Save") } },

@@ -51,7 +51,14 @@ fun budget(
     categoryId: String? = "cat-1",
     amount: String = "5000.00",
     yearMonth: String = "2026-06",
-) = Budget(id = id, categoryId = categoryId, amount = BigDecimal(amount), yearMonth = yearMonth)
+    rolloverEnabled: Boolean = false,
+) = Budget(
+    id = id,
+    categoryId = categoryId,
+    amount = BigDecimal(amount),
+    yearMonth = yearMonth,
+    rolloverEnabled = rolloverEnabled,
+)
 
 fun budgetEntity(
     id: String,
@@ -65,6 +72,7 @@ fun budgetEntity(
     isDeleted: Boolean = false,
     serverRev: Long? = null,
     pendingSync: Boolean = false,
+    rolloverEnabled: Boolean = false,
 ) = BudgetEntity(
     id = id,
     userId = userId,
@@ -77,6 +85,7 @@ fun budgetEntity(
     isDeleted = isDeleted,
     serverRev = serverRev,
     pendingSync = pendingSync,
+    rolloverEnabled = rolloverEnabled,
 )
 
 fun budgetDto(
@@ -87,6 +96,7 @@ fun budgetDto(
     serverRev: Long? = null,
     updatedAt: Instant = Instant.ofEpochMilli(1_000),
     isDeleted: Boolean = false,
+    rolloverEnabled: Boolean = false,
 ) = BudgetDto(
     id = id,
     userId = "user-1",
@@ -98,4 +108,5 @@ fun budgetDto(
     updatedAt = updatedAt,
     isDeleted = isDeleted,
     serverRev = serverRev,
+    rolloverEnabled = rolloverEnabled,
 )

@@ -52,6 +52,14 @@ class BudgetRepositoryImplTest {
     }
 
     @Test
+    fun upsert_carriesRolloverEnabledThrough() = runTest {
+        repository.upsertBudget(budget("b", categoryId = "cat-1", amount = "5000.00", rolloverEnabled = true))
+
+        val row = dao.store.getValue("b")
+        assertThat(row.rolloverEnabled).isTrue()
+    }
+
+    @Test
     fun delete_isSoft_setsTombstoneAndMarksDirty() = runTest {
         dao.store["b"] = budgetEntity(id = "b", serverRev = 3)
 

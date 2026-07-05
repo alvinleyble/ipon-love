@@ -20,6 +20,13 @@ class BudgetMapperTest {
     }
 
     @Test
+    fun entityToDomain_carriesRolloverEnabled() {
+        val domain = budgetEntity(id = "b", rolloverEnabled = true).toDomain()
+
+        assertThat(domain.rolloverEnabled).isTrue()
+    }
+
+    @Test
     fun entityToDto_carriesOwnershipAndServerRev_andOmitsPendingSync() {
         val dto = budgetEntity(id = "b", userId = "user-1", serverRev = 42, pendingSync = true).toDto()
 

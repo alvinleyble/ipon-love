@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.iponlove.app.feature.budgets.domain.model.Budget
 import com.iponlove.app.feature.budgets.domain.usecase.BudgetProgressCalculator
 import com.iponlove.app.feature.budgets.domain.usecase.DeleteBudgetUseCase
+import com.iponlove.app.feature.budgets.domain.usecase.DuplicateBudgetToNextMonthUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveBudgetsUseCase
+import com.iponlove.app.feature.budgets.domain.usecase.ResetBudgetRolloverUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.UpsertBudgetUseCase
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
@@ -30,6 +32,8 @@ class BudgetsViewModel @Inject constructor(
     observeCategories: ObserveCategoriesUseCase,
     private val upsertBudget: UpsertBudgetUseCase,
     private val deleteBudget: DeleteBudgetUseCase,
+    private val resetBudgetRollover: ResetBudgetRolloverUseCase,
+    private val duplicateBudget: DuplicateBudgetToNextMonthUseCase,
 ) : ViewModel() {
 
     private val month = MutableStateFlow(YearMonth.now())
@@ -38,6 +42,10 @@ class BudgetsViewModel @Inject constructor(
     // Budgets for the displayed month, captured so a new budget can update the existing
     // one for the same category instead of creating a duplicate.
     private var monthBudgets: List<Budget> = emptyList()
+
+    // Every personal budget across all months, captured so effectiveLimit/reset-rollover/
+    // duplicate can look up a category's history without a fresh query.
+    private var allBudgets: List<Budget> = emptyList()
 
     val uiState: StateFlow<BudgetsUiState> =
         combine(
@@ -51,10 +59,12 @@ class BudgetsViewModel @Inject constructor(
             val categoryNames = categories.associate { it.id to it.name }
             val current = budgets.filter { it.yearMonth == monthKey }
             monthBudgets = current
+            allBudgets = budgets
 
             val rows = current.map { budget ->
                 val spent = BudgetProgressCalculator.spent(budget, transactions)
-                val limit = budget.amount
+                val sameCategoryBudgets = budgets.filter { it.categoryId == budget.categoryId }
+                val limit = BudgetProgressCalculator.effectiveLimit(budget, sameCategoryBudgets, transactions)
                 val fraction = if (limit.signum() > 0) {
                     (spent.toFloat() / limit.toFloat()).coerceIn(0f, 1f)
                 } else {
@@ -65,16 +75,20 @@ class BudgetsViewModel @Inject constructor(
                     categoryId = budget.categoryId,
                     title = budget.categoryId?.let { categoryNames[it] ?: "Category" } ?: "Overall",
                     spent = spent,
+                    baseAmount = budget.amount,
                     limit = limit,
                     remaining = limit - spent,
                     fraction = fraction,
                     isOverBudget = spent > limit,
+                    rolloverEnabled = budget.rolloverEnabled,
+                    carriedAmount = limit - budget.amount,
                 )
             }
 
             BudgetsUiState(
                 isLoading = false,
                 monthLabel = displayedMonth.format(MONTH_FORMATTER),
+                nextMonthShortLabel = displayedMonth.plusMonths(1).format(SHORT_MONTH_FORMATTER),
                 rows = rows,
                 expenseCategories = categories.filter { it.type == CategoryType.EXPENSE },
                 editor = editorState,
@@ -101,7 +115,8 @@ class BudgetsViewModel @Inject constructor(
         editor.value = BudgetEditorState(
             id = row.id,
             categoryId = row.categoryId,
-            amountText = row.limit.toPlainString(),
+            amountText = row.baseAmount.toPlainString(),
+            rolloverEnabled = row.rolloverEnabled,
         )
     }
 
@@ -112,6 +127,8 @@ class BudgetsViewModel @Inject constructor(
     fun onCategoryChange(categoryId: String?) = editor.update { it?.copy(categoryId = categoryId) }
 
     fun onAmountChange(value: String) = editor.update { it?.copy(amountText = value, amountError = false) }
+
+    fun onRolloverToggle(enabled: Boolean) = editor.update { it?.copy(rolloverEnabled = enabled) }
 
     fun save() {
         val s = editor.value ?: return
@@ -127,6 +144,7 @@ class BudgetsViewModel @Inject constructor(
             categoryId = s.categoryId,
             amount = amount,
             yearMonth = month.value.toString(),
+            rolloverEnabled = s.rolloverEnabled,
         )
         viewModelScope.launch {
             upsertBudget(budget)
@@ -138,8 +156,23 @@ class BudgetsViewModel @Inject constructor(
         viewModelScope.launch { deleteBudget(id) }
     }
 
+    /** Severs the carry-forward into next month for this row's category (see use case doc). */
+    fun resetRollover(row: BudgetRow) {
+        val budget = monthBudgets.firstOrNull { it.id == row.id } ?: return
+        val sameCategoryBudgets = allBudgets.filter { it.categoryId == budget.categoryId }
+        viewModelScope.launch { resetBudgetRollover(budget, sameCategoryBudgets) }
+    }
+
+    /** Copies this row's amount/rollover setting into next month so it isn't retyped by hand. */
+    fun duplicateToNextMonth(row: BudgetRow) {
+        val budget = monthBudgets.firstOrNull { it.id == row.id } ?: return
+        val sameCategoryBudgets = allBudgets.filter { it.categoryId == budget.categoryId }
+        viewModelScope.launch { duplicateBudget(budget, sameCategoryBudgets) }
+    }
+
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
         val MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
+        val SHORT_MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM")
     }
 }

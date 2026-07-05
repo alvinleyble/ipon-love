@@ -11,6 +11,7 @@ fun BudgetEntity.toDomain(): Budget = Budget(
     categoryId = categoryId,
     amount = amount,
     yearMonth = yearMonth,
+    rolloverEnabled = rolloverEnabled,
 )
 
 /** Entity → DTO for push. Drops `pendingSync` (local-only, ADR-0002). */
@@ -25,6 +26,7 @@ fun BudgetEntity.toDto(): BudgetDto = BudgetDto(
     updatedAt = updatedAt,
     isDeleted = isDeleted,
     serverRev = serverRev,
+    rolloverEnabled = rolloverEnabled,
 )
 
 /**
@@ -43,4 +45,5 @@ fun BudgetDto.toEntity(): BudgetEntity = BudgetEntity(
     isDeleted = isDeleted,
     serverRev = serverRev,
     pendingSync = false,
+    rolloverEnabled = rolloverEnabled,
 )
