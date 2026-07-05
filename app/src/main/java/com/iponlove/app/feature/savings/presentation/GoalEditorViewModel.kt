@@ -31,6 +31,7 @@ class GoalEditorViewModel @Inject constructor(
     observePairingState: ObservePairingStateUseCase,
 ) : ViewModel() {
 
+    private val saved = savedStateHandle
     private val argId: String = savedStateHandle[GOAL_ID_KEY] ?: NEW_GOAL
     private val isNew: Boolean = argId == NEW_GOAL
 
@@ -38,15 +39,16 @@ class GoalEditorViewModel @Inject constructor(
     val uiState: StateFlow<GoalEditorUiState> = _uiState.asStateFlow()
 
     init {
-        if (isNew) {
-            _uiState.update { it.copy(loaded = true, goalId = UUID.randomUUID().toString()) }
-        } else {
-            viewModelScope.launch {
+        val restored = hydrateFromSaved()
+        when {
+            restored != null -> _uiState.value = restored
+            isNew -> setState { it.copy(loaded = true, goalId = UUID.randomUUID().toString()) }
+            else -> viewModelScope.launch {
                 val goal = getGoal(argId)
-                _uiState.update {
-                    if (goal == null) {
-                        it.copy(loaded = true, missing = true)
-                    } else {
+                if (goal == null) {
+                    _uiState.update { it.copy(loaded = true, missing = true) }
+                } else {
+                    setState {
                         it.copy(
                             loaded = true,
                             goalId = goal.id,
@@ -71,12 +73,12 @@ class GoalEditorViewModel @Inject constructor(
         }
     }
 
-    fun onNameChange(value: String) = _uiState.update { it.copy(name = value, nameError = false) }
+    fun onNameChange(value: String) = setState { it.copy(name = value, nameError = false) }
     fun onTargetChange(value: String) =
-        _uiState.update { it.copy(targetText = value.filter { c -> c.isDigit() || c == '.' }, targetError = false) }
-    fun onDateChange(date: LocalDate?) = _uiState.update { it.copy(targetDate = date) }
-    fun onIconChange(icon: String?) = _uiState.update { it.copy(icon = icon) }
-    fun onColorChange(color: String?) = _uiState.update { it.copy(color = color) }
+        setState { it.copy(targetText = value.filter { c -> c.isDigit() || c == '.' }, targetError = false) }
+    fun onDateChange(date: LocalDate?) = setState { it.copy(targetDate = date) }
+    fun onIconChange(icon: String?) = setState { it.copy(icon = icon) }
+    fun onColorChange(color: String?) = setState { it.copy(color = color) }
 
     fun toggleShared() {
         val s = _uiState.value
@@ -84,14 +86,14 @@ class GoalEditorViewModel @Inject constructor(
         val goalId = s.goalId ?: return
         if (isNew) {
             // Track intent locally; save() applies shareGoal() once the row exists.
-            _uiState.update { it.copy(isShared = !it.isShared) }
+            setState { it.copy(isShared = !it.isShared) }
             return
         }
         val coupleId = s.coupleId ?: return
         val nowShared = s.isShared
         viewModelScope.launch {
             if (nowShared) unshareGoal(goalId) else shareGoal(goalId, coupleId)
-            _uiState.update { it.copy(isShared = !nowShared) }
+            setState { it.copy(isShared = !nowShared) }
         }
     }
 
@@ -121,6 +123,7 @@ class GoalEditorViewModel @Inject constructor(
             if (isNew && s.isShared) {
                 s.coupleId?.let { shareGoal(id, it) }
             }
+            clearDraft()
             onDone()
         }
     }
@@ -128,8 +131,55 @@ class GoalEditorViewModel @Inject constructor(
     private fun String.toBigDecimalOrNull(): BigDecimal? =
         trim().takeIf { it.isNotEmpty() }?.let { runCatching { BigDecimal(it) }.getOrNull() }
 
+    // --- SavedStateHandle draft persistence (survives process death) ---
+
+    private fun setState(transform: (GoalEditorUiState) -> GoalEditorUiState) {
+        _uiState.update(transform)
+        val s = _uiState.value
+        saved[KEY_GOAL_ID] = s.goalId
+        saved[KEY_NAME] = s.name
+        saved[KEY_TARGET_TEXT] = s.targetText
+        saved[KEY_TARGET_DATE] = s.targetDate?.toEpochDay()
+        saved[KEY_ICON] = s.icon
+        saved[KEY_COLOR] = s.color
+        saved[KEY_IS_SHARED] = s.isShared
+        saved[KEY_IS_PARTNER_GOAL] = s.isPartnerGoal
+    }
+
+    private fun clearDraft() {
+        listOf(
+            KEY_GOAL_ID, KEY_NAME, KEY_TARGET_TEXT, KEY_TARGET_DATE,
+            KEY_ICON, KEY_COLOR, KEY_IS_SHARED, KEY_IS_PARTNER_GOAL,
+        ).forEach { saved.remove<Any>(it) }
+    }
+
+    private fun hydrateFromSaved(): GoalEditorUiState? {
+        val goalId: String = saved[KEY_GOAL_ID] ?: return null
+        return GoalEditorUiState(
+            loaded = true,
+            isNew = isNew,
+            goalId = goalId,
+            name = saved[KEY_NAME] ?: "",
+            targetText = saved[KEY_TARGET_TEXT] ?: "",
+            targetDate = saved.get<Long>(KEY_TARGET_DATE)?.let { LocalDate.ofEpochDay(it) },
+            icon = saved[KEY_ICON],
+            color = saved[KEY_COLOR],
+            isShared = saved[KEY_IS_SHARED] ?: false,
+            isPartnerGoal = saved[KEY_IS_PARTNER_GOAL] ?: false,
+        )
+    }
+
     companion object {
         const val GOAL_ID_KEY = "goalId"
         const val NEW_GOAL = "new"
+
+        private const val KEY_GOAL_ID = "draft_goal_id"
+        private const val KEY_NAME = "draft_name"
+        private const val KEY_TARGET_TEXT = "draft_target_text"
+        private const val KEY_TARGET_DATE = "draft_target_date"
+        private const val KEY_ICON = "draft_icon"
+        private const val KEY_COLOR = "draft_color"
+        private const val KEY_IS_SHARED = "draft_is_shared"
+        private const val KEY_IS_PARTNER_GOAL = "draft_is_partner_goal"
     }
 }
