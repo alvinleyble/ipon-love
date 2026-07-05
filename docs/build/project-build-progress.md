@@ -8,26 +8,9 @@
 
 ## Current state (as of 2026-07-06)
 
-**V1 through V1.6.2 are committed on `main`** (latest code: `50d9a92` budget rollover/reset/duplicate, `7c85f05` onboarding v2). Per-item detail for every shipped batch lives in the version docs indexed below — this section tracks only what's *in flight*.
+**V1 through V1.6.3 are committed on `main`** (latest code: `abf9ffd` navbar editor root-route fix). Per-item detail for every shipped batch lives in the version docs indexed below — this section tracks only what's *in flight*.
 
-**In flight: [V1.6.3](v1.6.3.md) — beta feedback round 3.** Grilled and locked 2026-07-05; build just started (Item 8 committed). **Batch commit workflow (Alvin's rule for this batch):** one code commit *per item*; **all doc changes** — this file, `v1.6.3.md`, and ADRs 0040/0041/0042 — stay uncommitted and land in a **single docs commit LAST**, after the code is in (so each item's `DONE <hash>` is filled first). Repro-only items (4/5/6) make no commit.
-
-| Item | What | Status |
-|---|---|---|
-| 8 | Truncated "Shared" badge on Manage screens | `DONE 35c4e2b` |
-| 9 | Notes: canonical `SharedBadge` instead of ❤️ (pairs with 8) | `TODO` — UI, no ADR |
-| 7 | Debt-settlement legs labeled "Debt settlement", not "Uncategorized" | `DONE ae64ceb` — ADR-0042 |
-| 1 | Notes pin — synced `is_pinned` boolean, "Pinned" section | `DONE 70835c9` — ADR-0040 |
-| 2 | Reset rollover must act on target month M, not M+1 | `TODO` — ADR-0041 (amends 0036) |
-| 10 | Sync currency-symbol Horizon #14 into UpcomingFeatures/PRD/ARCH | `FIXED (uncommitted)` — doc/UI only, all four surfaces now agree at 14 items |
-| 4 | "Paid for partner" not syncing | `TODO` — root cause **confirmed** (staging schema/RLS drift on the couple-owned `partner_debt` push); fix is a migration, no Kotlin. Highest severity (blocks clean sign-out) |
-| 5 | In-progress screen state lost on <30s background | `NEEDS INVESTIGATION` — repro-first |
-| 6 | Edit Navbar blocks module tab switching | `NEEDS INVESTIGATION` — repro-first |
-| 3 | Multi-currency | `DEFERRED` → Horizon #14 (display-symbol-only) |
-
-**Build order:** 8 → 9 → 7 → 1 → 2 → 10; bugs 4/5/6 run as a parallel repro-only pass (Item 4 first). ADRs 0040/0041/0042 are written but uncommitted per the batch workflow above.
-
-**Uncommitted working tree:** ADRs 0040/0041/0042, `v1.6.3.md`, this file, `app/build.gradle.kts`. `versionName` still `1.6.2-staging`.
+**Nothing in flight.** [V1.6.3](v1.6.3.md) — beta feedback round 3 — is complete: all 9 buildable items committed, Item 3 deferred to Post-V1 Horizon #14 (see its row in the version table below for the full item list + hashes).
 
 | Version | What | Doc |
 |---|---|---|
@@ -41,7 +24,7 @@
 | V1.6 | Prod-flavor redeploy fix (beta feedback visibility, version bump, savings-goal backfill) | [v1.6.md](v1.6.md) |
 | V1.6.1 | Original 12-item batch feature-complete; 7 more items added 2026-07-05. Items 14/13/16 `DONE f4ae4c8` (nested nav graphs, Notes-as-module, Privacy Policy link); Items 15/18/19 `TODO` (tutorial, recurring pause/skip, budget rollover — ADR-0034/0035/0036); Item 17 (search) `DROPPED` | [v1.6.1.md](v1.6.1.md) |
 | V1.6.2 | New batch, started 2026-07-05. Item 1: "restart fresh" data reset — locked (ADR-0037), **MOVED to Post-V1 Horizon #13**; Item 2: new-transaction screen persists over other tabs (bug) — `DONE 54d9359` (ADR-0039); Item 3: expand 3-step onboarding into a real per-module walkthrough — `DONE 7c85f05` (ADR-0038), verified on-device by Alvin; Item 4: recurring rule editor width — `DONE 642e070`; Item 5: budget rollover — `DONE 50d9a92` (ADR-0036); Item 6: duplicate-budget-to-next-month — `DONE 50d9a92` | [v1.6.2.md](v1.6.2.md) |
-| V1.6.3 | Beta feedback batch (round 3), booked 2026-07-05, **grilled same day**. 5 decisions locked: (1) Notes pin — `TODO` ADR-0040; (2) rollover reset acts on target month — `TODO` ADR-0041; (7) uncategorised debt txns → "Debt settlement" label — `TODO` ADR-0042; (8) truncated "shared" tag — `TODO` known layout fix; (9) Notes heart→`SharedBadge` — `TODO`. (3) multi-currency **deferred to Horizon #14** (display-symbol-only). Bugs (4) "paid for partner" sync, (5) state-not-saving <30s, (6) Edit Navbar blocks module switch — `NEEDS INVESTIGATION` (repro-first). Build order 8 → 9 → 7 → 1 → 2, Item 4 early | [v1.6.3.md](v1.6.3.md) |
+| V1.6.3 | Beta feedback batch (round 3), booked + grilled 2026-07-05, **complete 2026-07-06**. (8) truncated "shared" tag `DONE 35c4e2b`; (9) Notes heart→`SharedBadge` `DONE 6c5ec4f`; (7) uncategorised debt txns → "Debt settlement" label `DONE ae64ceb` ADR-0042; (1) Notes pin, synced `is_pinned` `DONE 70835c9` ADR-0040; (2) rollover reset acts on target month `DONE 29cc402` ADR-0041; (10) currency-symbol Horizon #14 doc/screen sync `DONE edc8249`; (4) "paid for partner" not syncing — staging schema drift, migration-only fix `DONE dfc2929`; (5) Goal editor draft lost on background <30s, `SavedStateHandle` mirroring `DONE fea0cff`; (6) Edit Navbar blocked tab switching, promoted to root-level route `DONE abf9ffd`. (3) multi-currency **deferred to Horizon #14** (display-symbol-only) | [v1.6.3.md](v1.6.3.md) |
 
 **Post-V1 Horizon** — the only work beyond the numbered versions above, unscheduled by design (could land before or after production launch depending on priority/capacity). Reconciled 2026-07-04 against `PRD.md`/`ARCHITECTURE.md` (which had drifted out of sync with each other and with this list — see `v1.6.1.md` Item 5):
 
@@ -85,12 +68,14 @@ Supabase project `vyjaorlevomfqkidttom.supabase.co` (Singapore, **staging** — 
 10. `2026-07-04_transfer_fee.sql` ([V1.6.1 Item 12](v1.6.1.md))
 11. `2026-07-05_recurring_pause_skip.sql` ([V1.6.1 Item 18](v1.6.1.md))
 12. `2026-07-05_budget_rollover.sql` ([V1.6.2 Item 5](v1.6.2.md))
+13. `2026-07-06_notes_is_pinned.sql` ([V1.6.3 Item 1](v1.6.3.md), ADR-0040)
+14. `2026-07-06_partner_debt_missing_columns.sql` ([V1.6.3 Item 4](v1.6.3.md) — closes staging schema drift on `partner_debts.source_transaction_id` / `partner_debt_payments.is_netting`, `counter_debt_id`)
 
-All confirmed applied live as of 2026-07-05 (re-verified directly against the live project via PostgREST schema introspection — #8/#12 had silently drifted out of the "applied" record despite being real, committed, shipped features; #12 in particular meant every rollover-enabled budget save had been failing to push since `50d9a92`). `supabase/schema.sql` remains the authoritative end-state.
+All confirmed applied live (#13/#14 verified 2026-07-06 via PostgREST column probes; #8/#12 were re-verified 2026-07-05 after they'd silently drifted out of the "applied" record despite being real, committed, shipped features — #12 in particular meant every rollover-enabled budget save had been failing to push since `50d9a92`). `supabase/schema.sql` remains the authoritative end-state.
 
 ### Room version
 
-**v21** is the last *committed* version (V1.6.2 Item 5: `budgets.rollover_enabled` via `@AutoMigration(20→21)`). History: v10 baseline (V1 slice K) → v11 (slice E, note images) → v12 (slice F, note sharing) → v13 (V1.3 #13, receipts) → v14 (V1.3 #9, debt netting) → v15 (V1.3 #12, paid-on-behalf) → v16 (V1.3 #14, settlements) → v17 (V1.3 #11, shared accounts/categories) → v18 (V1.5 #9, savings goals) → v19 (V1.6.1 #12, transfer fee link) → v20 (V1.6.1 Item 18, recurring `is_paused` only — "skip" advances `next_date` instead of storing a column, no `skipped_until` ever existed) → v21 (V1.6.2 Item 5, budgets `rollover_enabled`). (A v22 `budget_templates` table was built for Item 6, then fully reverted same day — see Item 6's note below.)
+**v22** is the last *committed* version (V1.6.3 Item 1: `notes.is_pinned` via `@AutoMigration(21→22)`). History: v10 baseline (V1 slice K) → v11 (slice E, note images) → v12 (slice F, note sharing) → v13 (V1.3 #13, receipts) → v14 (V1.3 #9, debt netting) → v15 (V1.3 #12, paid-on-behalf) → v16 (V1.3 #14, settlements) → v17 (V1.3 #11, shared accounts/categories) → v18 (V1.5 #9, savings goals) → v19 (V1.6.1 #12, transfer fee link) → v20 (V1.6.1 Item 18, recurring `is_paused` only — "skip" advances `next_date` instead of storing a column, no `skipped_until` ever existed) → v21 (V1.6.2 Item 5, budgets `rollover_enabled`) → v22 (V1.6.3 Item 1, notes `is_pinned`). (An earlier, unrelated v22 `budget_templates` table was built for a V1.6.2 Item 6 approach, then fully reverted same day before this v22 was assigned to `is_pinned`.)
 
 ### supabase-kt 3.x API notes
 
