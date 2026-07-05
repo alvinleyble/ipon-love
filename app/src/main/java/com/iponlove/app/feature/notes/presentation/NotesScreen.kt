@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion.NEW_NOTE
@@ -133,14 +133,7 @@ private fun NoteCard(
                                 color = MaterialTheme.colorScheme.primary,
                             )
                         }
-                        note.isShared -> {
-                            Icon(
-                                imageVector = Icons.Filled.Favorite,
-                                contentDescription = "Shared with partner",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(14.dp),
-                            )
-                        }
+                        note.isShared -> SharedBadge()
                     }
                 }
                 if (note.preview.isNotEmpty()) {

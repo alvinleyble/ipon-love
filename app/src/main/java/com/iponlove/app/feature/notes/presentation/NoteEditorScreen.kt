@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,12 +23,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.iponlove.app.core.ui.IponFilterChip
+import com.iponlove.app.core.ui.SharedBadge
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -129,12 +130,18 @@ fun NoteEditorScreen(
                 actions = {
                     if (!state.isPartnerNote) {
                         if (state.isPaired) {
-                            IconButton(onClick = { viewModel.toggleShared() }) {
-                                Icon(
-                                    imageVector = if (state.isShared) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                    contentDescription = if (state.isShared) "Unshare note" else "Share note with partner",
-                                    tint = if (state.isShared) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            if (state.isShared) {
+                                SharedBadge(
+                                    modifier = Modifier.clickable(onClick = { viewModel.toggleShared() }),
                                 )
+                            } else {
+                                IconButton(onClick = { viewModel.toggleShared() }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.FavoriteBorder,
+                                        contentDescription = "Share note with partner",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                         IconButton(
