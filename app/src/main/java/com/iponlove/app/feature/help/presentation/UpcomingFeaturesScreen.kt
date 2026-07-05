@@ -45,7 +45,7 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
                 .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
             Text(
-                "There's no timeline for any of these yet — just a look at what's on our radar.",
+                "Rough targets below — these are planning estimates, not commitments, and can shift. Items marked \"Not yet scheduled\" don't have one yet.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -68,7 +68,7 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Password vault (idk, why even)",
+                title = "Password vault (Not yet scheduled)",
                 description = "Store your passwords securely alongside your finances.",
             )
             Spacer(Modifier.height(8.dp))
@@ -78,12 +78,12 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "iOS (idk, mahal kasi eh $99 per year)",
+                title = "iOS (Not yet scheduled)",
                 description = "Love, Ipon on iPhone.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "CSV / PDF export (need ba tO?)",
+                title = "CSV / PDF export (Q4 2026)",
                 description = "Export your transactions and reports for backup or sharing.",
             )
             Spacer(Modifier.height(8.dp))
@@ -98,13 +98,8 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Shared accounts (Q4 2026)",
-                description = "Both partners contribute to and track the same account together.",
-            )
-            Spacer(Modifier.height(8.dp))
-            RoadmapCard(
-                title = "Shared budget (Q4 2026)",
-                description = "Set a joint monthly budget you and your partner track together.",
+                title = "Restart fresh (Q3 2026)",
+                description = "Reset your transactions, recurring rules, budgets, and savings progress without deleting your account or losing your accounts and categories.",
             )
         }
     }

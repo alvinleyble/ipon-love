@@ -405,7 +405,7 @@ Transaction entry → Add / Edit (bottom sheet modal over any tab)
 
 ## 10. Post-V1 Enhancements
 
-Not built in v1. Architecture must not block these. Reconciled 2026-07-04 against `docs/build/project-build-progress.md` and `PRD.md` (previously out of sync — see that doc's "Post-V1 Horizon" list).
+Not built in v1. Architecture must not block these. Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `PRD.md` (previously out of sync — see that doc's "Post-V1 Horizon" list, now 13 items). Target quarters aren't duplicated here — `project-build-progress.md`'s Horizon list is the single source of truth for those.
 
 | Feature | Note |
 |---|---|
@@ -418,3 +418,7 @@ Not built in v1. Architecture must not block these. Reconciled 2026-07-04 agains
 | CSV / PDF export | Power user feature, data already structured for it |
 | Custom fonts | Typography customization beyond built-in color themes; category/account icon picking already shipped in V1.3 |
 | Profile & couple photo upload | Avatar/banner images via Supabase Storage |
+| Change password / change email | New Settings screen addition; email change likely needs Supabase Auth's update-user + reverification flow |
+| Delete my account | New RPC per ADR-0006/0008 (couple-ops-are-RPCs-only); needs a self-service vs. support-mediated decision |
+| Login rate limiting / lockout | Decide whether Supabase's own server-side rate limiting already covers this or a client-side cooldown is also needed |
+| "Restart fresh" (reset finances) | `ResetFinancesUseCase` — owned-rows-only bulk soft-delete across transactions/recurring rules/budgets/goal contributions in a single Room `@Transaction`, then an interactive push; per ADR-0037 |
