@@ -136,6 +136,10 @@ _Avoid_: progress, balance, total saved (as a stored column)
 An optional fee on a `TRANSFER` transaction, represented as a second, linked `EXPENSE` transaction (not a plain field on the transfer row) auto-assigned to a dedicated built-in category so it's groupable in Analysis. Deliberately **not** modeled like a partner-debt settlement leg (ADR-0019) despite the surface similarity — it does **not** carry `is_settlement` (that flag makes Analysis *exclude* a row; a transfer fee must be *included*, since it's real incidental spending, not a repayment), and it **cascades** with its parent transfer (editing the fee amount or deleting the transfer updates/soft-deletes the linked expense too) rather than being fire-and-forget like the debt link — an orphaned fee-expense after its parent transfer is deleted would silently corrupt balance and Analysis totals. See ADR-0031.
 _Avoid_: settlement leg, linked debt, transfer expense
 
+**Reset finances**:
+A user-initiated "restart fresh" action (password re-authed, in Settings) that soft-deletes only the user's **own** money-movement rows — [[Transaction|transactions]], [[Paused (recurring rule)|recurring rules]], budgets, and goal contributions — in one local transaction, then syncs the tombstones like any other delete. Deliberately keeps *structure* (accounts, categories, savings-goal definitions, opening balances), all notes, and all couple/shared state; balances fall to their [[Opening balance]]. Distinct from a full account deletion (which removes the identity — users row, auth, pairing). See ADR-0037.
+_Avoid_: wipe, clear data, factory reset, delete account
+
 ### Recurring
 
 **Paused (recurring rule)**:
