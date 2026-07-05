@@ -53,10 +53,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.EntityChipRow
 import com.iponlove.app.core.ui.EntityGrid
@@ -343,6 +346,20 @@ private fun RecurringRow(
     }
 }
 
+// Modifier.padding() throws on negative values, so this can't just be a negative padding.
+private fun Modifier.reduceHorizontalPadding(amount: Dp): Modifier = layout { measurable, constraints ->
+    val extraPx = amount.roundToPx() * 2
+    val placeable = measurable.measure(
+        constraints.copy(
+            minWidth = (constraints.minWidth + extraPx).coerceAtLeast(0),
+            maxWidth = if (constraints.hasBoundedWidth) constraints.maxWidth + extraPx else constraints.maxWidth,
+        ),
+    )
+    layout(placeable.width - extraPx, placeable.height) {
+        placeable.place(x = -amount.roundToPx(), y = 0)
+    }
+}
+
 @Composable
 private fun RecurringEditorDialog(
     editor: RecurringEditorState,
@@ -367,9 +384,22 @@ private fun RecurringEditorDialog(
 
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text(if (editor.isEditing) "Edit recurring rule" else "New recurring rule") },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        title = {
+            Text(
+                if (editor.isEditing) "Edit recurring rule" else "New recurring rule",
+                modifier = Modifier.reduceHorizontalPadding(8.dp),
+            )
+        },
         text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            Column(
+                modifier = Modifier
+                    .reduceHorizontalPadding(8.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
                 OutlinedTextField(
                     value = editor.amountText,
                     onValueChange = onAmountChange,
