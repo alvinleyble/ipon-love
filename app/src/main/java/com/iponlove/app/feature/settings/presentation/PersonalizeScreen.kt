@@ -44,7 +44,11 @@ import androidx.compose.ui.unit.dp
 import android.content.Intent
 import android.net.Uri
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.StartTourOnFirstVisit
+import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.theme.paletteColorScheme
+import com.iponlove.app.feature.tutorial.domain.TutorialTours
+import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,6 +69,9 @@ fun PersonalizeScreen(
     val state by viewModel.uiState.collectAsState()
     val liveColorScheme = paletteColorScheme(state.draftPalette, state.draftIsDark)
     val context = LocalContext.current
+
+    // Couple-scoped Settings tour — no-ops until paired (ADR-0038); anchors to the Couple entry.
+    StartTourOnFirstVisit(TutorialTours.COUPLE_SETTINGS)
 
     MaterialTheme(
         colorScheme = liveColorScheme,
@@ -149,7 +156,9 @@ fun PersonalizeScreen(
                     trailingContent = {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
                     },
-                    modifier = Modifier.clickable(onClick = onOpenCouple),
+                    modifier = Modifier
+                        .coachMarkTarget(TutorialTargets.SETTINGS_COUPLE)
+                        .clickable(onClick = onOpenCouple),
                 )
                 HorizontalDivider()
                 ListItem(

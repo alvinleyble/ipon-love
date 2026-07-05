@@ -19,8 +19,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -66,6 +68,47 @@ fun Modifier.coachMarkTarget(key: String, state: CoachMarkState): Modifier =
         if (coords.isAttached) state.register(key, coords.boundsInRoot())
     }
 
+/**
+ * A drives-the-whole-walkthrough handle the app shell shares down to every feature screen through
+ * [LocalTutorialController], so a screen can arm its first-visit tour and report a real target tap
+ * without knowing anything about the tutorial ViewModel or Hilt scoping (ADR-0038 dec. 3).
+ */
+interface TutorialController {
+    /** Start [tourId]'s tour if it's unseen, no other tour is active, and its paired-gate passes. */
+    fun maybeStartTour(tourId: String)
+
+    /** Tell the active tour that [targetKey] was really operated (advances wait-for-tap steps). */
+    fun onTargetActivated(targetKey: String)
+}
+
+/** The shell's single [CoachMarkState], shared down so any screen can tag its own targets. */
+val LocalCoachMarkState = staticCompositionLocalOf<CoachMarkState?> { null }
+
+/** The shell's [TutorialController], shared down so any screen can arm its first-visit tour. */
+val LocalTutorialController = staticCompositionLocalOf<TutorialController?> { null }
+
+/**
+ * Composable overload that reads the shared [LocalCoachMarkState] — the form feature screens use so
+ * they don't have to thread the state through every call site. A no-op when no state is provided
+ * (e.g. previews), so tagging is always safe to leave in.
+ */
+@Composable
+fun Modifier.coachMarkTarget(key: String): Modifier {
+    val state = LocalCoachMarkState.current ?: return this
+    return this.coachMarkTarget(key, state)
+}
+
+/**
+ * Arms the given tours the first time a screen composes (ADR-0038 dec. 3): fires each `maybeStart`
+ * through the shared [LocalTutorialController], which handles seen-set gating, the paired gate, and
+ * the single-active-tour guard. Safe to place unconditionally at the top of any screen.
+ */
+@Composable
+fun StartTourOnFirstVisit(vararg tourIds: String) {
+    val controller = LocalTutorialController.current ?: return
+    LaunchedEffect(Unit) { tourIds.forEach { controller.maybeStartTour(it) } }
+}
+
 /** One step of a walkthrough: which target to highlight and what the tooltip says. */
 data class CoachMarkStep(
     val targetKey: String,
@@ -95,7 +138,10 @@ fun CoachMarkOverlay(
     modifier: Modifier = Modifier,
 ) {
     if (step == null) return
-    val target = state.boundsOf(step.targetKey) ?: return
+    // Anchor to the target when it's laid out; otherwise degrade to a centered tooltip (no ring) so
+    // a step whose target isn't on-screen yet — or at all, given a screen's conditional chrome —
+    // never leaves the user trapped with no card to advance or skip.
+    val target = state.boundsOf(step.targetKey)
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val rootW = constraints.maxWidth.toFloat()
@@ -107,32 +153,38 @@ fun CoachMarkOverlay(
 
         // Highlight ring around the target — no pointer input, so the real target beneath stays
         // tappable (the overlay is a later Box sibling but hit-testing falls through it).
-        androidx.compose.foundation.layout.Box(
-            Modifier
-                .offset { IntOffset(target.left.roundToInt(), target.top.roundToInt()) }
-                .size(
-                    width = with(density) { target.width.toDp() },
-                    height = with(density) { target.height.toDp() },
-                )
-                .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp)),
-        )
+        if (target != null) {
+            androidx.compose.foundation.layout.Box(
+                Modifier
+                    .offset { IntOffset(target.left.roundToInt(), target.top.roundToInt()) }
+                    .size(
+                        width = with(density) { target.width.toDp() },
+                        height = with(density) { target.height.toDp() },
+                    )
+                    .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp)),
+            )
+        }
 
         // Tooltip card, anchored above the target when it sits in the lower half of the screen
-        // (the common case for a bottom-bar target), otherwise below it. Positioned via a layout
-        // modifier so the measured card size is known before placement — no first-frame snap.
-        val placeAbove = target.center.y > rootH / 2f
+        // (the common case for a bottom-bar target), otherwise below it. With no target, centered.
+        // Positioned via a layout modifier so the measured card size is known before placement.
+        val placeAbove = target != null && target.center.y > rootH / 2f
         androidx.compose.foundation.layout.Box(
             Modifier.layout { measurable, c ->
                 val cardConstraints = Constraints(maxWidth = maxCardWidthPx.roundToInt())
                 val placeable = measurable.measure(cardConstraints)
-                val y = if (placeAbove) {
-                    target.top - gapPx - placeable.height
+                val y = when {
+                    target == null -> (rootH - placeable.height) / 2f
+                    placeAbove -> target.top - gapPx - placeable.height
+                    else -> target.bottom + gapPx
+                }
+                val x = if (target == null) {
+                    (rootW - placeable.width) / 2f
                 } else {
-                    target.bottom + gapPx
+                    target.center.x - placeable.width / 2f
                 }
                 val yClamped = y.coerceIn(padPx, (rootH - placeable.height - padPx).coerceAtLeast(padPx))
-                val xClamped = (target.center.x - placeable.width / 2f)
-                    .coerceIn(padPx, (rootW - placeable.width - padPx).coerceAtLeast(padPx))
+                val xClamped = x.coerceIn(padPx, (rootW - placeable.width - padPx).coerceAtLeast(padPx))
                 layout(c.maxWidth, c.maxHeight) {
                     placeable.place(xClamped.roundToInt(), yClamped.roundToInt())
                 }

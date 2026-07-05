@@ -22,8 +22,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.StartTourOnFirstVisit
+import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.partnerdebt.presentation.PartnerDebtBody
+import com.iponlove.app.feature.tutorial.domain.TutorialTours
+import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.partnerdebt.presentation.PartnerDebtViewModel
 import kotlinx.coroutines.launch
 
@@ -65,6 +69,8 @@ fun CoupleScreen(
     val pagerState = rememberPagerState(pageCount = { tabLabels.size })
     val scope = rememberCoroutineScope()
 
+    // Armed only in the fully-paired branch, where the Combined | Debts tab row exists to anchor to.
+    StartTourOnFirstVisit(TutorialTours.COUPLE)
     Scaffold(
         topBar = { TopAppBar(title = { Text("Couple") }) },
         floatingActionButton = {
@@ -76,7 +82,10 @@ fun CoupleScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
+            PrimaryTabRow(
+                selectedTabIndex = pagerState.currentPage,
+                modifier = Modifier.coachMarkTarget(TutorialTargets.COUPLE_TABS),
+            ) {
                 tabLabels.forEachIndexed { index, label ->
                     Tab(
                         selected = pagerState.currentPage == index,

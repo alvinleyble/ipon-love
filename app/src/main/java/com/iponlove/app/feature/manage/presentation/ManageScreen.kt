@@ -20,7 +20,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.StartTourOnFirstVisit
+import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.feature.accounts.presentation.AccountsBody
+import com.iponlove.app.feature.tutorial.domain.TutorialTours
+import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.accounts.presentation.AccountsViewModel
 import com.iponlove.app.feature.budgets.presentation.BudgetsBody
 import com.iponlove.app.feature.budgets.presentation.BudgetsViewModel
@@ -46,6 +50,7 @@ fun ManageScreen(
     val scope = rememberCoroutineScope()
     val tabLabels = listOf("Accounts", "Categories", "Budgets")
 
+    StartTourOnFirstVisit(TutorialTours.MANAGE)
     Scaffold(
         topBar = { TopAppBar(title = { Text("Manage") }) },
         floatingActionButton = {
@@ -57,6 +62,7 @@ fun ManageScreen(
                         2 -> budgetsViewModel.startCreate()
                     }
                 },
+                modifier = Modifier.coachMarkTarget(TutorialTargets.MANAGE_ADD),
             ) {
                 val description = when (pagerState.currentPage) {
                     0 -> "Add account"
@@ -68,7 +74,10 @@ fun ManageScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
+            PrimaryTabRow(
+                selectedTabIndex = pagerState.currentPage,
+                modifier = Modifier.coachMarkTarget(TutorialTargets.MANAGE_TABS),
+            ) {
                 tabLabels.forEachIndexed { index, label ->
                     Tab(
                         selected = pagerState.currentPage == index,

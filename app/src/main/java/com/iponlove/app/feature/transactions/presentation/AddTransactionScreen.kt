@@ -64,9 +64,13 @@ import coil.compose.AsyncImage
 import com.iponlove.app.core.ui.EntityChipRow
 import com.iponlove.app.core.ui.EntityGrid
 import com.iponlove.app.core.ui.EntityPickerOption
+import com.iponlove.app.core.ui.StartTourOnFirstVisit
+import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
+import com.iponlove.app.feature.tutorial.domain.TutorialTours
+import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.TransactionError
@@ -80,6 +84,7 @@ fun AddTransactionScreen(
     viewModel: AddTransactionViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    StartTourOnFirstVisit(TutorialTours.TRANSACTION_ENTRY, TutorialTours.TRANSACTION_ENTRY_COUPLE)
     AddTransactionContent(
         state = state,
         onBack = onBack,
@@ -215,12 +220,14 @@ private fun EditorForm(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        FieldLabel("Type")
-        EntityChipRow(
-            options = TransactionType.entries.map { EntityPickerOption(it.name, it.label()) },
-            selectedId = editor.type.name,
-            onSelect = { onTypeChange(TransactionType.valueOf(it)) },
-        )
+        Column(Modifier.coachMarkTarget(TutorialTargets.TXN_TYPE)) {
+            FieldLabel("Type")
+            EntityChipRow(
+                options = TransactionType.entries.map { EntityPickerOption(it.name, it.label()) },
+                selectedId = editor.type.name,
+                onSelect = { onTypeChange(TransactionType.valueOf(it)) },
+            )
+        }
         Spacer(Modifier.height(16.dp))
 
         OutlinedTextField(
@@ -300,7 +307,15 @@ private fun EditorForm(
                 Switch(checked = editor.isPrivate, onCheckedChange = onPrivateChange)
             }
             Text(
-                "Hides this transaction from ${state.partnerName}'s combined view.",
+                // Pre-pairing framing (ADR-0038 dec. 6): a persistent inline hint that a future
+                // partner won't see private entries — the disclaimer the raw ask called for, shown
+                // durably here (not only as a one-off tour step) since Private may be toggled anytime.
+                if (state.isPaired) {
+                    "Hides this transaction from ${state.partnerName}'s combined view."
+                } else {
+                    "When you pair with a partner later, private transactions stay out of their " +
+                        "combined view."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

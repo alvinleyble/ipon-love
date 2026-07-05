@@ -42,7 +42,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.StartTourOnFirstVisit
+import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion.NEW_NOTE
+import com.iponlove.app.feature.tutorial.domain.TutorialTours
+import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -56,12 +60,16 @@ fun NotesScreen(
     viewModel: NotesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    StartTourOnFirstVisit(TutorialTours.NOTES, TutorialTours.NOTES_COUPLE)
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Notes") })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { onOpenNote(NEW_NOTE) }) {
+            FloatingActionButton(
+                onClick = { onOpenNote(NEW_NOTE) },
+                modifier = Modifier.coachMarkTarget(TutorialTargets.NOTES_ADD),
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = "New note")
             }
         },

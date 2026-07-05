@@ -40,7 +40,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.SharedBadge
+import com.iponlove.app.core.ui.StartTourOnFirstVisit
+import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.feature.tutorial.domain.TutorialTours
+import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.feature.savings.domain.model.SavingsGoalProgress
 
@@ -53,12 +57,16 @@ fun SavingsGoalsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
+    StartTourOnFirstVisit(TutorialTours.SAVINGS, TutorialTours.SAVINGS_COUPLE)
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Savings goals") })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onCreateGoal) {
+            FloatingActionButton(
+                onClick = onCreateGoal,
+                modifier = Modifier.coachMarkTarget(TutorialTargets.SAVINGS_ADD),
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = "New goal")
             }
         },

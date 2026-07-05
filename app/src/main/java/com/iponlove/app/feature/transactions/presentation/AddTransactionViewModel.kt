@@ -93,6 +93,7 @@ class AddTransactionViewModel @Inject constructor(
                 // Debt creation only makes sense while creating (not editing) with a known partner.
                 canPayForPartner = !isEditing && coupleId != null && myId != null && partnerId != null,
                 partnerName = members?.partner?.displayName ?: "Partner",
+                isPaired = coupleId != null,
                 missing = isMissing,
             )
         }.stateIn(

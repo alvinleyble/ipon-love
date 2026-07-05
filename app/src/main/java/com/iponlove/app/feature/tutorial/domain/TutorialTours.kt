@@ -1,0 +1,39 @@
+package com.iponlove.app.feature.tutorial.domain
+
+/**
+ * The stable IDs of every coach-mark tour (ADR-0038). Lives in `domain` (not `presentation`) so the
+ * data layer's seen-set migration and any feature screen that fires a tour can reference an ID
+ * without depending on the presentation script. Adding a module tour is one constant here plus its
+ * step list in `TutorialScript` — no new DataStore key (gating is a single `Set<String>`).
+ *
+ * Solo tours fire on first visit to their screen (the [SHELL] tour up-front at app-shell mount).
+ * Couple tours in [PAIRED_TOURS] additionally require the user to be paired — an unpaired first
+ * visit leaves them unseen so they fire later, once paired. [COUPLE_BRIDGE] is special: it isn't a
+ * screen tour but a one-shot coach mark fired at the pairing-success moment.
+ */
+object TutorialTours {
+    // Solo
+    const val SHELL = "shell"
+    const val RECORDS = "records"
+    const val RECURRING = "recurring"
+    const val ANALYSIS = "analysis"
+    const val MANAGE = "manage"
+    const val SAVINGS = "savings"
+    const val NOTES = "notes"
+    const val TRANSACTION_ENTRY = "transaction_entry"
+
+    // Couple (paired-gated)
+    const val COUPLE = "couple"
+    const val NOTES_COUPLE = "notes_couple"
+    const val SAVINGS_COUPLE = "savings_couple"
+    const val COUPLE_SETTINGS = "couple_settings"
+    const val TRANSACTION_ENTRY_COUPLE = "transaction_entry_couple"
+
+    /** One-shot bridge fired at pairing success, not on any screen visit. */
+    const val COUPLE_BRIDGE = "couple_bridge"
+
+    /** Tours that only fire while paired; an unpaired first visit leaves them unseen. */
+    val PAIRED_TOURS: Set<String> = setOf(
+        COUPLE, NOTES_COUPLE, SAVINGS_COUPLE, COUPLE_SETTINGS, TRANSACTION_ENTRY_COUPLE, COUPLE_BRIDGE,
+    )
+}

@@ -46,9 +46,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.MonthStepperRow
+import com.iponlove.app.core.ui.StartTourOnFirstVisit
+import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
+import com.iponlove.app.feature.tutorial.domain.TutorialTours
+import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 
 private val IncomeColor = Color(0xFF2E7D32)
 
@@ -84,12 +88,16 @@ private fun TransactionsContent(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
 ) {
+    StartTourOnFirstVisit(TutorialTours.RECORDS)
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Records") },
                 actions = {
-                    IconButton(onClick = onOpenRecurring) {
+                    IconButton(
+                        onClick = onOpenRecurring,
+                        modifier = Modifier.coachMarkTarget(TutorialTargets.RECORDS_RECURRING),
+                    ) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Recurring rules")
                     }
                 },

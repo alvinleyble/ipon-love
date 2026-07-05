@@ -51,10 +51,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.CompositionLocalProvider
 import com.iponlove.app.core.ui.CoachMarkOverlay
 import com.iponlove.app.core.ui.CoachMarkState
+import com.iponlove.app.core.ui.LocalCoachMarkState
+import com.iponlove.app.core.ui.LocalTutorialController
 import com.iponlove.app.core.ui.coachMarkTarget
-import com.iponlove.app.feature.tutorial.presentation.TutorialScript
+import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.tutorial.presentation.TutorialViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -157,12 +160,13 @@ private fun IponAppContent(
 
     var showMore by rememberSaveable { mutableStateOf(false) }
 
-    // First-run tutorial (ADR-0034): a generic coach-mark overlay anchored to the real app shell.
+    // Onboarding coach-marks (ADR-0038): one overlay + one CoachMarkState at the shell, shared down
+    // to every feature screen via CompositionLocals so each screen arms its own first-visit tour.
     val tutorialViewModel: TutorialViewModel = hiltViewModel()
     val tutorialState by tutorialViewModel.uiState.collectAsState()
     val coachState = remember { CoachMarkState() }
-    // Fire the tour once per shell mount when the local gate hasn't been satisfied.
-    LaunchedEffect(Unit) { tutorialViewModel.maybeStart() }
+    // The shell tour fires up-front at shell mount (it teaches navigation, needed before modules).
+    LaunchedEffect(Unit) { tutorialViewModel.maybeStartTour(TutorialTours.SHELL) }
     // The "tap More" step advances by *observing* the sheet actually open, not by driving it.
     LaunchedEffect(showMore) {
         if (showMore) tutorialViewModel.onTargetActivated(TutorialTargets.MORE)
@@ -177,6 +181,10 @@ private fun IponAppContent(
         currentDestination?.hierarchy?.any { it.route == dest.graphRoute() } == true
 
     Box(Modifier.fillMaxSize()) {
+    CompositionLocalProvider(
+        LocalCoachMarkState provides coachState,
+        LocalTutorialController provides tutorialViewModel,
+    ) {
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
@@ -373,14 +381,11 @@ private fun IponAppContent(
         // so it can anchor to the tagged bar targets. Transparent to touches outside its tooltip.
         CoachMarkOverlay(
             state = coachState,
-            step = if (tutorialState.active) {
-                TutorialScript.stepAt(tutorialState.stepIndex)?.coachMark
-            } else {
-                null
-            },
+            step = tutorialState.currentStep,
             onPrimary = tutorialViewModel::next,
             onSkip = tutorialViewModel::skip,
         )
+    }
     }
 
     if (showMore) {

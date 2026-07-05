@@ -14,6 +14,8 @@ data class AddTransactionUiState(
     val canPayForPartner: Boolean = false,
     /** Partner's display name for the toggle label; "Partner" fallback. */
     val partnerName: String = "Partner",
+    /** Whether the user is paired — drives the Private toggle's caption framing (ADR-0038 dec. 6). */
+    val isPaired: Boolean = false,
     /** True when the id nav-arg pointed at a transaction that no longer exists. */
     val missing: Boolean = false,
 ) {

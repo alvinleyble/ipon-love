@@ -49,7 +49,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.StartTourOnFirstVisit
+import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.feature.tutorial.domain.TutorialTours
+import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.analysis.domain.model.AnalysisPeriod
 import com.iponlove.app.feature.analysis.presentation.components.DailyNetCalendarChart
 import com.iponlove.app.feature.analysis.presentation.components.DonutChart
@@ -87,6 +91,7 @@ private fun AnalysisContent(
     onOpenCouple: () -> Unit,
     onDismissPairingCard: () -> Unit,
 ) {
+    StartTourOnFirstVisit(TutorialTours.ANALYSIS)
     Scaffold(topBar = { TopAppBar(title = { Text("Analysis") }) }) { padding ->
         Column(
             modifier = Modifier
@@ -147,7 +152,10 @@ private fun MonthTabLayout(state: AnalysisUiState, modifier: Modifier = Modifier
     val tabLabels = listOf("Donut", "Flow", "Calendar")
 
     Column(modifier = modifier) {
-        PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
+        PrimaryTabRow(
+            selectedTabIndex = pagerState.currentPage,
+            modifier = Modifier.coachMarkTarget(TutorialTargets.ANALYSIS_TABS),
+        ) {
             tabLabels.forEachIndexed { index, label ->
                 Tab(
                     selected = pagerState.currentPage == index,
@@ -229,6 +237,7 @@ private fun PeriodSelector(selected: AnalysisPeriod, onSelect: (AnalysisPeriod) 
         selectedTabIndex = periods.indexOf(selected),
         edgePadding = 16.dp,
         divider = {},
+        modifier = Modifier.coachMarkTarget(TutorialTargets.ANALYSIS_PERIOD),
     ) {
         periods.forEach { period ->
             Tab(

@@ -64,7 +64,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.EntityChipRow
 import com.iponlove.app.core.ui.EntityGrid
 import com.iponlove.app.core.ui.EntityPickerOption
+import com.iponlove.app.core.ui.StartTourOnFirstVisit
+import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.feature.tutorial.domain.TutorialTours
+import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
 import com.iponlove.app.feature.recurring.domain.model.RecurringFrequency
@@ -86,6 +90,7 @@ fun RecurringScreen(
     viewModel: RecurringViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    StartTourOnFirstVisit(TutorialTours.RECURRING)
     Scaffold(
         topBar = {
             TopAppBar(
@@ -96,7 +101,10 @@ fun RecurringScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = viewModel::toggleViewMode) {
+                    IconButton(
+                        onClick = viewModel::toggleViewMode,
+                        modifier = Modifier.coachMarkTarget(TutorialTargets.RECURRING_CALENDAR),
+                    ) {
                         if (state.viewMode == RecurringViewMode.LIST) {
                             Icon(Icons.Filled.DateRange, contentDescription = "Calendar view")
                         } else {
@@ -108,7 +116,10 @@ fun RecurringScreen(
         },
         floatingActionButton = {
             if (state.canAdd && state.viewMode == RecurringViewMode.LIST) {
-                FloatingActionButton(onClick = viewModel::startCreate) {
+                FloatingActionButton(
+                    onClick = viewModel::startCreate,
+                    modifier = Modifier.coachMarkTarget(TutorialTargets.RECURRING_ADD),
+                ) {
                     Icon(Icons.Filled.Add, contentDescription = "Add recurring rule")
                 }
             }
