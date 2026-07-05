@@ -241,8 +241,9 @@ private fun BudgetCard(
             title = { Text("Reset rollover?") },
             text = {
                 Text(
-                    "Next month starts from its own limit only, ignoring the amount carried " +
-                        "here. You can turn rollover back on afterward for a fresh chain.",
+                    "This month starts from its own limit only, ignoring the balance carried " +
+                        "in from last month. Rollover turns off for this month; you can turn " +
+                        "it back on afterward for a fresh chain.",
                 )
             },
             confirmButton = {

@@ -156,11 +156,10 @@ class BudgetsViewModel @Inject constructor(
         viewModelScope.launch { deleteBudget(id) }
     }
 
-    /** Severs the carry-forward into next month for this row's category (see use case doc). */
+    /** Resets this month's carried-in balance for this row's category (see use case doc). */
     fun resetRollover(row: BudgetRow) {
         val budget = monthBudgets.firstOrNull { it.id == row.id } ?: return
-        val sameCategoryBudgets = allBudgets.filter { it.categoryId == budget.categoryId }
-        viewModelScope.launch { resetBudgetRollover(budget, sameCategoryBudgets) }
+        viewModelScope.launch { resetBudgetRollover(budget) }
     }
 
     /** Copies this row's amount/rollover setting into next month so it isn't retyped by hand. */

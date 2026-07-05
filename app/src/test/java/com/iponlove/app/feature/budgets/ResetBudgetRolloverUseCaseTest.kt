@@ -16,36 +16,35 @@ class ResetBudgetRolloverUseCaseTest {
     private val useCase = ResetBudgetRolloverUseCase(repository)
 
     @Test
-    fun noExistingNextMonthBudget_createsOneWithRolloverOff_defaultingToThisMonthsAmount() = runTest {
+    fun clearsRolloverOnTheTargetMonthItself_preservingItsOwnFields() = runTest {
         val june = budget("june", categoryId = "cat-1", amount = "5000.00", yearMonth = "2026-06", rolloverEnabled = true)
 
-        useCase(june, sameCategoryBudgets = listOf(june))
+        useCase(june)
 
-        val created = repository.upserted.single()
-        assertThat(created.yearMonth).isEqualTo("2026-07")
-        assertThat(created.categoryId).isEqualTo("cat-1")
-        assertThat(created.amount).isEqualTo(BigDecimal("5000.00"))
-        assertThat(created.rolloverEnabled).isFalse()
+        val updated = repository.upserted.single()
+        assertThat(updated.id).isEqualTo("june")
+        assertThat(updated.yearMonth).isEqualTo("2026-06")
+        assertThat(updated.categoryId).isEqualTo("cat-1")
+        assertThat(updated.amount).isEqualTo(BigDecimal("5000.00"))
+        assertThat(updated.rolloverEnabled).isFalse()
     }
 
     @Test
-    fun existingNextMonthBudget_onlyClearsRolloverFlag_preservesItsOwnAmount() = runTest {
+    fun doesNotTouchAnyOtherMonth() = runTest {
         val june = budget("june", categoryId = "cat-1", amount = "5000.00", yearMonth = "2026-06", rolloverEnabled = true)
-        val july = budget("july", categoryId = "cat-1", amount = "7000.00", yearMonth = "2026-07", rolloverEnabled = true)
 
-        useCase(june, sameCategoryBudgets = listOf(june, july))
+        useCase(june)
 
-        val updated = repository.upserted.single()
-        assertThat(updated.id).isEqualTo("july")
-        assertThat(updated.amount).isEqualTo(BigDecimal("7000.00"))
-        assertThat(updated.rolloverEnabled).isFalse()
+        // Only M itself is written; no next-month row is created or modified.
+        assertThat(repository.upserted).hasSize(1)
+        assertThat(repository.upserted.single().yearMonth).isEqualTo("2026-06")
     }
 
     @Test
     fun rejectsWhenRolloverNotEnabled() = runTest {
         val june = budget("june", rolloverEnabled = false)
 
-        val error = runCatching { useCase(june, sameCategoryBudgets = listOf(june)) }.exceptionOrNull()
+        val error = runCatching { useCase(june) }.exceptionOrNull()
 
         assertThat(error).isInstanceOf(IllegalArgumentException::class.java)
         assertThat(repository.upserted).isEmpty()
