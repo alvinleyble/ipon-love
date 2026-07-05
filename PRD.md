@@ -170,7 +170,7 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 
 ## 9. Future Enhancements (Post-V1)
 
-Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `ARCHITECTURE.md` (previously out of sync — see that doc's "Post-V1 Horizon" list, now 13 items). Target quarters aren't duplicated here — `project-build-progress.md`'s Horizon list is the single source of truth for those.
+Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `ARCHITECTURE.md` (previously out of sync — see that doc's "Post-V1 Horizon" list, now 14 items). Target quarters aren't duplicated here — `project-build-progress.md`'s Horizon list is the single source of truth for those.
 
 | Feature | Notes |
 |---|---|
@@ -187,6 +187,7 @@ Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `ARCHIT
 | Delete my account | Compliance/account-management requirement (likely a Play Store Data Safety item at prod); not a tester-facing feature |
 | Login rate limiting / lockout | Client-side cooldown for the Supabase Auth sign-in screen itself, separate from the existing local PIN lockout |
 | "Restart fresh" (reset finances) | Wipe transactions, recurring rules, budgets, and goal contributions from Settings without deleting the account or losing accounts/categories/notes; already fully designed (ADR-0037), ready to build |
+| Display-currency symbol (non-PHP) | Display-symbol-only, NOT multi-currency: swaps the ₱ glyph for another symbol, chosen at onboarding — no per-account currency, no FX conversion, all amounts stay one currency underneath |
 
 ---
 

@@ -63,7 +63,7 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "AI companion (BYOK) (Q4 2026)",
+                title = "AI companion (BYOK) (Not yet scheduled)",
                 description = "Ask questions about your spending using your own AI provider key.",
             )
             Spacer(Modifier.height(8.dp))
@@ -73,7 +73,7 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Voice recording storage (Q4 2026)",
+                title = "Voice recording storage (Q3 2026)",
                 description = "Attach voice notes to your notes and transactions.",
             )
             Spacer(Modifier.height(8.dp))
@@ -83,7 +83,7 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "CSV / PDF export (Q4 2026)",
+                title = "CSV / PDF export (Q3 2026)",
                 description = "Export your transactions and reports for backup or sharing.",
             )
             Spacer(Modifier.height(8.dp))
@@ -93,13 +93,18 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Profile & couple photo upload (Q4 2026)",
+                title = "Profile & couple photo upload (Q3 2026)",
                 description = "Upload a real photo instead of accent color + initials.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
                 title = "Restart fresh (Q3 2026)",
                 description = "Reset your transactions, recurring rules, budgets, and savings progress without deleting your account or losing your accounts and categories.",
+            )
+            Spacer(Modifier.height(8.dp))
+            RoadmapCard(
+                title = "Choose your currency symbol (Q3 2026)",
+                description = "Swap the ₱ symbol for another currency's symbol. Display only — no conversion, and amounts stay in one currency underneath.",
             )
         }
     }
