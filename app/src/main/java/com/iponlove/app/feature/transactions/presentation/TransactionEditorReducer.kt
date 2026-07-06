@@ -119,8 +119,6 @@ object TransactionEditorReducer {
             note = state.note.trim().ifBlank { null },
             date = state.date,
             isPrivate = state.isPrivate,
-            attachmentUrl = state.attachmentUrl,
-            attachmentLocalPath = state.attachmentLocalPath,
         )
 
         // Transfer fee (ADR-0031): blank = no fee (zero); otherwise must be >= 0.

@@ -82,16 +82,6 @@ class FakeTransactionDao : TransactionDao {
         transactions.forEach { store[it.id] = it }
         changes.value++
     }
-
-    override suspend fun pendingReceiptUploads(): List<TransactionEntity> =
-        store.values.filter { it.attachmentLocalPath != null && !it.isDeleted }
-
-    override suspend fun markReceiptUploaded(id: String, url: String, updatedAt: Long) {
-        store[id]?.let {
-            store[id] = it.copy(attachmentUrl = url, attachmentLocalPath = null, pendingSync = true)
-        }
-        changes.value++
-    }
 }
 
 /** Domain transaction builder. */
@@ -104,7 +94,6 @@ fun txn(
     categoryId: String? = "cat-1",
     date: Instant = Instant.ofEpochMilli(1_000),
     isSettlement: Boolean = false,
-    attachmentUrl: String? = null,
 ) = Transaction(
     id = id,
     type = type,
@@ -114,7 +103,6 @@ fun txn(
     categoryId = if (type == TransactionType.TRANSFER) null else categoryId,
     date = date,
     isSettlement = isSettlement,
-    attachmentUrl = attachmentUrl,
 )
 
 fun transactionEntity(

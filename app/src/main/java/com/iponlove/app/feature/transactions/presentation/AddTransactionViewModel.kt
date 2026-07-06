@@ -13,9 +13,12 @@ import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCa
 import com.iponlove.app.feature.couple.domain.model.CoupleMembers
 import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.PaidOnBehalfUseCase
+import com.iponlove.app.feature.transactions.domain.model.TransactionImage
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
-import com.iponlove.app.feature.transactions.domain.usecase.AttachReceiptUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.CompressReceiptUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.GetTransactionImagesUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.GetTransactionUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.SaveTransactionImagesUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.SaveTransferUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.UpsertTransactionUseCase
 import com.iponlove.app.feature.widget.presentation.AddTransactionWidget
@@ -48,7 +51,9 @@ class AddTransactionViewModel @Inject constructor(
     private val upsertTransaction: UpsertTransactionUseCase,
     private val paidOnBehalf: PaidOnBehalfUseCase,
     private val saveTransfer: SaveTransferUseCase,
-    private val attachReceipt: AttachReceiptUseCase,
+    private val compressReceipt: CompressReceiptUseCase,
+    private val getTransactionImages: GetTransactionImagesUseCase,
+    private val saveTransactionImages: SaveTransactionImagesUseCase,
 ) : ViewModel() {
 
     private val saved = savedStateHandle
@@ -135,8 +140,7 @@ class AddTransactionViewModel @Inject constructor(
                             note = t.note.orEmpty(),
                             isPrivate = t.isPrivate,
                             date = t.date,
-                            attachmentUrl = t.attachmentUrl,
-                            attachmentLocalPath = t.attachmentLocalPath,
+                            images = getTransactionImages(t.id),
                             transferFeeText = feeAmountText,
                         ),
                     )
@@ -165,15 +169,28 @@ class AddTransactionViewModel @Inject constructor(
     fun onTransferFeeChange(value: String) = mutate { TransactionEditorReducer.onTransferFee(it, value) }
     fun onDateChange(date: Instant) = mutate { it.copy(date = date) }
 
-    fun onReceiptPicked(uri: Uri) {
-        val id = editor.value?.id ?: return
+    fun onImagePicked(uri: Uri) {
+        val current = editor.value ?: return
+        if (current.images.size >= TransactionImage.MAX) return // UI-level cap (backstop lives in the save use case + repo)
         viewModelScope.launch {
-            val localPath = attachReceipt(uri, id)
-            mutate { it.copy(attachmentLocalPath = localPath) }
+            val imageId = UUID.randomUUID().toString()
+            val localPath = compressReceipt(uri, imageId)
+            mutate { state ->
+                state.copy(
+                    images = state.images + TransactionImage(
+                        id = imageId,
+                        transactionId = state.id,
+                        localPath = localPath,
+                        url = null,
+                        position = state.images.size,
+                    ),
+                )
+            }
         }
     }
 
-    fun onRemoveReceipt() = mutate { it.copy(attachmentLocalPath = null, attachmentUrl = null) }
+    fun onRemoveImage(imageId: String) =
+        mutate { it.copy(images = it.images.filterNot { image -> image.id == imageId }) }
 
     fun save(onDone: () -> Unit) {
         val s = editor.value ?: return
@@ -198,6 +215,9 @@ class AddTransactionViewModel @Inject constructor(
                     )
                     else -> upsertTransaction(result.transaction)
                 }
+                // Reconcile the draft's receipt images to transaction_images rows now that the
+                // parent transaction exists (deferred persistence — see SaveTransactionImagesUseCase).
+                saveTransactionImages(result.transaction.id, s.images)
                 clearDraft()
                 AddTransactionWidget().updateAll(context)
                 onDone()
@@ -219,8 +239,11 @@ class AddTransactionViewModel @Inject constructor(
         saved[KEY_NOTE] = state.note
         saved[KEY_PRIVATE] = state.isPrivate
         saved[KEY_DATE] = state.date.toEpochMilli()
-        saved[KEY_LOCAL_PATH] = state.attachmentLocalPath
-        saved[KEY_URL] = state.attachmentUrl
+        // Persist the receipt-image draft as three parallel string lists (SavedStateHandle has no
+        // typed-list support for a domain model); blank encodes null.
+        saved[KEY_IMAGE_IDS] = ArrayList(state.images.map { it.id })
+        saved[KEY_IMAGE_PATHS] = ArrayList(state.images.map { it.localPath.orEmpty() })
+        saved[KEY_IMAGE_URLS] = ArrayList(state.images.map { it.url.orEmpty() })
         saved[KEY_PAID_FOR_PARTNER] = state.paidForPartner
         saved[KEY_AMOUNT_OWED] = state.amountOwedText
         saved[KEY_TRANSFER_FEE] = state.transferFeeText
@@ -230,8 +253,8 @@ class AddTransactionViewModel @Inject constructor(
     private fun clearDraft() {
         listOf(
             KEY_ID, KEY_IS_EDITING, KEY_TYPE, KEY_AMOUNT, KEY_ACCOUNT, KEY_TO_ACCOUNT,
-            KEY_CATEGORY, KEY_NOTE, KEY_PRIVATE, KEY_DATE, KEY_LOCAL_PATH, KEY_URL,
-            KEY_PAID_FOR_PARTNER, KEY_AMOUNT_OWED, KEY_TRANSFER_FEE, KEY_LINKED_FEE_ID,
+            KEY_CATEGORY, KEY_NOTE, KEY_PRIVATE, KEY_DATE, KEY_IMAGE_IDS, KEY_IMAGE_PATHS,
+            KEY_IMAGE_URLS, KEY_PAID_FOR_PARTNER, KEY_AMOUNT_OWED, KEY_TRANSFER_FEE, KEY_LINKED_FEE_ID,
         ).forEach { saved.remove<Any>(it) }
         existingTransferFeeId = null
     }
@@ -249,12 +272,26 @@ class AddTransactionViewModel @Inject constructor(
             note = saved[KEY_NOTE] ?: "",
             isPrivate = saved[KEY_PRIVATE] ?: false,
             date = (saved.get<Long>(KEY_DATE))?.let { Instant.ofEpochMilli(it) } ?: Instant.now(),
-            attachmentLocalPath = saved[KEY_LOCAL_PATH],
-            attachmentUrl = saved[KEY_URL],
+            images = hydrateImages(id),
             paidForPartner = saved[KEY_PAID_FOR_PARTNER] ?: false,
             amountOwedText = saved[KEY_AMOUNT_OWED] ?: "",
             transferFeeText = saved[KEY_TRANSFER_FEE] ?: "",
         )
+    }
+
+    private fun hydrateImages(transactionId: String): List<TransactionImage> {
+        val ids: List<String> = saved.get<ArrayList<String>>(KEY_IMAGE_IDS) ?: return emptyList()
+        val paths: List<String> = saved.get<ArrayList<String>>(KEY_IMAGE_PATHS) ?: emptyList()
+        val urls: List<String> = saved.get<ArrayList<String>>(KEY_IMAGE_URLS) ?: emptyList()
+        return ids.mapIndexed { index, imageId ->
+            TransactionImage(
+                id = imageId,
+                transactionId = transactionId,
+                localPath = paths.getOrNull(index)?.ifBlank { null },
+                url = urls.getOrNull(index)?.ifBlank { null },
+                position = index,
+            )
+        }
     }
 
     companion object {
@@ -271,8 +308,9 @@ class AddTransactionViewModel @Inject constructor(
         private const val KEY_NOTE = "draft_note"
         private const val KEY_PRIVATE = "draft_private"
         private const val KEY_DATE = "draft_date"
-        private const val KEY_LOCAL_PATH = "draft_local_path"
-        private const val KEY_URL = "draft_url"
+        private const val KEY_IMAGE_IDS = "draft_image_ids"
+        private const val KEY_IMAGE_PATHS = "draft_image_paths"
+        private const val KEY_IMAGE_URLS = "draft_image_urls"
         private const val KEY_PAID_FOR_PARTNER = "draft_paid_for_partner"
         private const val KEY_AMOUNT_OWED = "draft_amount_owed"
         private const val KEY_TRANSFER_FEE = "draft_transfer_fee"

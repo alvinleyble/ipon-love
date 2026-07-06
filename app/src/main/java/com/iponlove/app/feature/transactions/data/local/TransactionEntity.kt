@@ -33,9 +33,8 @@ data class TransactionEntity(
     val date: Instant,
     val isPrivate: Boolean,
     val recurringRuleId: String?,
-    val attachmentUrl: String? = null,
-    /** Local-only staging path for a pending receipt upload; cleared once uploaded. Never synced. */
-    val attachmentLocalPath: String? = null,
+    // Receipts moved to the transaction_images child table (up to 3); the single attachmentUrl/
+    // attachmentLocalPath columns were dropped in Room v23 (DeleteReceiptColumnsMigration).
     /** A partner-debt settlement leg (ADR-0019 #14): counts toward balance, excluded from Analysis. */
     @ColumnInfo(defaultValue = "0") val isSettlement: Boolean = false,
     /** Linked "Transfer fees" expense row for this TRANSFER's fee, if any (ADR-0031). */

@@ -14,6 +14,7 @@ import com.iponlove.app.feature.recurring.data.local.RecurringRuleDao
 import com.iponlove.app.feature.savings.data.local.GoalContributionDao
 import com.iponlove.app.feature.savings.data.local.SavingsGoalDao
 import com.iponlove.app.feature.transactions.data.local.TransactionDao
+import com.iponlove.app.feature.transactions.data.local.TransactionImageDao
 import com.iponlove.app.feature.user.data.local.UserDao
 import dagger.Module
 import dagger.Provides
@@ -46,6 +47,9 @@ object DatabaseModule {
 
     @Provides
     fun transactionDao(database: IponDatabase): TransactionDao = database.transactionDao()
+
+    @Provides
+    fun transactionImageDao(database: IponDatabase): TransactionImageDao = database.transactionImageDao()
 
     @Provides
     fun budgetDao(database: IponDatabase): BudgetDao = database.budgetDao()

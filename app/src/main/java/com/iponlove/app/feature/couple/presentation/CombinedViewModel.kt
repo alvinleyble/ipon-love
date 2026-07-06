@@ -16,6 +16,7 @@ import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCas
 import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveCombinedTransactionsUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveHasAnyCombinedTransactionUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionImageUrlsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -46,6 +47,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CombinedViewModel @Inject constructor(
     observeCombinedTransactions: ObserveCombinedTransactionsUseCase,
+    observeTransactionImageUrls: ObserveTransactionImageUrlsUseCase,
     observeAllCategories: ObserveAllCategoriesUseCase,
     observeCoupleMembers: ObserveCoupleMembersUseCase,
     observeSharedBudget: ObserveSharedBudgetUseCase,
@@ -73,14 +75,20 @@ class CombinedViewModel @Inject constructor(
         observeCombinedTransactions(window.startInclusive, window.endExclusive)
     }
 
+    // Pair the windowed transactions with the receipt-image map so the 5-arg combine below stays
+    // within combine's typed arity while analyze() still gets both.
+    private val transactionsWithImages: Flow<Pair<List<OwnedTransaction>, Map<String, List<String>>>> =
+        combine(combinedTransactionsInRange, observeTransactionImageUrls()) { txns, images -> txns to images }
+
     val uiState: StateFlow<CombinedUiState> =
         combine(
-            combinedTransactionsInRange,
+            transactionsWithImages,
             observeAllCategories(),
             observeCoupleMembers(),
             observeSharedBudget(),
             viewedMonth,
-        ) { transactions, categories, members, sharedBudgets, month ->
+        ) { txnsAndImages, categories, members, sharedBudgets, month ->
+            val (transactions, imageUrls) = txnsAndImages
             if (members == null) {
                 coupleId = null
                 currentBudget = null
@@ -91,6 +99,7 @@ class CombinedViewModel @Inject constructor(
             val ledger: CombinedLedger = CombinedLedgerCalculator.analyze(
                 transactions = transactions,
                 categoryNames = categories.associateBy({ it.id }, { it.name }),
+                imageUrls = imageUrls,
                 me = members.me,
                 partner = members.partner,
                 monthStartInclusive = window.startInclusive,

@@ -21,6 +21,8 @@ import java.math.BigDecimal
 import java.time.Instant
 import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.model.Transaction
+import com.iponlove.app.feature.transactions.domain.model.TransactionImage
+import com.iponlove.app.feature.transactions.domain.repository.TransactionImageRepository
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import com.iponlove.app.feature.user.domain.model.User
 import com.iponlove.app.feature.user.domain.repository.UserRepository
@@ -76,6 +78,15 @@ internal class CountingTransactionRepo : TransactionRepository {
     override suspend fun deleteTransaction(id: String) = Unit
     override suspend fun materializeTransaction(transaction: Transaction, recurringRuleId: String) = false
     override suspend fun purgePartnerData() { purgeCount++ }
+}
+
+internal class CountingTransactionImageRepo : TransactionImageRepository {
+    var purgeCount = 0
+    override suspend fun getImages(transactionId: String): List<TransactionImage> = emptyList()
+    override fun observeImageUrls(): Flow<Map<String, List<String>>> = emptyFlow()
+    override suspend fun addImage(transactionId: String, imageId: String, localPath: String) = Unit
+    override suspend fun deleteImage(id: String) = Unit
+    override suspend fun purgePartnerData(userId: String) { purgeCount++ }
 }
 
 internal class CountingNoteRepo : NoteRepository {

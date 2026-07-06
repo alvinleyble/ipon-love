@@ -39,6 +39,7 @@ class CombinedLedgerCalculatorTest {
         val ledger = CombinedLedgerCalculator.analyze(
             transactions = transactions,
             categoryNames = mapOf("cat-food" to "Food", "cat-gas" to "Gas"),
+            imageUrls = emptyMap(),
             me = me,
             partner = partner,
             monthStartInclusive = monthStart,
@@ -64,7 +65,7 @@ class CombinedLedgerCalculatorTest {
         )
 
         val ledger = CombinedLedgerCalculator.analyze(
-            transactions, emptyMap(), me, partner, monthStart, monthEnd,
+            transactions, emptyMap(), emptyMap(), me, partner, monthStart, monthEnd,
         )
 
         val mine = ledger.members.single { it.isMine }
@@ -84,7 +85,7 @@ class CombinedLedgerCalculatorTest {
         )
 
         val ledger = CombinedLedgerCalculator.analyze(
-            transactions, emptyMap(), me, partner, monthStart, monthEnd,
+            transactions, emptyMap(), emptyMap(), me, partner, monthStart, monthEnd,
         )
 
         assertThat(ledger.members.single { it.isMine }.monthlyExpense).isEqualTo(BigDecimal("100.00"))
@@ -98,7 +99,7 @@ class CombinedLedgerCalculatorTest {
         )
 
         val ledger = CombinedLedgerCalculator.analyze(
-            transactions, emptyMap(), me, partner, monthStart, monthEnd,
+            transactions, emptyMap(), emptyMap(), me, partner, monthStart, monthEnd,
         )
 
         assertThat(ledger.entries.map { it.title })
@@ -113,7 +114,7 @@ class CombinedLedgerCalculatorTest {
         )
 
         val ledger = CombinedLedgerCalculator.analyze(
-            transactions, emptyMap(), me, partner, monthStart, monthEnd,
+            transactions, emptyMap(), emptyMap(), me, partner, monthStart, monthEnd,
         )
 
         // Only the genuine purchase counts; the settlement repayment is excluded (matches Analysis).
@@ -127,7 +128,7 @@ class CombinedLedgerCalculatorTest {
         )
 
         val ledger = CombinedLedgerCalculator.analyze(
-            transactions, emptyMap(), me, partner = null, monthStartInclusive = monthStart, monthEndExclusive = monthEnd,
+            transactions, emptyMap(), emptyMap(), me, partner = null, monthStartInclusive = monthStart, monthEndExclusive = monthEnd,
         )
 
         assertThat(ledger.members).hasSize(1)
@@ -136,21 +137,25 @@ class CombinedLedgerCalculatorTest {
     }
 
     @Test
-    fun entriesCarryTheReceiptAttachmentUrl_forBothMembers() {
+    fun entriesCarryTheReceiptImageUrls_forBothMembers_multiplePerRow() {
         val transactions = listOf(
-            owned("me", txn("t1", TransactionType.EXPENSE, "100.00", date = june(5), attachmentUrl = "https://x/receipts/me/t1.jpg")),
-            owned("you", txn("t2", TransactionType.EXPENSE, "200.00", date = june(4), attachmentUrl = "https://x/receipts/you/t2.jpg")),
+            owned("me", txn("t1", TransactionType.EXPENSE, "100.00", date = june(5))),
+            owned("you", txn("t2", TransactionType.EXPENSE, "200.00", date = june(4))),
             owned("me", txn("t3", TransactionType.EXPENSE, "30.00", date = june(3))),
+        )
+        val imageUrls = mapOf(
+            "t1" to listOf("https://x/receipts/me/t1/a.jpg", "https://x/receipts/me/t1/b.jpg"),
+            "t2" to listOf("https://x/receipts/you/t2/a.jpg"),
         )
 
         val ledger = CombinedLedgerCalculator.analyze(
-            transactions, emptyMap(), me, partner, monthStart, monthEnd,
+            transactions, emptyMap(), imageUrls, me, partner, monthStart, monthEnd,
         )
 
-        assertThat(ledger.entries.map { it.attachmentUrl }).containsExactly(
-            "https://x/receipts/me/t1.jpg",
-            "https://x/receipts/you/t2.jpg",
-            null,
+        assertThat(ledger.entries.map { it.attachmentUrls }).containsExactly(
+            listOf("https://x/receipts/me/t1/a.jpg", "https://x/receipts/me/t1/b.jpg"),
+            listOf("https://x/receipts/you/t2/a.jpg"),
+            emptyList<String>(),
         ).inOrder()
     }
 }

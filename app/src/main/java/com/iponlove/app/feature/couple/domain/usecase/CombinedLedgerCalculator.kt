@@ -25,6 +25,7 @@ object CombinedLedgerCalculator {
     fun analyze(
         transactions: List<OwnedTransaction>,
         categoryNames: Map<String, String>,
+        imageUrls: Map<String, List<String>>,
         me: User,
         partner: User?,
         monthStartInclusive: Instant,
@@ -40,7 +41,7 @@ object CombinedLedgerCalculator {
                 title = titleFor(t, categoryNames),
                 date = t.date,
                 isMine = owned.ownerId == me.id,
-                attachmentUrl = t.attachmentUrl,
+                attachmentUrls = imageUrls[t.id].orEmpty(),
             )
         }
 

@@ -98,21 +98,7 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE userId <> :userId")
     suspend fun deleteNotOwnedBy(userId: String)
 
-    // ---- receipt upload plumbing ----
-
-    /** Rows with a locally-saved receipt that has not yet been uploaded to Storage. */
-    @Query("SELECT * FROM transactions WHERE attachmentLocalPath IS NOT NULL AND isDeleted = 0")
-    suspend fun pendingReceiptUploads(): List<TransactionEntity>
-
-    /** Stamp the Storage URL and clear the local path after a successful upload. */
-    @Query(
-        """
-        UPDATE transactions
-        SET attachmentUrl = :url, attachmentLocalPath = NULL, pendingSync = 1, updatedAt = :updatedAt
-        WHERE id = :id
-        """,
-    )
-    suspend fun markReceiptUploaded(id: String, url: String, updatedAt: Long)
+    // Receipt uploads moved to the transaction_images child table + TransactionImageDao/Uploader.
 
     // ---- sync engine plumbing ----
 

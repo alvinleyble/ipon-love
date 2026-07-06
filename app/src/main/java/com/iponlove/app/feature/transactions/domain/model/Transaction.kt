@@ -25,9 +25,8 @@ data class Transaction(
     val note: String? = null,
     val date: Instant,
     val isPrivate: Boolean = false,
-    val attachmentUrl: String? = null,
-    /** Local path of a receipt image pending upload; null once the uploader has stamped [attachmentUrl]. */
-    val attachmentLocalPath: String? = null,
+    // Receipts are a separate entity now (TransactionImage, up to 3), managed by the editor's
+    // image list + SaveTransactionImagesUseCase — no longer a field on the transaction.
     /**
      * True for the ledger legs of a partner-debt settlement (ADR-0019 #14). Settlement legs
      * move real money — so [com.iponlove.app.feature.transactions.domain.usecase.AccountBalanceCalculator]

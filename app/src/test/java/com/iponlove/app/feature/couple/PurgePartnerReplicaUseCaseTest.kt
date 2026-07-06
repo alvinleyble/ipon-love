@@ -12,6 +12,7 @@ class PurgePartnerReplicaUseCaseTest {
     private val accounts = CountingAccountRepo()
     private val categories = CountingCategoryRepo()
     private val transactions = CountingTransactionRepo()
+    private val transactionImages = CountingTransactionImageRepo()
     private val notes = CountingNoteRepo()
     private val noteAttachments = CountingNoteAttachmentRepo()
     private val budgets = CountingBudgetRepo()
@@ -20,8 +21,8 @@ class PurgePartnerReplicaUseCaseTest {
     private val goalContributions = CountingGoalContributionRepo()
     private val cursors = InMemoryCursorStore()
     private val useCase = PurgePartnerReplicaUseCase(
-        accounts, categories, transactions, notes, noteAttachments, budgets, partnerDebts,
-        savingsGoals, goalContributions, cursors,
+        accounts, categories, transactions, transactionImages, notes, noteAttachments, budgets,
+        partnerDebts, savingsGoals, goalContributions, cursors,
     )
 
     @Test
@@ -31,6 +32,7 @@ class PurgePartnerReplicaUseCaseTest {
         assertThat(accounts.purgeCount).isEqualTo(1)
         assertThat(categories.purgeCount).isEqualTo(1)
         assertThat(transactions.purgeCount).isEqualTo(1)
+        assertThat(transactionImages.purgeCount).isEqualTo(1)
         assertThat(notes.purgeCount).isEqualTo(1)
         assertThat(noteAttachments.purgeCount).isEqualTo(1)
         assertThat(budgets.purgeCount).isEqualTo(1)
@@ -52,6 +54,7 @@ class PurgePartnerReplicaUseCaseTest {
         assertThat(cursors.cursor(SyncTable.PARTNER_ACCOUNTS)).isEqualTo(0)
         assertThat(cursors.cursor(SyncTable.PARTNER_CATEGORIES)).isEqualTo(0)
         assertThat(cursors.cursor(SyncTable.PARTNER_TRANSACTIONS)).isEqualTo(0)
+        assertThat(cursors.cursor(SyncTable.PARTNER_TRANSACTION_IMAGES)).isEqualTo(0)
         assertThat(cursors.cursor(SyncTable.PARTNER_NOTES)).isEqualTo(0)
         assertThat(cursors.cursor(SyncTable.PARTNER_NOTE_IMAGES)).isEqualTo(0)
         assertThat(cursors.cursor(SyncTable.PARTNER_SAVINGS_GOALS)).isEqualTo(0)

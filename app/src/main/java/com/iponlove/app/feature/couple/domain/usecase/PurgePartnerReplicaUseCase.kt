@@ -10,6 +10,7 @@ import com.iponlove.app.feature.notes.domain.repository.NoteRepository
 import com.iponlove.app.feature.partnerdebt.domain.repository.PartnerDebtRepository
 import com.iponlove.app.feature.savings.domain.repository.GoalContributionRepository
 import com.iponlove.app.feature.savings.domain.repository.SavingsGoalRepository
+import com.iponlove.app.feature.transactions.domain.repository.TransactionImageRepository
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import javax.inject.Inject
 
@@ -32,6 +33,7 @@ class PurgePartnerReplicaUseCase @Inject constructor(
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val transactionRepository: TransactionRepository,
+    private val transactionImageRepository: TransactionImageRepository,
     private val noteRepository: NoteRepository,
     private val noteAttachmentRepository: NoteAttachmentRepository,
     private val budgetRepository: BudgetRepository,
@@ -44,6 +46,7 @@ class PurgePartnerReplicaUseCase @Inject constructor(
         accountRepository.purgePartnerData()
         categoryRepository.purgePartnerData()
         transactionRepository.purgePartnerData()
+        transactionImageRepository.purgePartnerData(userId)
         noteRepository.purgePartnerData()
         noteAttachmentRepository.purgePartnerData(userId)
         budgetRepository.purgeSharedBudgets()
@@ -58,6 +61,7 @@ class PurgePartnerReplicaUseCase @Inject constructor(
         cursors.setCursor(SyncTable.PARTNER_ACCOUNTS, 0)
         cursors.setCursor(SyncTable.PARTNER_CATEGORIES, 0)
         cursors.setCursor(SyncTable.PARTNER_TRANSACTIONS, 0)
+        cursors.setCursor(SyncTable.PARTNER_TRANSACTION_IMAGES, 0)
         cursors.setCursor(SyncTable.PARTNER_NOTES, 0)
         cursors.setCursor(SyncTable.PARTNER_NOTE_IMAGES, 0)
         cursors.setCursor(SyncTable.PARTNER_SAVINGS_GOALS, 0)

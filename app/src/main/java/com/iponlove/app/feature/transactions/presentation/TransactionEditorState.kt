@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.transactions.presentation
 
+import com.iponlove.app.feature.transactions.domain.model.TransactionImage
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.TransactionError
 import java.time.Instant
@@ -11,7 +12,7 @@ import java.time.Instant
  * [amountOwedError] are transient (recomputed on save) and are not persisted.
  */
 data class TransactionEditorState(
-    /** Always pre-generated so the receipt file can be named before save. */
+    /** Always pre-generated so receipt image files can be keyed to this transaction before save. */
     val id: String,
     val isEditing: Boolean = false,
     val type: TransactionType = TransactionType.EXPENSE,
@@ -23,10 +24,13 @@ data class TransactionEditorState(
     val isPrivate: Boolean = false,
     val date: Instant = Instant.now(),
     val errors: Set<TransactionError> = emptySet(),
-    /** Local path of a receipt picked this session, pending upload. */
-    val attachmentLocalPath: String? = null,
-    /** Existing server URL loaded when editing a transaction that already has a receipt. */
-    val attachmentUrl: String? = null,
+    /**
+     * Receipt photos in the draft (up to [TransactionImage.MAX]). Each carries either a
+     * `localPath` (picked this session, pending upload) or a `url` (loaded when editing an
+     * existing transaction). Reconciled to `transaction_images` rows on save (deferred
+     * persistence, unlike notes). Ordered as shown in the strip; `transactionId` == [id].
+     */
+    val images: List<TransactionImage> = emptyList(),
     /** "Paid for partner" toggle: on save, also creates a partner debt for [amountOwedText]. */
     val paidForPartner: Boolean = false,
     /** What the partner owes; defaults to the full amount, editable down. Blank = full amount. */

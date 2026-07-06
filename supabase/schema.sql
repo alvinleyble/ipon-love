@@ -153,7 +153,8 @@ create table transactions (
     date              timestamptz not null,
     is_private        boolean not null default false,                      -- hidden from partner
     recurring_rule_id uuid references recurring_rules(id) on delete set null,
-    attachment_url    text,                                                -- Supabase Storage URL for receipt photo (post-V1)
+    -- Receipt photos live in the transaction_images child table (up to 3 per row); the old
+    -- single attachment_url column was dropped in 2026-07-07_transaction_images.sql.
     is_settlement     boolean not null default false,                      -- partner-debt settlement leg: counts toward balance, excluded from Analysis (ADR-0019 #14)
     transfer_fee_transaction_id uuid,                                      -- linked "Transfer fees" expense row for this transfer's fee (ADR-0031). No FK: same pull-order tolerance as the rest of this table (a pulled batch can arrive out of dependency order), and the client owns the cascade.
     created_at        timestamptz not null default now(),
@@ -265,6 +266,21 @@ create table note_images (
     server_rev  bigint
 );
 
+-- ---------- transaction_images ----------------------------------------------
+-- Receipt photos for a transaction (up to 3, capped client-side). Mirrors
+-- note_images: soft-deletable + synced so receipt add/remove propagates. Replaced
+-- the single transactions.attachment_url column (2026-07-07_transaction_images.sql).
+create table transaction_images (
+    id             uuid primary key default gen_random_uuid(),
+    transaction_id uuid not null references transactions(id) on delete cascade,
+    storage_url    text not null,
+    position       int not null default 0,
+    created_at     timestamptz not null default now(),
+    updated_at     timestamptz not null default now(),
+    is_deleted     boolean not null default false,
+    server_rev     bigint
+);
+
 -- ---------- savings_goals ---------------------------------------------------
 -- Personal-by-default savings goal, optionally shared to the couple via the generic
 -- sharing layer (is_shared + couple_id), exactly like notes. saved_amount is NOT a column:
@@ -349,6 +365,7 @@ create trigger trg_rev_partner_debts      before insert or update on partner_deb
 create trigger trg_rev_debt_payments      before insert or update on partner_debt_payments for each row execute function set_server_rev();
 create trigger trg_rev_notes              before insert or update on notes               for each row execute function set_server_rev();
 create trigger trg_rev_note_images        before insert or update on note_images         for each row execute function set_server_rev();
+create trigger trg_rev_transaction_images before insert or update on transaction_images  for each row execute function set_server_rev();
 create trigger trg_rev_savings_goals      before insert or update on savings_goals       for each row execute function set_server_rev();
 create trigger trg_rev_goal_contributions before insert or update on goal_contributions  for each row execute function set_server_rev();
 
@@ -366,6 +383,7 @@ create index idx_partner_debts_rev    on partner_debts(server_rev);
 create index idx_debt_payments_rev    on partner_debt_payments(server_rev);
 create index idx_notes_rev            on notes(server_rev);
 create index idx_note_images_rev      on note_images(server_rev);
+create index idx_transaction_images_rev on transaction_images(server_rev);
 create index idx_savings_goals_rev        on savings_goals(server_rev);
 create index idx_goal_contributions_rev   on goal_contributions(server_rev);
 
@@ -383,6 +401,7 @@ create index idx_debt_payments_debt   on partner_debt_payments(debt_id);
 create index idx_notes_user           on notes(user_id);
 create index idx_notes_couple         on notes(couple_id);
 create index idx_note_images_note     on note_images(note_id);
+create index idx_transaction_images_txn on transaction_images(transaction_id);
 create index idx_savings_goals_user       on savings_goals(user_id);
 create index idx_savings_goals_couple     on savings_goals(couple_id);
 create index idx_goal_contributions_goal  on goal_contributions(goal_id);
@@ -416,6 +435,7 @@ alter table partner_debts           enable row level security;
 alter table partner_debt_payments   enable row level security;
 alter table notes                   enable row level security;
 alter table note_images             enable row level security;
+alter table transaction_images      enable row level security;
 alter table savings_goals           enable row level security;
 alter table goal_contributions      enable row level security;
 
@@ -492,6 +512,13 @@ create policy note_images_owner on note_images for all
     using (note_id in (select id from notes where user_id = auth.uid()))
     with check (note_id in (select id from notes where user_id = auth.uid()));
 
+-- ---- transaction_images ----------------------------------------------------
+-- Owner full access, gated via the parent transaction. Partner reads happen via
+-- partner_transaction_images (below).
+create policy transaction_images_owner on transaction_images for all
+    using (transaction_id in (select id from transactions where user_id = auth.uid()))
+    with check (transaction_id in (select id from transactions where user_id = auth.uid()));
+
 -- ---- savings_goals ---------------------------------------------------------
 -- Writes are owner-only (the creator owns the metadata — name/target/date/icon/color).
 -- SELECT is broader — own goals PLUS goals shared into the caller's couple — because the
@@ -562,8 +589,8 @@ create view partner_transactions with (security_invoker = false) as
         t.is_deleted,
         t.is_settlement,
         t.updated_at,
-        t.server_rev,
-        case when t.is_private or t.is_deleted then null else t.attachment_url end as attachment_url
+        t.server_rev
+        -- Receipts cross via partner_transaction_images (below), not this view.
     from transactions t
     where t.user_id <> auth.uid()
       and t.user_id in (select id from users where couple_id = auth_couple_id());
@@ -640,8 +667,28 @@ create view partner_note_images with (security_invoker = false) as
     where n.user_id <> auth.uid()
       and n.couple_id = auth_couple_id();
 
+-- Receipts of the partner's shared (non-private), non-deleted transactions;
+-- storage_url redacted once the image or its parent transaction is no longer
+-- visible, so removals propagate as a purge signal (mirrors partner_note_images).
+create view partner_transaction_images with (security_invoker = false) as
+    select
+        ti.id,
+        ti.transaction_id,
+        case
+            when ti.is_deleted or t.is_private or t.is_deleted then null
+            else ti.storage_url
+        end as storage_url,
+        ti.position,
+        ti.is_deleted,
+        ti.updated_at,
+        ti.server_rev
+    from transaction_images ti
+    join transactions t on t.id = ti.transaction_id
+    where t.user_id <> auth.uid()
+      and t.user_id in (select id from users where couple_id = auth_couple_id());
+
 grant select on partner_transactions, partner_accounts, partner_categories,
-                partner_notes, partner_note_images to authenticated;
+                partner_notes, partner_note_images, partner_transaction_images to authenticated;
 
 -- A savings goal is hidden from the partner when unshared or deleted; its row still crosses
 -- (couple_id retained on un-share) so the client purges its local copy. A shared goal has no
@@ -953,8 +1000,11 @@ security definer
 set search_path = public
 as $$
     select exists (
-        select 1 from transactions t
-        where t.attachment_url like '%' || object_name || '%'
+        select 1
+        from transaction_images ti
+        join transactions t on t.id = ti.transaction_id
+        where ti.storage_url like '%' || object_name || '%'
+          and ti.is_deleted = false
           and t.is_private = false
           and t.is_deleted = false
           and t.user_id in (

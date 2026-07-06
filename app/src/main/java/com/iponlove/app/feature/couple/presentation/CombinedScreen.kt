@@ -48,7 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.iponlove.app.core.ui.FullScreenImageDialog
+import com.iponlove.app.core.ui.FullScreenImagePager
 import com.iponlove.app.core.ui.MonthStepperRow
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.formatShortDate
@@ -296,7 +296,7 @@ private fun MemberSpendCard(member: MemberSpend, modifier: Modifier = Modifier) 
 
 @Composable
 private fun CombinedRow(entry: CombinedEntry, ownerColor: Color) {
-    var showReceipt by remember { mutableStateOf(false) }
+    var showReceipts by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -312,16 +312,31 @@ private fun CombinedRow(entry: CombinedEntry, ownerColor: Color) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (entry.attachmentUrl != null) {
-                AsyncImage(
-                    model = entry.attachmentUrl,
-                    contentDescription = "Receipt thumbnail",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { showReceipt = true },
-                )
+            if (entry.attachmentUrls.isNotEmpty()) {
+                // First receipt as a thumbnail; a count badge signals the rest. Tap opens the pager.
+                Box(Modifier.clickable { showReceipts = true }) {
+                    AsyncImage(
+                        model = entry.attachmentUrls.first(),
+                        contentDescription = "Receipt thumbnail",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)),
+                    )
+                    if (entry.attachmentUrls.size > 1) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.align(Alignment.TopEnd).size(16.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "${entry.attachmentUrls.size}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            }
+                        }
+                    }
+                }
                 Spacer(Modifier.width(12.dp))
             }
             Text(
@@ -332,11 +347,12 @@ private fun CombinedRow(entry: CombinedEntry, ownerColor: Color) {
             )
         }
     }
-    if (showReceipt && entry.attachmentUrl != null) {
-        FullScreenImageDialog(
-            model = entry.attachmentUrl,
+    if (showReceipts && entry.attachmentUrls.isNotEmpty()) {
+        FullScreenImagePager(
+            models = entry.attachmentUrls,
+            startIndex = 0,
             contentDescription = "Receipt full size",
-            onDismiss = { showReceipt = false },
+            onDismiss = { showReceipts = false },
         )
     }
 }

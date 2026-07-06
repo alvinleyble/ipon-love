@@ -20,8 +20,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -38,6 +41,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,7 +61,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.iponlove.app.core.ui.FullScreenImageDialog
+import com.iponlove.app.core.ui.FullScreenImagePager
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.iponlove.app.core.ui.EntityChipRow
@@ -71,6 +75,7 @@ import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.categories.domain.model.CategoryType
+import com.iponlove.app.feature.transactions.domain.model.TransactionImage
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.TransactionError
 import java.io.File
@@ -98,8 +103,8 @@ fun AddTransactionScreen(
         onAmountOwedChange = viewModel::onAmountOwedChange,
         onTransferFeeChange = viewModel::onTransferFeeChange,
         onDateChange = viewModel::onDateChange,
-        onReceiptPicked = viewModel::onReceiptPicked,
-        onRemoveReceipt = viewModel::onRemoveReceipt,
+        onImagePicked = viewModel::onImagePicked,
+        onRemoveImage = viewModel::onRemoveImage,
         onSave = { viewModel.save(onBack) },
     )
 }
@@ -120,8 +125,8 @@ private fun AddTransactionContent(
     onAmountOwedChange: (String) -> Unit,
     onTransferFeeChange: (String) -> Unit,
     onDateChange: (Instant) -> Unit,
-    onReceiptPicked: (Uri) -> Unit,
-    onRemoveReceipt: () -> Unit,
+    onImagePicked: (Uri) -> Unit,
+    onRemoveImage: (String) -> Unit,
     onSave: () -> Unit,
 ) {
     val editor = state.editor
@@ -166,8 +171,8 @@ private fun AddTransactionContent(
                 onAmountOwedChange = onAmountOwedChange,
                 onTransferFeeChange = onTransferFeeChange,
                 onDateChange = onDateChange,
-                onReceiptPicked = onReceiptPicked,
-                onRemoveReceipt = onRemoveReceipt,
+                onImagePicked = onImagePicked,
+                onRemoveImage = onRemoveImage,
             )
         }
     }
@@ -189,8 +194,8 @@ private fun EditorForm(
     onAmountOwedChange: (String) -> Unit,
     onTransferFeeChange: (String) -> Unit,
     onDateChange: (Instant) -> Unit,
-    onReceiptPicked: (Uri) -> Unit,
-    onRemoveReceipt: () -> Unit,
+    onImagePicked: (Uri) -> Unit,
+    onRemoveImage: (String) -> Unit,
 ) {
     val accountOptions = state.accounts.map {
         EntityPickerOption(it.id, it.name, it.icon?.let { k -> ACCOUNT_ICONS[k] }, it.color)
@@ -207,11 +212,11 @@ private fun EditorForm(
         editor.accountId in sharedAccountIds || editor.toAccountId in sharedAccountIds
 
     var showDatePicker by remember { mutableStateOf(false) }
-    var showFullScreenReceipt by remember { mutableStateOf(false) }
+    var receiptViewerIndex by remember { mutableStateOf<Int?>(null) }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
-    ) { uri: Uri? -> uri?.let(onReceiptPicked) }
+    ) { uri: Uri? -> uri?.let(onImagePicked) }
 
     Column(
         modifier = modifier
@@ -344,12 +349,11 @@ private fun EditorForm(
         }
 
         Spacer(Modifier.height(8.dp))
-        ReceiptRow(
-            localPath = editor.attachmentLocalPath,
-            url = editor.attachmentUrl,
-            onPickReceipt = { galleryLauncher.launch("image/*") },
-            onRemoveReceipt = onRemoveReceipt,
-            onViewReceipt = { showFullScreenReceipt = true },
+        ReceiptStrip(
+            images = editor.images,
+            onAddReceipt = { galleryLauncher.launch("image/*") },
+            onRemoveReceipt = onRemoveImage,
+            onViewReceipt = { index -> receiptViewerIndex = index },
         )
 
         if (editor.errors.isNotEmpty()) {
@@ -364,13 +368,16 @@ private fun EditorForm(
         }
     }
 
-    if (showFullScreenReceipt) {
-        val imageSource: Any? = editor.attachmentLocalPath?.let { File(it) } ?: editor.attachmentUrl
-        if (imageSource != null) {
-            FullScreenImageDialog(
-                model = imageSource,
+    receiptViewerIndex?.let { startIndex ->
+        val models: List<Any> = editor.images.mapNotNull { it.localPath?.let(::File) ?: it.url }
+        if (models.isEmpty()) {
+            receiptViewerIndex = null
+        } else {
+            FullScreenImagePager(
+                models = models,
+                startIndex = startIndex,
                 contentDescription = "Receipt full size",
-                onDismiss = { showFullScreenReceipt = false },
+                onDismiss = { receiptViewerIndex = null },
             )
         }
     }
@@ -398,36 +405,69 @@ private fun FieldLabel(text: String) {
     Spacer(Modifier.height(6.dp))
 }
 
+/**
+ * Up to [TransactionImage.MAX] receipt thumbnails in a horizontally-scrollable strip, mirroring
+ * the notes editor. Header carries the label, an `n/3` counter (red at the cap, hidden while
+ * empty), and an add button that greys out once the cap is reached. Each thumbnail opens the
+ * full-screen pager (by index) and has a corner remove button.
+ */
 @Composable
-private fun ReceiptRow(
-    localPath: String?,
-    url: String?,
-    onPickReceipt: () -> Unit,
-    onRemoveReceipt: () -> Unit,
-    onViewReceipt: () -> Unit,
+private fun ReceiptStrip(
+    images: List<TransactionImage>,
+    onAddReceipt: () -> Unit,
+    onRemoveReceipt: (String) -> Unit,
+    onViewReceipt: (Int) -> Unit,
 ) {
-    val hasReceipt = localPath != null || url != null
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("Receipt", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-        if (hasReceipt) {
-            val imageSource: Any = if (localPath != null) File(localPath) else url!!
-            AsyncImage(
-                model = imageSource,
-                contentDescription = "Receipt thumbnail",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(56.dp).clickable(onClick = onViewReceipt),
-            )
-            Spacer(Modifier.width(4.dp))
-            IconButton(onClick = onRemoveReceipt) {
-                Icon(Icons.Filled.Close, contentDescription = "Remove receipt", tint = MaterialTheme.colorScheme.error)
+    val atMax = images.size >= TransactionImage.MAX
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Receipts", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            if (images.isNotEmpty()) {
+                Text(
+                    text = "${images.size}/${TransactionImage.MAX}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (atMax) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(4.dp))
             }
-        } else {
-            IconButton(onClick = onPickReceipt) {
+            IconButton(onClick = onAddReceipt, enabled = !atMax) {
                 Icon(
                     Icons.Filled.AddPhotoAlternate,
                     contentDescription = "Attach receipt",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = if (atMax) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                 )
+            }
+        }
+        if (images.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            ) {
+                itemsIndexed(images, key = { _, image -> image.id }) { index, image ->
+                    val model: Any? = image.localPath?.let { File(it) } ?: image.url
+                    Box {
+                        AsyncImage(
+                            model = model,
+                            contentDescription = "Receipt thumbnail",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable(enabled = model != null) { onViewReceipt(index) },
+                        )
+                        SmallFloatingActionButton(
+                            onClick = { onRemoveReceipt(image.id) },
+                            modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(20.dp),
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                        ) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Remove receipt",
+                                modifier = Modifier.size(12.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
     }

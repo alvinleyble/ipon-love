@@ -30,6 +30,8 @@ import com.iponlove.app.feature.savings.data.local.SavingsGoalDao
 import com.iponlove.app.feature.savings.data.local.SavingsGoalEntity
 import com.iponlove.app.feature.transactions.data.local.TransactionDao
 import com.iponlove.app.feature.transactions.data.local.TransactionEntity
+import com.iponlove.app.feature.transactions.data.local.TransactionImageDao
+import com.iponlove.app.feature.transactions.data.local.TransactionImageEntity
 import com.iponlove.app.feature.user.data.local.UserDao
 import com.iponlove.app.feature.user.data.local.UserEntity
 
@@ -47,6 +49,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AccountEntity::class,
         CategoryEntity::class,
         TransactionEntity::class,
+        TransactionImageEntity::class,
         BudgetEntity::class,
         RecurringRuleEntity::class,
         NoteEntity::class,
@@ -56,7 +59,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         SavingsGoalEntity::class,
         GoalContributionEntity::class,
     ],
-    version = 22,
+    version = 23,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 10, to = 11),
@@ -71,6 +74,8 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AutoMigration(from = 19, to = 20),
         AutoMigration(from = 20, to = 21),
         AutoMigration(from = 21, to = 22),
+        // v23: transaction_images table auto-created; single-photo columns dropped (spec).
+        AutoMigration(from = 22, to = 23, spec = DeleteReceiptColumnsMigration::class),
     ],
 )
 @TypeConverters(IponConverters::class)
@@ -80,6 +85,7 @@ abstract class IponDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun categoryDao(): CategoryDao
     abstract fun transactionDao(): TransactionDao
+    abstract fun transactionImageDao(): TransactionImageDao
     abstract fun budgetDao(): BudgetDao
     abstract fun recurringRuleDao(): RecurringRuleDao
     abstract fun noteDao(): NoteDao

@@ -9,23 +9,25 @@ import java.io.File
 import javax.inject.Inject
 
 /**
- * Compresses a gallery [Uri] (max 1080 px, JPEG 85%) and writes it to
- * `filesDir/receipts/{transactionId}.jpg`. Returns the absolute path.
+ * Compresses a picked gallery [Uri] (max 1080 px, JPEG 85%) and writes it to
+ * `filesDir/receipts/{imageId}.jpg`, returning the absolute path. Keyed on the image id so a
+ * transaction can hold several receipts (up to [com.iponlove.app.feature.transactions.domain.model.TransactionImage.MAX]).
  *
- * The path is stored on [TransactionEntity.attachmentLocalPath]. On the next
- * sync cycle, [ReceiptUploader] (PreSyncStep) uploads it to Supabase Storage,
- * stamps [TransactionEntity.attachmentUrl], and clears the local path.
+ * The editor defers persistence to save: the returned path lives in editor state until save,
+ * when [SaveTransactionImagesUseCase] creates the transaction_images row. On the next sync,
+ * [com.iponlove.app.feature.transactions.data.upload.TransactionImageUploader] uploads the file
+ * to Storage and stamps the row's URL.
  */
-class AttachReceiptUseCase @Inject constructor(
+class CompressReceiptUseCase @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    operator fun invoke(uri: Uri, transactionId: String): String {
+    operator fun invoke(uri: Uri, imageId: String): String {
         val bitmap = context.contentResolver.openInputStream(uri)!!.use { input ->
             BitmapFactory.decodeStream(input)
         }
         val scaled = scaledDown(bitmap)
         val dir = File(context.filesDir, "receipts").also { it.mkdirs() }
-        val file = File(dir, "$transactionId.jpg")
+        val file = File(dir, "$imageId.jpg")
         file.outputStream().use { out ->
             scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
         }

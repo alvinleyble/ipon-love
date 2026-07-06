@@ -17,6 +17,8 @@ enum class SyncTable {
     CATEGORIES,
     RECURRING_RULES,
     TRANSACTIONS,
+    // Receipt photos (up to 3 per transaction); FK child of transactions, mirrors NOTE_IMAGES.
+    TRANSACTION_IMAGES,
     BUDGETS,
     // Couple-shared, read/write by both partners (not redacted views) — FK children of
     // couples+users, and payments of debts. Named for the `partner_debts` tables, distinct
@@ -33,6 +35,7 @@ enum class SyncTable {
     PARTNER_ACCOUNTS,
     PARTNER_CATEGORIES,
     PARTNER_TRANSACTIONS,
+    PARTNER_TRANSACTION_IMAGES,
     PARTNER_NOTES,
     PARTNER_NOTE_IMAGES,
     // Partner's shared goals + their contributions (redacting views, ADR-0005).
