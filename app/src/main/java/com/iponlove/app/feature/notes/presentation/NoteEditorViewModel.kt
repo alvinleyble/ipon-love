@@ -142,6 +142,8 @@ class NoteEditorViewModel @Inject constructor(
 
     fun addImage(uri: Uri) {
         if (_uiState.value.isPartnerNote) return
+        // Defensive backstop for the UI's disabled add button (ADR: cap images per note).
+        if (_uiState.value.attachments.size >= MAX_ATTACHMENTS) return
         val noteId = _uiState.value.noteId ?: return
         viewModelScope.launch {
             runCatching { addNoteImage(noteId, uri) }
@@ -155,6 +157,9 @@ class NoteEditorViewModel @Inject constructor(
     companion object {
         const val NOTE_ID_KEY = "noteId"
         const val NEW_NOTE = "new"
+
+        /** Max photos per note. Caps Storage cost, per-note sync time, and editor memory. */
+        const val MAX_ATTACHMENTS = 3
 
         // Draft persistence for a not-yet-saved new note (survives process death). Title + HTML
         // live in the composable's rememberSaveable; only the stable id and share intent — which
