@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew testStagingDebugUnitTest*)",
+      "Bash(./gradlew :app:testStagingDebugUnitTest*)",
+      "Bash(./gradlew compileStagingDebugKotlin*)",
+      "Bash(./gradlew :app:compileStagingDebugKotlin*)",
+      "Bash(./gradlew assembleStagingDebug*)",
+      "Bash(./gradlew assembleDebug*)",
+      "Bash(./gradlew installStagingDebug*)",
+      "Bash(./gradlew installDebug*)",
+      "Bash(adb devices)"
+    ]
+  }
+}

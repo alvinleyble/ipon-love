@@ -1,0 +1,27 @@
+---
+name: orient
+description: Cold-start orientation for the Love, Ipon repo. Use at the start of a conversation, or whenever you need to (re)establish where the build is, what's in flight, and which model/effort to use next — before writing any code. Reads exactly the prescribed files and nothing else.
+---
+
+# /orient — cold-start orientation
+
+Establish current build state fast and cheaply. The point is to read the **right** files and skip the expensive wrong ones.
+
+## Read these, in order — nothing else
+
+1. `docs/build/project-build-progress.md` — the "Current state" section + the version index table + the "Living reference" block (Room version, infra state, per-feature pattern).
+2. The **in-flight version doc** only — pick it from "Current state": whichever `docs/build/vX.Y.md` has uncommitted / TODO / NEEDS DECISION items. Do not read every version doc.
+3. If a specific feature is about to be touched: **one** reference feature folder for the copy-paste pattern (default `app/src/main/java/com/iponlove/app/feature/budgets/`), and the relevant table(s) in `supabase/schema.sql`. Skip this step for pure orientation with no target yet.
+
+## Do NOT read
+
+`PRD.md`, `ARCHITECTURE.md`, `CONTEXT.md`, and do not browse the folder tree. CLAUDE.md + the build docs already cover orientation. Reading these is the main token sink this skill exists to prevent.
+
+## Then report back, tightly
+
+- **Where we are:** current in-flight version + a one-line state of it (what's DONE/committed vs. FIXED-uncommitted vs. NEEDS DECISION).
+- **Room version:** the last committed `vNN` (flag if an uncommitted slice bumped it).
+- **What's next:** the specific next item/decision, phrased as one actionable line.
+- **Model + effort recommendation** for that next item, with a one-sentence rationale — per the Sonnet-by-default / Opus-for-novel-or-cross-ADR rule in CLAUDE.md. State this even if the user hasn't asked yet; it's required before any build.
+
+Keep the report to a few lines. Don't dump file contents back — synthesize.
