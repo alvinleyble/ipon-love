@@ -3,6 +3,8 @@ package com.iponlove.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import coil.ImageLoader
+import coil.ImageLoaderFactory
 import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.data.ClockOffsetStore
@@ -19,13 +21,19 @@ import javax.inject.Inject
  * background sync workers can be Hilt-injected once the sync layer lands.
  */
 @HiltAndroidApp
-class IponApp : Application(), Configuration.Provider {
+class IponApp : Application(), Configuration.Provider, ImageLoaderFactory {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var syncClock: SyncClock
     @Inject lateinit var clockOffsetStore: ClockOffsetStore
     @Inject lateinit var budgetAlertNotifier: BudgetAlertNotifier
     @Inject lateinit var coupleChannelManager: CoupleChannelManager
+
+    // Coil asks for this lazily on first image load; every AsyncImage in the app then goes
+    // through the auth-attaching loader (private Storage buckets — see StorageAuthInterceptor).
+    @Inject lateinit var coilImageLoader: dagger.Lazy<ImageLoader>
+
+    override fun newImageLoader(): ImageLoader = coilImageLoader.get()
 
     private val appScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 

@@ -2,6 +2,7 @@ package com.iponlove.app.feature.couple.presentation
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -32,15 +34,21 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.iponlove.app.core.ui.FullScreenImageDialog
 import com.iponlove.app.core.ui.MonthStepperRow
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.formatShortDate
@@ -288,6 +296,7 @@ private fun MemberSpendCard(member: MemberSpend, modifier: Modifier = Modifier) 
 
 @Composable
 private fun CombinedRow(entry: CombinedEntry, ownerColor: Color) {
+    var showReceipt by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -303,6 +312,18 @@ private fun CombinedRow(entry: CombinedEntry, ownerColor: Color) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            if (entry.attachmentUrl != null) {
+                AsyncImage(
+                    model = entry.attachmentUrl,
+                    contentDescription = "Receipt thumbnail",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { showReceipt = true },
+                )
+                Spacer(Modifier.width(12.dp))
+            }
             Text(
                 text = entry.signedAmount(),
                 style = MaterialTheme.typography.titleMedium,
@@ -310,6 +331,13 @@ private fun CombinedRow(entry: CombinedEntry, ownerColor: Color) {
                 color = entry.amountColor(),
             )
         }
+    }
+    if (showReceipt && entry.attachmentUrl != null) {
+        FullScreenImageDialog(
+            model = entry.attachmentUrl,
+            contentDescription = "Receipt full size",
+            onDismiss = { showReceipt = false },
+        )
     }
 }
 

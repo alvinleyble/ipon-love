@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.iponlove.app.core.ui.FullScreenImageDialog
 import com.iponlove.app.core.ui.IponFilterChip
 import com.iponlove.app.core.ui.SharedBadge
 import androidx.compose.material3.Icon
@@ -76,6 +77,8 @@ fun NoteEditorScreen(
     var title by rememberSaveable { mutableStateOf<String?>(null) }
     var draftHtml by rememberSaveable { mutableStateOf<String?>(null) }
     var contentSeeded by remember { mutableStateOf(false) }
+    // Attachment tapped for full-screen viewing: a remote URL string or local File, else null.
+    var viewerImage by remember { mutableStateOf<Any?>(null) }
 
     val pickMedia = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -184,6 +187,7 @@ fun NoteEditorScreen(
                         AttachmentStrip(
                             attachments = state.attachments,
                             onDelete = { viewModel.removeAttachment(it) },
+                            onView = { viewerImage = it },
                             showDeleteButtons = !state.isPartnerNote,
                             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                         )
@@ -200,12 +204,21 @@ fun NoteEditorScreen(
             }
         }
     }
+
+    viewerImage?.let { image ->
+        FullScreenImageDialog(
+            model = image,
+            contentDescription = "Attached image full size",
+            onDismiss = { viewerImage = null },
+        )
+    }
 }
 
 @Composable
 private fun AttachmentStrip(
     attachments: List<NoteAttachment>,
     onDelete: (String) -> Unit,
+    onView: (Any) -> Unit,
     showDeleteButtons: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -215,18 +228,16 @@ private fun AttachmentStrip(
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         items(attachments, key = { it.id }) { attachment ->
+            val model: Any? = attachment.url ?: attachment.localPath?.let { File(it) }
             Box {
                 AsyncImage(
-                    model = if (attachment.url != null) {
-                        attachment.url
-                    } else {
-                        attachment.localPath?.let { File(it) }
-                    },
+                    model = model,
                     contentDescription = "Attached image",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(80.dp)
-                        .clip(RoundedCornerShape(8.dp)),
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(enabled = model != null) { model?.let(onView) },
                 )
                 if (showDeleteButtons) {
                     SmallFloatingActionButton(

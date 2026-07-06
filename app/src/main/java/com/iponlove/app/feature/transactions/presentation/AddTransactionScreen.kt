@@ -57,8 +57,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import com.iponlove.app.core.ui.FullScreenImageDialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.iponlove.app.core.ui.EntityChipRow
@@ -366,9 +365,13 @@ private fun EditorForm(
     }
 
     if (showFullScreenReceipt) {
-        val imageSource = editor.attachmentLocalPath ?: editor.attachmentUrl
+        val imageSource: Any? = editor.attachmentLocalPath?.let { File(it) } ?: editor.attachmentUrl
         if (imageSource != null) {
-            FullScreenReceiptDialog(imageSource, onDismiss = { showFullScreenReceipt = false })
+            FullScreenImageDialog(
+                model = imageSource,
+                contentDescription = "Receipt full size",
+                onDismiss = { showFullScreenReceipt = false },
+            )
         }
     }
 
@@ -426,23 +429,6 @@ private fun ReceiptRow(
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun FullScreenReceiptDialog(imageSource: Any, onDismiss: () -> Unit) {
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(
-            modifier = Modifier.fillMaxSize().clickable(onClick = onDismiss),
-            contentAlignment = Alignment.Center,
-        ) {
-            AsyncImage(
-                model = imageSource,
-                contentDescription = "Receipt full size",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
-            )
         }
     }
 }

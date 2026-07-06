@@ -10,7 +10,8 @@ import javax.inject.Inject
 
 /**
  * Pre-sync step that uploads locally-compressed JPEGs to Supabase Storage and stamps the
- * resulting public URL onto the Row before [NoteAttachmentTableSyncer] pushes it to Postgrest.
+ * resulting authenticated URL onto the row before [NoteAttachmentTableSyncer] pushes it to
+ * Postgrest.
  *
  * Storage path: `note-images/{userId}/{noteId}/{id}.jpg`
  *
@@ -46,7 +47,9 @@ class NoteAttachmentUploader @Inject constructor(
                 val path = "$userId/${entity.noteId}/${entity.id}.jpg"
                 val bytes = file.readBytes()
                 client.storage.from(BUCKET).upload(path, bytes) { upsert = true }
-                val url = client.storage.from(BUCKET).publicUrl(path)
+                // Authenticated form: the bucket is private, so the URL is only fetchable with
+                // the Supabase token attached (StorageAuthInterceptor) under the bucket's RLS.
+                val url = client.storage.from(BUCKET).authenticatedUrl(path)
                 dao.markUploaded(entity.id, url)
                 file.delete()
             } catch (_: Exception) {

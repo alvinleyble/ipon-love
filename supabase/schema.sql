@@ -926,14 +926,70 @@ create policy couple_channel_members on realtime.messages
     );
 
 -- ============================================================================
---  Receipts Storage bucket  [ADR-0020]
---  Owner: full access scoped to their own folder receipts/{userId}/...
---  Partner read: a couple member can SELECT (download) the partner's receipt
---  object if it appears in a non-private, non-deleted transaction row — same
---  visibility gate as the partner_transactions redacting view.
+--  Storage buckets (receipts + note-images)  [ADR-0020]
+--  Owner: full access scoped to their own folder {userId}/...
+--  Partner read: a couple member can SELECT (download) the partner's object only
+--  while the referencing row is visible under the same gate as the partner_*
+--  redacting views (receipts: non-private/non-deleted transaction; note-images:
+--  shared, non-deleted note + non-deleted image).
+--
+--  The partner-read check runs through a SECURITY DEFINER function because a
+--  storage.objects policy executes under the *requesting* user's RLS: the base
+--  tables (transactions / note_images / notes) are owner-scoped, so a partner's
+--  inline subquery could never see the OWNER's row and every download 400'd. The
+--  definer function bypasses base-table RLS while auth.uid()/auth_couple_id()
+--  still resolve to the caller, so the visibility gate is unchanged.
+--  The URL-substring match works for both legacy public-form and current
+--  authenticated-form stored URLs (both end with the object path).
 -- ============================================================================
 
 alter table storage.objects enable row level security;
+
+create or replace function public.partner_can_read_receipt(object_name text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select exists (
+        select 1 from transactions t
+        where t.attachment_url like '%' || object_name || '%'
+          and t.is_private = false
+          and t.is_deleted = false
+          and t.user_id in (
+              select id from users
+              where couple_id = auth_couple_id()
+                and id <> auth.uid()
+          )
+    );
+$$;
+
+create or replace function public.partner_can_read_note_image(object_name text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select exists (
+        select 1
+        from note_images ni
+        join notes n on n.id = ni.note_id
+        where ni.storage_url like '%' || object_name || '%'
+          and ni.is_deleted = false
+          and n.is_shared = true
+          and n.is_deleted = false
+          and n.user_id in (
+              select id from users
+              where couple_id = auth_couple_id()
+                and id <> auth.uid()
+          )
+    );
+$$;
+
+grant execute on function public.partner_can_read_receipt(text) to authenticated;
+grant execute on function public.partner_can_read_note_image(text) to authenticated;
 
 create policy receipts_owner on storage.objects for all
     to authenticated
@@ -948,20 +1004,22 @@ create policy receipts_owner on storage.objects for all
 
 create policy receipts_partner_read on storage.objects for select
     to authenticated
+    using (bucket_id = 'receipts' and public.partner_can_read_receipt(name));
+
+create policy note_images_owner on storage.objects for all
+    to authenticated
     using (
-        bucket_id = 'receipts'
-        and exists (
-            select 1 from transactions t
-            where t.attachment_url like '%' || name || '%'
-              and t.is_private = false
-              and t.is_deleted = false
-              and t.user_id in (
-                  select id from users
-                  where couple_id = public.auth_couple_id()
-                    and id <> auth.uid()
-              )
-        )
+        bucket_id = 'note-images'
+        and (storage.foldername(name))[1] = auth.uid()::text
+    )
+    with check (
+        bucket_id = 'note-images'
+        and (storage.foldername(name))[1] = auth.uid()::text
     );
+
+create policy note_images_partner_read on storage.objects for select
+    to authenticated
+    using (bucket_id = 'note-images' and public.partner_can_read_note_image(name));
 
 -- ============================================================================
 --  app_release_info — beta version-mismatch gate  [ADR-0029]

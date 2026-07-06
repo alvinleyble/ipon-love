@@ -134,4 +134,23 @@ class CombinedLedgerCalculatorTest {
         assertThat(ledger.members.single().isMine).isTrue()
         assertThat(ledger.entries).hasSize(1)
     }
+
+    @Test
+    fun entriesCarryTheReceiptAttachmentUrl_forBothMembers() {
+        val transactions = listOf(
+            owned("me", txn("t1", TransactionType.EXPENSE, "100.00", date = june(5), attachmentUrl = "https://x/receipts/me/t1.jpg")),
+            owned("you", txn("t2", TransactionType.EXPENSE, "200.00", date = june(4), attachmentUrl = "https://x/receipts/you/t2.jpg")),
+            owned("me", txn("t3", TransactionType.EXPENSE, "30.00", date = june(3))),
+        )
+
+        val ledger = CombinedLedgerCalculator.analyze(
+            transactions, emptyMap(), me, partner, monthStart, monthEnd,
+        )
+
+        assertThat(ledger.entries.map { it.attachmentUrl }).containsExactly(
+            "https://x/receipts/me/t1.jpg",
+            "https://x/receipts/you/t2.jpg",
+            null,
+        ).inOrder()
+    }
 }

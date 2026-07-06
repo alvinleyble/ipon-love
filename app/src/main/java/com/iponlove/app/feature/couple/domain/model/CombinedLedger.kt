@@ -18,7 +18,9 @@ data class CombinedLedger(
 /**
  * One transaction in the merged stream. [ownerId] attributes it to a member (the UI looks
  * its color/name up from [CombinedLedger.members]); [title] is the resolved category name,
- * "Transfer", or "Uncategorized".
+ * "Transfer", or "Uncategorized". [attachmentUrl] is the receipt image, if any — partner
+ * rows carry it too (partner_transactions view), viewable under the receipts partner-read
+ * Storage policy.
  */
 data class CombinedEntry(
     val id: String,
@@ -28,6 +30,7 @@ data class CombinedEntry(
     val title: String,
     val date: Instant,
     val isMine: Boolean,
+    val attachmentUrl: String? = null,
 )
 
 /** A member's identity plus their total EXPENSE for the current month (the spending chip). */

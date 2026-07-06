@@ -46,7 +46,9 @@ class ReceiptUploader @Inject constructor(
                 val path = "$userId/${entity.id}.jpg"
                 val bytes = file.readBytes()
                 client.storage.from(BUCKET).upload(path, bytes) { upsert = true }
-                val url = client.storage.from(BUCKET).publicUrl(path)
+                // Authenticated form: the bucket is private, so the URL is only fetchable with
+                // the Supabase token attached (StorageAuthInterceptor) under the bucket's RLS.
+                val url = client.storage.from(BUCKET).authenticatedUrl(path)
                 val updatedAt = clock.stamp(entity.updatedAt).toEpochMilli()
                 dao.markReceiptUploaded(entity.id, url, updatedAt)
                 file.delete()

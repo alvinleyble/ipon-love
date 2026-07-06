@@ -40,6 +40,7 @@ object CombinedLedgerCalculator {
                 title = titleFor(t, categoryNames),
                 date = t.date,
                 isMine = owned.ownerId == me.id,
+                attachmentUrl = t.attachmentUrl,
             )
         }
 
