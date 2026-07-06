@@ -15,9 +15,13 @@ import javax.inject.Inject
  * filters surface regardless of owner.
  *
  * Wipes five things together — they are meaningless apart:
+ *  - the sync pull cursors FIRST (so a re-login re-pulls from `server_rev = 0` instead of
+ *    skipping everything below a stale cursor). Ordering invariant: cursors must reset before
+ *    Room clears. A crash after cursor reset leaves cursor=0 + stale Room, which self-heals on
+ *    the next pull; a crash after Room clears but before cursor reset leaves empty Room + high
+ *    cursors, which permanently wedges the couples/partner pulls (`server_rev > cursor` never
+ *    matches) — the app then shows "not paired" while the server still has the couple.
  *  - Room (the financial/notes source of truth),
- *  - the sync pull cursors (so a re-login re-pulls from `server_rev = 0` instead of skipping
- *    everything below a stale cursor),
  *  - the nav layout (a per-device UI preference the next account should start fresh on),
  *  - the onboarding re-prompt flags (ADR-0024 addendum) — without this, a second real account
  *    signing in on a device that already onboarded once skips the graph entirely, including
@@ -38,8 +42,8 @@ class LocalDataWiper @Inject constructor(
     private val appLock: AppLockRepository,
 ) {
     suspend fun wipe() {
-        database.clearAll()
         cursors.reset()
+        database.clearAll()
         navConfig.reset()
         onboarding.reset()
         appLock.clearPin()

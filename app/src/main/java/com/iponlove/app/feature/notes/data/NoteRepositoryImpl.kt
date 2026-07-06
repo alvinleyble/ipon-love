@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.notes.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.session.userIdOrNull
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.notes.data.local.NoteDao
@@ -8,6 +9,8 @@ import com.iponlove.app.feature.notes.data.local.NoteEntity
 import com.iponlove.app.feature.notes.domain.model.Note
 import com.iponlove.app.feature.notes.domain.repository.NoteRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -27,9 +30,12 @@ class NoteRepositoryImpl @Inject constructor(
     private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : NoteRepository {
 
-    override fun observeNotes(): Flow<List<Note>> {
-        val userId = currentUser.userId()
-        return dao.observeNotes(userId).map { rows -> rows.map { it.toDomain(userId) } }
+    // userId resolved inside the flow, not eagerly: NotesViewModel rebuilds this via
+    // flatMapLatest during sign-out (auth already null) and an eager userId() would crash.
+    override fun observeNotes(): Flow<List<Note>> = flow {
+        val userId = currentUser.userIdOrNull()
+        if (userId == null) emit(emptyList())
+        else emitAll(dao.observeNotes(userId).map { rows -> rows.map { it.toDomain(userId) } })
     }
 
     override suspend fun getNote(id: String): Note? = dao.getById(id)?.toDomain(currentUser.userId())

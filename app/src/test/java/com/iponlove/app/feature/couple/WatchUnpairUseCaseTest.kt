@@ -67,4 +67,35 @@ class WatchUnpairUseCaseTest {
         assertThat(accounts.purgeCount).isEqualTo(2)
         job.cancel()
     }
+
+    @Test
+    fun doesNotPurge_whenRowIsWiped_thenRecreatedAsUnpairedStub() = runTest {
+        // A local wipe deletes the users row (null emission); ensureLocalRow may then recreate
+        // it as a coupleId=null stub. That is NOT a dissolution — tracking must reset on null.
+        val users = MutableStateFlow<User?>(userRow(coupleId = "c-1"))
+        val watch = WatchUnpairUseCase(FakeUserFlowRepository(users), purge)
+
+        val job = launch { watch() }
+        runCurrent()
+        users.value = null;                      runCurrent()   // row wiped
+        users.value = userRow(coupleId = null);  runCurrent()   // stub recreated
+
+        assertThat(accounts.purgeCount).isEqualTo(0)
+        job.cancel()
+    }
+
+    @Test
+    fun stillPurges_onGenuineUnpair_afterRowWipeResetTracking() = runTest {
+        val users = MutableStateFlow<User?>(userRow(coupleId = "c-1"))
+        val watch = WatchUnpairUseCase(FakeUserFlowRepository(users), purge)
+
+        val job = launch { watch() }
+        runCurrent()
+        users.value = null;                      runCurrent()   // row wiped → tracking resets
+        users.value = userRow(coupleId = "c-1"); runCurrent()   // re-adopted paired row
+        users.value = userRow(coupleId = null);  runCurrent()   // in-place unpair → purge
+
+        assertThat(accounts.purgeCount).isEqualTo(1)
+        job.cancel()
+    }
 }

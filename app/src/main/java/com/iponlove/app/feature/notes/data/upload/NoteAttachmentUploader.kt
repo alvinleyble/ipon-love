@@ -26,7 +26,8 @@ class NoteAttachmentUploader @Inject constructor(
 
     override suspend fun run() {
         val pending = dao.pendingUploads()
-        val userId = currentUser.userId()
+        // Session may already be torn down (sign-out race) — skip quietly, retry next sync.
+        val userId = runCatching { currentUser.userId() }.getOrNull() ?: return
         for (entity in pending) {
             val file = entity.localPath?.let { File(it) }
 

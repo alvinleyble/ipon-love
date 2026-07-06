@@ -240,6 +240,30 @@ class CoupleChannelManagerTest {
     }
 
     @Test
+    fun localWrite_doesNotPush_afterSignOut() = runTest {
+        val bell = FakeCoupleBell()
+        val log = mutableListOf<String>()
+        val trigger = SyncTrigger()
+        val engine = SyncEngine(setOf(RecordingSyncer(SyncTable.USERS, log, pushSentRows = true)))
+        val manager = managerWith(bell, engine, trigger, MutableStateFlow(couple("c1")), backgroundScope)
+        manager.start()
+        manager.setAuthenticatedUser("u1")
+        manager.setForeground(true)
+        runCurrent()
+        log.clear() // drop the catch-up pull fired on subscribe
+
+        // Write lands just before sign-out; the debounced push must not fire against a
+        // torn-down session (the LiveSyncScope outlives it).
+        trigger.requestPush()
+        manager.setAuthenticatedUser(null)
+        advanceTimeBy(1_600)
+        runCurrent()
+
+        assertThat(log).isEmpty()
+        assertThat(bell.broadcastCount).isEqualTo(0)
+    }
+
+    @Test
     fun neverSubscribes_whenUnauthenticated_evenIfForegrounded() = runTest {
         val bell = FakeCoupleBell()
         // Pairing flow would throw if built pre-auth; gating must keep it unbuilt.

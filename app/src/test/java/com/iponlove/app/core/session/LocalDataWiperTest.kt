@@ -6,6 +6,7 @@ import com.iponlove.app.feature.applock.domain.repository.AppLockRepository
 import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
 import com.iponlove.app.navigation.NavConfigRepository
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -30,5 +31,19 @@ class LocalDataWiperTest {
         // The app-lock PIN must be cleared so a switched-in account isn't locked behind the
         // previous user's code (cross-account isolation).
         coVerify(exactly = 1) { appLock.clearPin() }
+    }
+
+    @Test
+    fun wipe_resetsCursors_beforeClearingRoom() = runTest {
+        wiper.wipe()
+
+        // Ordering invariant: an interrupted wipe with cursor=0 + stale Room self-heals on the
+        // next pull, but empty Room + stale cursors wedges the couples/partner pulls forever
+        // (`server_rev > cursor` never matches) — the app then shows "not paired" while the
+        // server still has the couple.
+        coVerifyOrder {
+            cursors.reset()
+            database.clearAll()
+        }
     }
 }

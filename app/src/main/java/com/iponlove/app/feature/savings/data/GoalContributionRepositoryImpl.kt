@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.savings.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.session.userIdOrNull
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.savings.data.local.GoalContributionDao
@@ -8,6 +9,8 @@ import com.iponlove.app.feature.savings.data.local.GoalContributionEntity
 import com.iponlove.app.feature.savings.domain.model.GoalContribution
 import com.iponlove.app.feature.savings.domain.repository.GoalContributionRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import java.math.BigDecimal
 import java.time.Instant
@@ -26,14 +29,18 @@ class GoalContributionRepositoryImpl @Inject constructor(
     private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : GoalContributionRepository {
 
-    override fun observeAllActive(): Flow<List<GoalContribution>> {
-        val userId = currentUser.userId()
-        return dao.observeAllActive().map { rows -> rows.map { it.toDomain(userId) } }
+    // userId resolved inside each flow, not eagerly: re-collected during the sign-out
+    // transition (auth already null) where an eager userId() would crash the process.
+    override fun observeAllActive(): Flow<List<GoalContribution>> = flow {
+        val userId = currentUser.userIdOrNull()
+        if (userId == null) emit(emptyList())
+        else emitAll(dao.observeAllActive().map { rows -> rows.map { it.toDomain(userId) } })
     }
 
-    override fun observeByGoal(goalId: String): Flow<List<GoalContribution>> {
-        val userId = currentUser.userId()
-        return dao.observeByGoal(goalId).map { rows -> rows.map { it.toDomain(userId) } }
+    override fun observeByGoal(goalId: String): Flow<List<GoalContribution>> = flow {
+        val userId = currentUser.userIdOrNull()
+        if (userId == null) emit(emptyList())
+        else emitAll(dao.observeByGoal(goalId).map { rows -> rows.map { it.toDomain(userId) } })
     }
 
     override suspend fun addContribution(

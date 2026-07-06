@@ -29,6 +29,15 @@ fun interface CurrentUserProvider {
     fun email(): String? = null
 }
 
+/**
+ * The signed-in user's id, or null when there is no session. [userId] itself throws (a write
+ * before sign-in is a bug), but cold `observe*` flows are re-collected during the sign-out
+ * transition — the auth gate has already flipped to null — so they must degrade to "no user"
+ * (emit empty) instead of crashing the process. Resolve the id *inside* a `flow { }` builder
+ * with this, never eagerly at flow-construction time.
+ */
+fun CurrentUserProvider.userIdOrNull(): String? = runCatching { userId() }.getOrNull()
+
 /** The authenticated user's id, read synchronously from the in-memory Supabase session. */
 class SupabaseCurrentUserProvider @Inject constructor(
     private val client: SupabaseClient,

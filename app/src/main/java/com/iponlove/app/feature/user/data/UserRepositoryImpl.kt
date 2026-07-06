@@ -9,6 +9,8 @@ import com.iponlove.app.feature.user.data.remote.UserRemoteSource
 import com.iponlove.app.feature.user.domain.model.User
 import com.iponlove.app.feature.user.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,11 +24,20 @@ class UserRepositoryImpl @Inject constructor(
     private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : UserRepository {
 
-    override fun observeCurrentUser(): Flow<User?> =
-        dao.observeById(currentUserProvider.userId()).map { it?.toDomain() }
+    // The user id is resolved inside the flow, not at construction: these builders run during
+    // the sign-out window (session already null) where an eager userId() throws and crashes
+    // whichever collector rebuilt the flow. Unauthenticated → emit null and stay quiet.
+    override fun observeCurrentUser(): Flow<User?> = flow {
+        val userId = runCatching { currentUserProvider.userId() }.getOrNull()
+        if (userId == null) emit(null)
+        else emitAll(dao.observeById(userId).map { it?.toDomain() })
+    }
 
-    override fun observePartner(coupleId: String): Flow<User?> =
-        dao.observePartner(coupleId, currentUserProvider.userId()).map { it?.toDomain() }
+    override fun observePartner(coupleId: String): Flow<User?> = flow {
+        val userId = runCatching { currentUserProvider.userId() }.getOrNull()
+        if (userId == null) emit(null)
+        else emitAll(dao.observePartner(coupleId, userId).map { it?.toDomain() })
+    }
 
     override suspend fun updateAccentColor(color: String) {
         val userId = currentUserProvider.userId()

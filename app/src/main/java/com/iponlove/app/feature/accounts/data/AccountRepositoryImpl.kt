@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.accounts.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.session.userIdOrNull
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.accounts.data.local.AccountDao
@@ -8,6 +9,8 @@ import com.iponlove.app.feature.accounts.data.local.AccountEntity
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.repository.AccountRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -23,9 +26,13 @@ class AccountRepositoryImpl @Inject constructor(
     private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : AccountRepository {
 
-    override fun observeAccounts(includeArchived: Boolean): Flow<List<Account>> =
-        dao.observeAccounts(currentUser.userId(), includeArchived)
-            .map { rows -> rows.map { it.toDomain() } }
+    // userId resolved inside the flow, not eagerly: re-collected during the sign-out
+    // transition (auth already null) where an eager userId() would crash the process.
+    override fun observeAccounts(includeArchived: Boolean): Flow<List<Account>> = flow {
+        val userId = currentUser.userIdOrNull()
+        if (userId == null) emit(emptyList())
+        else emitAll(dao.observeAccounts(userId, includeArchived).map { rows -> rows.map { it.toDomain() } })
+    }
 
     override suspend fun getAccount(id: String): Account? = dao.getById(id)?.toDomain()
 

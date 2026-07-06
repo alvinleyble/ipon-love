@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.transactions.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.session.userIdOrNull
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.transactions.data.local.TransactionDao
@@ -9,6 +10,8 @@ import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 import javax.inject.Inject
@@ -26,16 +29,28 @@ class TransactionRepositoryImpl @Inject constructor(
     private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : TransactionRepository {
 
-    override fun observeTransactions(): Flow<List<Transaction>> =
-        dao.observeTransactions(currentUser.userId())
-            .map { rows -> rows.map { it.toDomain() } }
+    // userId resolved inside each flow, not eagerly: these are re-collected during the
+    // sign-out transition (auth already null) where an eager userId() would crash the process.
+    override fun observeTransactions(): Flow<List<Transaction>> = flow {
+        val userId = currentUser.userIdOrNull()
+        if (userId == null) emit(emptyList())
+        else emitAll(dao.observeTransactions(userId).map { rows -> rows.map { it.toDomain() } })
+    }
 
-    override fun observeTransactions(startInclusive: Instant, endExclusive: Instant): Flow<List<Transaction>> =
-        dao.observeTransactions(currentUser.userId(), startInclusive, endExclusive)
-            .map { rows -> rows.map { it.toDomain() } }
+    override fun observeTransactions(startInclusive: Instant, endExclusive: Instant): Flow<List<Transaction>> = flow {
+        val userId = currentUser.userIdOrNull()
+        if (userId == null) emit(emptyList())
+        else emitAll(
+            dao.observeTransactions(userId, startInclusive, endExclusive)
+                .map { rows -> rows.map { it.toDomain() } },
+        )
+    }
 
-    override fun observeHasAnyTransaction(): Flow<Boolean> =
-        dao.observeHasAnyTransaction(currentUser.userId())
+    override fun observeHasAnyTransaction(): Flow<Boolean> = flow {
+        val userId = currentUser.userIdOrNull()
+        if (userId == null) emit(false)
+        else emitAll(dao.observeHasAnyTransaction(userId))
+    }
 
     override fun observeCombinedTransactions(
         startInclusive: Instant,
@@ -46,9 +61,11 @@ class TransactionRepositoryImpl @Inject constructor(
 
     override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = dao.observeHasAnyCombinedTransaction()
 
-    override fun observeBalanceLedger(): Flow<List<Transaction>> =
-        dao.observeForBalances(currentUser.userId())
-            .map { rows -> rows.map { it.toDomain() } }
+    override fun observeBalanceLedger(): Flow<List<Transaction>> = flow {
+        val userId = currentUser.userIdOrNull()
+        if (userId == null) emit(emptyList())
+        else emitAll(dao.observeForBalances(userId).map { rows -> rows.map { it.toDomain() } })
+    }
 
     override suspend fun getTransaction(id: String): Transaction? = dao.getById(id)?.toDomain()
 

@@ -10,6 +10,11 @@ import javax.inject.Inject
  *
  * Collects for the whole authenticated session; call once per login. The initial value is
  * only recorded (never treated as a transition) so an already-paired launch doesn't purge.
+ *
+ * A `null` emission means the users *row is gone* (e.g. a local wipe deleted it), not that the
+ * couple dissolved — so tracking resets and the next non-null row is treated as a fresh initial
+ * load. Otherwise the sequence "paired row → row wiped → null-coupleId stub recreated" would
+ * read as a set→null transition and spuriously purge the partner replica.
  */
 class WatchUnpairUseCase @Inject constructor(
     private val userRepository: UserRepository,
@@ -19,7 +24,11 @@ class WatchUnpairUseCase @Inject constructor(
         var hadUser = false
         var previousCoupleId: String? = null
         userRepository.observeCurrentUser().collect { user ->
-            if (user == null) return@collect
+            if (user == null) {
+                hadUser = false
+                previousCoupleId = null
+                return@collect
+            }
             val current = user.coupleId
             if (hadUser && previousCoupleId != null && current == null) {
                 purgePartnerReplica(user.id)

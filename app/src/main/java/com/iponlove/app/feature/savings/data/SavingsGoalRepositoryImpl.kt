@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.savings.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.session.userIdOrNull
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.savings.data.local.SavingsGoalDao
@@ -8,6 +9,8 @@ import com.iponlove.app.feature.savings.data.local.SavingsGoalEntity
 import com.iponlove.app.feature.savings.domain.model.SavingsGoal
 import com.iponlove.app.feature.savings.domain.repository.SavingsGoalRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -24,9 +27,12 @@ class SavingsGoalRepositoryImpl @Inject constructor(
     private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : SavingsGoalRepository {
 
-    override fun observeGoals(): Flow<List<SavingsGoal>> {
-        val userId = currentUser.userId()
-        return dao.observeGoals(userId).map { rows -> rows.map { it.toDomain(userId) } }
+    // userId resolved inside the flow, not eagerly: re-collected during the sign-out
+    // transition (auth already null) where an eager userId() would crash the process.
+    override fun observeGoals(): Flow<List<SavingsGoal>> = flow {
+        val userId = currentUser.userIdOrNull()
+        if (userId == null) emit(emptyList())
+        else emitAll(dao.observeGoals(userId).map { rows -> rows.map { it.toDomain(userId) } })
     }
 
     override suspend fun getGoal(id: String): SavingsGoal? =

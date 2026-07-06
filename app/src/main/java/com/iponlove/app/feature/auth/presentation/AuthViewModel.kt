@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.auth.presentation
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
@@ -20,8 +21,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -136,9 +139,31 @@ class AuthViewModel @Inject constructor(
         } catch (_: AuthException) {
             false
         }
-        if (signedOut) runCatching { localDataWiper.wipe() }
+        if (signedOut) wipeWithRetry()
         _form.value = AuthUiState()
     }
 
+    /**
+     * A partial wipe wedges pairing on re-login (see [LocalDataWiper]'s ordering invariant), so
+     * the wipe runs [NonCancellable] (scope death mid-wipe must not stop it partway), is retried
+     * once on failure — every step is idempotent — and is logged, never swallowed.
+     */
+    private suspend fun wipeWithRetry() = withContext(NonCancellable) {
+        try {
+            localDataWiper.wipe()
+        } catch (first: Exception) {
+            Log.e(TAG, "sign-out wipe failed, retrying once", first)
+            try {
+                localDataWiper.wipe()
+            } catch (second: Exception) {
+                Log.e(TAG, "sign-out wipe failed twice; local state may be partial", second)
+            }
+        }
+    }
+
     fun dismissError() = _form.update { it.copy(error = null) }
+
+    private companion object {
+        const val TAG = "AuthViewModel"
+    }
 }

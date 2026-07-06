@@ -105,10 +105,14 @@ class CoupleChannelManager(
         }
 
         // 3) Local write → debounced push-only → ring the bell iff rows actually went out.
+        // Gated on auth: this scope outlives the session, so a write made just before sign-out
+        // would otherwise fire pushOnly ~1.5s later against a torn-down session (the pre-sync
+        // uploaders read the user id) — skip instead.
         scope.launch {
             syncTrigger.signals
                 .debounce(pushDebounceMs)
                 .collect {
+                    if (authUserId.value == null) return@collect
                     val sentRows = runCatching { engine.pushOnly() }.getOrDefault(false)
                     Log.d(TAG, "write → pushOnly sentRows=$sentRows")
                     if (sentRows) runCatching { bell.broadcast() }

@@ -115,6 +115,17 @@ class NoteRepositoryImplTest {
     }
 
     @Test
+    fun observeNotes_emitsEmpty_whenSignedOut_insteadOfCrashing() = runTest {
+        dao.store["n"] = noteEntity(id = "n", updatedAt = Instant.ofEpochMilli(1_000))
+        // NotesViewModel rebuilds this flow during sign-out (userId() throws once the session
+        // is gone); it must degrade to empty, not throw and crash the process.
+        val signedOut = CurrentUserProvider { error("No authenticated user") }
+        val repo = NoteRepositoryImpl(dao, clock, signedOut)
+
+        assertThat(repo.observeNotes().first()).isEmpty()
+    }
+
+    @Test
     fun delete_isSoft_setsTombstoneAndMarksDirty() = runTest {
         dao.store["n"] = noteEntity(id = "n", serverRev = 3)
 

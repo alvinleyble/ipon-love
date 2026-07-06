@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.categories.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.session.userIdOrNull
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.feature.categories.data.local.CategoryDao
@@ -8,6 +9,8 @@ import com.iponlove.app.feature.categories.data.local.CategoryEntity
 import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -23,9 +26,13 @@ class CategoryRepositoryImpl @Inject constructor(
     private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
 ) : CategoryRepository {
 
-    override fun observeCategories(includeArchived: Boolean): Flow<List<Category>> =
-        dao.observeCategories(currentUser.userId(), includeArchived)
-            .map { rows -> rows.map { it.toDomain() } }
+    // userId resolved inside the flow, not eagerly: re-collected during the sign-out
+    // transition (auth already null) where an eager userId() would crash the process.
+    override fun observeCategories(includeArchived: Boolean): Flow<List<Category>> = flow {
+        val userId = currentUser.userIdOrNull()
+        if (userId == null) emit(emptyList())
+        else emitAll(dao.observeCategories(userId, includeArchived).map { rows -> rows.map { it.toDomain() } })
+    }
 
     override fun observeAllCategories(): Flow<List<Category>> =
         dao.observeAll().map { rows -> rows.map { it.toDomain() } }
