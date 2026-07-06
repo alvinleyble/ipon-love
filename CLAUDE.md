@@ -180,7 +180,7 @@ When in doubt: favor thin, composable layers over shortcuts. Three constraints t
 ---
 
 ## Monetization
-Paid app on Play Store (one-time purchase). All features unlocked on purchase. No tiers, no IAP, no subscriptions.
+Subscription-based via Google Play Billing (recurring, not a one-time purchase — supersedes the earlier one-time-purchase plan). Which features are free vs. subscriber-only is not yet decided — needs a grilling/design pass before implementation. See Post-V1 Horizon in `docs/build/project-build-progress.md`.
 
 ---
 

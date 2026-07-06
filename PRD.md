@@ -126,7 +126,7 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 
 ### 6.5 Customization & Themes (Personalize)
 
-- 6 named palettes: Rose, Mauve, Lavender, Peach, Sage, Mocha — all unlocked (one-time purchase, no tiers)
+- 6 named palettes: Rose, Mauve, Lavender, Peach, Sage, Mocha — exact free/subscriber-tier gating not yet decided (see §7 Monetization)
 - Light / dark mode is a separate toggle from palette — 12 combinations total
 - Personalize screen: visual swatch grid with live preview before applying
 - Couple attribution color (blue vs pink in combined view) is separate from personal theme palette; chosen during the pairing flow
@@ -148,10 +148,9 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 
 ## 7. Monetization
 
-### Model: One-Time Purchase (Paid App)
-- App is listed on the Play Store with a price tag
-- Purchase unlocks the full app immediately — no tiers, no locked features
-- All features available from first launch after purchase
+### Model: Subscription (Play Store Subscription Billing)
+- Recurring subscription via Google Play Billing — supersedes the earlier one-time-purchase plan
+- Which features are free vs. subscriber-only (paywall/feature-gating design) is not yet decided — needs a grilling/design pass before implementation; see Post-V1 Horizon in `docs/build/project-build-progress.md`
 
 ### Future: AI Add-On
 - Hybrid model, not pure BYOK: a capped, app-funded free tier (cheap model, small monthly allowance) for mass-market sub-features, since the target audience is non-technical and won't self-serve an API key
@@ -170,7 +169,7 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 
 ## 9. Future Enhancements (Post-V1)
 
-Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `ARCHITECTURE.md` (previously out of sync — see that doc's "Post-V1 Horizon" list, now 14 items). Target quarters aren't duplicated here — `project-build-progress.md`'s Horizon list is the single source of truth for those.
+Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `ARCHITECTURE.md` (previously out of sync — see that doc's "Post-V1 Horizon" list, now 15 items after the 2026-07-06 subscription-monetization addition). Target quarters aren't duplicated here — `project-build-progress.md`'s Horizon list is the single source of truth for those.
 
 | Feature | Notes |
 |---|---|
@@ -187,6 +186,7 @@ Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `ARCHIT
 | Delete my account | Compliance/account-management requirement (likely a Play Store Data Safety item at prod); not a tester-facing feature |
 | Login rate limiting / lockout | Client-side cooldown for the Supabase Auth sign-in screen itself, separate from the existing local PIN lockout |
 | "Restart fresh" (reset finances) | Wipe transactions, recurring rules, budgets, and goal contributions from Settings without deleting the account or losing accounts/categories/notes; already fully designed (ADR-0037), ready to build |
+| Subscription paywall + feature gating | Pivot from one-time purchase to Google Play subscription billing; which features are free vs. subscriber-only not yet decided — greenfield, needs a design/grilling pass |
 | Display-currency symbol (non-PHP) | Display-symbol-only, NOT multi-currency: swaps the ₱ glyph for another symbol, chosen at onboarding — no per-account currency, no FX conversion, all amounts stay one currency underneath |
 
 ---
