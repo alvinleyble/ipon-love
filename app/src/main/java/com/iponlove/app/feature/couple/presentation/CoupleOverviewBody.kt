@@ -210,8 +210,9 @@ internal fun PairedContent(
             title = { Text("Unpair?") },
             text = {
                 Text(
-                    "This dissolves the couple for both of you. Shared budgets are removed " +
-                        "and shared notes revert to their owner. You keep all your own data.",
+                    "This dissolves the couple for both of you. Shared budgets and goals end, " +
+                        "and anything else you shared — accounts, categories, notes — reverts " +
+                        "to whoever created it. You keep all your own data.",
                 )
             },
             confirmButton = {
