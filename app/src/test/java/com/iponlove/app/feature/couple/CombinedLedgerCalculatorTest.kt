@@ -91,6 +91,36 @@ class CombinedLedgerCalculatorTest {
     }
 
     @Test
+    fun settlementLegs_areTitledDebtSettlement_notUncategorized() {
+        val transactions = listOf(
+            owned("me", txn("s1", TransactionType.EXPENSE, "500.00", categoryId = null, isSettlement = true, date = june(5))),
+            owned("you", txn("s2", TransactionType.INCOME, "500.00", categoryId = null, isSettlement = true, date = june(4))),
+        )
+
+        val ledger = CombinedLedgerCalculator.analyze(
+            transactions, emptyMap(), me, partner, monthStart, monthEnd,
+        )
+
+        assertThat(ledger.entries.map { it.title })
+            .containsExactly("Debt settlement", "Debt settlement").inOrder()
+    }
+
+    @Test
+    fun monthlySpend_excludesSettlementExpenseLegs() {
+        val transactions = listOf(
+            owned("me", txn("real", TransactionType.EXPENSE, "100.00", date = june(5))),
+            owned("me", txn("repay", TransactionType.EXPENSE, "500.00", isSettlement = true, date = june(6))),
+        )
+
+        val ledger = CombinedLedgerCalculator.analyze(
+            transactions, emptyMap(), me, partner, monthStart, monthEnd,
+        )
+
+        // Only the genuine purchase counts; the settlement repayment is excluded (matches Analysis).
+        assertThat(ledger.members.single { it.isMine }.monthlyExpense).isEqualTo(BigDecimal("100.00"))
+    }
+
+    @Test
     fun withoutPartner_onlyMyChipIsEmitted_butStreamStillMerges() {
         val transactions = listOf(
             owned("me", txn("t1", TransactionType.EXPENSE, "100.00", date = june(5))),

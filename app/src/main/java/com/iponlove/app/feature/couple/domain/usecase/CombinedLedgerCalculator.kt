@@ -17,8 +17,8 @@ import java.time.Instant
  * monthEndExclusive) and the live category-name map.
  *
  * [transactions] is assumed pre-filtered to shared, non-deleted rows and pre-sorted by the
- * query (date desc); the entry order is preserved. Spend counts EXPENSE only — TRANSFER and
- * INCOME are not spending, consistent with AnalysisCalculator.
+ * query (date desc); the entry order is preserved. Spend counts EXPENSE only — TRANSFER,
+ * INCOME, and settlement legs are not spending, consistent with AnalysisCalculator.
  */
 object CombinedLedgerCalculator {
 
@@ -53,8 +53,11 @@ object CombinedLedgerCalculator {
         return CombinedLedger(entries = entries, members = members)
     }
 
-    private fun titleFor(t: Transaction, names: Map<String, String>): String = when (t.type) {
-        TransactionType.TRANSFER -> "Transfer"
+    private fun titleFor(t: Transaction, names: Map<String, String>): String = when {
+        // Settlement legs carry categoryId = null + isSettlement = true by design (ADR-0019 #14 /
+        // ADR-0042); label them off the flag instead of falling to "Uncategorized", matching Records.
+        t.isSettlement -> "Debt settlement"
+        t.type == TransactionType.TRANSFER -> "Transfer"
         else -> t.categoryId?.let { names[it] } ?: "Uncategorized"
     }
 
@@ -70,6 +73,7 @@ object CombinedLedgerCalculator {
             if (owned.ownerId != user.id) continue
             val t = owned.transaction
             if (t.type != TransactionType.EXPENSE) continue
+            if (t.isSettlement) continue // repayment legs aren't spend — consistent with the Analysis calculators
             if (t.date < startInclusive || t.date >= endExclusive) continue
             expense += t.amount
         }
