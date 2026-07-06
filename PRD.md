@@ -39,7 +39,7 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 
 ## 5. Non-Goals (V1)
 
-- iOS version
+- iOS version (dropped from roadmap — web dashboard is the planned cross-platform target instead)
 - Multi-currency support
 - AI chatbot or assistant
 - Password vault
@@ -178,7 +178,7 @@ Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `ARCHIT
 | AI financial companion | Hybrid: capped app-funded free tier (cheap model) + opt-in BYOK for unlimited use; spending advice, savings trajectory, friendly assistant persona |
 | Password vault | Encrypted local vault |
 | Voice recording storage | Extension of the notes system |
-| iOS version | Evaluate Kotlin Multiplatform or Flutter at that point |
+| Website / web app | Replaces the earlier iOS-via-KMP idea as the cross-platform target |
 | CSV / PDF export | For power users and accountants |
 | Custom fonts | Typography customization beyond the built-in color themes (category/account icon customization already shipped in V1.3) |
 | Profile & couple photo upload | Avatar / banner images via Supabase Storage |

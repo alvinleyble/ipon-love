@@ -78,8 +78,8 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "iOS (Not yet scheduled)",
-                description = "Love, Ipon on iPhone.",
+                title = "Website / web app (Q4 2026)",
+                description = "Access Love, Ipon from a browser, not just Android.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
@@ -105,6 +105,11 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             RoadmapCard(
                 title = "Choose your currency symbol (Q3 2026)",
                 description = "Swap the ₱ symbol for another currency's symbol. Display only — no conversion, and amounts stay in one currency underneath.",
+            )
+            Spacer(Modifier.height(8.dp))
+            RoadmapCard(
+                title = "Subscription plans (Q3 2026)",
+                description = "Optional paid plans unlocking extra features — core budgeting stays free.",
             )
         }
     }

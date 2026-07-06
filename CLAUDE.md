@@ -173,7 +173,7 @@ When in doubt: favor thin, composable layers over shortcuts. Three constraints t
 - Password vault
 - Voice recording
 - CSV / PDF export
-- iOS
+- iOS (dropped from roadmap — web app is the planned cross-platform target instead, see Post-V1 Horizon)
 - Custom fonts (typography only — category/account icon customization already shipped in V1.3; themes remain color-only otherwise)
 - Profile / couple photo upload (avatars are accent color + initials in V1)
 

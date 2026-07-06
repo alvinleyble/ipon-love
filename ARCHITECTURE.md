@@ -414,7 +414,7 @@ Not built in v1. Architecture must not block these. Reconciled 2026-07-05 agains
 | AI companion | Hybrid: app-funded capped tier (cheap model) by default + opt-in BYOK (key stored in EncryptedDataStore) for unlimited use; new `feature/ai` module |
 | Password vault | New `feature/vault` module; SQLCipher or EncryptedDataStore |
 | Voice recording storage | New `feature/recordings` module; Supabase Storage for upload |
-| iOS | Evaluate Kotlin Multiplatform — domain layer is pure Kotlin already, head start exists |
+| Website / web app | Replaces the earlier iOS-via-KMP idea as the cross-platform target; not yet designed |
 | CSV / PDF export | Power user feature, data already structured for it |
 | Custom fonts | Typography customization beyond built-in color themes; category/account icon picking already shipped in V1.3 |
 | Profile & couple photo upload | Avatar/banner images via Supabase Storage |
