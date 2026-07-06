@@ -1,0 +1,350 @@
+<title>Love, Ipon — Heart-Wallet</title>
+<style>
+  :root{
+    --ground:#FFF8FB; --panel:#FFFFFF; --stage:#FCEDF3;
+    --text:#3A2530; --muted:#916B7A; --line:#F1DAE3; --line-2:#F7E4EC;
+    --plum:#8B2A57; --rose:#EA8AB3; --blush:#FBE5EE; --cream:#FFF7F4;
+    --ink:#8B2A57; --shadow:rgba(139,42,87,.16);
+    --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --ground:#150B10; --panel:#221321; --stage:#2C1826;
+      --text:#F7E7EF; --muted:#C69FB2; --line:#3A2130; --line-2:#331B29;
+      --ink:#FBD8E6; --shadow:rgba(0,0,0,.5); }
+  }
+  :root[data-theme="light"]{ --ground:#FFF8FB; --panel:#FFFFFF; --stage:#FCEDF3;
+    --text:#3A2530; --muted:#916B7A; --line:#F1DAE3; --line-2:#F7E4EC;
+    --ink:#8B2A57; --shadow:rgba(139,42,87,.16); }
+  :root[data-theme="dark"]{ --ground:#150B10; --panel:#221321; --stage:#2C1826;
+    --text:#F7E7EF; --muted:#C69FB2; --line:#3A2130; --line-2:#331B29;
+    --ink:#FBD8E6; --shadow:rgba(0,0,0,.5); }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);
+    line-height:1.55;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:960px;margin:0 auto;padding:56px 24px 80px;}
+  .eyebrow{font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--rose);font-weight:600;margin:0 0 12px;}
+
+  /* ---------- hero ---------- */
+  .hero{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;align-items:center;
+    margin-bottom:56px;}
+  @media (max-width:680px){.hero{grid-template-columns:1fr;}}
+  h1{font-family:var(--serif);font-weight:600;font-style:italic;
+    font-size:clamp(2.1rem,5.5vw,3.1rem);line-height:1.05;margin:0 0 16px;
+    letter-spacing:-.01em;text-wrap:balance;}
+  h1 span{font-style:normal;color:var(--plum);}
+  :root[data-theme="dark"] h1 span{color:var(--rose);}
+  @media (prefers-color-scheme:dark){h1 span{color:var(--rose);}}
+  :root[data-theme="light"] h1 span{color:var(--plum);}
+  .lede{font-size:1.05rem;color:var(--muted);margin:0;max-width:52ch;text-wrap:pretty;}
+  .lede b{color:var(--text);font-weight:600;}
+  .hero-stage{border-radius:24px;aspect-ratio:1/1;display:grid;place-items:center;
+    background:radial-gradient(120% 120% at 32% 24%,
+      color-mix(in srgb,var(--stage) 55%,#fff 14%),var(--stage));
+    border:1px solid var(--line);}
+  .hero-stage svg{width:64%;height:64%;filter:drop-shadow(0 14px 26px var(--shadow));}
+
+  /* ---------- section ---------- */
+  section{margin-top:52px;}
+  .sec-head{margin-bottom:22px;max-width:60ch;}
+  .sec-head h2{font-family:var(--serif);font-size:1.5rem;font-weight:600;
+    margin:0 0 6px;letter-spacing:-.01em;}
+  .sec-head p{margin:0;color:var(--muted);font-size:.95rem;}
+
+  /* executions */
+  .execs{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+  @media (max-width:680px){.execs{grid-template-columns:repeat(2,1fr);}}
+  .exec{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:14px;display:flex;flex-direction:column;gap:12px;text-align:center;}
+  .exec .pad{border-radius:12px;background:var(--stage);aspect-ratio:1/1;
+    display:grid;place-items:center;}
+  .exec.mono .pad{color:var(--ink);}
+  .exec .pad svg{width:66%;height:66%;filter:drop-shadow(0 6px 12px var(--shadow));}
+  .exec h3{font-size:.95rem;margin:0;font-weight:600;}
+  .exec p{font-size:.78rem;color:var(--muted);margin:0;line-height:1.4;}
+  .tag{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+    color:var(--plum);}
+  :root[data-theme="dark"] .tag{color:var(--rose);}
+  @media (prefers-color-scheme:dark){.tag{color:var(--rose);}}
+  :root[data-theme="light"] .tag{color:var(--plum);}
+
+  /* context blocks */
+  .ctx{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:680px){.ctx{grid-template-columns:1fr;}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    padding:22px;}
+  .panel .cap{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;margin:0 0 18px;}
+
+  .tiles{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;}
+  .tiles svg{filter:drop-shadow(0 8px 18px var(--shadow));border-radius:22%;}
+
+  .homerow{display:flex;align-items:center;gap:14px;}
+  .ph{background:color-mix(in srgb,var(--muted) 22%,transparent);border-radius:22%;
+    aspect-ratio:1/1;}
+
+  /* dark reversed chip */
+  .reverse{background:linear-gradient(160deg,#2C1826,#150B10);border-radius:18px;
+    padding:22px;display:flex;align-items:center;gap:22px;color:#F7E7EF;
+    border:1px solid #3A2130;}
+  .reverse .lbl{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+    color:#C69FB2;font-weight:600;margin:0 0 6px;}
+  .reverse .txt{font-size:.86rem;color:#C69FB2;margin:0;}
+  .reverse .chip{color:#FBD8E6;flex:none;}
+
+  /* size ladder */
+  .ladder{display:flex;align-items:center;gap:26px;flex-wrap:wrap;}
+  .rung{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .rung span{font-size:.68rem;color:var(--muted);font-variant-numeric:tabular-nums;}
+  .rung .frame{display:grid;place-items:center;padding:8px;border-radius:10px;
+    background:var(--stage);}
+
+  /* spec + source */
+  .spec{display:grid;grid-template-columns:1fr 1.15fr;gap:16px;}
+  @media (max-width:680px){.spec{grid-template-columns:1fr;}}
+  .swrow{display:flex;flex-direction:column;gap:2px;margin-bottom:14px;}
+  .swatches{display:flex;gap:10px;}
+  .sw{flex:1;height:46px;border-radius:10px;border:1px solid var(--line);
+    display:flex;align-items:flex-end;padding:6px;}
+  .sw code{font-family:var(--mono);font-size:.6rem;background:rgba(255,255,255,.72);
+    color:#3A2530;padding:1px 4px;border-radius:4px;}
+  .notes{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:9px;}
+  .notes li{font-size:.86rem;color:var(--muted);padding-left:18px;position:relative;}
+  .notes li::before{content:"";position:absolute;left:0;top:.5em;width:7px;height:7px;
+    border-radius:2px;background:var(--rose);}
+  .notes li b{color:var(--text);font-weight:600;}
+  textarea.code{width:100%;height:220px;resize:vertical;border-radius:12px;
+    border:1px solid var(--line);background:var(--stage);color:var(--text);
+    font-family:var(--mono);font-size:.72rem;line-height:1.5;padding:14px;
+    white-space:pre;overflow:auto;}
+  .hint{font-size:.74rem;color:var(--muted);margin:8px 0 0;}
+
+  footer{margin-top:56px;border-top:1px solid var(--line);padding-top:20px;
+    color:var(--muted);font-size:.84rem;}
+</style>
+
+<!-- ================= symbol library ================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <path id="hp" transform="translate(5 4) scale(2.25)" d="M12 21.35 l-1.45 -1.32 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41 0.81 4.5 2.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 c0 3.78 -3.4 6.86 -8.55 11.54 Z"/>
+    <clipPath id="hc">
+      <path transform="translate(5 4) scale(2.25)" d="M12 21.35 l-1.45 -1.32 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41 0.81 4.5 2.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 c0 3.78 -3.4 6.86 -8.55 11.54 Z"/>
+    </clipPath>
+    <mask id="hm">
+      <rect width="64" height="64" fill="#000"/>
+      <path transform="translate(5 4) scale(2.25)" d="M12 21.35 l-1.45 -1.32 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41 0.81 4.5 2.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 c0 3.78 -3.4 6.86 -8.55 11.54 Z" fill="#fff"/>
+      <line x1="14" y1="32" x2="50" y2="32" stroke="#000" stroke-width="3.4" stroke-linecap="round"/>
+      <rect x="27" y="29.3" width="10" height="5.4" rx="2.7" fill="#000"/>
+    </mask>
+    <linearGradient id="tg" x1="0" y1="0" x2="0.25" y2="1">
+      <stop offset="0" stop-color="#C7588A"/><stop offset="1" stop-color="#7C2350"/>
+    </linearGradient>
+    <radialGradient id="th" cx="0.3" cy="0.22" r="0.92">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.30"/>
+      <stop offset="0.6" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- A · Signature two-tone -->
+  <symbol id="hw-sig" viewBox="0 0 64 64">
+    <g clip-path="url(#hc)">
+      <rect x="0" y="0" width="64" height="32" fill="#FBE5EE"/>
+      <rect x="0" y="32" width="64" height="32" fill="#EA8AB3"/>
+    </g>
+    <use href="#hp" fill="none" stroke="#8B2A57" stroke-width="1.25" stroke-linejoin="round"/>
+    <line x1="14" y1="32" x2="50" y2="32" stroke="#8B2A57" stroke-width="2.6" stroke-linecap="round"/>
+    <rect x="27" y="29.3" width="10" height="5.4" rx="2.7" fill="#FBE5EE" stroke="#8B2A57" stroke-width="2"/>
+  </symbol>
+
+  <!-- B · Solid bold -->
+  <symbol id="hw-solid" viewBox="0 0 64 64">
+    <g clip-path="url(#hc)"><rect width="64" height="64" fill="#EA8AB3"/></g>
+    <use href="#hp" fill="none" stroke="#8B2A57" stroke-width="1.25" stroke-linejoin="round"/>
+    <line x1="14" y1="32" x2="50" y2="32" stroke="#FFF7F4" stroke-width="2.6" stroke-linecap="round"/>
+    <rect x="27" y="29.3" width="10" height="5.4" rx="2.7" fill="#FFF7F4"/>
+  </symbol>
+
+  <!-- C · Peso clasp -->
+  <symbol id="hw-peso" viewBox="0 0 64 64">
+    <g clip-path="url(#hc)">
+      <rect x="0" y="0" width="64" height="32" fill="#FBE5EE"/>
+      <rect x="0" y="32" width="64" height="32" fill="#EA8AB3"/>
+    </g>
+    <use href="#hp" fill="none" stroke="#8B2A57" stroke-width="1.25" stroke-linejoin="round"/>
+    <line x1="14" y1="32" x2="50" y2="32" stroke="#8B2A57" stroke-width="2.6" stroke-linecap="round"/>
+    <circle cx="32" cy="32" r="6.4" fill="#FFF7F4" stroke="#8B2A57" stroke-width="2"/>
+    <text x="32" y="32.4" text-anchor="middle" dominant-baseline="central"
+      font-family="Georgia, serif" font-weight="700" font-size="8.6" fill="#8B2A57">&#8369;</text>
+  </symbol>
+
+  <!-- D · Monochrome stencil -->
+  <symbol id="hw-mono" viewBox="0 0 64 64">
+    <rect width="64" height="64" fill="currentColor" mask="url(#hm)"/>
+  </symbol>
+
+  <!-- Launcher tile (adaptive) -->
+  <symbol id="hw-tile" viewBox="0 0 64 64">
+    <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#tg)"/>
+    <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#th)"/>
+    <g transform="translate(32 32) scale(0.72) translate(-32 -32)">
+      <rect width="64" height="64" fill="#FFF7F4" mask="url(#hm)"/>
+    </g>
+  </symbol>
+</svg>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div>
+      <p class="eyebrow">Love, Ipon · direction 04, developed</p>
+      <h1>The wallet <span>is</span> the heart.</h1>
+      <p class="lede">One silhouette carrying the whole idea — <b>heart as the billfold, a fold crease, a clasp, a rose lower flap</b>. No literal cash needed; the shape reads as "wallet" and "love" at once, and holds up from a 512px store tile down to a 16px favicon.</p>
+    </div>
+    <div class="hero-stage">
+      <svg viewBox="0 0 64 64" role="img" aria-label="Heart-shaped wallet symbol"><use href="#hw-sig"/></svg>
+    </div>
+  </div>
+
+  <!-- EXECUTIONS -->
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">Pick the execution</p>
+      <h2>Four ways to close the wallet</h2>
+      <p>Same silhouette, four finishes for the clasp and fill. Tell me which detail to lock — they can also mix (e.g. solid fill with the peso clasp).</p>
+    </div>
+    <div class="execs">
+      <article class="exec">
+        <div class="pad"><svg viewBox="0 0 64 64" role="img" aria-label="Signature two-tone"><use href="#hw-sig"/></svg></div>
+        <div class="tag">Recommended</div>
+        <h3>Signature</h3>
+        <p>Two-tone fold + pill clasp. The full brand story.</p>
+      </article>
+      <article class="exec">
+        <div class="pad"><svg viewBox="0 0 64 64" role="img" aria-label="Solid bold"><use href="#hw-solid"/></svg></div>
+        <div class="tag">Punchy</div>
+        <h3>Solid</h3>
+        <p>One rose fill, cream crease. Loudest at tiny sizes.</p>
+      </article>
+      <article class="exec">
+        <div class="pad"><svg viewBox="0 0 64 64" role="img" aria-label="Peso clasp"><use href="#hw-peso"/></svg></div>
+        <div class="tag">Local</div>
+        <h3>Peso clasp</h3>
+        <p>Snap becomes a ₱ coin — quietly Filipino finance.</p>
+      </article>
+      <article class="exec mono">
+        <div class="pad"><svg viewBox="0 0 64 64" role="img" aria-label="Monochrome stencil"><use href="#hw-mono"/></svg></div>
+        <div class="tag">Utility</div>
+        <h3>Monochrome</h3>
+        <p>Single-color stencil for nav, status bar, themed icons.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- IN CONTEXT -->
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">In context</p>
+      <h2>Where it has to work</h2>
+      <p>The symbol only earns its keep if it survives the launcher, the notification tray, and a favicon. Here it is in each.</p>
+    </div>
+
+    <div class="ctx">
+      <div class="panel">
+        <p class="cap">Home screen · adaptive launcher</p>
+        <div class="homerow">
+          <div class="ph" style="width:44px"></div>
+          <svg width="76" height="76" viewBox="0 0 64 64" role="img" aria-label="App launcher tile"><use href="#hw-tile"/></svg>
+          <div class="ph" style="width:44px"></div>
+          <div class="ph" style="width:44px"></div>
+        </div>
+        <p class="hint">Mark knocked out in cream on a plum→rose tile; crease shows the gradient through. Sits inside the 66% adaptive safe zone.</p>
+      </div>
+
+      <div class="panel">
+        <p class="cap">Store &amp; launcher sizes</p>
+        <div class="tiles">
+          <svg width="88" height="88" viewBox="0 0 64 64" aria-hidden="true"><use href="#hw-tile"/></svg>
+          <svg width="56" height="56" viewBox="0 0 64 64" aria-hidden="true"><use href="#hw-tile"/></svg>
+          <svg width="40" height="40" viewBox="0 0 64 64" aria-hidden="true"><use href="#hw-tile"/></svg>
+        </div>
+        <p class="hint">512 · 192 · 48 dp — reads clean the whole way down.</p>
+      </div>
+    </div>
+
+    <div class="ctx" style="margin-top:16px">
+      <div class="reverse">
+        <svg class="chip" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><use href="#hw-mono"/></svg>
+        <div>
+          <p class="lbl">Themed icon · dark</p>
+          <p class="txt">The monochrome layer flips to blush on dark — matches Android 13+ themed icons and notification tint.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="cap">Favicon ladder · signature</p>
+        <div class="ladder">
+          <div class="rung"><div class="frame"><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><use href="#hw-sig"/></svg></div><span>64</span></div>
+          <div class="rung"><div class="frame"><svg width="40" height="40" viewBox="0 0 64 64" aria-hidden="true"><use href="#hw-sig"/></svg></div><span>40</span></div>
+          <div class="rung"><div class="frame"><svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><use href="#hw-sig"/></svg></div><span>28</span></div>
+          <div class="rung"><div class="frame"><svg width="20" height="20" viewBox="0 0 64 64" aria-hidden="true"><use href="#hw-sig"/></svg></div><span>20</span></div>
+          <div class="rung"><div class="frame"><svg width="16" height="16" viewBox="0 0 64 64" aria-hidden="true"><use href="#hw-sig"/></svg></div><span>16</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SPEC -->
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">Spec</p>
+      <h2>Colors, construction &amp; source</h2>
+    </div>
+    <div class="spec">
+      <div>
+        <div class="swrow">
+          <div class="swatches">
+            <div class="sw" style="background:#8B2A57"><code>#8B2A57</code></div>
+            <div class="sw" style="background:#EA8AB3"><code>#EA8AB3</code></div>
+            <div class="sw" style="background:#FBE5EE"><code>#FBE5EE</code></div>
+            <div class="sw" style="background:#FFF7F4"><code>#FFF7F4</code></div>
+          </div>
+        </div>
+        <ul class="notes">
+          <li><b>Plum</b> outline &amp; ink · <b>Rose</b> lower flap · <b>Blush</b> upper body · <b>Cream</b> knockout/cash.</li>
+          <li>Built on a <b>64×64</b> grid; one heart path scaled ×2.25, centered.</li>
+          <li><b>Crease at the mid-line</b> splits body from flap — the only horizontal, so it reads as a fold, not decoration.</li>
+          <li>Stroke stays <b>~2.8px optical</b> at 64 — thick enough to hold at favicon scale.</li>
+          <li>Monochrome layer uses a <b>mask</b> (crease + clasp are negative space) so it's a true 1-color stencil.</li>
+        </ul>
+      </div>
+      <div>
+        <textarea class="code" readonly spellcheck="false"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">
+  <defs>
+    <clipPath id="hc">
+      <path transform="translate(5 4) scale(2.25)"
+        d="M12 21.35 l-1.45 -1.32 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41 0.81 4.5 2.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 c0 3.78 -3.4 6.86 -8.55 11.54 Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#hc)">
+    <rect x="0" y="0" width="64" height="32" fill="#FBE5EE"/>
+    <rect x="0" y="32" width="64" height="32" fill="#EA8AB3"/>
+  </g>
+  <path transform="translate(5 4) scale(2.25)"
+    d="M12 21.35 l-1.45 -1.32 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41 0.81 4.5 2.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 c0 3.78 -3.4 6.86 -8.55 11.54 Z"
+    fill="none" stroke="#8B2A57" stroke-width="1.25" stroke-linejoin="round"/>
+  <line x1="14" y1="32" x2="50" y2="32" stroke="#8B2A57" stroke-width="2.6" stroke-linecap="round"/>
+  <rect x="27" y="29.3" width="10" height="5.4" rx="2.7" fill="#FBE5EE" stroke="#8B2A57" stroke-width="2"/>
+</svg></textarea>
+        <p class="hint">Signature mark, self-contained. Copy straight out — same file also saved as <code>heart-wallet-signature.svg</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Direction 04 developed · signature / solid / peso / monochrome + adaptive tile. Original artwork for Love, Ipon.
+  </footer>
+</div>

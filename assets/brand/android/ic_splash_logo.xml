@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Heart-Wallet foreground: the two-tone "Signature" mark (blush body +
-     rose flap, plum outline, fold crease and clasp). Authored on a 64-grid,
-     scaled x1.35 + centered into the 108 adaptive safe zone. -->
+<!-- Splash-screen logo: the two-tone "Signature" Heart-Wallet on a TRANSPARENT
+     background (no plum tile), so it floats on windowSplashScreenBackground.
+     108-grid with extra padding to sit inside the Android 12 splash icon area. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -9,10 +9,10 @@
     android:viewportHeight="108">
     <group
         android:name="fit"
-        android:scaleX="1.08"
-        android:scaleY="1.08"
-        android:translateX="19.44"
-        android:translateY="19.44">
+        android:scaleX="1.15"
+        android:scaleY="1.15"
+        android:translateX="17.2"
+        android:translateY="17.2">
         <group>
             <clip-path
                 android:pathData="M32,52.04 l-3.26,-2.97 C17.15,38.56 9.5,31.63 9.5,23.13 C9.5,16.2 14.95,10.75 21.88,10.75 c3.92,0 7.67,1.82 10.13,4.7 C34.45,12.57 38.21,10.75 42.13,10.75 C49.06,10.75 54.5,16.2 54.5,23.13 c0,8.51 -7.65,15.44 -19.24,25.97 Z" />

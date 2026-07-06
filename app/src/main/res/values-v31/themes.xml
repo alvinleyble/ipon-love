@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- API 31+ splash screen. The launch icon defaults to the full adaptive
+         launcher (dark-plum tile); override it so the splash shows the logo on
+         a TRANSPARENT background over the app's window color instead. -->
+    <style name="Theme.IponLove" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/seed_background</item>
+        <item name="android:windowSplashScreenBackground">@color/seed_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+    </style>
+</resources>

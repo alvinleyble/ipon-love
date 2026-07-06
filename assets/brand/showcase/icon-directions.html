@@ -1,0 +1,255 @@
+<title>Love, Ipon — Icon Directions</title>
+<style>
+  :root {
+    --ground:#FFF8FB; --panel:#FFFFFF; --stage:#FCEDF3;
+    --text:#3A2530; --muted:#916B7A; --line:#F1DAE3;
+    --plum:#8B2A57; --rose:#EA8AB3; --blush:#FBE5EE; --cream:#FFF7F4;
+    --ink:#8B2A57;                 /* monoline stroke color */
+    --shadow:rgba(139,42,87,.16);
+    --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ground:#150B10; --panel:#221321; --stage:#2C1826;
+      --text:#F7E7EF; --muted:#C69FB2; --line:#3A2130;
+      --ink:#FBD8E6; --shadow:rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="light"]{
+    --ground:#FFF8FB; --panel:#FFFFFF; --stage:#FCEDF3;
+    --text:#3A2530; --muted:#916B7A; --line:#F1DAE3;
+    --ink:#8B2A57; --shadow:rgba(139,42,87,.16);
+  }
+  :root[data-theme="dark"]{
+    --ground:#150B10; --panel:#221321; --stage:#2C1826;
+    --text:#F7E7EF; --muted:#C69FB2; --line:#3A2130;
+    --ink:#FBD8E6; --shadow:rgba(0,0,0,.45);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--text);
+    font-family:var(--sans);line-height:1.55;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:940px;margin:0 auto;padding:56px 24px 72px;}
+
+  header{max-width:640px;margin-bottom:40px;}
+  .eyebrow{font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--rose);font-weight:600;margin:0 0 14px;}
+  h1{font-family:var(--serif);font-weight:600;font-style:italic;
+    font-size:clamp(2rem,5vw,2.9rem);line-height:1.08;margin:0 0 16px;
+    letter-spacing:-.01em;text-wrap:balance;color:var(--text);}
+  h1 span{font-style:normal;color:var(--plum);}
+  @media (prefers-color-scheme: dark){h1 span{color:var(--rose);}}
+  :root[data-theme="dark"] h1 span{color:var(--rose);}
+  :root[data-theme="light"] h1 span{color:var(--plum);}
+  .lede{font-size:1.02rem;color:var(--muted);margin:0;max-width:60ch;text-wrap:pretty;}
+  .lede b{color:var(--text);font-weight:600;}
+
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;margin-top:8px;}
+  @media (max-width:640px){.grid{grid-template-columns:1fr;}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;
+    padding:14px;display:flex;flex-direction:column;gap:16px;
+    box-shadow:0 1px 0 var(--line);}
+  .stage{position:relative;border-radius:14px;overflow:hidden;
+    background:
+      radial-gradient(120% 120% at 30% 22%, color-mix(in srgb, var(--stage) 60%, #fff 12%), var(--stage));
+    aspect-ratio:16/11;display:grid;place-items:center;}
+  .stage.line{color:var(--ink);}
+  .mark{width:132px;height:132px;filter:drop-shadow(0 8px 16px var(--shadow));}
+  .stage.tile .mark{filter:drop-shadow(0 10px 22px var(--shadow));}
+
+  .meta{padding:2px 8px 8px;display:flex;flex-direction:column;gap:8px;}
+  .role{align-self:flex-start;font-size:.66rem;letter-spacing:.16em;
+    text-transform:uppercase;font-weight:600;color:var(--plum);
+    background:var(--blush);border-radius:999px;padding:4px 11px;}
+  @media (prefers-color-scheme: dark){.role{color:var(--rose);background:color-mix(in srgb,var(--rose) 16%,transparent);}}
+  :root[data-theme="dark"] .role{color:var(--rose);background:color-mix(in srgb,var(--rose) 16%,transparent);}
+  :root[data-theme="light"] .role{color:var(--plum);background:var(--blush);}
+  .meta h2{font-family:var(--serif);font-size:1.28rem;font-weight:600;
+    margin:2px 0 0;letter-spacing:-.01em;}
+  .meta p{margin:0;color:var(--muted);font-size:.9rem;}
+
+  .sizes{display:flex;align-items:center;gap:14px;margin-top:6px;
+    padding-top:14px;border-top:1px solid var(--line);}
+  .sizes.line{color:var(--ink);}
+  .mini{width:34px;height:34px;}
+  .mini.xs{width:20px;height:20px;}
+  .sizes-note{margin-left:auto;font-size:.72rem;color:var(--muted);
+    font-variant-numeric:tabular-nums;letter-spacing:.02em;}
+
+  footer{margin-top:40px;color:var(--muted);font-size:.85rem;
+    display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;
+    border-top:1px solid var(--line);padding-top:20px;}
+  .swatches{display:flex;gap:8px;align-items:center;}
+  .sw{width:16px;height:16px;border-radius:5px;border:1px solid var(--line);}
+</style>
+
+<!-- ============ hidden symbol library ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="tileGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C05585"/>
+      <stop offset="1" stop-color="#7E2450"/>
+    </linearGradient>
+    <radialGradient id="tileHi" cx="0.3" cy="0.2" r="0.9">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="0.62" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="heartClip">
+      <path transform="translate(5 3) scale(2.25)" d="M12 21.35 l-1.45 -1.32 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41 0.81 4.5 2.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 c0 3.78 -3.4 6.86 -8.55 11.54 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- 01 · Classic wallet (duotone, faithful to reference) -->
+  <symbol id="ico-classic" viewBox="0 0 64 64">
+    <g transform="rotate(-10 34 16)">
+      <rect x="24" y="8" width="20" height="15" rx="2.5" fill="#FFF7F4" stroke="#8B2A57" stroke-width="2"/>
+      <circle cx="34" cy="15.5" r="2.3" fill="none" stroke="#8B2A57" stroke-width="1.6"/>
+    </g>
+    <rect x="45" y="33" width="12" height="12" rx="5" fill="#FBE5EE" stroke="#8B2A57" stroke-width="2"/>
+    <rect x="8" y="22" width="41" height="28" rx="6" fill="#FBE5EE" stroke="#8B2A57" stroke-width="2.4"/>
+    <circle cx="52.5" cy="39" r="2.6" fill="none" stroke="#8B2A57" stroke-width="2"/>
+    <g transform="translate(17.46 25.96) scale(0.92)">
+      <path d="M12 21.35 l-1.45 -1.32 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41 0.81 4.5 2.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 c0 3.78 -3.4 6.86 -8.55 11.54 Z"
+        fill="#EA8AB3" stroke="#8B2A57" stroke-width="2.2" stroke-linejoin="round"/>
+    </g>
+  </symbol>
+
+  <!-- 02 · Monoline (single-weight, adapts to any ink color) -->
+  <symbol id="ico-line" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+      <g transform="rotate(-10 34 16)">
+        <rect x="26" y="9" width="17" height="14" rx="2.5"/>
+      </g>
+      <rect x="8" y="22" width="41" height="28" rx="6"/>
+      <circle cx="44" cy="36" r="3"/>
+      <g transform="translate(17.46 25.96) scale(0.92)">
+        <path d="M12 21.35 l-1.45 -1.32 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41 0.81 4.5 2.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 c0 3.78 -3.4 6.86 -8.55 11.54 Z"
+          stroke-width="2.6"/>
+      </g>
+    </g>
+  </symbol>
+
+  <!-- 03 · App tile (launcher / Play Store treatment) -->
+  <symbol id="ico-tile" viewBox="0 0 64 64">
+    <rect x="3" y="3" width="58" height="58" rx="16" fill="url(#tileGrad)"/>
+    <rect x="3" y="3" width="58" height="58" rx="16" fill="url(#tileHi)"/>
+    <g transform="rotate(-10 34 20)">
+      <rect x="27" y="13" width="16" height="12" rx="2" fill="#FFFFFF" opacity="0.5"/>
+    </g>
+    <rect x="15" y="26" width="33" height="22" rx="5.5" fill="#FFF7F4"/>
+    <rect x="44" y="32" width="9" height="10" rx="4.5" fill="#F4CBDC"/>
+    <circle cx="50" cy="37" r="1.9" fill="#8B2A57"/>
+    <g transform="translate(21 28) scale(0.72)">
+      <path d="M12 21.35 l-1.45 -1.32 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41 0.81 4.5 2.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 c0 3.78 -3.4 6.86 -8.55 11.54 Z"
+        fill="#EA8AB3"/>
+    </g>
+  </symbol>
+
+  <!-- 04 · Heart-wallet (the wallet IS the heart — two-tone symbol) -->
+  <symbol id="ico-heart" viewBox="0 0 64 64">
+    <g clip-path="url(#heartClip)">
+      <rect x="0" y="0" width="64" height="30" fill="#FBE5EE"/>
+      <rect x="0" y="30" width="64" height="34" fill="#EA8AB3"/>
+    </g>
+    <g transform="translate(5 3) scale(2.25)">
+      <path d="M12 21.35 l-1.45 -1.32 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41 0.81 4.5 2.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 c0 3.78 -3.4 6.86 -8.55 11.54 Z"
+        fill="none" stroke="#8B2A57" stroke-width="1.2" stroke-linejoin="round"/>
+    </g>
+    <line x1="14" y1="30" x2="50" y2="30" stroke="#8B2A57" stroke-width="2.6" stroke-linecap="round"/>
+    <rect x="28" y="26.5" width="8" height="7" rx="3.5" fill="#FBE5EE" stroke="#8B2A57" stroke-width="2.2"/>
+  </symbol>
+</svg>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Love, Ipon · brand mark</p>
+    <h1>A wallet that keeps <span>a little love</span> inside.</h1>
+    <p class="lede">Four original directions on the same idea — a wallet holding cash, marked with a heart — drawn fresh and tuned to the app's <b>plum &amp; blush</b> palette. Each is one 64×64 SVG that stays legible down to favicon size.</p>
+  </header>
+
+  <div class="grid">
+
+    <article class="card">
+      <div class="stage">
+        <svg class="mark" viewBox="0 0 64 64" role="img" aria-label="Filled wallet with a heart and cash">
+          <use href="#ico-classic"/></svg>
+      </div>
+      <div class="meta">
+        <span class="role">Duotone</span>
+        <h2>Classic Wallet</h2>
+        <p>The faithful read: filled wallet, peeking bill, heart clasp. Warmest and most literal — best for onboarding and marketing.</p>
+        <div class="sizes">
+          <svg class="mini" viewBox="0 0 64 64" aria-hidden="true"><use href="#ico-classic"/></svg>
+          <svg class="mini xs" viewBox="0 0 64 64" aria-hidden="true"><use href="#ico-classic"/></svg>
+          <span class="sizes-note">132 · 34 · 20 px</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="stage line">
+        <svg class="mark" viewBox="0 0 64 64" role="img" aria-label="Outline wallet with a heart">
+          <use href="#ico-line"/></svg>
+      </div>
+      <div class="meta">
+        <span class="role">Monoline</span>
+        <h2>Outline</h2>
+        <p>Single-weight stroke that inherits its color from context — flips plum on light, blush on dark. Ideal for nav bars, empty states, tabs.</p>
+        <div class="sizes line">
+          <svg class="mini" viewBox="0 0 64 64" aria-hidden="true"><use href="#ico-line"/></svg>
+          <svg class="mini xs" viewBox="0 0 64 64" aria-hidden="true"><use href="#ico-line"/></svg>
+          <span class="sizes-note">132 · 34 · 20 px</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="stage tile">
+        <svg class="mark" viewBox="0 0 64 64" role="img" aria-label="App launcher tile with wallet and heart">
+          <use href="#ico-tile"/></svg>
+      </div>
+      <div class="meta">
+        <span class="role">App tile</span>
+        <h2>Launcher</h2>
+        <p>Rounded-square treatment on a plum→rose gradient for the home-screen icon and Play Store listing. The mark reversed in cream.</p>
+        <div class="sizes">
+          <svg class="mini" viewBox="0 0 64 64" aria-hidden="true"><use href="#ico-tile"/></svg>
+          <svg class="mini xs" viewBox="0 0 64 64" aria-hidden="true"><use href="#ico-tile"/></svg>
+          <span class="sizes-note">132 · 34 · 20 px</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="stage">
+        <svg class="mark" viewBox="0 0 64 64" role="img" aria-label="Wallet shaped like a heart">
+          <use href="#ico-heart"/></svg>
+      </div>
+      <div class="meta">
+        <span class="role">Symbol</span>
+        <h2>Heart-Wallet</h2>
+        <p>The most distilled: the wallet's silhouette <em>is</em> the heart, split by a fold and clasp. Confident at small sizes — a true app symbol.</p>
+        <div class="sizes">
+          <svg class="mini" viewBox="0 0 64 64" aria-hidden="true"><use href="#ico-heart"/></svg>
+          <svg class="mini xs" viewBox="0 0 64 64" aria-hidden="true"><use href="#ico-heart"/></svg>
+          <span class="sizes-note">132 · 34 · 20 px</span>
+        </div>
+      </div>
+    </article>
+
+  </div>
+
+  <footer>
+    <div class="swatches" aria-label="Palette">
+      <span class="sw" style="background:#8B2A57"></span>
+      <span class="sw" style="background:#EA8AB3"></span>
+      <span class="sw" style="background:#FBE5EE"></span>
+      <span class="sw" style="background:#FFF7F4"></span>
+    </div>
+    <span>Plum #8B2A57 · Rose #EA8AB3 · Blush #FBE5EE · Cream #FFF7F4</span>
+    <span style="margin-left:auto">Original artwork — inspired by, not copied from, the reference.</span>
+  </footer>
+</div>

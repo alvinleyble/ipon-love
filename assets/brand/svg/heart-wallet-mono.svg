@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">
+  <defs>
+    <mask id="hm">
+      <rect width="64" height="64" fill="#000"/>
+      <path transform="translate(5 4) scale(2.25)"
+        d="M12 21.35 l-1.45 -1.32 C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41 0.81 4.5 2.09 C13.09 3.81 14.76 3 16.5 3 C19.58 3 22 5.42 22 8.5 c0 3.78 -3.4 6.86 -8.55 11.54 Z" fill="#fff"/>
+      <line x1="14" y1="32" x2="50" y2="32" stroke="#000" stroke-width="3.4" stroke-linecap="round"/>
+      <rect x="27" y="29.3" width="10" height="5.4" rx="2.7" fill="#000"/>
+    </mask>
+  </defs>
+  <!-- single-color stencil: change fill to your ink color -->
+  <rect width="64" height="64" fill="#8B2A57" mask="url(#hm)"/>
+</svg>

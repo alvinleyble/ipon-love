@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Two-tone "Signature" Heart-Wallet mark for in-app use (splash, empty
+     states, About). Blush upper body + rose lower flap, plum outline,
+     fold crease and clasp. 64-grid; use android:tint sparingly (it flattens
+     the two tones, so prefer leaving it untinted on light surfaces). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <group>
+        <clip-path
+            android:pathData="M32,52.04 l-3.26,-2.97 C17.15,38.56 9.5,31.63 9.5,23.13 C9.5,16.2 14.95,10.75 21.88,10.75 c3.92,0 7.67,1.82 10.13,4.7 C34.45,12.57 38.21,10.75 42.13,10.75 C49.06,10.75 54.5,16.2 54.5,23.13 c0,8.51 -7.65,15.44 -19.24,25.97 Z" />
+        <path android:fillColor="#FBE5EE" android:pathData="M0,0 L64,0 L64,32 L0,32 Z" />
+        <path android:fillColor="#EA8AB3" android:pathData="M0,32 L64,32 L64,64 L0,64 Z" />
+    </group>
+    <path
+        android:strokeColor="#8B2A57"
+        android:strokeWidth="2.6"
+        android:strokeLineJoin="round"
+        android:pathData="M32,52.04 l-3.26,-2.97 C17.15,38.56 9.5,31.63 9.5,23.13 C9.5,16.2 14.95,10.75 21.88,10.75 c3.92,0 7.67,1.82 10.13,4.7 C34.45,12.57 38.21,10.75 42.13,10.75 C49.06,10.75 54.5,16.2 54.5,23.13 c0,8.51 -7.65,15.44 -19.24,25.97 Z" />
+    <path
+        android:strokeColor="#8B2A57"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:pathData="M14,32 L50,32" />
+    <path
+        android:fillColor="#FBE5EE"
+        android:strokeColor="#8B2A57"
+        android:strokeWidth="2"
+        android:pathData="M29.7,29.3 h4.6 a2.7,2.7 0 0 1 0,5.4 h-4.6 a2.7,2.7 0 0 1 0,-5.4 Z" />
+</vector>

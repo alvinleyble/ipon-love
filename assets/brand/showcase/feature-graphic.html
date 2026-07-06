@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  *{margin:0;padding:0;border:0;box-sizing:border-box}
+  html,body{width:1024px;height:500px;overflow:hidden}
+  body{
+    position:relative;
+    display:flex;
+    align-items:center;
+    background:linear-gradient(135deg,#3A1727 0%,#1E0C15 100%);
+    font-family:"Baskerville","Hoefler Text",Georgia,serif;
+  }
+  /* warm glow behind the mark */
+  .glow{
+    position:absolute;left:-140px;top:-180px;
+    width:760px;height:760px;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(234,138,179,.18),rgba(234,138,179,0) 70%);
+    pointer-events:none;
+  }
+  /* faint oversized brand mark bleeding off the right edge */
+  .deco{
+    position:absolute;right:-150px;top:20px;
+    width:540px;height:540px;opacity:.09;
+    transform:rotate(-8deg);
+    pointer-events:none;
+  }
+  .lockup{
+    position:relative;
+    padding-left:96px;
+    display:flex;flex-direction:column;align-items:flex-start;gap:30px;
+  }
+  .text{display:flex;flex-direction:column;align-items:flex-start;gap:14px}
+  .word{
+    font-size:84px;line-height:1;color:#FFF7F4;
+    letter-spacing:.01em;white-space:nowrap;
+  }
+  .word .love{font-style:italic;font-weight:400}
+  .word .ipon{font-style:normal;font-weight:600}
+  .tag{
+    font-family:"Avenir Next","Avenir",-apple-system,system-ui,sans-serif;
+    font-size:27px;font-weight:600;color:#EA8AB3;
+    text-transform:uppercase;letter-spacing:.17em;white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+
+  <!-- decorative oversized outline -->
+  <svg class="deco" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+    <path d="M32,52.04 l-3.26,-2.97 C17.15,38.56 9.5,31.63 9.5,23.13 C9.5,16.2 14.95,10.75 21.88,10.75 c3.92,0 7.67,1.82 10.13,4.7 C34.45,12.57 38.21,10.75 42.13,10.75 C49.06,10.75 54.5,16.2 54.5,23.13 c0,8.51 -7.65,15.44 -19.24,25.97 Z"
+          fill="none" stroke="#EA8AB3" stroke-width="1.6" stroke-linejoin="round"/>
+    <line x1="14" y1="32" x2="50" y2="32" stroke="#EA8AB3" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>
+
+  <div class="lockup">
+    <!-- two-tone Signature Heart-Wallet mark -->
+    <svg width="132" height="132" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <clipPath id="hc">
+          <path d="M32,52.04 l-3.26,-2.97 C17.15,38.56 9.5,31.63 9.5,23.13 C9.5,16.2 14.95,10.75 21.88,10.75 c3.92,0 7.67,1.82 10.13,4.7 C34.45,12.57 38.21,10.75 42.13,10.75 C49.06,10.75 54.5,16.2 54.5,23.13 c0,8.51 -7.65,15.44 -19.24,25.97 Z"/>
+        </clipPath>
+      </defs>
+      <g clip-path="url(#hc)">
+        <rect x="0" y="0" width="64" height="32" fill="#FBE5EE"/>
+        <rect x="0" y="32" width="64" height="32" fill="#EA8AB3"/>
+      </g>
+      <path d="M32,52.04 l-3.26,-2.97 C17.15,38.56 9.5,31.63 9.5,23.13 C9.5,16.2 14.95,10.75 21.88,10.75 c3.92,0 7.67,1.82 10.13,4.7 C34.45,12.57 38.21,10.75 42.13,10.75 C49.06,10.75 54.5,16.2 54.5,23.13 c0,8.51 -7.65,15.44 -19.24,25.97 Z"
+            fill="none" stroke="#8B2A57" stroke-width="2.6" stroke-linejoin="round"/>
+      <line x1="14" y1="32" x2="50" y2="32" stroke="#8B2A57" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M29.7,29.3 h4.6 a2.7,2.7 0 0 1 0,5.4 h-4.6 a2.7,2.7 0 0 1 0,-5.4 Z"
+            fill="#FBE5EE" stroke="#8B2A57" stroke-width="2"/>
+    </svg>
+
+    <div class="text">
+      <div class="word"><span class="love">Love,</span> <span class="ipon">Ipon</span></div>
+      <div class="tag">Couples finance for everyone.</div>
+    </div>
+  </div>
+</body>
+</html>
