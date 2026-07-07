@@ -192,6 +192,32 @@ _Avoid_: recovery session, reset gate
 A flat 5-wrong-attempt threshold on the PIN path, followed by a 30-second timed cooldown. The counter persists in DataStore (survives a force-kill) and resets only on a successful unlock, never on elapsed time alone. "Forgot PIN" (email+password re-auth) stays available throughout as an opt-in escape hatch — the lockout never forces it. Biometric's OS-level lockout (`ERROR_LOCKOUT`/`ERROR_LOCKOUT_PERMANENT`) is surfaced with a message rather than silently falling back to the PIN pad. See ADR-0028.
 _Avoid_: PIN throttling, brute-force protection
 
+### Premium & gating
+
+**Entitlement**:
+Whether a user currently holds Premium, carried as `is_premium` + `premium_until` on the synced [[Couple|users]] row (one-time purchase ⇒ `premium_until = null`). The column is a **client-maintained cache of that user's own Play Billing state**, reconciled on every foreground `queryPurchasesAsync`. Trust is **asymmetric**: for your *own* entitlement Play Billing is authoritative (the column only mirrors it); for your *partner's*, the column is authoritative and trusted unconditionally, since a device cannot query the other Play account. No server verification in V1 (client-side only) — a rooted client can self-assert, and because shared surfaces unlock on `me.active || partner.active`, one partner's spoof unlocks the joint features for both. Accepted as bounded because every gated item is cosmetic / a [[Cap count]] / ad-removal with **zero server cost**. **Known prerequisite:** the first server-cost feature (AI companion) must add Play RTDN → server-side purchase verification *before* it can gate on entitlement; Alvin intends to add AI eventually, so this is a scheduled, not hypothetical, addition. See ADR-0044.
+_Avoid_: subscription status, license, premium flag (as the source of truth — Play is)
+
+**Enforcement**:
+The global master switch for the entire paywall (`enforcement_enabled`, a remote `app_config` row cached in Room), orthogonal to per-user [[Entitlement]]. OFF ⇒ every gate is inert and *all* users are fully unlocked regardless of entitlement — the app ships this way (dormant infra, kill-switch OFF). Flipping it ON (Alvin's explicit go, no app release) wakes the gates: `shouldLock(feature) = enforcement_enabled && !hasAccess(feature)`. Cold-start is **fail-open**: a device that does not yet know enforcement is ON (fresh offline install, no sync) treats it as OFF and stays unlocked, self-healing on first foreground sync — so a paying customer reinstalling offline is never wrongly locked.
+_Avoid_: paywall flag, feature flag (too generic), gating switch
+
+**Effective access**:
+Whether a gate lets an action through. Resolved from the ownership of the **specific row being gated**, not from a per-feature constant: a row attached to a couple-owned entity (`couple_id` set) is a **shared surface** → unlocked when `me.active || partner.active` (D1); a row attached to a single user, or a feature attached to no entity at all (calculator, palettes, no-ads, deep history), is **individual** → `me.active`. Consequence: the same feature can resolve differently per instance — [[Rollover (budget)]] on a personal budget is individual, on the shared couple budget is shared. The §10.1 individual/shared tags are common-case defaults; ownership of the actual row is the rule.
+_Avoid_: has-access, is-unlocked (as if global), per-feature scope
+
+**Freeze**:
+The lapse / over-cap policy for count-capped entities: rows beyond a free [[Cap count]] stay **visible and read-only** and are never deleted or hidden — only *new* creation past the cap is blocked (block-on-create, not block-on-exceed). [[Entitlement]] is a **pure client-side advisory layer**: it never gates sync, replication, or visibility, and caps are enforced best-effort at create-time in UseCases, never in Postgres — so concurrent cross-device creates can transiently exceed a cap, which freeze tolerates. Cosmetic state (theme palette) has no read-only form, so its one non-freeze rule is **revert-to-free-default**: on any [[Entitlement]]/[[Enforcement]] change the active palette is re-checked against [[Effective access]] and, if now locked, swapped to a free default — non-destructively (the chosen palette is remembered and auto-restores on re-unlock). Its main trigger is enforcement flip-day (every free user on a premium palette), not just refund. An unpair that pushes a user over a free cap (via [[Revert-to-creator]]) resolves as ordinary freeze.
+_Avoid_: lock, downgrade, revoke, read-only mode
+
+**Premium grant**:
+Comped [[Entitlement]] set server-side (a remote per-user override), distinct from a Play purchase — used for beta-tester comps (Alvin, Patty, `testdev2-5`) and as the primary "unlocked-path" test lane. Written straight to the user's synced row (`is_premium = true`, `premium_until = null` or a beta-end date, `entitlement_source = GRANT`) so it propagates to the partner and unlocks the couple's shared surfaces like any purchase. Because it has no Play purchase behind it, the foreground Play-reconcile loop **skips `GRANT` rows** — the one case where the device does *not* defer to Play, so a grant is never wiped by `queryPurchasesAsync` returning `NOT_OWNED`. Revoked by flipping the row back to `NONE`, after which normal Play reconciliation resumes.
+_Avoid_: comp, override flag, manual premium
+
+**Cap count**:
+The number of a given entity that counts against its free/premium limit. Defined uniformly as **all non-deleted rows of that entity** in the relevant scope (the user, or the [[Couple]] for shared entities) — **archived rows included**. An archived [[Shared account|account]], [[Shared category|category]], or [[Savings goal]] still counts, because it still carries value (its balance and its transactions remain in [[Analysis period|Analysis]]; the record persists). Only a [[Tombstone|soft-delete]] frees a slot — there is no un-delete affordance, so the count is ungameable. **Sole exception**: [[Partner debt]] counts un-settled entries only (a settled debt is a completed obligation, not held against the cap; see [[Settlement (debt)]]).
+_Avoid_: usage, quota, active count, slot
+
 ### Beta testing
 
 **Version-mismatch gate**:

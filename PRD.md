@@ -126,7 +126,7 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 
 ### 6.5 Customization & Themes (Personalize)
 
-- 6 named palettes: Rose, Mauve, Lavender, Peach, Sage, Mocha — exact free/subscriber-tier gating not yet decided (see §7 Monetization)
+- 6 named palettes: Rose, Mauve, Lavender, Peach, Sage, Mocha — **free = Rose + Peach; Premium = all six** (a locked active palette reverts to a free default on any entitlement/enforcement change — chiefly enforcement flip-day, not just refund — non-destructively, remembering the chosen palette for auto-restore; see §7 Monetization and `docs/build/subscription-paywall-design.md` §10.1 / §11 G8)
 - Light / dark mode is a separate toggle from palette — 12 combinations total
 - Personalize screen: visual swatch grid with live preview before applying
 - Couple attribution color (blue vs pink in combined view) is separate from personal theme palette; chosen during the pairing flow
@@ -148,13 +148,16 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 
 ## 7. Monetization
 
-### Model: Subscription (Play Store Subscription Billing)
-- Recurring subscription via Google Play Billing — supersedes the earlier one-time-purchase plan
-- Which features are free vs. subscriber-only (paywall/feature-gating design) is not yet decided — needs a grilling/design pass before implementation; see Post-V1 Horizon in `docs/build/project-build-progress.md`
+### Model: One-time purchase — ₱249 Premium (Google Play in-app product)
+- **One-time, non-recurring ₱249** purchase unlocks Premium (pivoted 2026-07-07; a brief 2026-07-06 subscription plan was reverted — one-time won on AI-cost + PH-market adoption)
+- **Generous free tier** — recording your own money is never gated; Premium sells higher caps, extra palettes, and delighters (calculator, recurring calendar, deep history)
+- **No ads** — the app stays ad-free on both tiers (ads dropped 2026-07-08, grill #5; reinforces the ad-free value prop in §1). `NO_ADS` is parked dormant only as a future option, not a launch lever
+- The free-vs-premium split and the offline-first entitlement/gating architecture are **designed & grilled** (couples-governance → either-partner-unlocks; lapse → freeze; entitlement cached on the synced `users` row as a client-trusted advisory column — **ADR-0044**). Full spec: `docs/build/subscription-paywall-design.md` (§9–§11); see Post-V1 Horizon in `docs/build/project-build-progress.md`
 
 ### Future: AI Add-On
-- Hybrid model, not pure BYOK: a capped, app-funded free tier (cheap model, small monthly allowance) for mass-market sub-features, since the target audience is non-technical and won't self-serve an API key
-- BYOK (bring your own key) offered as an opt-in unlock for unlimited/heavy use
+- **A separate add-on, not part of the one-time ₱249 Premium** — ongoing per-call cost can't be funded once-off (paywall doc D8). Positioned as its own thing so "Premium" never implies "unlimited AI."
+- **Hybrid credits model:** a starter AI allowance bundled with Premium (goodwill) + **consumable top-up credit packs** (secondary revenue) for continued use, with **BYOK** (bring-your-own-key) in Settings as the power-user escape hatch (zero marginal cost)
+- **Server-metered:** paid credits can't be tracked client-side, so AI calls proxy through a Supabase Edge Function that checks/decrements a server-authoritative credit balance before calling the provider (Gemini Flash / Claude Haiku / GPT-4o-mini — chosen at build time). Guardrails: on-device pre-aggregation (compact prompts, keeps financial data local) + per-feature cooldown. Deferred to Horizon #3
 
 ---
 
@@ -169,7 +172,7 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 
 ## 9. Future Enhancements (Post-V1)
 
-Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `ARCHITECTURE.md` (previously out of sync — see that doc's "Post-V1 Horizon" list, now 15 items after the 2026-07-06 subscription-monetization addition). Target quarters aren't duplicated here — `project-build-progress.md`'s Horizon list is the single source of truth for those.
+Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `ARCHITECTURE.md` (previously out of sync — see that doc's "Post-V1 Horizon" list, now 15 items after the 2026-07-06 monetization addition, re-pivoted to one-time ₱249 Premium 2026-07-07). Target quarters aren't duplicated here — `project-build-progress.md`'s Horizon list is the single source of truth for those.
 
 | Feature | Notes |
 |---|---|
@@ -186,7 +189,7 @@ Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `ARCHIT
 | Delete my account | Compliance/account-management requirement (likely a Play Store Data Safety item at prod); not a tester-facing feature |
 | Login rate limiting / lockout | Client-side cooldown for the Supabase Auth sign-in screen itself, separate from the existing local PIN lockout |
 | "Restart fresh" (reset finances) | Wipe transactions, recurring rules, budgets, and goal contributions from Settings without deleting the account or losing accounts/categories/notes; already fully designed (ADR-0037), ready to build |
-| Subscription paywall + feature gating | Pivot from one-time purchase to Google Play subscription billing; which features are free vs. subscriber-only not yet decided — greenfield, needs a design/grilling pass |
+| Premium paywall + feature gating | One-time ₱249 Google Play in-app purchase for Premium; free-vs-premium split + offline-first entitlement designed & grilled (see `docs/build/subscription-paywall-design.md`) — build infra dormant next, enforce post-beta |
 | Display-currency symbol (non-PHP) | Display-symbol-only, NOT multi-currency: swaps the ₱ glyph for another symbol, chosen at onboarding — no per-account currency, no FX conversion, all amounts stay one currency underneath |
 
 ---

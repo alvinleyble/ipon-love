@@ -405,7 +405,7 @@ Transaction entry → Add / Edit (bottom sheet modal over any tab)
 
 ## 10. Post-V1 Enhancements
 
-Not built in v1. Architecture must not block these. Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `PRD.md` (previously out of sync — see that doc's "Post-V1 Horizon" list, now 15 items after the 2026-07-06 subscription-monetization addition). Target quarters aren't duplicated here — `project-build-progress.md`'s Horizon list is the single source of truth for those.
+Not built in v1. Architecture must not block these. Reconciled 2026-07-05 against `docs/build/project-build-progress.md` and `PRD.md` (previously out of sync — see that doc's "Post-V1 Horizon" list, now 15 items after the 2026-07-06 monetization addition, re-pivoted to one-time ₱249 Premium 2026-07-07). Target quarters aren't duplicated here — `project-build-progress.md`'s Horizon list is the single source of truth for those.
 
 | Feature | Note |
 |---|---|
@@ -423,4 +423,4 @@ Not built in v1. Architecture must not block these. Reconciled 2026-07-05 agains
 | Login rate limiting / lockout | Decide whether Supabase's own server-side rate limiting already covers this or a client-side cooldown is also needed |
 | "Restart fresh" (reset finances) | `ResetFinancesUseCase` — owned-rows-only bulk soft-delete across transactions/recurring rules/budgets/goal contributions in a single Room `@Transaction`, then an interactive push; per ADR-0037 |
 | Display-currency symbol (non-PHP) | Display-symbol-only, NOT multi-currency: cosmetic setting that swaps the ₱ glyph, chosen at onboarding; combined view uses the viewer's own symbol, not reconciled across the couple |
-| Subscription paywall + feature gating | Google Play Billing Library integration; needs an entitlement-check/caching strategy that survives offline-first (app must stay usable without a live billing check every launch); which features are free vs. subscriber-only not yet decided |
+| Premium paywall + feature gating | One-time ₱249 Google Play in-app product; offline-first entitlement as a **client-trusted advisory column** (`is_premium`/`premium_until`/`entitlement_source`) on the synced `users` row — a cache of Play state, readable across the couple via the redacting view (either partner unlocks shared features), no live billing check per launch, fail-open cold-start, no server verification until AI (**ADR-0044**); `Feature`/`PlanLimits` choke point, gates in UseCases (hard) / ViewModels (soft), scope-follows-entity-ownership. Ad-free (ads dropped, grill #5). Designed & grilled — see `docs/build/subscription-paywall-design.md` §9–§11 |
