@@ -79,6 +79,7 @@ class TransactionsViewModel @Inject constructor(
                 ),
                 hasAnyTransactionEver = hasAnyEver,
                 canAdd = accounts.isNotEmpty(),
+                canGoToNextMonth = MonthWindow.canStepForward(month, today),
             )
         }.combine(isRefreshing) { state, refreshing -> state.copy(isRefreshing = refreshing) }
             .stateIn(
@@ -92,7 +93,10 @@ class TransactionsViewModel @Inject constructor(
     }
 
     fun nextMonth() {
-        viewedMonth.value = MonthWindow.step(viewedMonth.value, forward = true)
+        val current = viewedMonth.value
+        if (MonthWindow.canStepForward(current, LocalDate.now(ZONE))) {
+            viewedMonth.value = MonthWindow.step(current, forward = true)
+        }
     }
 
     fun sync() {

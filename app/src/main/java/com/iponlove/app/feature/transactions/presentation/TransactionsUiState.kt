@@ -19,6 +19,8 @@ data class TransactionsUiState(
     val hasAnyTransactionEver: Boolean = false,
     /** A transaction needs at least one account to exist. */
     val canAdd: Boolean = false,
+    /** False once paged to the current month — the ledger can't step into empty future months. */
+    val canGoToNextMonth: Boolean = false,
 )
 
 /** A transaction rendered for the list, with account/category ids resolved to names. */

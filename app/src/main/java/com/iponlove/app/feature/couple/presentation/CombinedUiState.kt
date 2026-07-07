@@ -20,6 +20,8 @@ data class CombinedUiState(
     val members: List<MemberSpend> = emptyList(),
     val dayGroups: List<DayGrouping.DayGroup<CombinedEntry>> = emptyList(),
     val hasAnySharedActivityEver: Boolean = false,
+    /** False once paged to the current month — the ledger can't step into empty future months. */
+    val canGoToNextMonth: Boolean = false,
     /** The couple's joint budget for the displayed month, or null if none is set yet. */
     val coupleBudget: CoupleBudgetUi? = null,
     /** Non-null while the set/edit budget dialog is open. */

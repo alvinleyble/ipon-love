@@ -2,6 +2,7 @@ package com.iponlove.app.core.date
 
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 
 /**
@@ -29,5 +30,14 @@ data class MonthWindow(
         /** Moves [monthStart] one whole month; [forward] = true is later, false is earlier. */
         fun step(monthStart: LocalDate, forward: Boolean): LocalDate =
             monthStart.plusMonths(if (forward) 1L else -1L)
+
+        /**
+         * True when [monthStart]'s month is strictly before [today]'s — i.e. paging forward is
+         * still allowed. The Records and Combined ledgers cap forward stepping at the current
+         * month so they can't page into empty future months (backward is always allowed; premium
+         * "deeper past" is a separate gating concern). Budgets/recurring keep future navigation.
+         */
+        fun canStepForward(monthStart: LocalDate, today: LocalDate): Boolean =
+            YearMonth.from(monthStart) < YearMonth.from(today)
     }
 }

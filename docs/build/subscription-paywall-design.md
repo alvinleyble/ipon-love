@@ -466,7 +466,7 @@ The ordered, self-contained slice plan for the dormant-infra build. **We clear c
 **Sequencing rule — one-concern-per-commit HOLDS.** The paywall is ~a dozen vertical slices, **never one commit**. Wire-only gates are grouped **by mechanism, not by feature** (e.g. all personal count-caps = one slice), never bundling unrelated gates. Everything ships **dormant (enforcement OFF)** — nothing locks until Alvin's explicit post-beta go. Model: **Opus** for Phase 1 (S2/S4 are the cross-ADR core); **Sonnet** for the wire-only gates once the pattern is locked.
 
 **Phase 0 — base behaviors (no infra needed; build anytime, own commits):**
-- [ ] Item 2 — Records future-month cap ([v1.6.5.md](v1.6.5.md) Item 2)
+- [x] Item 2 — Records future-month cap ([v1.6.5.md](v1.6.5.md) Item 2) — **DONE 2026-07-08** (scope **Records + Combined**; `MonthWindow.canStepForward`; Analysis/Budgets/Recurring left steppable by design)
 - [ ] Item 3 — Analysis 3m/6m/All rolling ranges ([v1.6.5.md](v1.6.5.md) Item 3)
 - [ ] Item 4 — Notes char-limit *existence* ([v1.6.5.md](v1.6.5.md) Item 4)
 

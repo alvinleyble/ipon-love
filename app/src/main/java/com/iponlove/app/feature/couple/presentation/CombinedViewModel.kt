@@ -145,6 +145,7 @@ class CombinedViewModel @Inject constructor(
                     today = today,
                     isCurrentMonth = isCurrentMonth,
                 ),
+                canGoToNextMonth = MonthWindow.canStepForward(month, today),
                 coupleBudget = coupleBudget,
             )
         }
@@ -164,7 +165,10 @@ class CombinedViewModel @Inject constructor(
     }
 
     fun nextMonth() {
-        viewedMonth.value = MonthWindow.step(viewedMonth.value, forward = true)
+        val current = viewedMonth.value
+        if (MonthWindow.canStepForward(current, LocalDate.now(ZONE))) {
+            viewedMonth.value = MonthWindow.step(current, forward = true)
+        }
     }
 
     fun sync() {

@@ -77,6 +77,7 @@ fun CombinedBody(
                 label = state.monthLabel,
                 onPrevious = viewModel::previousMonth,
                 onNext = viewModel::nextMonth,
+                canGoNext = state.canGoToNextMonth,
             )
         }
         PullToRefreshBox(

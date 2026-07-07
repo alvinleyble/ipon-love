@@ -113,7 +113,12 @@ private fun TransactionsContent(
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             if (state.canAdd) {
-                MonthStepperRow(label = state.monthLabel, onPrevious = onPreviousMonth, onNext = onNextMonth)
+                MonthStepperRow(
+                    label = state.monthLabel,
+                    onPrevious = onPreviousMonth,
+                    onNext = onNextMonth,
+                    canGoNext = state.canGoToNextMonth,
+                )
             }
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,

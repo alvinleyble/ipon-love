@@ -27,6 +27,7 @@ fun MonthStepperRow(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
+    canGoNext: Boolean = true,
 ) {
     Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -41,7 +42,7 @@ fun MonthStepperRow(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
-        IconButton(onClick = onNext) {
+        IconButton(onClick = onNext, enabled = canGoNext) {
             Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next month")
         }
     }

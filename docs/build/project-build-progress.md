@@ -6,11 +6,11 @@
 
 ---
 
-## Current state (as of 2026-07-07)
+## Current state (as of 2026-07-08)
 
 **V1 through V1.6.4 are committed on `main`** (latest code: `a19e910` multi-image receipts). Per-item detail for every shipped batch lives in the version docs indexed below — this section tracks only what's *in flight*.
 
-**Nothing in flight.** [V1.6.4](v1.6.4.md) (4 items, all complete as of 2026-07-07): sign-out crash fix, photo-attachment display, attachment cap, and multi-image receipts. Code `a19e910`, staging migration `2026-07-07_transaction_images.sql` applied, on-device verified by Alvin.
+**In flight — the premium paywall build (Horizon #15),** following the [subscription-paywall-design.md](subscription-paywall-design.md) §12 slice plan (the resume-able tick-box build order). **Phase 0 · Item 2 (Records future-month cap) DONE:** the Records + Combined month steppers now cap forward paging at the current month via a shared, unit-tested `MonthWindow.canStepForward` predicate + a `canGoNext` flag on `MonthStepperRow` (Analysis/Budgets/Recurring left steppable by design). Also closes [v1.6.5.md](v1.6.5.md) Item 2. No Room/schema change. **Next unchecked slice:** §12 Phase 0 · Item 3 (Analysis 3m/6m/All rolling ranges).
 
 | Version | What | Doc |
 |---|---|---|
