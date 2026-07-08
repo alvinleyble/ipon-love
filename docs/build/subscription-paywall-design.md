@@ -213,7 +213,7 @@ Throughout, "**(max count is implicit)**" is Alvin's phrasing for *a ceiling hig
 | Area | Free | Premium | Gate type (§1.2) | Notes / tension to grill |
 |---|---|---|---|---|
 | **Ads** | Banner ads shown | No ads | Soft (entitlement toggles ad visibility) | Ties to §7. Free = ad-supported. Confirm we want ads at all (Q7.1). |
-| **Analysis — range stepper** | (current stepper) | **3m / 6m / All** quick-range | Hard gate on the longer ranges | *New capability, not just a gate* — see §8.3. Which ranges are free vs. paid? |
+| **Analysis — range tabs** | **1D / 1W / 1M** | **3M / 6M / 12M / ALL** | Soft gate on the *existing* longer tabs (tap → paywall) | **REVISED (2026-07-09):** gate the *existing* calendar tabs — **no** new "rolling window" build (that attempt was built 2026-07-08 then reverted as redundant). Free floor = 1D/1W/1M. See §8.4 item 2. |
 | **Records — recurring calendar** | Locked (blurred preview?) | Full recurring calendar | Soft gate w/ blurred upsell | "Maybe just blur it?" — presentation Q, see §8.2. |
 | **Records — month stepper depth** | back to **−12 months** | back to **−12 − n** (deep history) | Hard gate on depth | **DECIDED (2026-07-07):** no future beyond the current month; free = last 12mo; premium extends the past. Was uncapped both ways — net-new logic. See §8.2. |
 | **Add txn — paid for partner** | ? | ? | Hard gate (couples surface → §2.2) | Is the *feature* premium, or just its cap (couple debt entries, below)? Governance Q. |
@@ -259,7 +259,7 @@ Throughout, "**(max count is implicit)**" is Alvin's phrasing for *a ceiling hig
 Alvin flagged that some items here aren't really paywall. Pulling them out so they don't get lost:
 
 1. **Add an explanatory caption under the "Paid for partner" toggle in Add Transaction.** **Scope RESOLVED (2026-07-07): a static helper caption, NOT a description input field** — it mirrors the "Private" toggle's caption ([AddTransactionScreen.kt:313-325](../../app/src/main/java/com/iponlove/app/feature/transactions/presentation/AddTransactionScreen.kt#L313-L325)); the "Paid for {partner}" toggle currently has none ([AddTransactionScreen.kt:328-349](../../app/src/main/java/com/iponlove/app/feature/transactions/presentation/AddTransactionScreen.kt#L328-L349)). Pure UI, no data field, Sonnet-level. **Booked as a concrete change in [v1.6.5.md](v1.6.5.md) Item 1** (non-paywall).
-2. **Analysis 3m / 6m / All quick-range.** Listed as a gate, but the *range selector itself may not exist yet* — the current analysis stepper is DAY/WEEK/MONTH/QUARTER/SEMI/ANNUAL/ALL_TIME with infinite stepping ([AnalysisViewModel.kt:203-209](../../app/src/main/java/com/iponlove/app/feature/analysis/presentation/AnalysisViewModel.kt#L203-L209)). So "3m/6m/all" is partly a **build** (new rolling-window ranges), then a gate. Separate the build slice from the gate decision. **Booked as a build change in [v1.6.5.md](v1.6.5.md) Item 3** (the gate stays here).
+2. **Analysis longer ranges.** **REVISED (2026-07-09) — the "build new rolling ranges" plan was dropped.** Original idea: build net-new trailing 3m/6m/All windows, then gate them. That was built 2026-07-08 and **reverted** — a separate "Last 3M/6M/All" row stacked confusingly beside the existing calendar **3M/6M/12M/ALL** tabs (which are quarter/half/year). **New decision:** the premium lever is a **soft gate on the *existing* calendar tabs** — free = 1D/1W/1M, premium = 3M/6M/12M/ALL (tap a locked tab → paywall). No new range built → this becomes **wire-only** paywall work (§10.1 `ANALYSIS_EXTENDED_RANGES`, Phase 2 S10), not a base-behaviour build. The base-behaviour work that *does* remain (grilled 2026-07-09, **unrelated to the gate**) is generalizing the **Flow** sub-tab to all ranges and giving the **Calendar** sub-tab 1M-coupled month-stepper behaviour — booked in [v1.6.5.md](v1.6.5.md) Item 3.
 
 ---
 
@@ -320,8 +320,8 @@ Two kinds of gate, two data shapes (per §1.2, §1.5).
 | `RECURRING_CALENDAR` | soft (blurred preview) | Records | individual |
 | `BUDGET_ROLLOVER` | soft (hide toggle) | Budgets | individual |
 | `CALCULATOR` | soft (module lock) | Calculator | individual |
-| `ANALYSIS_EXTENDED_RANGES` | hard (3m/6m/All) | Analysis | individual |
-| `DEEP_HISTORY` | hard (past beyond −12mo) | Records stepper | individual |
+| `ANALYSIS_EXTENDED_RANGES` | soft — tap a locked **3M/6M/12M/ALL** tab → paywall (free = 1D/1W/1M) | Analysis | individual |
+| `DEEP_HISTORY` | hard (past beyond −12mo) | Records stepper **+ Analysis free-range stepper (1D/1W/1M), on the shared anchor** | individual |
 
 **Themes** are an **allowlist**, not a boolean/count: free set = `{Rose, Peach}`; premium = all six. The one **non-freeze** lapse rule (a cosmetic can't be frozen "read-only") is **active-palette reconciliation** (G8, 2026-07-08 — supersedes "only on refund"): on *any* entitlement/enforcement change, re-check the active palette against `Effective access` and, if now locked, swap to a free default — **non-destructively** (the chosen palette is remembered and auto-restores on re-unlock). Its main trigger is **enforcement flip-day** (every free user on a premium palette at once), not just refund.
 
@@ -347,8 +347,8 @@ Resolves the §8.1 "(implicit max)" blanks (budgets 100, savings 50/20) and the 
 ### 10.2 Built-now vs born-gated (sequencing input for §6 steps 3–4)
 
 Each §8.1 row tagged so the build knows whether to *wire a gate* or *build-then-gate*:
-- **Built today — wire gate only:** themes/palettes, receipts (`TransactionImage.MAX`), budgets, budget rollover (ADR-0036/0041), calculator module, personal/shared accounts & categories, notes attachments + char-limit, couple debt entries, **savings goals** (personal + shared + contributions), ads (new but pure infra).
-- **Build-then-gate (net-new capability first):** analysis 3m/6m/All ranges (§8.4 item 2 — build slice booked in v1.6.5), recurring calendar view, deep-history stepper logic (§8.2 — new past-window logic).
+- **Built today — wire gate only:** themes/palettes, receipts (`TransactionImage.MAX`), budgets, budget rollover (ADR-0036/0041), calculator module, personal/shared accounts & categories, notes attachments + char-limit, couple debt entries, **savings goals** (personal + shared + contributions), ads (new but pure infra), **Analysis longer-range tabs** (existing 3M/6M/12M/ALL — soft-gate only, no new build; REVISED 2026-07-09).
+- **Build-then-gate (net-new capability first):** recurring calendar view, deep-history stepper logic (§8.2 — new past-window logic; now covers **Records + Analysis 1D/1W/1M**). *Note:* the **Analysis Flow-generalization + Calendar month-stepper** base behaviours (grilled 2026-07-09, [v1.6.5.md](v1.6.5.md) Item 3) are mostly *ungated* — they enrich the free 1D/1W/1M + the premium tabs alike; only the −12/−13 back-wall falls under `DEEP_HISTORY`.
 - **Born-gated (future Horizon, gated at birth per §6):** custom fonts (#8), AI companion (#3 — also server-gated, D4 stub).
 - **Verified built (2026-07-07):** savings goals shipped with personal + shared/partner variants and contributions (`feature/savings` — `PartnerSavingsGoalDto`, `GoalContributionTableSyncer`, `SetGoalArchivedUseCase`) → wire-only, and the shared-goals cap (§10.1) is real.
 
@@ -467,7 +467,7 @@ The ordered, self-contained slice plan for the dormant-infra build. **We clear c
 
 **Phase 0 — base behaviors (no infra needed; build anytime, own commits):**
 - [x] Item 2 — Records future-month cap ([v1.6.5.md](v1.6.5.md) Item 2) — **DONE 2026-07-08** (scope **Records + Combined**; `MonthWindow.canStepForward`; Analysis/Budgets/Recurring left steppable by design)
-- [ ] Item 3 — Analysis 3m/6m/All rolling ranges ([v1.6.5.md](v1.6.5.md) Item 3)
+- [ ] Item 3 — Analysis **Flow-generalization + Calendar month-stepper** base behaviours ([v1.6.5.md](v1.6.5.md) Item 3; grilled 2026-07-09). *(The premium range lever is now a wire-only soft-gate on the existing 3M/6M/12M/ALL tabs → moved to Phase 2 S10; the 2026-07-08 "rolling ranges" build was reverted.)*
 - [ ] Item 4 — Notes char-limit *existence* ([v1.6.5.md](v1.6.5.md) Item 4)
 
 **Phase 1 — dormant infrastructure (enforcement OFF, nothing locks):**
@@ -482,7 +482,7 @@ The ordered, self-contained slice plan for the dormant-infra build. **We clear c
 - [ ] **S7 — Count-cap gates, grouped by mechanism:** personal accounts/categories/budgets/savings; shared accounts/categories/savings; couple debt cap. Block-on-create + `Freeze`.
 - [ ] **S8 — Media caps:** receipt photos (`maxReceiptPhotos`), note attachments (`maxNoteAttachments`).
 - [ ] **S9 — Boolean soft gates:** palette allowlist + revert-reconciliation (G8), calculator, budget-rollover toggle, recurring-calendar blur.
-- [ ] **S10 — Build-then-gate splits:** `DEEP_HISTORY` (on Item 2), `ANALYSIS_EXTENDED_RANGES` (on Item 3), `maxNoteChars` 5k/50k split (on Item 4).
+- [ ] **S10 — Build-then-gate splits:** `DEEP_HISTORY` (Records Item 2 + Analysis 1D/1W/1M shared anchor, −12/−13 wall), `ANALYSIS_EXTENDED_RANGES` (soft-gate the *existing* 3M/6M/12M/ALL tabs — free = 1D/1W/1M), `maxNoteChars` 5k/50k split (on Item 4).
 
 **Phase 3 — pre-flip (only on Alvin's go, post-beta):**
 - [ ] **S11 — Play Console:** create the ₱249 managed product, license testers, staging test track.
@@ -505,5 +505,7 @@ The ordered, self-contained slice plan for the dormant-infra build. **We clear c
 **Resolved 2026-07-07 (grill #4):** Q4.3 (AI monetization) → **D8** — a separate credits add-on (starter allowance + consumable top-up packs + BYOK), **server-metered** via a Supabase Edge Function (paid credits can't be tracked client-side); AI stays deferred (Horizon #3); model/provider picked at build time.
 
 **Resolved 2026-07-08 (grill #5 → §11 + ADR-0044):** G1 (`Cap count` — archived counts, settled doesn't) · G2/G3/G4/G7 (entitlement mechanism — client-trusted advisory column, cache-of-Play, advisory-only, cold-start **fail-open**, `entitlement_source` guards comps → **ADR-0044**) · G5 (**ads dropped**, closing Q7.1 — `NO_ADS` parked dormant) · G6 (`Effective access` — scope follows entity ownership, shared-budget rollover is shared) · G8 (revert-on-lapse — active-palette reconciliation, flip-day trigger, non-destructive) · G9 (AI credits **per-user**) · G10 (analytics — Supabase `analytics_events` table, no third-party SDK).
+
+**Revised 2026-07-09 (Analysis grill):** the Analysis premium lever changed from *"build new 3m/6m/All rolling ranges + hard-gate"* to a **soft-gate on the existing 3M/6M/12M/ALL calendar tabs** (free = 1D/1W/1M) — the 2026-07-08 rolling-range build was **reverted** (redundant beside the existing tabs). Two base behaviours were grilled to build-ready (**unrelated to the gate**): **Flow** generalizes to all ranges (cumulative curve + avg + projected; **budget dropped**; daily ≤3M / monthly ≥6M buckets; avg/day vs avg/month; ALL avg measured from registration; projected = pace×length, current-period only, disabled for ALL), and the **Calendar** sub-tab couples to 1M (auto-snap + bounce), sharing the 1M stepper with a current-period forward cap + −12/−13 `DEEP_HISTORY` back-wall enforced on the shared anchor across all free ranges. Full spec: [v1.6.5.md](v1.6.5.md) Item 3. 🅿️ Parked: past-metric label → "Total" (not "Projected"); budget-in-Flow → may reintroduce later.
 
 **Still open:** nothing load-bearing. Ads are decided (**dropped**, not "ad-supported free"); `NO_ADS` remains only as a dormant future option. Deferred by design: D8 AI add-on (Horizon #3) and its per-user credit metering + server verification (the ADR-0044 prerequisite).
