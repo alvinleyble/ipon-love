@@ -14,10 +14,12 @@ data class AnalysisUiState(
     val net: BigDecimal = BigDecimal.ZERO,
     /** Expense breakdown, largest first; drives both the donut and its legend. */
     val slices: List<CategorySliceUi> = emptyList(),
-    /** Cumulative expense curve for MONTH view; null for DAY/WEEK. */
+    /** Cumulative expense curve for the Flow tab — computed for every range (Item 3A). */
     val expenseFlow: ExpenseFlowUi? = null,
-    /** Pace metrics derived from the expense flow for the Flow tab; null for DAY/WEEK. */
+    /** Pace metrics derived from the expense flow for the Flow tab. */
     val flowMetrics: FlowMetricsUi? = null,
+    /** False disables the stepper's "next" button — forward cap for 1D/1W/1M (Item 3B). */
+    val canStepForward: Boolean = false,
     /** Daily-net calendar grid for MONTH view; null for DAY/WEEK. */
     val calendarNet: CalendarNetUi? = null,
     /** 1-based day-of-month with the highest expense; null when no expenses. MONTH only. */
@@ -41,29 +43,48 @@ data class AnalysisUiState(
  * Derived spending-pace metrics for the Flow tab. All values are pre-computed BigDecimal so
  * the UI never repeats the arithmetic.
  *
- * [projectedMonthEnd] is null when viewing a completed (past) month — extrapolation is
- * meaningless once the month is over. [budgetRemaining] is null when no budgets are set.
+ * [perMonth] picks the label + unit: true → "Avg/month" (6M/12M/ALL), false → "Avg/day".
+ * [projected] is null on a completed (past) period, ALL_TIME, or a 1-bucket range —
+ * extrapolation is meaningless there.
  */
 data class FlowMetricsUi(
-    val avgDailySpend: BigDecimal,
-    val projectedMonthEnd: BigDecimal?,
-    val budgetRemaining: BigDecimal?,
+    val avg: BigDecimal,
+    val perMonth: Boolean,
+    val projected: BigDecimal?,
+    /** Look-back vs the prior same-length window; null for ALL_TIME or two empty windows. */
+    val comparison: FlowComparisonUi? = null,
 )
 
 /**
- * Chart data for the Expense Flow composable. Values are pre-converted to Float so the
- * Canvas drawing code never touches BigDecimal.
+ * "vs last month/quarter/…" look-back for the Flow tab. [percentChange] is null when there's no
+ * prior spending to divide by (the UI shows "New"); [deltaSign] is -1 (spent less), 0, or +1.
+ */
+data class FlowComparisonUi(
+    val label: String,
+    val percentChange: Int?,
+    val deltaSign: Int,
+)
+
+/**
+ * Chart data for the Expense Flow composable (Item 3A — generalized to any range). Values are
+ * pre-converted to Float so the Canvas drawing code never touches BigDecimal.
  *
- * [cumulativeByDay]: index 0 = day 1, length = [daysInMonth]. Running expense total each day.
- * [budgetTotal]: sum of personal monthly budgets for this month; 0f if none are set.
- * [todayDayOfMonth]: null when viewing a past or future month.
+ * [cumulativeByBucket]: index 0 = first bucket. Running expense total per bucket (day or month).
+ * [currentBucketIndex]: bucket containing today, or null on a past period (drives the marker).
+ * [axisLabels]: pre-computed (bucketIndex → label) ticks for the x-axis, so the chart stays
+ * agnostic about whether buckets are days or months.
  */
 data class ExpenseFlowUi(
-    val cumulativeByDay: List<Float>,
-    val budgetTotal: Float,
-    val daysInMonth: Int,
-    val todayDayOfMonth: Int?,
-)
+    val cumulativeByBucket: List<Float>,
+    val currentBucketIndex: Int?,
+    val axisLabels: List<FlowAxisLabel>,
+) {
+    /** A single-point curve (1D) can't be drawn as a line — the UI shows a short-range state. */
+    val isChartable: Boolean get() = cumulativeByBucket.size > 1
+}
+
+/** One x-axis tick for the Flow chart: which bucket it sits on and its short label. */
+data class FlowAxisLabel(val bucketIndex: Int, val text: String)
 
 /**
  * One expense slice for display. [colorHex] is the category's stored color (may be null —

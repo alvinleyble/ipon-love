@@ -59,6 +59,27 @@ object AnalysisPeriodRange {
     }
 
     /**
+     * True when paging forward from [anchor]'s period is still allowed (Item 3B, 2026-07-09).
+     *
+     * The three short "free" ranges (DAY/WEEK/MONTH) are forward-capped at the period containing
+     * [today] — their "current period" is well-defined, so you can't page into empty future days/
+     * weeks/months (this refines Item 2, which left Analysis steppers uncapped). The longer ranges
+     * (QUARTER/SEMI_ANNUAL/ANNUAL) stay forward-uncapped by design; ALL_TIME never steps.
+     * The −12-month back floor is a separate paywall concern (DEEP_HISTORY), wired later.
+     */
+    fun canStepForward(anchor: LocalDate, period: AnalysisPeriod, today: LocalDate, zone: ZoneId): Boolean =
+        when (period) {
+            AnalysisPeriod.ALL_TIME -> false
+            AnalysisPeriod.DAY,
+            AnalysisPeriod.WEEK,
+            AnalysisPeriod.MONTH ->
+                windowFor(anchor, period, zone).startInclusive < windowFor(today, period, zone).startInclusive
+            AnalysisPeriod.QUARTER,
+            AnalysisPeriod.SEMI_ANNUAL,
+            AnalysisPeriod.ANNUAL -> true
+        }
+
+    /**
      * Moves [anchor] one [period] unit; [forward] = true is later, false is earlier.
      * ALL_TIME has nothing to step to — it's a no-op.
      */

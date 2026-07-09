@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -92,6 +93,24 @@ private fun AnalysisContent(
     onDismissPairingCard: () -> Unit,
 ) {
     StartTourOnFirstVisit(TutorialTours.ANALYSIS)
+    val pagerState = rememberPagerState(pageCount = { 3 })
+    val scope = rememberCoroutineScope()
+
+    // Calendar ⟺ 1M coupling (Item 3B): the Calendar day-grid is inherently monthly, so it only
+    // ever runs under 1M. Landing on Calendar under any other range auto-snaps to 1M (covers both
+    // a tab tap and a swipe); tapping a non-1M range while on Calendar bounces back to Donut.
+    LaunchedEffect(pagerState.currentPage, state.period) {
+        if (pagerState.currentPage == CALENDAR_TAB && state.period != AnalysisPeriod.MONTH) {
+            onSelectPeriod(AnalysisPeriod.MONTH)
+        }
+    }
+    val onSelectPeriodCoupled: (AnalysisPeriod) -> Unit = { period ->
+        if (pagerState.currentPage == CALENDAR_TAB && period != AnalysisPeriod.MONTH) {
+            scope.launch { pagerState.animateScrollToPage(DONUT_TAB) }
+        }
+        onSelectPeriod(period)
+    }
+
     Scaffold(topBar = { TopAppBar(title = { Text("Analysis") }) }) { padding ->
         Column(
             modifier = Modifier
@@ -99,12 +118,16 @@ private fun AnalysisContent(
                 .fillMaxSize(),
         ) {
             // Persistent header — always visible regardless of period or tab.
-            PeriodSelector(selected = state.period, onSelect = onSelectPeriod)
+            PeriodSelector(selected = state.period, onSelect = onSelectPeriodCoupled)
             PeriodStepper(
                 label = state.periodLabel,
                 onPrevious = onPrevious,
                 onNext = onNext,
-                canStep = state.period != AnalysisPeriod.ALL_TIME,
+                // Backward is always allowed (the −12mo floor is a later paywall gate); forward is
+                // capped at the current period for the free 1D/1W/1M ranges (Item 3B). ALL_TIME
+                // has nothing to step to in either direction.
+                canPrevious = state.period != AnalysisPeriod.ALL_TIME,
+                canNext = state.canStepForward,
             )
 
             if (state.isLoading) {
@@ -127,27 +150,27 @@ private fun AnalysisContent(
                 lastMonthIncome = state.lastMonthIncome,
             )
 
-            if (state.period == AnalysisPeriod.MONTH) {
-                MonthTabLayout(state = state, modifier = Modifier.weight(1f))
-            } else {
-                // Day / Week: donut only — no dead tabs.
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    if (state.hasExpenses) BreakdownSection(state) else EmptyState()
-                }
-            }
+            AnalysisTabLayout(
+                state = state,
+                pagerState = pagerState,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
 
-// ─── Month-only tab layout ──────────────────────────────────────────────────
+// ─── Tab layout (all ranges) ─────────────────────────────────────────────────
+
+private const val DONUT_TAB = 0
+private const val FLOW_TAB = 1
+private const val CALENDAR_TAB = 2
 
 @Composable
-private fun MonthTabLayout(state: AnalysisUiState, modifier: Modifier = Modifier) {
-    val pagerState = rememberPagerState(pageCount = { 3 })
+private fun AnalysisTabLayout(
+    state: AnalysisUiState,
+    pagerState: androidx.compose.foundation.pager.PagerState,
+    modifier: Modifier = Modifier,
+) {
     val scope = rememberCoroutineScope()
     val tabLabels = listOf("Donut", "Flow", "Calendar")
 
@@ -159,6 +182,7 @@ private fun MonthTabLayout(state: AnalysisUiState, modifier: Modifier = Modifier
             tabLabels.forEachIndexed { index, label ->
                 Tab(
                     selected = pagerState.currentPage == index,
+                    // Tapping Calendar snaps to it; the LaunchedEffect above forces 1M.
                     onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                     text = { Text(label) },
                 )
@@ -169,9 +193,9 @@ private fun MonthTabLayout(state: AnalysisUiState, modifier: Modifier = Modifier
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) { page ->
             when (page) {
-                0 -> DonutTab(state)
-                1 -> FlowTab(state)
-                2 -> CalendarTab(state)
+                DONUT_TAB -> DonutTab(state)
+                FLOW_TAB -> FlowTab(state)
+                CALENDAR_TAB -> CalendarTab(state)
                 else -> {}
             }
         }
@@ -196,7 +220,10 @@ private fun FlowTab(state: AnalysisUiState) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
     ) {
-        state.expenseFlow?.let { flow -> ExpenseFlowSection(flow) }
+        state.expenseFlow?.let { flow ->
+            // A 1-bucket range (1D) can't draw a curve — show a short-range note instead.
+            if (flow.isChartable) ExpenseFlowSection(flow) else ShortRangeFlowCard()
+        }
         state.flowMetrics?.let { metrics -> FlowMetricsSection(metrics) }
     }
 }
@@ -250,13 +277,19 @@ private fun PeriodSelector(selected: AnalysisPeriod, onSelect: (AnalysisPeriod) 
 }
 
 @Composable
-private fun PeriodStepper(label: String, onPrevious: () -> Unit, onNext: () -> Unit, canStep: Boolean = true) {
+private fun PeriodStepper(
+    label: String,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    canPrevious: Boolean = true,
+    canNext: Boolean = true,
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        IconButton(onClick = onPrevious, enabled = canStep) {
+        IconButton(onClick = onPrevious, enabled = canPrevious) {
             Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous period")
         }
         Text(
@@ -264,7 +297,7 @@ private fun PeriodStepper(label: String, onPrevious: () -> Unit, onNext: () -> U
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
-        IconButton(onClick = onNext, enabled = canStep) {
+        IconButton(onClick = onNext, enabled = canNext) {
             Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next period")
         }
     }
@@ -442,22 +475,28 @@ private fun EmptyState() {
 private fun ExpenseFlowSection(flow: ExpenseFlowUi) {
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Expense Flow", style = MaterialTheme.typography.titleSmall)
-                if (flow.budgetTotal > 0f) {
-                    Text(
-                        text = "Budget ${formatPhp(flow.budgetTotal.toBigDecimal())}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            Text("Expense Flow", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(12.dp))
             ExpenseFlowChart(flow = flow)
+        }
+    }
+}
+
+@Composable
+private fun ShortRangeFlowCard() {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("Range too short to chart", style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "A single day can't show a spending curve. See the daily average below.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
@@ -469,15 +508,52 @@ private fun FlowMetricsSection(metrics: FlowMetricsUi) {
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            MetricItem(label = "Avg/day", amount = metrics.avgDailySpend, modifier = Modifier.weight(1f))
-            metrics.projectedMonthEnd?.let {
+            MetricItem(
+                label = if (metrics.perMonth) "Avg/month" else "Avg/day",
+                amount = metrics.avg,
+                modifier = Modifier.weight(1f),
+            )
+            metrics.projected?.let {
                 MetricItem(label = "Projected", amount = it, modifier = Modifier.weight(1f))
             }
-            metrics.budgetRemaining?.let {
-                val color = if (it.signum() == 0) MaterialTheme.colorScheme.error else IncomeColor
-                MetricItem(label = "Left", amount = it, color = color, modifier = Modifier.weight(1f))
+            metrics.comparison?.let {
+                ComparisonMetricItem(comparison = it, modifier = Modifier.weight(1f))
             }
         }
+    }
+}
+
+@Composable
+private fun ComparisonMetricItem(comparison: FlowComparisonUi, modifier: Modifier = Modifier) {
+    // More spend than last period reads red (error); less reads green; flat is neutral.
+    val color = when {
+        comparison.deltaSign > 0 -> MaterialTheme.colorScheme.error
+        comparison.deltaSign < 0 -> IncomeColor
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val value = when {
+        comparison.percentChange == null -> "New" // no prior spending to compare against
+        comparison.deltaSign == 0 -> "0%"
+        else -> {
+            val arrow = if (comparison.deltaSign > 0) "▲" else "▼"
+            "$arrow ${kotlin.math.abs(comparison.percentChange)}%"
+        }
+    }
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = comparison.label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = color,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

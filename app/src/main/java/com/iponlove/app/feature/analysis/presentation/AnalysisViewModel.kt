@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iponlove.app.feature.analysis.domain.model.AnalysisPeriod
 import com.iponlove.app.feature.analysis.domain.model.AnalysisWindow
+import com.iponlove.app.feature.analysis.domain.model.ExpenseFlowData
+import com.iponlove.app.feature.analysis.domain.model.FlowBucketMode
 import com.iponlove.app.feature.analysis.domain.usecase.AnalysisCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.AnalysisPeriodRange
 import com.iponlove.app.feature.analysis.domain.usecase.DailyNetCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.ExpenseFlowCalculator
+import com.iponlove.app.feature.analysis.domain.usecase.FlowComparisonCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.FlowMetricsCalculator
-import com.iponlove.app.feature.budgets.domain.usecase.ObserveBudgetsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
@@ -42,7 +44,6 @@ import kotlin.math.roundToInt
 class AnalysisViewModel @Inject constructor(
     observeTransactions: ObserveTransactionsUseCase,
     observeCategories: ObserveCategoriesUseCase,
-    observeBudgets: ObserveBudgetsUseCase,
     observeCurrentUser: ObserveCurrentUserUseCase,
     observePairingState: ObservePairingStateUseCase,
     private val onboardingRepository: OnboardingRepository,
@@ -68,55 +69,66 @@ class AnalysisViewModel @Inject constructor(
             // Include archived so historical transactions under a since-archived category
             // still show its name in the breakdown.
             observeCategories(includeArchived = true),
-            observeBudgets(),
             anchor,
             period,
-        ) { transactions, categories, budgets, anchorDate, selectedPeriod ->
+        ) { transactions, categories, anchorDate, selectedPeriod ->
             val zone = ZoneId.systemDefault()
+            val today = LocalDate.now(zone)
+            val registrationDate = currentUser.value?.createdAt?.atZone(zone)?.toLocalDate()
             val window = AnalysisPeriodRange.windowFor(anchorDate, selectedPeriod, zone)
             val result = AnalysisCalculator.analyze(transactions, window)
 
             val names = categories.associateBy({ it.id }, { it.name })
             val colors = categories.associateBy({ it.id }, { it.color })
 
-            val expenseFlow: ExpenseFlowUi?
-            val flowMetrics: FlowMetricsUi?
+            // Flow — computed for every range now (Item 3A). Budget line/remaining dropped.
+            val flowData = ExpenseFlowCalculator.calculate(transactions, window, zone, registrationDate, today)
+            val expenseFlow = ExpenseFlowUi(
+                cumulativeByBucket = flowData.cumulativeByBucket.map { it.toFloat() },
+                currentBucketIndex = flowData.currentBucketIndex,
+                axisLabels = flowAxisLabels(flowData),
+            )
+            val fm = FlowMetricsCalculator.calculate(
+                totalExpense = result.totalExpense,
+                bucketMode = flowData.bucketMode,
+                bucketCount = flowData.cumulativeByBucket.size,
+                currentBucketIndex = flowData.currentBucketIndex,
+                allowProjection = selectedPeriod != AnalysisPeriod.ALL_TIME,
+            )
+            // vs previous same-length window (Item 3A look-back) — a pure live re-read, no storage.
+            // ALL_TIME has no prior period to compare against.
+            val comparison: FlowComparisonUi? = if (selectedPeriod != AnalysisPeriod.ALL_TIME) {
+                val prevAnchor = AnalysisPeriodRange.step(anchorDate, selectedPeriod, forward = false)
+                val prevWindow = AnalysisPeriodRange.windowFor(prevAnchor, selectedPeriod, zone)
+                val prevExpense = AnalysisCalculator.analyze(transactions, prevWindow).totalExpense
+                FlowComparisonCalculator.calculate(result.totalExpense, prevExpense)?.let { cmp ->
+                    FlowComparisonUi(
+                        label = comparisonLabel(selectedPeriod),
+                        percentChange = cmp.percentChange,
+                        deltaSign = cmp.deltaSign,
+                    )
+                }
+            } else null
+            val flowMetrics = FlowMetricsUi(
+                avg = fm.avg,
+                perMonth = fm.perMonth,
+                projected = fm.projected,
+                comparison = comparison,
+            )
+
+            // Calendar + last-month income stay MONTH-only (the Calendar tab only runs under 1M).
             val calendarNet: CalendarNetUi?
             val calendarBiggestSpendDay: Int?
             val calendarNoSpendDayCount: Int
             val lastMonthIncome: BigDecimal?
             if (selectedPeriod == AnalysisPeriod.MONTH) {
                 val startDate = window.startInclusive.atZone(zone).toLocalDate()
-                val yearMonthStr = YearMonth.of(startDate.year, startDate.month).toString()
                 // Context stat only — never subtracted into Net, which stays same-period
                 // (income − expense both from `window`). This is the fix for "income reads
                 // ₱0 before payday": show last month's actual income alongside it instead.
                 val previousMonthAnchor = AnalysisPeriodRange.step(startDate, AnalysisPeriod.MONTH, forward = false)
                 val previousWindow = AnalysisPeriodRange.windowFor(previousMonthAnchor, AnalysisPeriod.MONTH, zone)
                 lastMonthIncome = AnalysisCalculator.analyze(transactions, previousWindow).totalIncome
-                val budgetTotal = budgets
-                    .filter { it.yearMonth == yearMonthStr }
-                    .fold(BigDecimal.ZERO) { acc, b -> acc + b.amount }
-                val flowData = ExpenseFlowCalculator.calculate(transactions, window, zone)
-                expenseFlow = ExpenseFlowUi(
-                    cumulativeByDay = flowData.cumulativeByDay.map { it.toFloat() },
-                    budgetTotal = budgetTotal.toFloat(),
-                    daysInMonth = flowData.daysInMonth,
-                    todayDayOfMonth = flowData.todayDayOfMonth,
-                )
-                val daysElapsed = flowData.todayDayOfMonth ?: flowData.daysInMonth
-                val fm = FlowMetricsCalculator.calculate(
-                    totalExpense = result.totalExpense,
-                    daysElapsed = daysElapsed,
-                    daysInMonth = flowData.daysInMonth,
-                    isCurrentMonth = flowData.todayDayOfMonth != null,
-                    budgetTotal = budgetTotal,
-                )
-                flowMetrics = FlowMetricsUi(
-                    avgDailySpend = fm.avgDailySpend,
-                    projectedMonthEnd = fm.projectedMonthEnd,
-                    budgetRemaining = fm.budgetRemaining,
-                )
                 val dailyNet = DailyNetCalculator.calculate(transactions, window, zone)
                 calendarNet = CalendarNetUi(
                     days = (0 until dailyNet.daysInMonth).map { idx ->
@@ -138,11 +150,10 @@ class AnalysisViewModel @Inject constructor(
                     .maxByOrNull { dailyNet.expenseByDay[it] }
                     ?.let { it + 1 }
                 val windowYearMonth = YearMonth.of(startDate.year, startDate.month)
-                val regDate = currentUser.value?.createdAt?.atZone(zone)?.toLocalDate()
                 val firstEligibleDayOfMonth = when {
-                    regDate == null -> 1
-                    YearMonth.from(regDate) > windowYearMonth -> elapsedCount + 1
-                    YearMonth.from(regDate) == windowYearMonth -> regDate.dayOfMonth
+                    registrationDate == null -> 1
+                    YearMonth.from(registrationDate) > windowYearMonth -> elapsedCount + 1
+                    YearMonth.from(registrationDate) == windowYearMonth -> registrationDate.dayOfMonth
                     else -> 1
                 }
                 calendarNoSpendDayCount = DailyNetCalculator.noSpendDayCount(
@@ -152,8 +163,6 @@ class AnalysisViewModel @Inject constructor(
                     firstEligibleDayOfMonth = firstEligibleDayOfMonth,
                 )
             } else {
-                expenseFlow = null
-                flowMetrics = null
                 calendarNet = null
                 calendarBiggestSpendDay = null
                 calendarNoSpendDayCount = 0
@@ -179,6 +188,7 @@ class AnalysisViewModel @Inject constructor(
                 },
                 expenseFlow = expenseFlow,
                 flowMetrics = flowMetrics,
+                canStepForward = AnalysisPeriodRange.canStepForward(anchorDate, selectedPeriod, today, zone),
                 calendarNet = calendarNet,
                 calendarBiggestSpendDay = calendarBiggestSpendDay,
                 calendarNoSpendDayCount = calendarNoSpendDayCount,
@@ -205,7 +215,57 @@ class AnalysisViewModel @Inject constructor(
     }
 
     fun next() {
+        // Backstop for the forward cap (Item 3B) — the → button is also disabled in the UI.
+        val zone = ZoneId.systemDefault()
+        if (!AnalysisPeriodRange.canStepForward(anchor.value, period.value, LocalDate.now(zone), zone)) return
         anchor.value = AnalysisPeriodRange.step(anchor.value, period.value, forward = true)
+    }
+
+    /**
+     * Pre-computes evenly-spaced x-axis ticks for the Flow chart from the bucket start dates,
+     * so the chart stays agnostic about day-vs-month buckets. Daily single-month ranges label by
+     * day number (1, 5, 10…); daily multi-month ranges (3M) by "MMM d"; monthly ranges by month
+     * abbreviation (plus year when the range spans a year boundary).
+     */
+    private fun flowAxisLabels(data: ExpenseFlowData): List<FlowAxisLabel> {
+        val dates = data.bucketStartDates
+        if (dates.size <= 1) return emptyList()
+        val n = dates.size
+        val multiYear = dates.first().year != dates.last().year
+        val multiMonth = YearMonth.from(dates.first()) != YearMonth.from(dates.last())
+        val indices: List<Int> = when {
+            data.bucketMode == FlowBucketMode.MONTHLY ->
+                if (n <= 7) dates.indices.toList() else evenlySpacedIndices(n, 6)
+            n <= 31 -> buildList {
+                add(0)
+                listOf(4, 9, 14, 19, 24).forEach { if (it < n - 1) add(it) }
+                add(n - 1)
+            }.distinct()
+            else -> evenlySpacedIndices(n, 6)
+        }
+        return indices.map { i ->
+            val d = dates[i]
+            val text = when {
+                data.bucketMode == FlowBucketMode.MONTHLY && multiYear -> d.format(MONTH_YY_FORMAT)
+                data.bucketMode == FlowBucketMode.MONTHLY -> d.format(MONTH_ABBR_FORMAT)
+                multiMonth -> d.format(MONTH_DAY_FORMAT)
+                else -> d.dayOfMonth.toString()
+            }
+            FlowAxisLabel(bucketIndex = i, text = text)
+        }
+    }
+
+    private fun evenlySpacedIndices(n: Int, count: Int): List<Int> =
+        (0 until count).map { it * (n - 1) / (count - 1) }.distinct()
+
+    private fun comparisonLabel(period: AnalysisPeriod): String = when (period) {
+        AnalysisPeriod.DAY -> "vs yesterday"
+        AnalysisPeriod.WEEK -> "vs last week"
+        AnalysisPeriod.MONTH -> "vs last month"
+        AnalysisPeriod.QUARTER -> "vs last quarter"
+        AnalysisPeriod.SEMI_ANNUAL -> "vs last half"
+        AnalysisPeriod.ANNUAL -> "vs last year"
+        AnalysisPeriod.ALL_TIME -> "" // never shown — ALL_TIME skips the comparison
     }
 
     private fun labelFor(window: AnalysisWindow, zone: ZoneId): String {
@@ -230,5 +290,10 @@ class AnalysisViewModel @Inject constructor(
         val DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
         val WEEK_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d")
         val MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
+
+        // Flow x-axis tick labels (Item 3A).
+        val MONTH_ABBR_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM")
+        val MONTH_YY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM ''yy")
+        val MONTH_DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d")
     }
 }

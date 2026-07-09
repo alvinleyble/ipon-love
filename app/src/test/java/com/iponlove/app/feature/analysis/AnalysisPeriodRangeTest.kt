@@ -128,4 +128,45 @@ class AnalysisPeriodRangeTest {
         assertThat(AnalysisPeriodRange.step(anchor, AnalysisPeriod.ALL_TIME, forward = true)).isEqualTo(anchor)
         assertThat(AnalysisPeriodRange.step(anchor, AnalysisPeriod.ALL_TIME, forward = false)).isEqualTo(anchor)
     }
+
+    // ─── canStepForward: free-range forward cap (Item 3B) ────────────────────
+
+    private val today = LocalDate.of(2026, 6, 15)
+
+    @Test
+    fun canStepForward_day_pastIsTrue_currentAndFutureFalse() {
+        fun day(anchor: LocalDate) = AnalysisPeriodRange.canStepForward(anchor, AnalysisPeriod.DAY, today, zone)
+        assertThat(day(LocalDate.of(2026, 6, 14))).isTrue()  // yesterday
+        assertThat(day(today)).isFalse()                     // today
+        assertThat(day(LocalDate.of(2026, 6, 16))).isFalse() // tomorrow
+    }
+
+    @Test
+    fun canStepForward_week_pastWeekTrue_currentWeekFalse() {
+        fun week(anchor: LocalDate) = AnalysisPeriodRange.canStepForward(anchor, AnalysisPeriod.WEEK, today, zone)
+        assertThat(week(LocalDate.of(2026, 6, 8))).isTrue()  // previous week
+        assertThat(week(today)).isFalse()                    // current week (Mon 6/15)
+    }
+
+    @Test
+    fun canStepForward_month_pastMonthTrue_currentMonthFalse() {
+        fun month(anchor: LocalDate) = AnalysisPeriodRange.canStepForward(anchor, AnalysisPeriod.MONTH, today, zone)
+        assertThat(month(LocalDate.of(2026, 5, 20))).isTrue() // last month
+        assertThat(month(LocalDate.of(2026, 6, 1))).isFalse() // current month
+        assertThat(month(LocalDate.of(2026, 7, 1))).isFalse() // future month
+    }
+
+    @Test
+    fun canStepForward_longRanges_alwaysTrue() {
+        // The premium 3M/6M/12M ranges stay forward-uncapped by design, even for a future anchor.
+        val future = LocalDate.of(2027, 1, 1)
+        assertThat(AnalysisPeriodRange.canStepForward(future, AnalysisPeriod.QUARTER, today, zone)).isTrue()
+        assertThat(AnalysisPeriodRange.canStepForward(future, AnalysisPeriod.SEMI_ANNUAL, today, zone)).isTrue()
+        assertThat(AnalysisPeriodRange.canStepForward(future, AnalysisPeriod.ANNUAL, today, zone)).isTrue()
+    }
+
+    @Test
+    fun canStepForward_allTime_isFalse() {
+        assertThat(AnalysisPeriodRange.canStepForward(today, AnalysisPeriod.ALL_TIME, today, zone)).isFalse()
+    }
 }

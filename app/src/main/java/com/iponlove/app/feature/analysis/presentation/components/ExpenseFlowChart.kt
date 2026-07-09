@@ -20,13 +20,12 @@ import androidx.compose.ui.unit.sp
 import com.iponlove.app.feature.analysis.presentation.ExpenseFlowUi
 
 /**
- * Cumulative expense line chart for one calendar month (Slice G).
+ * Cumulative expense line chart for any Analysis range (Item 3A, generalized 2026-07-09).
  *
- * Draws: actual cumulative spending polyline, optional budget ceiling (dashed), today
- * marker (dotted vertical), and day-of-month labels at the bottom — all on a single
- * Canvas with no third-party chart library (CLAUDE.md).
- *
- * The spending line turns [errorColor] when today's cumulative exceeds [ExpenseFlowUi.budgetTotal].
+ * Draws the cumulative-spend polyline, a dotted "today" marker on the current bucket, and the
+ * pre-computed x-axis labels — all on a single Canvas with no third-party chart library
+ * (CLAUDE.md). The buckets are days (short ranges) or months (6M/12M/ALL); the chart is agnostic
+ * about which. The budget ceiling line was dropped (grill 2026-07-09).
  */
 @Composable
 fun ExpenseFlowChart(
@@ -35,10 +34,10 @@ fun ExpenseFlowChart(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val primaryColor = MaterialTheme.colorScheme.primary
-    val errorColor = MaterialTheme.colorScheme.error
-    val secondaryColor = MaterialTheme.colorScheme.secondary
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val labelStyle = TextStyle(fontSize = 10.sp, color = onSurfaceColor.copy(alpha = 0.5f))
+
+    val bucketCount = flow.cumulativeByBucket.size
 
     Canvas(
         modifier = modifier
@@ -49,33 +48,17 @@ fun ExpenseFlowChart(
         val chartH = size.height - labelAreaH
         val w = size.width
 
-        val maxValue = maxOf(
-            flow.budgetTotal,
-            flow.cumulativeByDay.maxOrNull() ?: 0f,
-            1f,
-        )
+        val maxValue = maxOf(flow.cumulativeByBucket.maxOrNull() ?: 0f, 1f)
 
-        fun xPos(dayIdx: Int): Float =
-            if (flow.daysInMonth <= 1) w / 2f
-            else dayIdx.toFloat() / (flow.daysInMonth - 1).toFloat() * w
+        fun xPos(idx: Int): Float =
+            if (bucketCount <= 1) w / 2f
+            else idx.toFloat() / (bucketCount - 1).toFloat() * w
 
         fun yPos(value: Float): Float = chartH * (1f - value / maxValue)
 
-        // --- budget ceiling (dashed horizontal) ---
-        if (flow.budgetTotal > 0f) {
-            val budgetY = yPos(flow.budgetTotal)
-            drawLine(
-                color = secondaryColor.copy(alpha = 0.6f),
-                start = Offset(0f, budgetY),
-                end = Offset(w, budgetY),
-                strokeWidth = 1.5.dp.toPx(),
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 6f)),
-            )
-        }
-
         // --- today marker (dotted vertical) ---
-        flow.todayDayOfMonth?.let { todayDay ->
-            val todayX = xPos(todayDay - 1)
+        flow.currentBucketIndex?.let { idx ->
+            val todayX = xPos(idx)
             drawLine(
                 color = onSurfaceColor.copy(alpha = 0.18f),
                 start = Offset(todayX, 0f),
@@ -86,22 +69,16 @@ fun ExpenseFlowChart(
         }
 
         // --- spending polyline ---
-        if (flow.cumulativeByDay.isNotEmpty()) {
-            val todayIdx = (flow.todayDayOfMonth?.minus(1)) ?: (flow.daysInMonth - 1)
-            val currentSpend = flow.cumulativeByDay.getOrElse(todayIdx) { 0f }
-            val lineColor =
-                if (flow.budgetTotal > 0f && currentSpend > flow.budgetTotal) errorColor
-                else primaryColor
-
+        if (flow.cumulativeByBucket.isNotEmpty()) {
             val path = Path()
-            flow.cumulativeByDay.forEachIndexed { idx, value ->
+            flow.cumulativeByBucket.forEachIndexed { idx, value ->
                 val x = xPos(idx)
                 val y = yPos(value)
                 if (idx == 0) path.moveTo(x, y) else path.lineTo(x, y)
             }
             drawPath(
                 path = path,
-                color = lineColor,
+                color = primaryColor,
                 style = Stroke(
                     width = 2.5.dp.toPx(),
                     cap = StrokeCap.Round,
@@ -110,15 +87,10 @@ fun ExpenseFlowChart(
             )
         }
 
-        // --- day labels ---
-        val labelDays = buildList {
-            add(1)
-            listOf(5, 10, 15, 20, 25).forEach { if (it < flow.daysInMonth) add(it) }
-            if (flow.daysInMonth !in listOf(1, 5, 10, 15, 20, 25)) add(flow.daysInMonth)
-        }
-        labelDays.forEach { day ->
-            val x = xPos(day - 1)
-            val measured = textMeasurer.measure("$day", labelStyle)
+        // --- axis labels (pre-computed in the ViewModel) ---
+        flow.axisLabels.forEach { label ->
+            val x = xPos(label.bucketIndex)
+            val measured = textMeasurer.measure(label.text, labelStyle)
             drawText(
                 textLayoutResult = measured,
                 topLeft = Offset(
