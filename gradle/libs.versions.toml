@@ -26,6 +26,7 @@ androidxJunit = "1.3.0"
 espresso = "3.7.0"
 glance = "1.1.0"
 biometric = "1.1.0"
+billing = "9.1.0"
 
 [libraries]
 # Core / lifecycle
@@ -86,6 +87,9 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "a
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
 androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+
+# Play Billing (core/billing, paywall S3)
+billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

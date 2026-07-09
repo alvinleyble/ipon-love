@@ -152,6 +152,9 @@ dependencies {
     // Biometric local app lock
     implementation(libs.androidx.biometric)
 
+    // Play Billing (core/billing, paywall S3 — dormant)
+    implementation(libs.billing.ktx)
+
     // Supabase (Auth + Postgrest) + Ktor engine — the cloud backend
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth)
