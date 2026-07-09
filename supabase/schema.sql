@@ -64,6 +64,14 @@ create table users (
     avatar_url   text,
     accent_color text,                       -- hex, for combined-view color coding
     couple_id    uuid references couples(id) on delete set null,
+    -- Premium entitlement (dormant paywall infra, D2 / ADR-0044). A client-maintained
+    -- cache of Play state, carried on the synced users row so the couple can read each
+    -- other's status (either-partner-unlocks-both). Read by the partner via the same
+    -- users_select same-couple policy below — NOT redacted, by design (D2).
+    is_premium             boolean not null default false,
+    premium_until          timestamptz,           -- null = never expires (one-time model, D7)
+    entitlement_source     text not null default 'NONE',  -- PLAY | GRANT | NONE (ADR-0044 §4)
+    entitlement_checked_at timestamptz,           -- last-reconcile diagnostic; never read by a gate
     created_at   timestamptz not null default now(),
     updated_at   timestamptz not null default now(),
     server_rev   bigint
@@ -1096,3 +1104,28 @@ create policy app_release_info_select on app_release_info for select using (true
 -- Seeded to the versionCode shipped in v1.6.0 so existing testers aren't blocked until
 -- Alvin bumps this row for the next release.
 insert into app_release_info (id, required_version_code) values (true, 2);
+
+-- ============================================================================
+--  app_config — premium paywall remote override  [D3 / ADR-0044]
+--  Single-row, public-read config table (same singleton trick as
+--  app_release_info). The master enforcement kill-switch + per-cap overrides,
+--  cached in Room and refreshed on the sync trigger, so flipping enforcement or
+--  tuning a cap needs no app release. Ships DORMANT (enforcement_enabled = false)
+--  — nothing locks until Alvin's explicit post-beta go. Read-only to clients;
+--  Alvin writes via the Supabase table editor (postgres role, bypasses RLS).
+--  Per-user beta grants do NOT live here — a grant is written to the users row
+--  (entitlement_source = 'GRANT') so it propagates to the partner (ADR-0044 §4).
+-- ============================================================================
+create table app_config (
+    id                  boolean not null primary key default true,
+    enforcement_enabled boolean not null default false,   -- master kill-switch; ships OFF
+    cap_overrides       jsonb,                             -- nullable; per-cap tuning parsed into PlanLimits
+    updated_at          timestamptz not null default now(),
+    check (id)
+);
+
+alter table app_config enable row level security;
+
+create policy app_config_select on app_config for select using (true);
+
+insert into app_config (id, enforcement_enabled) values (true, false);

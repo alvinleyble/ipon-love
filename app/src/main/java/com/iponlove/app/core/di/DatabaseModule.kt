@@ -2,6 +2,7 @@ package com.iponlove.app.core.di
 
 import android.content.Context
 import androidx.room.Room
+import com.iponlove.app.core.config.local.AppConfigDao
 import com.iponlove.app.core.database.IponDatabase
 import com.iponlove.app.feature.accounts.data.local.AccountDao
 import com.iponlove.app.feature.budgets.data.local.BudgetDao
@@ -72,4 +73,7 @@ object DatabaseModule {
     @Provides
     fun goalContributionDao(database: IponDatabase): GoalContributionDao =
         database.goalContributionDao()
+
+    @Provides
+    fun appConfigDao(database: IponDatabase): AppConfigDao = database.appConfigDao()
 }

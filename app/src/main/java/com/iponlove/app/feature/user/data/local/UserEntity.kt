@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.user.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.iponlove.app.core.sync.SyncMeta
@@ -19,6 +20,12 @@ data class UserEntity(
     val avatarUrl: String?,
     val accentColor: String?,
     val coupleId: String?,
+    // Premium entitlement (dormant paywall infra, D2 / ADR-0044). Defaults let the Room
+    // auto-migration (23→24) add these columns without an AutoMigrationSpec.
+    @ColumnInfo(defaultValue = "0") val isPremium: Boolean = false,
+    val premiumUntil: Instant? = null,
+    @ColumnInfo(defaultValue = "NONE") val entitlementSource: String = "NONE",
+    val entitlementCheckedAt: Instant? = null,
     val createdAt: Instant,
     override val updatedAt: Instant,
     override val isDeleted: Boolean = false,

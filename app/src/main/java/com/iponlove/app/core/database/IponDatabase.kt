@@ -4,6 +4,8 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.iponlove.app.core.config.local.AppConfigDao
+import com.iponlove.app.core.config.local.AppConfigEntity
 import com.iponlove.app.core.database.converters.IponConverters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -58,8 +60,9 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         DebtPaymentEntity::class,
         SavingsGoalEntity::class,
         GoalContributionEntity::class,
+        AppConfigEntity::class,
     ],
-    version = 23,
+    version = 24,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 10, to = 11),
@@ -76,6 +79,8 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AutoMigration(from = 21, to = 22),
         // v23: transaction_images table auto-created; single-photo columns dropped (spec).
         AutoMigration(from = 22, to = 23, spec = DeleteReceiptColumnsMigration::class),
+        // v24: users entitlement columns + app_config cache table (dormant paywall infra, S1).
+        AutoMigration(from = 23, to = 24),
     ],
 )
 @TypeConverters(IponConverters::class)
@@ -93,6 +98,7 @@ abstract class IponDatabase : RoomDatabase() {
     abstract fun partnerDebtDao(): PartnerDebtDao
     abstract fun savingsGoalDao(): SavingsGoalDao
     abstract fun goalContributionDao(): GoalContributionDao
+    abstract fun appConfigDao(): AppConfigDao
 
     /**
      * Wipe every table — the local source of truth for one account. Called on sign-out and on
