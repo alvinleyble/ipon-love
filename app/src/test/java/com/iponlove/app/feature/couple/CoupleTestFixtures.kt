@@ -18,6 +18,7 @@ import com.iponlove.app.feature.savings.domain.model.SavingsGoal
 import com.iponlove.app.feature.savings.domain.repository.GoalContributionRepository
 import com.iponlove.app.feature.savings.domain.repository.SavingsGoalRepository
 import java.math.BigDecimal
+import com.iponlove.app.core.entitlement.Entitlement
 import java.time.Instant
 import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.model.Transaction
@@ -168,6 +169,10 @@ internal class FakeUserFlowRepository(
     override suspend fun ensureLocalRow(userId: String, displayName: String?) = Unit
     override suspend fun updateAccentColor(color: String) = Unit
     override suspend fun updateDisplayName(name: String) = Unit
+    override suspend fun getSelfEntitlement(): Entitlement? = null
+    override fun observeSelfEntitlement(): Flow<Entitlement> = emptyFlow()
+    override fun observePartnerEntitlement(): Flow<Entitlement?> = emptyFlow()
+    override suspend fun writeSelfEntitlement(entitlement: Entitlement, checkedAt: Instant) = Unit
 }
 
 internal fun userRow(coupleId: String?) =

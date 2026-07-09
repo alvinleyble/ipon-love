@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.user.data
 
+import com.iponlove.app.core.entitlement.Entitlement
 import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncTrigger
@@ -8,10 +9,14 @@ import com.iponlove.app.feature.user.data.local.UserEntity
 import com.iponlove.app.feature.user.data.remote.UserRemoteSource
 import com.iponlove.app.feature.user.domain.model.User
 import com.iponlove.app.feature.user.domain.repository.UserRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -52,6 +57,54 @@ class UserRepositoryImpl @Inject constructor(
         val existing = dao.getById(userId) ?: return
         val now = clock.stamp()
         dao.upsert(existing.copy(displayName = name, updatedAt = now, pendingSync = true))
+        syncTrigger.requestPush()
+    }
+
+    override suspend fun getSelfEntitlement(): Entitlement? {
+        val userId = runCatching { currentUserProvider.userId() }.getOrNull() ?: return null
+        return dao.getById(userId)?.toEntitlement()
+    }
+
+    override fun observeSelfEntitlement(): Flow<Entitlement> = flow {
+        val userId = runCatching { currentUserProvider.userId() }.getOrNull()
+        if (userId == null) emit(Entitlement.NONE)
+        else emitAll(dao.observeById(userId).map { it?.toEntitlement() ?: Entitlement.NONE })
+    }
+
+    // The partner's coupleId is only known from our own synced row, so re-resolve the partner
+    // flow whenever our row changes (e.g. pairing lands, or coupleId clears on unpair).
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun observePartnerEntitlement(): Flow<Entitlement?> = flow {
+        val userId = runCatching { currentUserProvider.userId() }.getOrNull()
+        if (userId == null) {
+            emit(null)
+        } else {
+            emitAll(
+                dao.observeById(userId).flatMapLatest { self ->
+                    val coupleId = self?.coupleId
+                    if (coupleId == null) flowOf(null)
+                    else dao.observePartner(coupleId, userId).map { it?.toEntitlement() }
+                },
+            )
+        }
+    }
+
+    override suspend fun writeSelfEntitlement(entitlement: Entitlement, checkedAt: Instant) {
+        val userId = currentUserProvider.userId()
+        val existing = dao.getById(userId) ?: return
+        // Pass the row's prior updated_at so a backward wall-clock jump can't make this genuinely
+        // newer write lose to the row's own previous version (ADR-0001 monotonic LWW key).
+        val now = clock.stamp(existing.updatedAt)
+        dao.upsert(
+            existing.copy(
+                isPremium = entitlement.isPremium,
+                premiumUntil = entitlement.premiumUntil,
+                entitlementSource = entitlement.source.name,
+                entitlementCheckedAt = checkedAt,
+                updatedAt = now,
+                pendingSync = true,
+            ),
+        )
         syncTrigger.requestPush()
     }
 

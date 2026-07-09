@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.iponlove.app.core.sync.CoupleBell
 import com.iponlove.app.core.sync.CoupleChannelManager
+import com.iponlove.app.core.sync.FullSyncStep
 import com.iponlove.app.core.sync.PreSyncStep
 import com.iponlove.app.core.sync.SupabaseCoupleBell
 import com.iponlove.app.core.sync.SyncClock
@@ -67,12 +68,14 @@ object SyncModule {
     fun syncEngine(
         syncers: Set<@JvmSuppressWildcards TableSyncer>,
         preSyncSteps: Set<@JvmSuppressWildcards PreSyncStep>,
+        fullSyncSteps: Set<@JvmSuppressWildcards FullSyncStep>,
         clock: SyncClock,
         clockOffsetStore: ClockOffsetStore,
         client: SupabaseClient,
     ): SyncEngine = SyncEngine(
         syncers = syncers,
         preSyncSteps = preSyncSteps,
+        fullSyncSteps = fullSyncSteps,
         clock = clock,
         clockOffsetStore = clockOffsetStore,
         serverTimeFetcher = {
@@ -130,4 +133,7 @@ interface SyncMultibindsModule {
 
     @Multibinds
     fun preSyncSteps(): Set<PreSyncStep>
+
+    @Multibinds
+    fun fullSyncSteps(): Set<FullSyncStep>
 }

@@ -7,12 +7,15 @@ import com.iponlove.app.feature.partnerdebt.domain.model.NetDirection
 import com.iponlove.app.feature.partnerdebt.domain.model.PartnerDebt
 import com.iponlove.app.feature.partnerdebt.domain.repository.PartnerDebtRepository
 import com.iponlove.app.feature.partnerdebt.domain.usecase.ObservePartnerDebtBoardUseCase
+import com.iponlove.app.core.entitlement.Entitlement
 import com.iponlove.app.feature.user.domain.model.User
 import com.iponlove.app.feature.user.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import java.time.Instant
 
 class ObservePartnerDebtBoardUseCaseTest {
 
@@ -29,6 +32,10 @@ class ObservePartnerDebtBoardUseCaseTest {
         override suspend fun ensureLocalRow(userId: String, displayName: String?) = Unit
         override suspend fun updateAccentColor(color: String) = Unit
         override suspend fun updateDisplayName(name: String) = Unit
+        override suspend fun getSelfEntitlement(): Entitlement? = null
+        override fun observeSelfEntitlement(): Flow<Entitlement> = emptyFlow()
+        override fun observePartnerEntitlement(): Flow<Entitlement?> = emptyFlow()
+        override suspend fun writeSelfEntitlement(entitlement: Entitlement, checkedAt: Instant) = Unit
     }
     private val debtRepo = object : PartnerDebtRepository {
         override fun observeDebts(coupleId: String): Flow<List<PartnerDebt>> = debts

@@ -40,6 +40,7 @@ sealed interface SyncState {
 class SyncEngine(
     syncers: Set<TableSyncer>,
     private val preSyncSteps: Set<PreSyncStep> = emptySet(),
+    private val fullSyncSteps: Set<FullSyncStep> = emptySet(),
     private val clock: SyncClock? = null,
     private val clockOffsetStore: ClockOffsetStore? = null,
     private val serverTimeFetcher: (suspend () -> Instant)? = null,
@@ -73,6 +74,13 @@ class SyncEngine(
         currentRun = deferred
         try {
             _state.value = SyncState.Syncing
+            // Advisory full-sync-only steps first (paywall entitlement reconcile + remote config
+            // refresh, S4). Guarded individually: these are best-effort and their write (a dirty
+            // users row from the reconcile) must still be picked up by the push below, but a
+            // Play/network failure here must never abort the data sync. Runs only in sync(), not
+            // pushOnly()/pullOnly() — see FullSyncStep — so Play billing IPC never fires on a
+            // keystroke-debounced micro-push.
+            for (step in fullSyncSteps) runCatching { step.run() }
             // Upload pending files before pushing rows so rows carry the Storage URL.
             for (step in preSyncSteps) step.run()
             // Push parent→child (sequential, FK-ordered) so the server sees parents first.

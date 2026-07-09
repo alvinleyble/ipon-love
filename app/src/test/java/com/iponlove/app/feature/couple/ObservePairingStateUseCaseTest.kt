@@ -2,6 +2,7 @@ package com.iponlove.app.feature.couple
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import com.iponlove.app.core.entitlement.Entitlement
 import com.iponlove.app.feature.couple.domain.model.Couple
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.repository.CoupleRepository
@@ -10,8 +11,10 @@ import com.iponlove.app.feature.user.domain.model.User
 import com.iponlove.app.feature.user.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import java.time.Instant
 
 class ObservePairingStateUseCaseTest {
 
@@ -110,6 +113,10 @@ private class FakeUserRepository : UserRepository {
     override suspend fun ensureLocalRow(userId: String, displayName: String?) = Unit
     override suspend fun updateAccentColor(color: String) = Unit
     override suspend fun updateDisplayName(name: String) = Unit
+    override suspend fun getSelfEntitlement(): Entitlement? = null
+    override fun observeSelfEntitlement(): Flow<Entitlement> = emptyFlow()
+    override fun observePartnerEntitlement(): Flow<Entitlement?> = emptyFlow()
+    override suspend fun writeSelfEntitlement(entitlement: Entitlement, checkedAt: Instant) = Unit
 }
 
 private class FakeCoupleRepository : CoupleRepository {
