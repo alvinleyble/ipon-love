@@ -2,6 +2,7 @@ package com.iponlove.app.feature.subscription.presentation
 
 import android.app.Activity
 import com.google.common.truth.Truth.assertThat
+import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.billing.BillingException
 import com.iponlove.app.core.billing.BillingGateway
 import com.iponlove.app.core.billing.OwnedPurchase
@@ -65,12 +66,22 @@ class SubscriptionViewModelTest {
         override suspend fun acknowledge(purchaseToken: String) = Result.success(Unit)
     }
 
+    private class FakeAnalytics : Analytics {
+        val events = mutableListOf<String>()
+        override fun log(name: String, source: String?, params: Map<String, String>) {
+            events += name
+        }
+    }
+
     private fun none() = Entitlement.NONE
     private fun playPremium() =
         Entitlement(isPremium = true, premiumUntil = null, source = EntitlementSource.PLAY)
 
-    private fun vm(entitlement: EntitlementRepository, billing: BillingGateway) =
-        SubscriptionViewModel(entitlement, billing)
+    private fun vm(
+        entitlement: EntitlementRepository,
+        billing: BillingGateway,
+        analytics: Analytics = FakeAnalytics(),
+    ) = SubscriptionViewModel(entitlement, billing, analytics)
 
     @Test
     fun initialState_reflectsOwnedEntitlement() = runTest {
@@ -155,6 +166,42 @@ class SubscriptionViewModelTest {
 
         assertThat(entitlement.reconcileCount).isEqualTo(1)
         assertThat(viewModel.uiState.value.message).isEqualTo("No previous purchase found.")
+    }
+
+    @Test
+    fun logsPaywallImpression_onOpen() = runTest {
+        val analytics = FakeAnalytics()
+        vm(FakeEntitlement(none()), FakeBilling(), analytics)
+        assertThat(analytics.events).containsExactly("paywall_impression")
+    }
+
+    @Test
+    fun logsFunnelEvents_forPurchaseAndRestore() = runTest {
+        val analytics = FakeAnalytics()
+        val entitlement = FakeEntitlement(none())
+        val billing = FakeBilling()
+        val viewModel = vm(entitlement, billing, analytics)
+
+        viewModel.onBuy(activity)
+        billing.emitter.emit(PurchaseResult.Success(
+            OwnedPurchase(listOf(BillingGateway.PREMIUM_PRODUCT_ID), "tok", isAcknowledged = true),
+        ))
+        viewModel.onRestore()
+
+        assertThat(analytics.events).containsExactly(
+            "paywall_impression", "purchase_started", "purchase_success", "restore",
+        ).inOrder()
+    }
+
+    @Test
+    fun logsCancelled_onPurchaseCancelled() = runTest {
+        val analytics = FakeAnalytics()
+        val billing = FakeBilling()
+        vm(FakeEntitlement(none()), billing, analytics)
+
+        billing.emitter.emit(PurchaseResult.Cancelled)
+
+        assertThat(analytics.events).containsExactly("paywall_impression", "purchase_cancelled").inOrder()
     }
 
     @Test

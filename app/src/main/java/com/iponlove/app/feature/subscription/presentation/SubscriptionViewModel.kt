@@ -3,6 +3,7 @@ package com.iponlove.app.feature.subscription.presentation
 import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.billing.BillingGateway
 import com.iponlove.app.core.billing.PurchaseResult
 import com.iponlove.app.core.entitlement.EntitlementRepository
@@ -31,12 +32,17 @@ import javax.inject.Inject
 class SubscriptionViewModel @Inject constructor(
     private val entitlement: EntitlementRepository,
     private val billing: BillingGateway,
+    private val analytics: Analytics,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SubscriptionUiState())
     val uiState: StateFlow<SubscriptionUiState> = _uiState
 
     init {
+        // Screen open == a paywall impression (the VM is scoped to this nav entry). Source is the
+        // only entry point today; becomes a nav arg once other surfaces route here (Phase 2).
+        analytics.log("paywall_impression", source = "settings")
+
         entitlement.observeSelf()
             .onEach { self ->
                 _uiState.update { it.copy(loading = false, isPremium = self.isActive(Instant.now())) }
@@ -51,6 +57,7 @@ class SubscriptionViewModel @Inject constructor(
     fun onBuy(activity: Activity) {
         viewModelScope.launch {
             _uiState.update { it.copy(purchaseInProgress = true, message = null) }
+            analytics.log("purchase_started")
             val launched = billing.launchPurchaseFlow(activity)
             if (launched.isFailure) {
                 // The result listener never fires if the flow couldn't even launch (e.g. the
@@ -69,6 +76,7 @@ class SubscriptionViewModel @Inject constructor(
     fun onRestore() {
         viewModelScope.launch {
             _uiState.update { it.copy(restoreInProgress = true, message = null) }
+            analytics.log("restore")
             entitlement.reconcile()
             // reconcile() writes the column before returning, so the cached value is now current.
             val active = entitlement.observeSelf().first().isActive(Instant.now())
@@ -89,11 +97,14 @@ class SubscriptionViewModel @Inject constructor(
         viewModelScope.launch {
             when (result) {
                 is PurchaseResult.Success -> {
+                    analytics.log("purchase_success")
                     entitlement.reconcile()
                     _uiState.update { it.copy(purchaseInProgress = false, message = "Welcome to Premium!") }
                 }
-                PurchaseResult.Cancelled ->
+                PurchaseResult.Cancelled -> {
+                    analytics.log("purchase_cancelled")
                     _uiState.update { it.copy(purchaseInProgress = false) }
+                }
                 is PurchaseResult.Failed ->
                     _uiState.update {
                         it.copy(purchaseInProgress = false, message = "Purchase couldn't be completed.")

@@ -2,6 +2,7 @@ package com.iponlove.app.core.di
 
 import android.content.Context
 import androidx.room.Room
+import com.iponlove.app.core.analytics.local.AnalyticsEventDao
 import com.iponlove.app.core.config.local.AppConfigDao
 import com.iponlove.app.core.database.IponDatabase
 import com.iponlove.app.feature.accounts.data.local.AccountDao
@@ -76,4 +77,7 @@ object DatabaseModule {
 
     @Provides
     fun appConfigDao(database: IponDatabase): AppConfigDao = database.appConfigDao()
+
+    @Provides
+    fun analyticsEventDao(database: IponDatabase): AnalyticsEventDao = database.analyticsEventDao()
 }

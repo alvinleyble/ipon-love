@@ -4,6 +4,8 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.iponlove.app.core.analytics.local.AnalyticsEventDao
+import com.iponlove.app.core.analytics.local.AnalyticsEventEntity
 import com.iponlove.app.core.config.local.AppConfigDao
 import com.iponlove.app.core.config.local.AppConfigEntity
 import com.iponlove.app.core.database.converters.IponConverters
@@ -61,8 +63,9 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         SavingsGoalEntity::class,
         GoalContributionEntity::class,
         AppConfigEntity::class,
+        AnalyticsEventEntity::class,
     ],
-    version = 24,
+    version = 25,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 10, to = 11),
@@ -81,6 +84,8 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AutoMigration(from = 22, to = 23, spec = DeleteReceiptColumnsMigration::class),
         // v24: users entitlement columns + app_config cache table (dormant paywall infra, S1).
         AutoMigration(from = 23, to = 24),
+        // v25: analytics_events buffer table (paywall telemetry, S6).
+        AutoMigration(from = 24, to = 25),
     ],
 )
 @TypeConverters(IponConverters::class)
@@ -99,6 +104,7 @@ abstract class IponDatabase : RoomDatabase() {
     abstract fun savingsGoalDao(): SavingsGoalDao
     abstract fun goalContributionDao(): GoalContributionDao
     abstract fun appConfigDao(): AppConfigDao
+    abstract fun analyticsEventDao(): AnalyticsEventDao
 
     /**
      * Wipe every table — the local source of truth for one account. Called on sign-out and on

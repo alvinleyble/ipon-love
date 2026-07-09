@@ -1129,3 +1129,34 @@ alter table app_config enable row level security;
 create policy app_config_select on app_config for select using (true);
 
 insert into app_config (id, enforcement_enabled) values (true, false);
+
+-- ============================================================================
+--  analytics_events — paywall-funnel telemetry  [G10 / §10.10]
+--  Write-only, push-only from the client: the app buffers events in Room and
+--  flushes them here on the existing sync trigger (no third-party SDK — Firebase
+--  is banned, and no off-device behavioral vendor for a finance app). Only
+--  paywall-interaction events + the user id are stored, never financial content,
+--  so the existing privacy policy already covers it. Funnel is computed in SQL /
+--  a Supabase dashboard, not read back by the app. `id` is client-generated so a
+--  retried flush upserts idempotently.
+-- ============================================================================
+create table analytics_events (
+    id         uuid not null primary key,
+    user_id    uuid not null references users(id) on delete cascade,
+    name       text not null,
+    source     text,
+    params     jsonb,
+    created_at timestamptz not null default now()
+);
+
+create index analytics_events_user_created_idx on analytics_events (user_id, created_at);
+
+alter table analytics_events enable row level security;
+
+-- Insert + read own rows only. The self-scoped select is what lets the client's
+-- default returning=representation upsert succeed; the app never actually reads
+-- events back (no syncer pulls this table).
+create policy analytics_events_insert on analytics_events
+    for insert with check (user_id = auth.uid());
+create policy analytics_events_select on analytics_events
+    for select using (user_id = auth.uid());
