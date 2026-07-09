@@ -89,6 +89,7 @@ import com.iponlove.app.feature.savings.presentation.SavingsGoalsScreen
 import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
 import com.iponlove.app.feature.settings.presentation.ProfileScreen
 import com.iponlove.app.feature.settings.presentation.SettingsCoupleScreen
+import com.iponlove.app.feature.subscription.presentation.SubscriptionScreen
 import com.iponlove.app.feature.transactions.presentation.AddTransactionScreen
 import com.iponlove.app.feature.transactions.presentation.AddTransactionViewModel.Companion.TXN_ID_KEY
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
@@ -97,6 +98,7 @@ import kotlinx.coroutines.launch
 private const val APP_LOCK_SETUP_ROUTE = "app_lock_setup"
 private const val NOTE_EDITOR_ROUTE = "note_editor"
 private const val PROFILE_ROUTE = "profile"
+private const val SUBSCRIPTION_ROUTE = "subscription"
 private const val SETTINGS_COUPLE_ROUTE = "settings_couple"
 private const val NAV_EDITOR_ROUTE = "nav_editor"
 private const val HELP_ROUTE = "help"
@@ -326,6 +328,7 @@ private fun IponAppContent(
                     PersonalizeScreen(
                         onBack = { navController.popBackStack() },
                         onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
+                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
                         onOpenSecurity = { navController.navigate(APP_LOCK_SETUP_ROUTE) },
                         onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) },
                         onOpenNavbar = { navController.navigate(NAV_EDITOR_ROUTE) },
@@ -338,6 +341,9 @@ private fun IponAppContent(
                 }
                 composable(PROFILE_ROUTE) {
                     ProfileScreen(onBack = { navController.popBackStack() })
+                }
+                composable(SUBSCRIPTION_ROUTE) {
+                    SubscriptionScreen(onBack = { navController.popBackStack() })
                 }
                 composable(SETTINGS_COUPLE_ROUTE) {
                     SettingsCoupleScreen(onBack = { navController.popBackStack() })

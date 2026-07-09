@@ -1,12 +1,16 @@
 package com.iponlove.app.core.entitlement
 
+import android.app.Activity
 import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.core.billing.BillingException
 import com.iponlove.app.core.billing.BillingGateway
 import com.iponlove.app.core.billing.OwnedPurchase
+import com.iponlove.app.core.billing.PurchaseResult
 import com.iponlove.app.feature.user.domain.model.User
 import com.iponlove.app.feature.user.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -32,6 +36,9 @@ class EntitlementReconcileTest {
             acknowledged += purchaseToken
             return Result.success(Unit)
         }
+        // Purchase-launch path (S5) — unused by the reconcile tests.
+        override val purchaseResults: SharedFlow<PurchaseResult> = MutableSharedFlow()
+        override suspend fun launchPurchaseFlow(activity: Activity): Result<Unit> = Result.success(Unit)
     }
 
     private class FakeUserRepo(var current: Entitlement?) : UserRepository {

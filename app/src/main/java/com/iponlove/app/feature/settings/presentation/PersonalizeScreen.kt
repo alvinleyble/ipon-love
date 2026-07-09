@@ -56,6 +56,7 @@ import com.iponlove.app.feature.settings.domain.model.ThemePalette
 fun PersonalizeScreen(
     onBack: () -> Unit,
     onOpenProfile: () -> Unit = {},
+    onOpenPremium: () -> Unit = {},
     onOpenSecurity: () -> Unit = {},
     onOpenCouple: () -> Unit = {},
     onOpenNavbar: () -> Unit = {},
@@ -141,6 +142,24 @@ fun PersonalizeScreen(
                     modifier = Modifier.clickable(onClick = onOpenProfile),
                 )
                 HorizontalDivider()
+                // Dormant until enforcement flips ON (paywall S5 / Item 12): the row is absent
+                // entirely while the paywall ships dormant, so a normal walkthrough shows nothing.
+                if (state.showPremiumEntry) {
+                    ListItem(
+                        headlineContent = { Text("Premium") },
+                        supportingContent = {
+                            Text(
+                                if (state.isPremium) "Active — thank you!"
+                                else "Unlock more of Love, Ipon",
+                            )
+                        },
+                        trailingContent = {
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                        },
+                        modifier = Modifier.clickable(onClick = onOpenPremium),
+                    )
+                    HorizontalDivider()
+                }
                 ListItem(
                     headlineContent = { Text("Security") },
                     supportingContent = { Text("PIN lock & biometric") },

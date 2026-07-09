@@ -1,41 +1,55 @@
 package com.iponlove.app.core.billing
 
+import android.app.Activity
 import android.content.Context
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
+import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.PendingPurchasesParams
 import com.android.billingclient.api.Purchase
-import com.android.billingclient.api.PurchasesUpdatedListener
+import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
 import com.android.billingclient.api.acknowledgePurchase
+import com.android.billingclient.api.queryProductDetails
 import com.android.billingclient.api.queryPurchasesAsync
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 
 /**
- * Real [BillingGateway], a thin wrapper over the Play Billing Library (v9). Not unit-tested
- * directly — same precedent as `SupabaseUserRemoteSource`/`SupabaseAppConfigRemoteSource`, which
- * carry no logic of their own; the reconcile logic that consumes this (S4) is tested against a
- * fake [BillingGateway] instead.
+ * Real [BillingGateway], a thin wrapper over the Play Billing Library (v9). The SDK-glue that
+ * can't be exercised on the JVM (real [BillingClient], an [Activity]) lives here; the reconcile
+ * *decision* logic (S4) and the paywall orchestration (S5) that consume this are tested against a
+ * fake [BillingGateway] instead, so this class carries no branch worth its own unit test.
  *
- * Nothing in the app injects [BillingGateway] yet (S3 is unwired, like S2), so Hilt never
- * constructs this class and no [BillingClient] connection is ever opened — this slice has no
- * on-device-observable behavior.
+ * Since S4 the reconcile loop injects this (it runs on every full sync), so the [BillingClient] is
+ * constructed at startup — but a connection only actually opens on the first [queryOwnedPurchases]
+ * / [launchPurchaseFlow] call. The purchase flow (S5) is the only path that opens Play's UI.
  */
 @Singleton
 class PlayBillingGateway @Inject constructor(
     @ApplicationContext context: Context,
 ) : BillingGateway {
 
-    // No purchase flow is launched through this gateway (see BillingGateway's kdoc), but the SDK
-    // still requires a listener at construction time; it is never meaningfully invoked here.
+    // replay = 0 (a returning collector must not re-fire a stale purchase), buffered so the
+    // non-suspending listener can tryEmit without a subscriber racing to be ready; a missed
+    // emission self-heals on the next foreground reconcile (S4), so DROP_OLDEST is safe.
+    private val _purchaseResults = MutableSharedFlow<PurchaseResult>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    override val purchaseResults: SharedFlow<PurchaseResult> = _purchaseResults.asSharedFlow()
+
     private val billingClient: BillingClient = BillingClient.newBuilder(context)
-        .setListener(PurchasesUpdatedListener { _, _ -> })
+        .setListener { result, purchases -> onPurchasesUpdated(result, purchases) }
         .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
         .enableAutoServiceReconnection()
         .build()
@@ -68,6 +82,75 @@ class PlayBillingGateway @Inject constructor(
         } else {
             Result.failure(BillingException(result.responseCode, result.debugMessage))
         }
+    }
+
+    override suspend fun launchPurchaseFlow(activity: Activity): Result<Unit> {
+        val connected = ensureConnected()
+        if (connected != null) return Result.failure(connected)
+
+        // Play requires fresh ProductDetails to launch a flow (a purchase can't be started from a
+        // bare product id). An empty list is the expected dormant/pre-S11 state — the product
+        // simply isn't in the Play Console yet — so map it to ITEM_UNAVAILABLE, not a crash.
+        val productParams = QueryProductDetailsParams.newBuilder()
+            .setProductList(
+                listOf(
+                    QueryProductDetailsParams.Product.newBuilder()
+                        .setProductId(BillingGateway.PREMIUM_PRODUCT_ID)
+                        .setProductType(BillingClient.ProductType.INAPP)
+                        .build(),
+                ),
+            )
+            .build()
+        val detailsResult = billingClient.queryProductDetails(productParams)
+        val detailsCode = detailsResult.billingResult.responseCode
+        if (detailsCode != BillingClient.BillingResponseCode.OK) {
+            return Result.failure(BillingException(detailsCode, detailsResult.billingResult.debugMessage))
+        }
+        val product = detailsResult.productDetailsList?.firstOrNull()
+            ?: return Result.failure(
+                BillingException(
+                    BillingClient.BillingResponseCode.ITEM_UNAVAILABLE,
+                    "Premium product not found in Play Console",
+                ),
+            )
+
+        val productDetailsParams = BillingFlowParams.ProductDetailsParams.newBuilder()
+            .setProductDetails(product)
+            .apply {
+                // v9 one-time products may carry per-offer tokens; set one if present (a plain
+                // single-price product has none, and the flow launches without it).
+                product.oneTimePurchaseOfferDetailsList?.firstOrNull()?.offerToken
+                    ?.let { setOfferToken(it) }
+            }
+            .build()
+        val flowParams = BillingFlowParams.newBuilder()
+            .setProductDetailsParamsList(listOf(productDetailsParams))
+            .build()
+
+        val launch = billingClient.launchBillingFlow(activity, flowParams)
+        return if (launch.responseCode == BillingClient.BillingResponseCode.OK) {
+            Result.success(Unit)
+        } else {
+            Result.failure(BillingException(launch.responseCode, launch.debugMessage))
+        }
+    }
+
+    private fun onPurchasesUpdated(result: BillingResult, purchases: List<Purchase>?) {
+        val event = when (result.responseCode) {
+            BillingClient.BillingResponseCode.OK -> {
+                val premium = purchases.orEmpty()
+                    .firstOrNull { BillingGateway.PREMIUM_PRODUCT_ID in it.products }
+                if (premium != null) {
+                    PurchaseResult.Success(premium.toOwnedPurchase())
+                } else {
+                    // OK but nothing we sell — treat as a benign no-op failure the ViewModel drops.
+                    PurchaseResult.Failed(result.responseCode, "No premium purchase in update")
+                }
+            }
+            BillingClient.BillingResponseCode.USER_CANCELED -> PurchaseResult.Cancelled
+            else -> PurchaseResult.Failed(result.responseCode, result.debugMessage)
+        }
+        _purchaseResults.tryEmit(event)
     }
 
     /** Returns null once connected, or the [BillingException] to fail the caller with. */

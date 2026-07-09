@@ -1,5 +1,8 @@
 package com.iponlove.app.core.billing
 
+import android.app.Activity
+import kotlinx.coroutines.flow.SharedFlow
+
 /**
  * A single INAPP purchase owned by the signed-in Play account, decoupled from
  * `com.android.billingclient.api.Purchase` so callers never import the Play Billing SDK
@@ -13,16 +16,27 @@ data class OwnedPurchase(
     val isAcknowledged: Boolean,
 )
 
+/**
+ * The asynchronous outcome of a launched purchase flow (S5). Play reports it via
+ * `PurchasesUpdatedListener` *after* [BillingGateway.launchPurchaseFlow] returns — so it can't be
+ * the return value of that call. [Cancelled] is split out from [Failed] because a user backing
+ * out of the Play sheet is the common, non-error case and must not surface as an error message.
+ */
+sealed interface PurchaseResult {
+    data class Success(val purchase: OwnedPurchase) : PurchaseResult
+    data object Cancelled : PurchaseResult
+    data class Failed(val responseCode: Int, val message: String) : PurchaseResult
+}
+
 /** A Play Billing failure, carrying the raw `BillingClient.BillingResponseCode` (e.g.
  *  `SERVICE_DISCONNECTED`, `NETWORK_ERROR`) so a caller can tell a transient/retryable failure
  *  from a real one without depending on the SDK's constants directly. */
 class BillingException(val responseCode: Int, message: String) : Exception(message)
 
 /**
- * Play Billing wrapper behind an interface (paywall S3 / ADR-0044 suggested build). Scoped to
- * the two read-path operations the dormant entitlement reconcile loop (S4) and the paywall's
- * "Restore purchases" action (S5) need — launching the purchase flow itself is S5's job, tied to
- * that screen's Activity and lifecycle, so it is deliberately not part of this wrapper.
+ * Play Billing wrapper behind an interface (paywall S3/S5 / ADR-0044). Covers the read path the
+ * dormant reconcile loop (S4) and the paywall's "Restore purchases" action (S5) need, plus the
+ * purchase-flow launch (S5) that S3 deferred because it needs an [Activity].
  */
 interface BillingGateway {
 
@@ -43,6 +57,23 @@ interface BillingGateway {
      * loop (S4) must call this for every unacknowledged owned purchase it sees.
      */
     suspend fun acknowledge(purchaseToken: String): Result<Unit>
+
+    /**
+     * Every purchase-flow outcome the SDK reports (hot, Application-scoped). The paywall
+     * ViewModel (S5) collects this while the screen is open and, on [PurchaseResult.Success],
+     * calls the reconcile loop (S4) to persist entitlement onto the synced `users` row — which
+     * also pushes it so the partner unlocks shared surfaces (D1/D2). A missed emission is not
+     * lost: the next foreground full-sync reconciles the same purchase (S4).
+     */
+    val purchaseResults: SharedFlow<PurchaseResult>
+
+    /**
+     * Launches Play's purchase UI for [PREMIUM_PRODUCT_ID] over [activity]. The [Result] here only
+     * reports whether the flow could be *launched* (product resolvable, UI shown) — the purchase
+     * outcome itself arrives asynchronously on [purchaseResults]. While the paywall is dormant and
+     * the Play Console product doesn't exist yet (pre-S11), this fails fast with `ITEM_UNAVAILABLE`.
+     */
+    suspend fun launchPurchaseFlow(activity: Activity): Result<Unit>
 
     companion object {
         /** The one-time ₱249 non-consumable product this app sells (§10.5, D7). */
