@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.transactions.presentation
 
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.categories.domain.model.Category
 
@@ -18,6 +19,8 @@ data class AddTransactionUiState(
     val isPaired: Boolean = false,
     /** True when the id nav-arg pointed at a transaction that no longer exists. */
     val missing: Boolean = false,
+    /** Set when a receipt-photo add is blocked by the free cap (S8); drives the upsell sheet. */
+    val upsell: UpsellPrompt? = null,
 ) {
     val loading: Boolean get() = editor == null && !missing
 }

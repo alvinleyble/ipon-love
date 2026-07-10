@@ -4,10 +4,14 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.analytics.Analytics
+import com.iponlove.app.core.entitlement.CapCheck
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.notes.domain.model.Note
 import com.iponlove.app.feature.notes.domain.usecase.AddNoteImageUseCase
+import com.iponlove.app.feature.notes.domain.usecase.CheckNoteAttachmentCapUseCase
 import com.iponlove.app.feature.notes.domain.usecase.DeleteNoteAttachmentUseCase
 import com.iponlove.app.feature.notes.domain.usecase.DeleteNoteUseCase
 import com.iponlove.app.feature.notes.domain.usecase.GetNoteUseCase
@@ -36,6 +40,8 @@ class NoteEditorViewModel @Inject constructor(
     private val deleteAttachment: DeleteNoteAttachmentUseCase,
     private val shareNote: ShareNoteUseCase,
     private val unshareNote: UnshareNoteUseCase,
+    private val checkNoteAttachmentCap: CheckNoteAttachmentCapUseCase,
+    private val analytics: Analytics,
     observePairingState: ObservePairingStateUseCase,
 ) : ViewModel() {
 
@@ -45,6 +51,9 @@ class NoteEditorViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(NoteEditorUiState(isNew = isNew))
     val uiState: StateFlow<NoteEditorUiState> = _uiState.asStateFlow()
+
+    // Which cap raised the current upsell — the analytics source for its "Get Premium" tap.
+    private var upsellSource: String? = null
 
     init {
         if (isNew) {
@@ -142,12 +151,33 @@ class NoteEditorViewModel @Inject constructor(
 
     fun addImage(uri: Uri) {
         if (_uiState.value.isPartnerNote) return
-        // Defensive backstop for the UI's disabled add button (ADR: cap images per note).
+        // Hard ceiling (= premium max); defensive backstop for the UI's disabled add button.
         if (_uiState.value.attachments.size >= MAX_ATTACHMENTS) return
         val noteId = _uiState.value.noteId ?: return
         viewModelScope.launch {
-            runCatching { addNoteImage(noteId, uri) }
+            // Free-tier media cap (S8): with enforcement off, or under the cap, this returns
+            // Allowed and the image is added exactly as before. Free = 0, premium = 3.
+            when (val check = checkNoteAttachmentCap(_uiState.value.attachments.size)) {
+                CapCheck.Allowed -> runCatching { addNoteImage(noteId, uri) }
+                is CapCheck.Blocked -> raiseUpsell("note_attachments", "note photos", check)
+            }
         }
+    }
+
+    private fun raiseUpsell(source: String, entityLabel: String, blocked: CapCheck.Blocked) {
+        upsellSource = source
+        _uiState.update { it.copy(upsell = UpsellPrompt(entityLabel, blocked.freeLimit, blocked.premiumMax)) }
+    }
+
+    fun dismissUpsell() {
+        _uiState.update { it.copy(upsell = null) }
+    }
+
+    /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before the screen routes
+     *  to the paywall. */
+    fun onUpsellUpgrade() {
+        analytics.log("upsell_tap", source = upsellSource)
+        _uiState.update { it.copy(upsell = null) }
     }
 
     fun removeAttachment(id: String) {

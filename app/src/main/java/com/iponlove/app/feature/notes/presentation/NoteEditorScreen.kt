@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.FullScreenImageDialog
 import com.iponlove.app.core.ui.IponFilterChip
 import com.iponlove.app.core.ui.SharedBadge
@@ -67,6 +68,7 @@ import java.io.File
 @Composable
 fun NoteEditorScreen(
     onBack: () -> Unit,
+    onOpenPremium: () -> Unit = {},
     viewModel: NoteEditorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -210,6 +212,14 @@ fun NoteEditorScreen(
             model = image,
             contentDescription = "Attached image full size",
             onDismiss = { viewerImage = null },
+        )
+    }
+
+    state.upsell?.let { prompt ->
+        CapReachedSheet(
+            prompt = prompt,
+            onDismiss = viewModel::dismissUpsell,
+            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
         )
     }
 }

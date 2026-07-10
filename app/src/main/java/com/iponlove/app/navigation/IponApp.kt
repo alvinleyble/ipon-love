@@ -268,7 +268,10 @@ private fun IponAppContent(
                     route = "$NOTE_EDITOR_ROUTE/{$NOTE_ID_KEY}",
                     arguments = listOf(navArgument(NOTE_ID_KEY) { type = NavType.StringType }),
                 ) {
-                    NoteEditorScreen(onBack = { navController.popBackStack() })
+                    NoteEditorScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                    )
                 }
             }
 
@@ -375,7 +378,10 @@ private fun IponAppContent(
             // Add/Edit Transaction stays a standalone top-level route (ADR-0033 decision 2) — it's
             // reached from the global ⊕ button, so it must not inherit any tab's reset-on-retap.
             composable(ADD_TRANSACTION_ROUTE) {
-                AddTransactionScreen(onBack = { navController.popBackStack() })
+                AddTransactionScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                )
             }
             // Navbar editor is also a standalone top-level route (V1.6.3 Item 6): nested inside the
             // Settings graph it stacked a second module graph over the origin tab, which made
@@ -394,7 +400,10 @@ private fun IponAppContent(
                 route = "$EDIT_TRANSACTION_ROUTE/{$TXN_ID_KEY}",
                 arguments = listOf(navArgument(TXN_ID_KEY) { type = NavType.StringType }),
             ) {
-                AddTransactionScreen(onBack = { navController.popBackStack() })
+                AddTransactionScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                )
             }
         }
     }

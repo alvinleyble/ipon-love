@@ -61,6 +61,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.FullScreenImagePager
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -85,6 +86,7 @@ import java.time.ZoneOffset
 @Composable
 fun AddTransactionScreen(
     onBack: () -> Unit,
+    onOpenPremium: () -> Unit = {},
     viewModel: AddTransactionViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -107,6 +109,14 @@ fun AddTransactionScreen(
         onRemoveImage = viewModel::onRemoveImage,
         onSave = { viewModel.save(onBack) },
     )
+
+    state.upsell?.let { prompt ->
+        CapReachedSheet(
+            prompt = prompt,
+            onDismiss = viewModel::dismissUpsell,
+            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

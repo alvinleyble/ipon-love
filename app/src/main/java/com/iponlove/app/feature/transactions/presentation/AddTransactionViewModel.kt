@@ -6,6 +6,9 @@ import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.analytics.Analytics
+import com.iponlove.app.core.entitlement.CapCheck
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.model.Category
@@ -15,6 +18,7 @@ import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCas
 import com.iponlove.app.feature.partnerdebt.domain.usecase.PaidOnBehalfUseCase
 import com.iponlove.app.feature.transactions.domain.model.TransactionImage
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
+import com.iponlove.app.feature.transactions.domain.usecase.CheckReceiptPhotoCapUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.CompressReceiptUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.GetTransactionImagesUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.GetTransactionUseCase
@@ -54,6 +58,8 @@ class AddTransactionViewModel @Inject constructor(
     private val compressReceipt: CompressReceiptUseCase,
     private val getTransactionImages: GetTransactionImagesUseCase,
     private val saveTransactionImages: SaveTransactionImagesUseCase,
+    private val checkReceiptPhotoCap: CheckReceiptPhotoCapUseCase,
+    private val analytics: Analytics,
 ) : ViewModel() {
 
     private val saved = savedStateHandle
@@ -62,6 +68,10 @@ class AddTransactionViewModel @Inject constructor(
 
     private val editor = MutableStateFlow<TransactionEditorState?>(null)
     private val missing = MutableStateFlow(false)
+    private val upsell = MutableStateFlow<UpsellPrompt?>(null)
+
+    // Which cap raised the current upsell — the analytics source for its "Get Premium" tap.
+    private var upsellSource: String? = null
 
     private var latestAccounts: List<Account> = emptyList()
     private var coupleId: String? = null
@@ -101,6 +111,9 @@ class AddTransactionViewModel @Inject constructor(
                 isPaired = coupleId != null,
                 missing = isMissing,
             )
+        }.combine(upsell) { state, upsellState ->
+            // Outer combine: the primary one is already at Kotlin's 5-flow typed max.
+            state.copy(upsell = upsellState)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -171,22 +184,45 @@ class AddTransactionViewModel @Inject constructor(
 
     fun onImagePicked(uri: Uri) {
         val current = editor.value ?: return
-        if (current.images.size >= TransactionImage.MAX) return // UI-level cap (backstop lives in the save use case + repo)
+        if (current.images.size >= TransactionImage.MAX) return // hard ceiling (= premium max); backstop lives in the save use case + repo
         viewModelScope.launch {
-            val imageId = UUID.randomUUID().toString()
-            val localPath = compressReceipt(uri, imageId)
-            mutate { state ->
-                state.copy(
-                    images = state.images + TransactionImage(
-                        id = imageId,
-                        transactionId = state.id,
-                        localPath = localPath,
-                        url = null,
-                        position = state.images.size,
-                    ),
-                )
+            // Free-tier media cap (S8): with enforcement off, or under the cap, this returns
+            // Allowed and the receipt is added exactly as before. Free = 1 photo, premium = 3.
+            when (val check = checkReceiptPhotoCap(current.images.size)) {
+                CapCheck.Allowed -> {
+                    val imageId = UUID.randomUUID().toString()
+                    val localPath = compressReceipt(uri, imageId)
+                    mutate { state ->
+                        state.copy(
+                            images = state.images + TransactionImage(
+                                id = imageId,
+                                transactionId = state.id,
+                                localPath = localPath,
+                                url = null,
+                                position = state.images.size,
+                            ),
+                        )
+                    }
+                }
+                is CapCheck.Blocked -> raiseUpsell("receipt_photos", "receipt photos", check)
             }
         }
+    }
+
+    private fun raiseUpsell(source: String, entityLabel: String, blocked: CapCheck.Blocked) {
+        upsellSource = source
+        upsell.value = UpsellPrompt(entityLabel, blocked.freeLimit, blocked.premiumMax)
+    }
+
+    fun dismissUpsell() {
+        upsell.value = null
+    }
+
+    /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before the screen routes
+     *  to the paywall. */
+    fun onUpsellUpgrade() {
+        analytics.log("upsell_tap", source = upsellSource)
+        upsell.value = null
     }
 
     fun onRemoveImage(imageId: String) =

@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.notes.presentation
 
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.notes.domain.model.NoteAttachment
 
 /**
@@ -23,4 +24,6 @@ data class NoteEditorUiState(
     val coupleId: String? = null,
     /** True when the note belongs to the partner; editor is read-only in this state. */
     val isPartnerNote: Boolean = false,
+    /** Set when an attachment add is blocked by the free cap (S8); drives the upsell sheet. */
+    val upsell: UpsellPrompt? = null,
 )
