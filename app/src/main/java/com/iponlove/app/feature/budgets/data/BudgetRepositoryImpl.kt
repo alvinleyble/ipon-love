@@ -32,6 +32,8 @@ class BudgetRepositoryImpl @Inject constructor(
 
     override suspend fun getBudget(id: String): Budget? = dao.getById(id)?.toDomain()
 
+    override suspend fun countPersonalBudgets(yearMonth: String): Int = dao.countPersonal(yearMonth)
+
     override suspend fun upsertBudget(budget: Budget) {
         val existing = dao.getById(budget.id)
         val updatedAt = clock.stamp(existing?.updatedAt)

@@ -33,6 +33,13 @@ interface AccountDao {
     @Query("SELECT COUNT(*) FROM accounts WHERE userId = :userId AND isDeleted = 0")
     suspend fun countOwned(userId: String): Int
 
+    /**
+     * Couple-owned (shared) account count for the `maxSharedAccounts` cap (§10.1 / G1: all
+     * non-deleted rows, archived included). Shared rows carry `coupleId` and a null `userId`.
+     */
+    @Query("SELECT COUNT(*) FROM accounts WHERE coupleId IS NOT NULL AND isDeleted = 0")
+    suspend fun countShared(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(account: AccountEntity)
 

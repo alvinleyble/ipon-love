@@ -21,8 +21,12 @@ interface CategoryRepository {
 
     suspend fun getCategory(id: String): Category?
 
-    /** Count of this user's personal (non-shared) categories — the onboarding gate (ADR-0024). */
+    /** Count of this user's personal (non-shared) categories — the onboarding gate (ADR-0024) and
+     *  the `maxPersonalCategories` cap (§10.1). */
     suspend fun countOwnedCategories(): Int
+
+    /** Count of couple-owned (shared) categories — the `maxSharedCategories` cap (§10.1). */
+    suspend fun countSharedCategories(): Int
 
     suspend fun upsertCategory(category: Category)
 

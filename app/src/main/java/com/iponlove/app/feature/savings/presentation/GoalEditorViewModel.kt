@@ -3,9 +3,13 @@ package com.iponlove.app.feature.savings.presentation
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.analytics.Analytics
+import com.iponlove.app.core.entitlement.CapCheck
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.savings.domain.model.SavingsGoal
+import com.iponlove.app.feature.savings.domain.usecase.CheckSavingsGoalCapUseCase
 import com.iponlove.app.feature.savings.domain.usecase.GetSavingsGoalUseCase
 import com.iponlove.app.feature.savings.domain.usecase.ShareSavingsGoalUseCase
 import com.iponlove.app.feature.savings.domain.usecase.UnshareSavingsGoalUseCase
@@ -28,6 +32,8 @@ class GoalEditorViewModel @Inject constructor(
     private val upsertGoal: UpsertSavingsGoalUseCase,
     private val shareGoal: ShareSavingsGoalUseCase,
     private val unshareGoal: UnshareSavingsGoalUseCase,
+    private val checkGoalCap: CheckSavingsGoalCapUseCase,
+    private val analytics: Analytics,
     observePairingState: ObservePairingStateUseCase,
 ) : ViewModel() {
 
@@ -84,16 +90,28 @@ class GoalEditorViewModel @Inject constructor(
         val s = _uiState.value
         if (s.isPartnerGoal || !s.isPaired) return
         val goalId = s.goalId ?: return
-        if (isNew) {
-            // Track intent locally; save() applies shareGoal() once the row exists.
-            setState { it.copy(isShared = !it.isShared) }
-            return
-        }
-        val coupleId = s.coupleId ?: return
-        val nowShared = s.isShared
+        val turningOn = !s.isShared
         viewModelScope.launch {
-            if (nowShared) unshareGoal(goalId) else shareGoal(goalId, coupleId)
-            setState { it.copy(isShared = !nowShared) }
+            // Gate the shared-goals cap only when turning sharing ON (S7) — un-sharing is never
+            // blocked. For a new goal this still guards the local intent, so save() can't slip a
+            // shared goal past the cap.
+            if (turningOn) {
+                when (val check = checkGoalCap(shared = true)) {
+                    is CapCheck.Blocked -> {
+                        raiseUpsell("shared_savings_goals", "shared goals", check)
+                        return@launch
+                    }
+                    CapCheck.Allowed -> {}
+                }
+            }
+            if (isNew) {
+                // Track intent locally; save() applies shareGoal() once the row exists.
+                setState { it.copy(isShared = turningOn) }
+            } else {
+                val coupleId = s.coupleId ?: return@launch
+                if (turningOn) shareGoal(goalId, coupleId) else unshareGoal(goalId)
+                setState { it.copy(isShared = turningOn) }
+            }
         }
     }
 
@@ -110,6 +128,18 @@ class GoalEditorViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
+            // Gate the personal-goals cap at create (S7); Allowed with enforcement off or under cap.
+            // A new goal that's being shared is gated by the *shared* cap at toggleShared() instead —
+            // it ends up couple-owned, not personal — so only the stays-personal case is checked here.
+            if (isNew && !s.isShared) {
+                when (val check = checkGoalCap(shared = false)) {
+                    is CapCheck.Blocked -> {
+                        raiseUpsell("personal_savings_goals", "goals", check)
+                        return@launch
+                    }
+                    CapCheck.Allowed -> {}
+                }
+            }
             upsertGoal(
                 SavingsGoal(
                     id = id,
@@ -126,6 +156,25 @@ class GoalEditorViewModel @Inject constructor(
             clearDraft()
             onDone()
         }
+    }
+
+    // upsell is transient UI state — set via _uiState (never setState) so it's not persisted into
+    // the SavedStateHandle draft.
+    private var upsellSource: String? = null
+
+    private fun raiseUpsell(source: String, entityLabel: String, blocked: CapCheck.Blocked) {
+        upsellSource = source
+        _uiState.update { it.copy(upsell = UpsellPrompt(entityLabel, blocked.freeLimit, blocked.premiumMax)) }
+    }
+
+    fun dismissUpsell() {
+        _uiState.update { it.copy(upsell = null) }
+    }
+
+    /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before routing to paywall. */
+    fun onUpsellUpgrade() {
+        analytics.log("upsell_tap", source = upsellSource)
+        _uiState.update { it.copy(upsell = null) }
     }
 
     private fun String.toBigDecimalOrNull(): BigDecimal? =

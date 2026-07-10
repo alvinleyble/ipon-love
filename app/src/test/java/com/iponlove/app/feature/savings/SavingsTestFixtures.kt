@@ -26,6 +26,10 @@ class FakeSavingsGoalDao : SavingsGoalDao {
         }
 
     override suspend fun getById(id: String): SavingsGoalEntity? = store[id]
+    override suspend fun countPersonal(userId: String): Int =
+        store.values.count { it.userId == userId && !it.isShared && !it.isDeleted }
+    override suspend fun countShared(): Int =
+        store.values.count { it.isShared && !it.isDeleted }
     override suspend fun pushableGoalIds(userId: String): List<String> =
         store.values.filter { (it.userId == userId || it.isShared) && !it.isDeleted }.map { it.id }
     override suspend fun upsert(goal: SavingsGoalEntity) { store[goal.id] = goal; changes.value++ }

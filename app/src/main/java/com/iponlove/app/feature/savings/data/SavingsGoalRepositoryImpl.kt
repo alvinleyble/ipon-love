@@ -38,6 +38,10 @@ class SavingsGoalRepositoryImpl @Inject constructor(
     override suspend fun getGoal(id: String): SavingsGoal? =
         dao.getById(id)?.toDomain(currentUser.userId())
 
+    override suspend fun countPersonalGoals(): Int = dao.countPersonal(currentUser.userId())
+
+    override suspend fun countSharedGoals(): Int = dao.countShared()
+
     override suspend fun upsertGoal(goal: SavingsGoal) {
         val existing = dao.getById(goal.id)
         // Editing someone else's shared goal is not allowed (creator owns the metadata).

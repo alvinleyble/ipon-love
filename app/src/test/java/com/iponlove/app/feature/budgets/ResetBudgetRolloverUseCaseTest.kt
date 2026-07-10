@@ -55,6 +55,7 @@ class ResetBudgetRolloverUseCaseTest {
         override fun observeBudgets(): Flow<List<Budget>> = emptyFlow()
         override fun observeSharedBudgets(coupleId: String): Flow<List<Budget>> = emptyFlow()
         override suspend fun getBudget(id: String): Budget? = null
+        override suspend fun countPersonalBudgets(yearMonth: String): Int = 0
         override suspend fun upsertBudget(budget: Budget) {
             upserted += budget
         }

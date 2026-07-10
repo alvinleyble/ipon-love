@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.formatPhp
 import java.math.BigDecimal
 
@@ -64,6 +65,7 @@ private fun formatSignedPhp(amount: BigDecimal): String =
 @Composable
 fun BudgetsBody(
     modifier: Modifier = Modifier,
+    onOpenPremium: () -> Unit = {},
     viewModel: BudgetsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -111,6 +113,14 @@ fun BudgetsBody(
             onRolloverChange = viewModel::onRolloverToggle,
             onSave = viewModel::save,
             onCancel = viewModel::cancelEdit,
+        )
+    }
+
+    state.upsell?.let { prompt ->
+        CapReachedSheet(
+            prompt = prompt,
+            onDismiss = viewModel::dismissUpsell,
+            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
         )
     }
 }

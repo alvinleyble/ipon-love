@@ -23,6 +23,9 @@ class FakeBudgetDao : BudgetDao {
 
     override suspend fun getById(id: String): BudgetEntity? = store[id]
 
+    override suspend fun countPersonal(yearMonth: String): Int =
+        store.values.count { !it.isDeleted && it.coupleId == null && it.yearMonth == yearMonth }
+
     override suspend fun upsert(budget: BudgetEntity) {
         store[budget.id] = budget
         changes.value++

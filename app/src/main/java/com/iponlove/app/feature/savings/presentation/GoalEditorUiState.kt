@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.savings.presentation
 
+import com.iponlove.app.core.ui.UpsellPrompt
 import java.time.LocalDate
 
 /**
@@ -23,4 +24,6 @@ data class GoalEditorUiState(
     val isPartnerGoal: Boolean = false,
     val nameError: Boolean = false,
     val targetError: Boolean = false,
+    /** Non-null while the count-cap upsell sheet is showing (S7; only ever set under enforcement). */
+    val upsell: UpsellPrompt? = null,
 )

@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.EntityColorPicker
 import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
@@ -77,6 +78,7 @@ import com.iponlove.app.feature.categories.domain.model.CategoryType
 @Composable
 fun CategoriesBody(
     modifier: Modifier = Modifier,
+    onOpenPremium: () -> Unit = {},
     viewModel: CategoriesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -173,6 +175,14 @@ fun CategoriesBody(
             onColorChange = viewModel::onColorChange,
             onSave = viewModel::save,
             onCancel = viewModel::cancelEdit,
+        )
+    }
+
+    state.upsell?.let { prompt ->
+        CapReachedSheet(
+            prompt = prompt,
+            onDismiss = viewModel::dismissUpsell,
+            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
         )
     }
 }

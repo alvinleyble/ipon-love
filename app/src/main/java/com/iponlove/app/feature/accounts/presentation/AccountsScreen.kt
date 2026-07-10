@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.EntityColorPicker
 import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.SummaryHeader
@@ -83,6 +84,7 @@ import java.math.BigDecimal
 @Composable
 fun AccountsBody(
     modifier: Modifier = Modifier,
+    onOpenPremium: () -> Unit = {},
     viewModel: AccountsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -187,6 +189,14 @@ fun AccountsBody(
             onColorChange = viewModel::onColorChange,
             onSave = viewModel::save,
             onCancel = viewModel::cancelEdit,
+        )
+    }
+
+    state.upsell?.let { prompt ->
+        CapReachedSheet(
+            prompt = prompt,
+            onDismiss = viewModel::dismissUpsell,
+            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
         )
     }
 }

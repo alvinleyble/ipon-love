@@ -2,12 +2,16 @@ package com.iponlove.app.feature.savings.presentation
 
 import androidx.lifecycle.SavedStateHandle
 import com.google.common.truth.Truth.assertThat
+import com.iponlove.app.core.analytics.Analytics
+import com.iponlove.app.core.entitlement.CapCheck
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
+import com.iponlove.app.feature.savings.domain.usecase.CheckSavingsGoalCapUseCase
 import com.iponlove.app.feature.savings.domain.usecase.GetSavingsGoalUseCase
 import com.iponlove.app.feature.savings.domain.usecase.ShareSavingsGoalUseCase
 import com.iponlove.app.feature.savings.domain.usecase.UnshareSavingsGoalUseCase
 import com.iponlove.app.feature.savings.domain.usecase.UpsertSavingsGoalUseCase
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +32,9 @@ class GoalEditorViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
+        // Caps are dormant in these tests — the gate always allows, so save()/toggleShared() behave
+        // exactly as before S7.
+        coEvery { checkGoalCap(any()) } returns CapCheck.Allowed
     }
 
     @After
@@ -39,6 +46,8 @@ class GoalEditorViewModelTest {
     private val upsertGoal: UpsertSavingsGoalUseCase = mockk(relaxed = true)
     private val shareGoal: ShareSavingsGoalUseCase = mockk(relaxed = true)
     private val unshareGoal: UnshareSavingsGoalUseCase = mockk(relaxed = true)
+    private val checkGoalCap: CheckSavingsGoalCapUseCase = mockk()
+    private val analytics: Analytics = mockk(relaxed = true)
     private val observePairingState: ObservePairingStateUseCase = mockk()
 
     private fun viewModel(savedStateHandle: SavedStateHandle) = GoalEditorViewModel(
@@ -47,6 +56,8 @@ class GoalEditorViewModelTest {
         upsertGoal = upsertGoal,
         shareGoal = shareGoal,
         unshareGoal = unshareGoal,
+        checkGoalCap = checkGoalCap,
+        analytics = analytics,
         observePairingState = observePairingState,
     )
 

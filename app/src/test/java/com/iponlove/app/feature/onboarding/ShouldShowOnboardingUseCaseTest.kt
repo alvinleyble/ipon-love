@@ -25,6 +25,7 @@ class ShouldShowOnboardingUseCaseTest {
         override fun observeAllCategories(): Flow<List<Category>> = throw UnsupportedOperationException()
         override suspend fun getCategory(id: String): Category? = null
         override suspend fun countOwnedCategories(): Int = ownedCategories
+        override suspend fun countSharedCategories(): Int = 0
         override suspend fun upsertCategory(category: Category) = Unit
         override suspend fun reorderCategories(orderedIds: List<String>) = Unit
         override suspend fun setArchived(id: String, archived: Boolean) = Unit
@@ -39,6 +40,7 @@ class ShouldShowOnboardingUseCaseTest {
             throw UnsupportedOperationException()
         override suspend fun getAccount(id: String): Account? = null
         override suspend fun countOwnedAccounts(): Int = ownedAccounts
+        override suspend fun countSharedAccounts(): Int = 0
         override suspend fun upsertAccount(account: Account) = Unit
         override suspend fun reorderAccounts(orderedIds: List<String>) = Unit
         override suspend fun setArchived(id: String, archived: Boolean) = Unit

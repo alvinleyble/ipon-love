@@ -2,8 +2,12 @@ package com.iponlove.app.feature.budgets.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.analytics.Analytics
+import com.iponlove.app.core.entitlement.CapCheck
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.budgets.domain.model.Budget
 import com.iponlove.app.feature.budgets.domain.usecase.BudgetProgressCalculator
+import com.iponlove.app.feature.budgets.domain.usecase.CheckBudgetCapUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.DeleteBudgetUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.DuplicateBudgetToNextMonthUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveBudgetsUseCase
@@ -34,10 +38,13 @@ class BudgetsViewModel @Inject constructor(
     private val deleteBudget: DeleteBudgetUseCase,
     private val resetBudgetRollover: ResetBudgetRolloverUseCase,
     private val duplicateBudget: DuplicateBudgetToNextMonthUseCase,
+    private val checkBudgetCap: CheckBudgetCapUseCase,
+    private val analytics: Analytics,
 ) : ViewModel() {
 
     private val month = MutableStateFlow(YearMonth.now())
     private val editor = MutableStateFlow<BudgetEditorState?>(null)
+    private val upsell = MutableStateFlow<UpsellPrompt?>(null)
 
     // Budgets for the displayed month, captured so a new budget can update the existing
     // one for the same category instead of creating a duplicate.
@@ -93,6 +100,9 @@ class BudgetsViewModel @Inject constructor(
                 expenseCategories = categories.filter { it.type == CategoryType.EXPENSE },
                 editor = editorState,
             )
+            // Combine already carries the 5-arg maximum; fold the upsell flow in a second step.
+        }.let { base ->
+            combine(base, upsell) { state, upsellState -> state.copy(upsell = upsellState) }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -108,7 +118,26 @@ class BudgetsViewModel @Inject constructor(
     }
 
     fun startCreate() {
-        editor.value = BudgetEditorState()
+        // Gate the per-month budgets cap at create-intent (S7) for the displayed month; Allowed
+        // with enforcement off or under the cap.
+        viewModelScope.launch {
+            when (val check = checkBudgetCap(month.value.toString())) {
+                CapCheck.Allowed -> editor.value = BudgetEditorState()
+                is CapCheck.Blocked -> {
+                    upsell.value = UpsellPrompt("budgets", check.freeLimit, check.premiumMax)
+                }
+            }
+        }
+    }
+
+    fun dismissUpsell() {
+        upsell.value = null
+    }
+
+    /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before routing to paywall. */
+    fun onUpsellUpgrade() {
+        analytics.log("upsell_tap", source = "budgets")
+        upsell.value = null
     }
 
     fun startEdit(row: BudgetRow) {
@@ -166,7 +195,23 @@ class BudgetsViewModel @Inject constructor(
     fun duplicateToNextMonth(row: BudgetRow) {
         val budget = monthBudgets.firstOrNull { it.id == row.id } ?: return
         val sameCategoryBudgets = allBudgets.filter { it.categoryId == budget.categoryId }
-        viewModelScope.launch { duplicateBudget(budget, sameCategoryBudgets) }
+        // Duplicating creates next month's row unless it already exists (then it's an in-place
+        // update, no new row). Gate the cap only when it would actually create — otherwise the
+        // "Duplicate for next month" action would silently bypass the budget cap (S7).
+        val nextMonth = month.value.plusMonths(1).toString()
+        val wouldCreate = sameCategoryBudgets.none { it.yearMonth == nextMonth }
+        viewModelScope.launch {
+            if (wouldCreate) {
+                when (val check = checkBudgetCap(nextMonth)) {
+                    is CapCheck.Blocked -> {
+                        upsell.value = UpsellPrompt("budgets", check.freeLimit, check.premiumMax)
+                        return@launch
+                    }
+                    CapCheck.Allowed -> {}
+                }
+            }
+            duplicateBudget(budget, sameCategoryBudgets)
+        }
     }
 
     private companion object {

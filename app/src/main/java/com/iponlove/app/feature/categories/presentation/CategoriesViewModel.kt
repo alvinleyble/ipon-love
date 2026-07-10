@@ -2,9 +2,13 @@ package com.iponlove.app.feature.categories.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.analytics.Analytics
+import com.iponlove.app.core.entitlement.CapCheck
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.categories.domain.usecase.ArchiveCategoryUseCase
+import com.iponlove.app.feature.categories.domain.usecase.CheckCategoryCapUseCase
 import com.iponlove.app.feature.categories.domain.usecase.DeleteCategoryUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ReorderCategoriesUseCase
@@ -33,16 +37,23 @@ class CategoriesViewModel @Inject constructor(
     private val shareCategory: ShareCategoryUseCase,
     private val unshareCategory: UnshareCategoryUseCase,
     private val reorderCategories: ReorderCategoriesUseCase,
+    private val checkCategoryCap: CheckCategoryCapUseCase,
+    private val analytics: Analytics,
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<CategoryEditorState?>(null)
     private val filter = MutableStateFlow(CategoryFilter.ALL)
+    private val upsell = MutableStateFlow<UpsellPrompt?>(null)
+
+    // Which cap raised the current upsell — the analytics source for its "Get Premium" tap.
+    private var upsellSource: String? = null
 
     // Couple id captured for the share action; null when not paired.
     private var coupleId: String? = null
 
     val uiState: StateFlow<CategoriesUiState> =
-        combine(observeCategories(), observeCoupleMembers(), filter, editor) { all, members, activeFilter, editorState ->
+        combine(observeCategories(), observeCoupleMembers(), filter, editor, upsell) {
+                all, members, activeFilter, editorState, upsellState ->
             coupleId = members?.me?.coupleId
             val visible = when (activeFilter) {
                 CategoryFilter.ALL -> all
@@ -55,6 +66,7 @@ class CategoriesViewModel @Inject constructor(
                 filter = activeFilter,
                 isPaired = members != null,
                 editor = editorState,
+                upsell = upsellState,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -67,12 +79,20 @@ class CategoriesViewModel @Inject constructor(
     }
 
     fun startCreate() {
-        // Default the new category's type to match the active filter, when it implies one.
-        val defaultType = when (filter.value) {
-            CategoryFilter.INCOME -> CategoryType.INCOME
-            else -> CategoryType.EXPENSE
+        // Gate the personal-categories cap at create-intent (S7); Allowed with enforcement off.
+        viewModelScope.launch {
+            when (val check = checkCategoryCap(shared = false)) {
+                CapCheck.Allowed -> {
+                    // Default the new category's type to match the active filter, when it implies one.
+                    val defaultType = when (filter.value) {
+                        CategoryFilter.INCOME -> CategoryType.INCOME
+                        else -> CategoryType.EXPENSE
+                    }
+                    editor.value = CategoryEditorState(type = defaultType)
+                }
+                is CapCheck.Blocked -> raiseUpsell("personal_categories", "categories", check)
+            }
         }
-        editor.value = CategoryEditorState(type = defaultType)
     }
 
     fun startEdit(category: Category) {
@@ -121,10 +141,31 @@ class CategoriesViewModel @Inject constructor(
         }
     }
 
-    /** Make a personal category couple-owned (shared). No-op if not paired. */
+    /** Make a personal category couple-owned (shared). No-op if not paired. Gated on the
+     *  shared-categories cap (S7). */
     fun share(id: String) {
         val couple = coupleId ?: return
-        viewModelScope.launch { shareCategory(id, couple) }
+        viewModelScope.launch {
+            when (val check = checkCategoryCap(shared = true)) {
+                CapCheck.Allowed -> shareCategory(id, couple)
+                is CapCheck.Blocked -> raiseUpsell("shared_categories", "shared categories", check)
+            }
+        }
+    }
+
+    private fun raiseUpsell(source: String, entityLabel: String, blocked: CapCheck.Blocked) {
+        upsellSource = source
+        upsell.value = UpsellPrompt(entityLabel, blocked.freeLimit, blocked.premiumMax)
+    }
+
+    fun dismissUpsell() {
+        upsell.value = null
+    }
+
+    /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before routing to paywall. */
+    fun onUpsellUpgrade() {
+        analytics.log("upsell_tap", source = upsellSource)
+        upsell.value = null
     }
 
     /** Revert a shared category to its creator's personal category (ADR-0018). */

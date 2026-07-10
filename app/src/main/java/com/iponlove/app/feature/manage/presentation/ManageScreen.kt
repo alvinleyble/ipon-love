@@ -42,6 +42,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageScreen(
+    onOpenPremium: () -> Unit = {},
     accountsViewModel: AccountsViewModel = hiltViewModel(),
     categoriesViewModel: CategoriesViewModel = hiltViewModel(),
     budgetsViewModel: BudgetsViewModel = hiltViewModel(),
@@ -91,9 +92,21 @@ fun ManageScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             ) { page ->
                 when (page) {
-                    0 -> AccountsBody(viewModel = accountsViewModel, modifier = Modifier.fillMaxSize())
-                    1 -> CategoriesBody(viewModel = categoriesViewModel, modifier = Modifier.fillMaxSize())
-                    2 -> BudgetsBody(viewModel = budgetsViewModel, modifier = Modifier.fillMaxSize())
+                    0 -> AccountsBody(
+                        viewModel = accountsViewModel,
+                        onOpenPremium = onOpenPremium,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    1 -> CategoriesBody(
+                        viewModel = categoriesViewModel,
+                        onOpenPremium = onOpenPremium,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    2 -> BudgetsBody(
+                        viewModel = budgetsViewModel,
+                        onOpenPremium = onOpenPremium,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                     else -> {}
                 }
             }

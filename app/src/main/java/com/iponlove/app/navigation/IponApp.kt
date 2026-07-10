@@ -281,12 +281,16 @@ private fun IponAppContent(
 
             // Manage: single-node graph.
             navigation(startDestination = NavRegistry.MANAGE.route, route = NavRegistry.MANAGE.graphRoute()) {
-                composable(NavRegistry.MANAGE.route) { ManageScreen() }
+                composable(NavRegistry.MANAGE.route) {
+                    ManageScreen(onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) })
+                }
             }
 
             // Couple: single-node graph (handles unpaired inside its own screen).
             navigation(startDestination = NavRegistry.COUPLE.route, route = NavRegistry.COUPLE.graphRoute()) {
-                composable(NavRegistry.COUPLE.route) { CoupleScreen() }
+                composable(NavRegistry.COUPLE.route) {
+                    CoupleScreen(onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) })
+                }
             }
 
             // Calculator: single-node graph.
@@ -303,13 +307,19 @@ private fun IponAppContent(
                     )
                 }
                 composable(GOAL_EDITOR_ROUTE) {
-                    GoalEditorScreen(onBack = { navController.popBackStack() })
+                    GoalEditorScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                    )
                 }
                 composable(
                     route = "$GOAL_EDITOR_ROUTE/{$GOAL_ID_KEY}",
                     arguments = listOf(navArgument(GOAL_ID_KEY) { type = NavType.StringType }),
                 ) {
-                    GoalEditorScreen(onBack = { navController.popBackStack() })
+                    GoalEditorScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                    )
                 }
                 composable(
                     route = "$GOAL_DETAIL_ROUTE/{$GOAL_ID_KEY}",

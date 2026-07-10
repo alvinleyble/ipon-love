@@ -7,7 +7,11 @@ import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCas
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtItem
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtPaymentItem
 import com.iponlove.app.feature.partnerdebt.domain.model.PartnerDebt
+import com.iponlove.app.core.analytics.Analytics
+import com.iponlove.app.core.entitlement.CapCheck
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.partnerdebt.domain.usecase.AddSettlementIncomeUseCase
+import com.iponlove.app.feature.partnerdebt.domain.usecase.CheckPartnerDebtCapUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.DeletePartnerDebtUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.ObservePartnerDebtBoardUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.SettleDebtUseCase
@@ -39,9 +43,12 @@ class PartnerDebtViewModel @Inject constructor(
     private val settleDebt: SettleDebtUseCase,
     private val addSettlementIncome: AddSettlementIncomeUseCase,
     private val deleteDebt: DeletePartnerDebtUseCase,
+    private val checkDebtCap: CheckPartnerDebtCapUseCase,
+    private val analytics: Analytics,
 ) : ViewModel() {
 
     private val dialog = MutableStateFlow<DebtDialog?>(null)
+    private val upsell = MutableStateFlow<UpsellPrompt?>(null)
 
     // Captured from the latest member emission so the editor save paths can act without
     // re-deriving: the couple to stamp, and the two member ids to assign borrower/lender.
@@ -55,7 +62,8 @@ class PartnerDebtViewModel @Inject constructor(
             observeCoupleMembers(),
             observeAccounts(),
             dialog,
-        ) { board, members, accounts, openDialog ->
+            upsell,
+        ) { board, members, accounts, openDialog, upsellState ->
             if (board == null || members == null) {
                 coupleId = null
                 myId = null
@@ -75,6 +83,7 @@ class PartnerDebtViewModel @Inject constructor(
                 debts = board.debts,
                 accounts = accounts.map { AccountOption(it.id, it.name) },
                 dialog = openDialog,
+                upsell = upsellState,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -89,7 +98,27 @@ class PartnerDebtViewModel @Inject constructor(
     // ---- add debt ----
 
     fun startAddDebt() {
-        dialog.value = DebtDialog.AddDebt()
+        // Gate the couple-debt cap at create-intent (S7). Only un-settled debts count (G1); the
+        // board already flags each item's settled state, so count from the live board.
+        viewModelScope.launch {
+            val unsettled = uiState.value.debts.count { !it.isSettled }
+            when (val check = checkDebtCap(unsettled)) {
+                CapCheck.Allowed -> dialog.value = DebtDialog.AddDebt()
+                is CapCheck.Blocked -> {
+                    upsell.value = UpsellPrompt("debts", check.freeLimit, check.premiumMax)
+                }
+            }
+        }
+    }
+
+    fun dismissUpsell() {
+        upsell.value = null
+    }
+
+    /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before routing to paywall. */
+    fun onUpsellUpgrade() {
+        analytics.log("upsell_tap", source = "couple_debts")
+        upsell.value = null
     }
 
     fun onDirectionChange(direction: DebtDirection) = updateAddDebt { it.copy(direction = direction) }

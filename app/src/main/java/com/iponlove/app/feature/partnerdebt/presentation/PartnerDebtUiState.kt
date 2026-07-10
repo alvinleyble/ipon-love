@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.partnerdebt.presentation
 
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtItem
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtNet
 import java.math.BigDecimal
@@ -18,6 +19,8 @@ data class PartnerDebtUiState(
     val accounts: List<AccountOption> = emptyList(),
     /** The single open dialog, or null when none is shown. */
     val dialog: DebtDialog? = null,
+    /** Non-null while the count-cap upsell sheet is showing (S7; only ever set under enforcement). */
+    val upsell: UpsellPrompt? = null,
 )
 
 /** A pickable account for the settle / receive sheets. */

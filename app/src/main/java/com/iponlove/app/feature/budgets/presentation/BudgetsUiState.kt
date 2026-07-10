@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.budgets.presentation
 
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.categories.domain.model.Category
 import java.math.BigDecimal
 
@@ -13,6 +14,8 @@ data class BudgetsUiState(
     /** Expense categories offered in the editor (plus an "Overall" option). */
     val expenseCategories: List<Category> = emptyList(),
     val editor: BudgetEditorState? = null,
+    /** Non-null while the count-cap upsell sheet is showing (S7; only ever set under enforcement). */
+    val upsell: UpsellPrompt? = null,
 )
 
 /** One budget with its derived progress for the displayed month. */

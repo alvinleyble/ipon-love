@@ -38,6 +38,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtItem
@@ -53,6 +54,7 @@ import com.iponlove.app.feature.partnerdebt.domain.model.NetDirection
 @Composable
 fun PartnerDebtBody(
     modifier: Modifier = Modifier,
+    onOpenPremium: () -> Unit = {},
     viewModel: PartnerDebtViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -126,6 +128,14 @@ fun PartnerDebtBody(
         )
 
         null -> Unit
+    }
+
+    state.upsell?.let { prompt ->
+        CapReachedSheet(
+            prompt = prompt,
+            onDismiss = viewModel::dismissUpsell,
+            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
+        )
     }
 }
 

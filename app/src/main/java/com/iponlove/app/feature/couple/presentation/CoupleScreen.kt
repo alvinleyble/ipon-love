@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoupleScreen(
+    onOpenPremium: () -> Unit = {},
     coupleViewModel: CoupleViewModel = hiltViewModel(),
     combinedViewModel: CombinedViewModel = hiltViewModel(),
     debtViewModel: PartnerDebtViewModel = hiltViewModel(),
@@ -105,6 +106,7 @@ fun CoupleScreen(
                     )
                     1 -> PartnerDebtBody(
                         viewModel = debtViewModel,
+                        onOpenPremium = onOpenPremium,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

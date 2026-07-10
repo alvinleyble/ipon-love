@@ -38,6 +38,7 @@ internal class CountingAccountRepo : AccountRepository {
     override fun observeAccounts(includeArchived: Boolean): Flow<List<Account>> = emptyFlow()
     override suspend fun getAccount(id: String): Account? = null
     override suspend fun countOwnedAccounts(): Int = 0
+    override suspend fun countSharedAccounts(): Int = 0
     override suspend fun upsertAccount(account: Account) = Unit
     override suspend fun reorderAccounts(orderedIds: List<String>) = Unit
     override suspend fun setArchived(id: String, archived: Boolean) = Unit
@@ -53,6 +54,7 @@ internal class CountingCategoryRepo : CategoryRepository {
     override fun observeAllCategories(): Flow<List<Category>> = emptyFlow()
     override suspend fun getCategory(id: String): Category? = null
     override suspend fun countOwnedCategories(): Int = 0
+    override suspend fun countSharedCategories(): Int = 0
     override suspend fun upsertCategory(category: Category) = Unit
     override suspend fun reorderCategories(orderedIds: List<String>) = Unit
     override suspend fun setArchived(id: String, archived: Boolean) = Unit
@@ -117,6 +119,7 @@ internal class CountingBudgetRepo : BudgetRepository {
     override fun observeBudgets(): Flow<List<Budget>> = emptyFlow()
     override fun observeSharedBudgets(coupleId: String): Flow<List<Budget>> = emptyFlow()
     override suspend fun getBudget(id: String): Budget? = null
+    override suspend fun countPersonalBudgets(yearMonth: String): Int = 0
     override suspend fun upsertBudget(budget: Budget) = Unit
     override suspend fun upsertSharedBudget(budget: Budget, coupleId: String) = Unit
     override suspend fun deleteBudget(id: String) = Unit
@@ -141,6 +144,8 @@ internal class CountingSavingsGoalRepo : SavingsGoalRepository {
     var purgeCount = 0
     override fun observeGoals(): Flow<List<SavingsGoal>> = emptyFlow()
     override suspend fun getGoal(id: String): SavingsGoal? = null
+    override suspend fun countPersonalGoals(): Int = 0
+    override suspend fun countSharedGoals(): Int = 0
     override suspend fun upsertGoal(goal: SavingsGoal) = Unit
     override suspend fun setArchived(id: String, archived: Boolean) = Unit
     override suspend fun deleteGoal(id: String) = Unit

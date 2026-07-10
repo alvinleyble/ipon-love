@@ -40,6 +40,10 @@ interface CategoryDao {
     @Query("SELECT COUNT(*) FROM categories WHERE userId = :userId AND isDeleted = 0")
     suspend fun countOwned(userId: String): Int
 
+    /** Couple-owned (shared) category count for the `maxSharedCategories` cap (§10.1 / G1). */
+    @Query("SELECT COUNT(*) FROM categories WHERE coupleId IS NOT NULL AND isDeleted = 0")
+    suspend fun countShared(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(category: CategoryEntity)
 

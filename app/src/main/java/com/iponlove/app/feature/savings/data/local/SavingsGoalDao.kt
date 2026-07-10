@@ -25,6 +25,15 @@ interface SavingsGoalDao {
     @Query("SELECT * FROM savings_goals WHERE id = :id")
     suspend fun getById(id: String): SavingsGoalEntity?
 
+    /** This user's personal (non-shared) goal count for the `maxPersonalSavingsGoals` cap
+     *  (§10.1 / G1: all non-deleted rows, archived included). */
+    @Query("SELECT COUNT(*) FROM savings_goals WHERE userId = :userId AND isShared = 0 AND isDeleted = 0")
+    suspend fun countPersonal(userId: String): Int
+
+    /** Couple-owned (shared) goal count for the `maxSharedSavingsGoals` cap (§10.1 / G1). */
+    @Query("SELECT COUNT(*) FROM savings_goals WHERE isShared = 1 AND isDeleted = 0")
+    suspend fun countShared(): Int
+
     /** Ids of goals this user may still push a contribution against — own goals, or goals shared
      *  into the couple — mirroring the server's `goal_contributions` INSERT check (ADR-0025). Lets
      *  the contribution syncer skip pushing a contribution whose goal was unshared/deleted out from

@@ -25,6 +25,15 @@ interface BudgetDao {
     @Query("SELECT * FROM budgets WHERE id = :id")
     suspend fun getById(id: String): BudgetEntity?
 
+    /**
+     * Personal (non-shared) budget count **for one month** — the `maxBudgets` cap (§10.1) is
+     * per-month, since budgets are inherently monthly (this is a deliberate scoping of G1's
+     * "all rows" to the month being created into, not an all-time total). Mirrors
+     * [observeBudgets]'s `coupleId IS NULL` isolation — shared couple budgets have their own cap.
+     */
+    @Query("SELECT COUNT(*) FROM budgets WHERE isDeleted = 0 AND coupleId IS NULL AND yearMonth = :yearMonth")
+    suspend fun countPersonal(yearMonth: String): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(budget: BudgetEntity)
 

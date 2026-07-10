@@ -38,6 +38,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.EntityColorPicker
 import com.iponlove.app.core.ui.icons.IconPicker
 import com.iponlove.app.core.ui.parseHexColor
@@ -49,6 +50,7 @@ private val goalDate = DateTimeFormatter.ofPattern("MMM d, yyyy")
 @Composable
 fun GoalEditorScreen(
     onBack: () -> Unit,
+    onOpenPremium: () -> Unit = {},
     viewModel: GoalEditorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -157,6 +159,14 @@ fun GoalEditorScreen(
             initial = state.targetDate,
             onPick = { picked -> viewModel.onDateChange(picked); showDatePicker = false },
             onDismiss = { showDatePicker = false },
+        )
+    }
+
+    state.upsell?.let { prompt ->
+        CapReachedSheet(
+            prompt = prompt,
+            onDismiss = viewModel::dismissUpsell,
+            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
         )
     }
 }

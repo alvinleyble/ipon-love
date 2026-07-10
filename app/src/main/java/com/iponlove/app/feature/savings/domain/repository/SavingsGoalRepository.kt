@@ -12,6 +12,12 @@ interface SavingsGoalRepository {
     fun observeGoals(): Flow<List<SavingsGoal>>
     suspend fun getGoal(id: String): SavingsGoal?
 
+    /** Count of this user's personal (non-shared) goals — the `maxPersonalSavingsGoals` cap (§10.1). */
+    suspend fun countPersonalGoals(): Int
+
+    /** Count of couple-owned (shared) goals — the `maxSharedSavingsGoals` cap (§10.1). */
+    suspend fun countSharedGoals(): Int
+
     /** Create or edit a goal's metadata (name/target/date/icon/color). Ownership, sharing,
      *  archived state and provenance are preserved from the existing row. */
     suspend fun upsertGoal(goal: SavingsGoal)

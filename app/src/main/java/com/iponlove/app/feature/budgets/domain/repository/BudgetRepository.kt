@@ -22,6 +22,9 @@ interface BudgetRepository {
 
     suspend fun getBudget(id: String): Budget?
 
+    /** Count of active personal budgets for [yearMonth] — the per-month `maxBudgets` cap (§10.1). */
+    suspend fun countPersonalBudgets(yearMonth: String): Int
+
     suspend fun upsertBudget(budget: Budget)
 
     /**

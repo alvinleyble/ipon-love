@@ -2,9 +2,13 @@ package com.iponlove.app.feature.accounts.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.analytics.Analytics
+import com.iponlove.app.core.entitlement.CapCheck
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.model.AccountType
 import com.iponlove.app.feature.accounts.domain.usecase.ArchiveAccountUseCase
+import com.iponlove.app.feature.accounts.domain.usecase.CheckAccountCapUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.DeleteAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.ReorderAccountsUseCase
@@ -37,9 +41,15 @@ class AccountsViewModel @Inject constructor(
     private val shareAccount: ShareAccountUseCase,
     private val unshareAccount: UnshareAccountUseCase,
     private val reorderAccounts: ReorderAccountsUseCase,
+    private val checkAccountCap: CheckAccountCapUseCase,
+    private val analytics: Analytics,
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<AccountEditorState?>(null)
+    private val upsell = MutableStateFlow<UpsellPrompt?>(null)
+
+    // Which cap raised the current upsell — the analytics source for its "Get Premium" tap.
+    private var upsellSource: String? = null
 
     // Couple id captured for the share action; null when not paired.
     private var coupleId: String? = null
@@ -50,7 +60,8 @@ class AccountsViewModel @Inject constructor(
             observeBalanceLedger(),
             observeCoupleMembers(),
             editor,
-        ) { accounts, ledger, members, editorState ->
+            upsell,
+        ) { accounts, ledger, members, editorState, upsellState ->
             coupleId = members?.me?.coupleId
             // Current balance = opening_balance + ledger, derived locally (ADR-0007). For a
             // shared account the ledger carries both partners' postings (ADR-0018).
@@ -62,6 +73,7 @@ class AccountsViewModel @Inject constructor(
                 balances = balances,
                 isPaired = members != null,
                 editor = editorState,
+                upsell = upsellState,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -70,7 +82,14 @@ class AccountsViewModel @Inject constructor(
         )
 
     fun startCreate() {
-        editor.value = AccountEditorState()
+        // Gate the personal-accounts cap at create-intent (S7): with enforcement off, or under the
+        // cap, [checkAccountCap] returns Allowed and the editor opens exactly as before.
+        viewModelScope.launch {
+            when (val check = checkAccountCap(shared = false)) {
+                CapCheck.Allowed -> editor.value = AccountEditorState()
+                is CapCheck.Blocked -> raiseUpsell("personal_accounts", "accounts", check)
+            }
+        }
     }
 
     fun startEdit(account: Account) {
@@ -125,10 +144,32 @@ class AccountsViewModel @Inject constructor(
         }
     }
 
-    /** Make a personal account couple-owned (shared). No-op if not paired. */
+    /** Make a personal account couple-owned (shared). No-op if not paired. Gated on the
+     *  shared-accounts cap (S7) — the moment a new shared account comes into existence. */
     fun share(id: String) {
         val couple = coupleId ?: return
-        viewModelScope.launch { shareAccount(id, couple) }
+        viewModelScope.launch {
+            when (val check = checkAccountCap(shared = true)) {
+                CapCheck.Allowed -> shareAccount(id, couple)
+                is CapCheck.Blocked -> raiseUpsell("shared_accounts", "shared accounts", check)
+            }
+        }
+    }
+
+    private fun raiseUpsell(source: String, entityLabel: String, blocked: CapCheck.Blocked) {
+        upsellSource = source
+        upsell.value = UpsellPrompt(entityLabel, blocked.freeLimit, blocked.premiumMax)
+    }
+
+    fun dismissUpsell() {
+        upsell.value = null
+    }
+
+    /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before the screen routes
+     *  to the paywall. */
+    fun onUpsellUpgrade() {
+        analytics.log("upsell_tap", source = upsellSource)
+        upsell.value = null
     }
 
     /** Revert a shared account to its creator's personal account (ADR-0018). */

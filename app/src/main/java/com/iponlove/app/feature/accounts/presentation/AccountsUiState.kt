@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.accounts.presentation
 
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.model.AccountType
 import java.math.BigDecimal
@@ -14,6 +15,8 @@ data class AccountsUiState(
     val isPaired: Boolean = false,
     /** Non-null while the add/edit sheet is open. */
     val editor: AccountEditorState? = null,
+    /** Non-null while the count-cap upsell sheet is showing (S7; only ever set under enforcement). */
+    val upsell: UpsellPrompt? = null,
 )
 
 /**

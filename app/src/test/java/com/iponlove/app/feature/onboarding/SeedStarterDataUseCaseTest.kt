@@ -24,6 +24,7 @@ class SeedStarterDataUseCaseTest {
         override fun observeAllCategories(): Flow<List<Category>> = throw UnsupportedOperationException()
         override suspend fun getCategory(id: String): Category? = null
         override suspend fun countOwnedCategories(): Int = 0
+        override suspend fun countSharedCategories(): Int = 0
         override suspend fun upsertCategory(category: Category) {
             writeLog += "category:${category.name}"
             savedCategories += category
@@ -41,6 +42,7 @@ class SeedStarterDataUseCaseTest {
             throw UnsupportedOperationException()
         override suspend fun getAccount(id: String): Account? = null
         override suspend fun countOwnedAccounts(): Int = 0
+        override suspend fun countSharedAccounts(): Int = 0
         override suspend fun upsertAccount(account: Account) {
             writeLog += "account:${account.name}"
             savedAccounts += account

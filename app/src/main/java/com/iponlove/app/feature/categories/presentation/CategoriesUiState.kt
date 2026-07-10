@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.categories.presentation
 
+import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 
@@ -14,6 +15,8 @@ data class CategoriesUiState(
     /** Whether the user is paired — gates the "Share with partner" action (ADR-0018). */
     val isPaired: Boolean = false,
     val editor: CategoryEditorState? = null,
+    /** Non-null while the count-cap upsell sheet is showing (S7; only ever set under enforcement). */
+    val upsell: UpsellPrompt? = null,
 )
 
 /**
