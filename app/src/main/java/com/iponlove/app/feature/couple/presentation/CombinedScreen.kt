@@ -68,7 +68,7 @@ private val IncomeColor = Color(0xFF2E7D32)
 @Composable
 fun CombinedBody(
     modifier: Modifier = Modifier,
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: CombinedViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -81,7 +81,7 @@ fun CombinedBody(
                 canGoNext = state.canGoToNextMonth,
                 canGoPrevious = state.canGoToPreviousMonth,
                 // Locked ← at the DEEP_HISTORY −12mo wall: log the touchpoint, route to the paywall.
-                onPreviousLocked = { viewModel.onDeepHistoryUpsell(); onOpenPremium() },
+                onPreviousLocked = { onOpenPremium(viewModel.onDeepHistoryUpsell()) },
             )
         }
         PullToRefreshBox(

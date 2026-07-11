@@ -50,7 +50,7 @@ private val goalDate = DateTimeFormatter.ofPattern("MMM d, yyyy")
 @Composable
 fun GoalEditorScreen(
     onBack: () -> Unit,
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: GoalEditorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -166,7 +166,7 @@ fun GoalEditorScreen(
         CapReachedSheet(
             prompt = prompt,
             onDismiss = viewModel::dismissUpsell,
-            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
+            onUpgrade = { onOpenPremium(viewModel.onUpsellUpgrade()) },
         )
     }
 }

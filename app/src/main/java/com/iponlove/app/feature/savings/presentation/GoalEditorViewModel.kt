@@ -172,9 +172,11 @@ class GoalEditorViewModel @Inject constructor(
     }
 
     /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before routing to paywall. */
-    fun onUpsellUpgrade() {
-        analytics.log("upsell_tap", source = upsellSource)
+    fun onUpsellUpgrade(): String {
+        val source = upsellSource ?: "personal_savings_goals"
+        analytics.log("upsell_tap", source = source)
         _uiState.update { it.copy(upsell = null) }
+        return source
     }
 
     private fun String.toBigDecimalOrNull(): BigDecimal? =

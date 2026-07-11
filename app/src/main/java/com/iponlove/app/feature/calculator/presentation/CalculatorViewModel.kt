@@ -29,8 +29,10 @@ class CalculatorViewModel @Inject constructor(
     )
 
     /** A tap on the locked module's "Get Premium" — logs the §10.10 funnel touchpoint. */
-    fun onUpsellTap() {
-        analytics.log("upsell_tap", source = "calculator")
+    fun onUpsellTap(): String {
+        val source = "calculator"
+        analytics.log("upsell_tap", source = source)
+        return source
     }
 
     private companion object {

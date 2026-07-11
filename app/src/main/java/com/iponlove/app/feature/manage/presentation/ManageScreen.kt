@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageScreen(
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     accountsViewModel: AccountsViewModel = hiltViewModel(),
     categoriesViewModel: CategoriesViewModel = hiltViewModel(),
     budgetsViewModel: BudgetsViewModel = hiltViewModel(),

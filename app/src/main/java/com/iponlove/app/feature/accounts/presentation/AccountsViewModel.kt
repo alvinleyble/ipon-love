@@ -177,9 +177,11 @@ class AccountsViewModel @Inject constructor(
 
     /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before the screen routes
      *  to the paywall. */
-    fun onUpsellUpgrade() {
-        analytics.log("upsell_tap", source = upsellSource)
+    fun onUpsellUpgrade(): String {
+        val source = upsellSource ?: "personal_accounts"
+        analytics.log("upsell_tap", source = source)
         upsell.value = null
+        return source
     }
 
     /** Revert a shared account to its creator's personal account (ADR-0018). */

@@ -116,9 +116,11 @@ class PartnerDebtViewModel @Inject constructor(
     }
 
     /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before routing to paywall. */
-    fun onUpsellUpgrade() {
-        analytics.log("upsell_tap", source = "couple_debts")
+    fun onUpsellUpgrade(): String {
+        val source = "couple_debts"
+        analytics.log("upsell_tap", source = source)
         upsell.value = null
+        return source
     }
 
     fun onDirectionChange(direction: DebtDirection) = updateAddDebt { it.copy(direction = direction) }

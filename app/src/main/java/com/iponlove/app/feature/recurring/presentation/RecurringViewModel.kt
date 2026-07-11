@@ -201,8 +201,10 @@ class RecurringViewModel @Inject constructor(
 
     /** A tap on the locked calendar preview — logs the §10.10 funnel touchpoint before the screen
      *  routes to the paywall. */
-    fun onCalendarLockedTap() {
-        analytics.log("upsell_tap", source = "recurring_calendar")
+    fun onCalendarLockedTap(): String {
+        val source = "recurring_calendar"
+        analytics.log("upsell_tap", source = source)
+        return source
     }
 
     fun toggleViewMode() {

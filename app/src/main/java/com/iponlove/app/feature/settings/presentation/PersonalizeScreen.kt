@@ -58,7 +58,7 @@ import com.iponlove.app.feature.settings.domain.model.ThemePalette
 fun PersonalizeScreen(
     onBack: () -> Unit,
     onOpenProfile: () -> Unit = {},
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     onOpenSecurity: () -> Unit = {},
     onOpenCouple: () -> Unit = {},
     onOpenNavbar: () -> Unit = {},
@@ -113,7 +113,7 @@ fun PersonalizeScreen(
                     selected = state.draftPalette.effective(state.paletteLocked),
                     locked = state.paletteLocked,
                     onSelect = viewModel::selectPalette,
-                    onLockedTap = { viewModel.onLockedPaletteTap(); onOpenPremium() },
+                    onLockedTap = { onOpenPremium(viewModel.onLockedPaletteTap()) },
                 )
 
                 Spacer(Modifier.height(28.dp))
@@ -166,7 +166,7 @@ fun PersonalizeScreen(
                         trailingContent = {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
                         },
-                        modifier = Modifier.clickable(onClick = onOpenPremium),
+                        modifier = Modifier.clickable { onOpenPremium("settings") },
                     )
                     HorizontalDivider()
                 }

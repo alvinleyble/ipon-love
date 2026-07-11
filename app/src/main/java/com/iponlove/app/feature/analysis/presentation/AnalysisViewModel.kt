@@ -235,14 +235,18 @@ class AnalysisViewModel @Inject constructor(
 
     /** A tap on a premium-locked extended range (3M/6M/12M/ALL) — logs the §10.10 funnel
      *  touchpoint before the screen routes to the paywall; the range itself does not change. */
-    fun onExtendedRangeUpsell() {
-        analytics.log("upsell_tap", source = "analysis_extended_ranges")
+    fun onExtendedRangeUpsell(): String {
+        val source = "analysis_extended_ranges"
+        analytics.log("upsell_tap", source = source)
+        return source
     }
 
     /** A tap on the locked ← at the DEEP_HISTORY −12mo wall — logs the §10.10 touchpoint before
-     *  the screen routes to the paywall; the anchor does not move. */
-    fun onDeepHistoryUpsell() {
-        analytics.log("upsell_tap", source = "deep_history")
+     *  the screen routes to the paywall; the anchor does not move. Returns the paywall entry source. */
+    fun onDeepHistoryUpsell(): String {
+        val source = "deep_history"
+        analytics.log("upsell_tap", source = source)
+        return source
     }
 
     fun previous() {

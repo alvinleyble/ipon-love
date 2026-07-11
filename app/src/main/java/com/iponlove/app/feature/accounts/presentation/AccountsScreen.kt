@@ -85,7 +85,7 @@ import java.math.BigDecimal
 @Composable
 fun AccountsBody(
     modifier: Modifier = Modifier,
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: AccountsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -203,7 +203,7 @@ fun AccountsBody(
         CapReachedSheet(
             prompt = prompt,
             onDismiss = viewModel::dismissUpsell,
-            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
+            onUpgrade = { onOpenPremium(viewModel.onUpsellUpgrade()) },
         )
     }
 }

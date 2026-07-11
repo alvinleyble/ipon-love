@@ -70,7 +70,7 @@ private val IncomeColor = Color(0xFF2E7D32)
 @Composable
 fun AnalysisScreen(
     onOpenCouple: () -> Unit = {},
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: AnalysisViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -82,9 +82,9 @@ fun AnalysisScreen(
         onOpenCouple = onOpenCouple,
         onDismissPairingCard = viewModel::dismissPairingCard,
         // Locked extended-range tap: log the funnel touchpoint, then route to the paywall.
-        onExtendedRangeUpsell = { viewModel.onExtendedRangeUpsell(); onOpenPremium() },
+        onExtendedRangeUpsell = { onOpenPremium(viewModel.onExtendedRangeUpsell()) },
         // Locked ← at the DEEP_HISTORY −12mo wall: same treatment, its own analytics source.
-        onDeepHistoryUpsell = { viewModel.onDeepHistoryUpsell(); onOpenPremium() },
+        onDeepHistoryUpsell = { onOpenPremium(viewModel.onDeepHistoryUpsell()) },
     )
 }
 

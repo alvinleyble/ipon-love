@@ -179,9 +179,11 @@ class CategoriesViewModel @Inject constructor(
     }
 
     /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before routing to paywall. */
-    fun onUpsellUpgrade() {
-        analytics.log("upsell_tap", source = upsellSource)
+    fun onUpsellUpgrade(): String {
+        val source = upsellSource ?: "personal_categories"
+        analytics.log("upsell_tap", source = source)
         upsell.value = null
+        return source
     }
 
     /** Revert a shared category to its creator's personal category (ADR-0018). */

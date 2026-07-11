@@ -59,7 +59,7 @@ private const val PARTNER_NAME_DISPLAY_MAX = 15
 @Composable
 fun PartnerDebtBody(
     modifier: Modifier = Modifier,
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: PartnerDebtViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -139,7 +139,7 @@ fun PartnerDebtBody(
         CapReachedSheet(
             prompt = prompt,
             onDismiss = viewModel::dismissUpsell,
-            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
+            onUpgrade = { onOpenPremium(viewModel.onUpsellUpgrade()) },
         )
     }
 }

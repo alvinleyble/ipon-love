@@ -187,8 +187,10 @@ class CombinedViewModel @Inject constructor(
 
     /** A tap on the locked ← at the −12mo wall — logs the §10.10 touchpoint before the screen
      *  routes to the paywall; the month does not move. */
-    fun onDeepHistoryUpsell() {
-        analytics.log("upsell_tap", source = "deep_history")
+    fun onDeepHistoryUpsell(): String {
+        val source = "deep_history"
+        analytics.log("upsell_tap", source = source)
+        return source
     }
 
     fun nextMonth() {

@@ -187,9 +187,11 @@ class NoteEditorViewModel @Inject constructor(
 
     /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before the screen routes
      *  to the paywall. */
-    fun onUpsellUpgrade() {
-        analytics.log("upsell_tap", source = upsellSource)
+    fun onUpsellUpgrade(): String {
+        val source = upsellSource ?: "note_attachments"
+        analytics.log("upsell_tap", source = source)
         _uiState.update { it.copy(upsell = null) }
+        return source
     }
 
     fun removeAttachment(id: String) {

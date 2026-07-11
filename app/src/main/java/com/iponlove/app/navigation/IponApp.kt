@@ -90,6 +90,8 @@ import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
 import com.iponlove.app.feature.settings.presentation.ProfileScreen
 import com.iponlove.app.feature.settings.presentation.SettingsCoupleScreen
 import com.iponlove.app.feature.subscription.presentation.SubscriptionScreen
+import com.iponlove.app.feature.subscription.presentation.SubscriptionViewModel.Companion.DEFAULT_SOURCE
+import com.iponlove.app.feature.subscription.presentation.SubscriptionViewModel.Companion.SOURCE_KEY
 import com.iponlove.app.feature.transactions.presentation.AddTransactionScreen
 import com.iponlove.app.feature.transactions.presentation.AddTransactionViewModel.Companion.TXN_ID_KEY
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
@@ -99,6 +101,8 @@ private const val APP_LOCK_SETUP_ROUTE = "app_lock_setup"
 private const val NOTE_EDITOR_ROUTE = "note_editor"
 private const val PROFILE_ROUTE = "profile"
 private const val SUBSCRIPTION_ROUTE = "subscription"
+/** Paywall route carrying the entry surface as a nav arg (Item 21) — e.g. "subscription?source=budgets". */
+private fun subscriptionRoute(source: String) = "$SUBSCRIPTION_ROUTE?$SOURCE_KEY=$source"
 private const val SETTINGS_COUPLE_ROUTE = "settings_couple"
 private const val NAV_EDITOR_ROUTE = "nav_editor"
 private const val HELP_ROUTE = "help"
@@ -250,13 +254,13 @@ private fun IponAppContent(
                         onOpenRecurring = { navController.navigate(NavRegistry.RECURRING.route) },
                         onAddTransaction = { navController.navigate(ADD_TRANSACTION_ROUTE) },
                         onEditTransaction = { id -> navController.navigate("$EDIT_TRANSACTION_ROUTE/$id") },
-                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                        onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                     )
                 }
                 composable(NavRegistry.RECURRING.route) {
                     RecurringScreen(
                         onBack = { navController.popBackStack() },
-                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                        onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                     )
                 }
             }
@@ -274,7 +278,7 @@ private fun IponAppContent(
                 ) {
                     NoteEditorScreen(
                         onBack = { navController.popBackStack() },
-                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                        onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                     )
                 }
             }
@@ -284,7 +288,7 @@ private fun IponAppContent(
                 composable(NavRegistry.ANALYSIS.route) {
                     AnalysisScreen(
                         onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) },
-                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                        onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                     )
                 }
             }
@@ -292,21 +296,21 @@ private fun IponAppContent(
             // Manage: single-node graph.
             navigation(startDestination = NavRegistry.MANAGE.route, route = NavRegistry.MANAGE.graphRoute()) {
                 composable(NavRegistry.MANAGE.route) {
-                    ManageScreen(onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) })
+                    ManageScreen(onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) })
                 }
             }
 
             // Couple: single-node graph (handles unpaired inside its own screen).
             navigation(startDestination = NavRegistry.COUPLE.route, route = NavRegistry.COUPLE.graphRoute()) {
                 composable(NavRegistry.COUPLE.route) {
-                    CoupleScreen(onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) })
+                    CoupleScreen(onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) })
                 }
             }
 
             // Calculator: single-node graph.
             navigation(startDestination = NavRegistry.CALCULATOR.route, route = NavRegistry.CALCULATOR.graphRoute()) {
                 composable(NavRegistry.CALCULATOR.route) {
-                    CalculatorScreen(onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) })
+                    CalculatorScreen(onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) })
                 }
             }
 
@@ -321,7 +325,7 @@ private fun IponAppContent(
                 composable(GOAL_EDITOR_ROUTE) {
                     GoalEditorScreen(
                         onBack = { navController.popBackStack() },
-                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                        onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                     )
                 }
                 composable(
@@ -330,7 +334,7 @@ private fun IponAppContent(
                 ) {
                     GoalEditorScreen(
                         onBack = { navController.popBackStack() },
-                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                        onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                     )
                 }
                 composable(
@@ -350,7 +354,7 @@ private fun IponAppContent(
                     PersonalizeScreen(
                         onBack = { navController.popBackStack() },
                         onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
-                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                        onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                         onOpenSecurity = { navController.navigate(APP_LOCK_SETUP_ROUTE) },
                         onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) },
                         onOpenNavbar = { navController.navigate(NAV_EDITOR_ROUTE) },
@@ -364,7 +368,13 @@ private fun IponAppContent(
                 composable(PROFILE_ROUTE) {
                     ProfileScreen(onBack = { navController.popBackStack() })
                 }
-                composable(SUBSCRIPTION_ROUTE) {
+                composable(
+                    route = "$SUBSCRIPTION_ROUTE?$SOURCE_KEY={$SOURCE_KEY}",
+                    arguments = listOf(navArgument(SOURCE_KEY) {
+                        type = NavType.StringType
+                        defaultValue = DEFAULT_SOURCE
+                    }),
+                ) {
                     SubscriptionScreen(onBack = { navController.popBackStack() })
                 }
                 composable(SETTINGS_COUPLE_ROUTE) {
@@ -389,7 +399,7 @@ private fun IponAppContent(
             composable(ADD_TRANSACTION_ROUTE) {
                 AddTransactionScreen(
                     onBack = { navController.popBackStack() },
-                    onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                    onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                 )
             }
             // Navbar editor is also a standalone top-level route (V1.6.3 Item 6): nested inside the
@@ -411,7 +421,7 @@ private fun IponAppContent(
             ) {
                 AddTransactionScreen(
                     onBack = { navController.popBackStack() },
-                    onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                    onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                 )
             }
         }

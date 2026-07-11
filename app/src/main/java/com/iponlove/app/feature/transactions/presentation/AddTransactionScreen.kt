@@ -86,7 +86,7 @@ import java.time.ZoneOffset
 @Composable
 fun AddTransactionScreen(
     onBack: () -> Unit,
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: AddTransactionViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -114,7 +114,7 @@ fun AddTransactionScreen(
         CapReachedSheet(
             prompt = prompt,
             onDismiss = viewModel::dismissUpsell,
-            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
+            onUpgrade = { onOpenPremium(viewModel.onUpsellUpgrade()) },
         )
     }
 }

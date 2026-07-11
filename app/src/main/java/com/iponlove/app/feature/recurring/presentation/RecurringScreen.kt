@@ -89,7 +89,7 @@ private val DATE_LABEL: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, 
 @Composable
 fun RecurringScreen(
     onBack: () -> Unit,
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: RecurringViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -139,7 +139,7 @@ fun RecurringScreen(
                         onPrev = viewModel::prevMonth,
                         onNext = viewModel::nextMonth,
                         onDayClick = viewModel::selectDay,
-                        onLockedTap = { viewModel.onCalendarLockedTap(); onOpenPremium() },
+                        onLockedTap = { onOpenPremium(viewModel.onCalendarLockedTap()) },
                     )
 
                 !state.canAdd ->

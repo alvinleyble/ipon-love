@@ -66,7 +66,7 @@ private fun formatSignedPhp(amount: BigDecimal): String =
 @Composable
 fun BudgetsBody(
     modifier: Modifier = Modifier,
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: BudgetsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -112,7 +112,7 @@ fun BudgetsBody(
             onCategoryChange = viewModel::onCategoryChange,
             onAmountChange = viewModel::onAmountChange,
             onRolloverChange = viewModel::onRolloverToggle,
-            onRolloverLockedTap = { viewModel.onRolloverLockedTap(); onOpenPremium() },
+            onRolloverLockedTap = { onOpenPremium(viewModel.onRolloverLockedTap()) },
             onSave = viewModel::save,
             onCancel = viewModel::cancelEdit,
         )
@@ -122,7 +122,7 @@ fun BudgetsBody(
         CapReachedSheet(
             prompt = prompt,
             onDismiss = viewModel::dismissUpsell,
-            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
+            onUpgrade = { onOpenPremium(viewModel.onUpsellUpgrade()) },
         )
     }
 }

@@ -140,9 +140,11 @@ class BudgetsViewModel @Inject constructor(
     }
 
     /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before routing to paywall. */
-    fun onUpsellUpgrade() {
-        analytics.log("upsell_tap", source = "budgets")
+    fun onUpsellUpgrade(): String {
+        val source = "budgets"
+        analytics.log("upsell_tap", source = source)
         upsell.value = null
+        return source
     }
 
     fun startEdit(row: BudgetRow) {
@@ -172,8 +174,10 @@ class BudgetsViewModel @Inject constructor(
 
     /** A tap on the locked rollover toggle — logs the §10.10 funnel touchpoint before the screen
      *  routes to the paywall. */
-    fun onRolloverLockedTap() {
-        analytics.log("upsell_tap", source = "budget_rollover")
+    fun onRolloverLockedTap(): String {
+        val source = "budget_rollover"
+        analytics.log("upsell_tap", source = source)
+        return source
     }
 
     fun save() {

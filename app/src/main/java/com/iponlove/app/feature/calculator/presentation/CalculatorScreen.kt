@@ -43,7 +43,7 @@ import com.iponlove.app.feature.calculator.domain.CalculatorState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalculatorScreen(
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: CalculatorViewModel = hiltViewModel(),
 ) {
     var state by remember { mutableStateOf(CalculatorState()) }
@@ -56,7 +56,7 @@ fun CalculatorScreen(
             FeatureLockedPanel(
                 title = "Calculator is Premium",
                 body = "Unlock the built-in calculator and more with Love, Ipon Premium.",
-                onUpgrade = { viewModel.onUpsellTap(); onOpenPremium() },
+                onUpgrade = { onOpenPremium(viewModel.onUpsellTap()) },
                 modifier = Modifier.padding(padding),
             )
             return@Scaffold

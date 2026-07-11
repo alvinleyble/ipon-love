@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.subscription.presentation
 
 import android.app.Activity
+import androidx.lifecycle.SavedStateHandle
 import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.billing.BillingException
@@ -67,9 +68,10 @@ class SubscriptionViewModelTest {
     }
 
     private class FakeAnalytics : Analytics {
-        val events = mutableListOf<String>()
+        val logged = mutableListOf<Pair<String, String?>>()
+        val events: List<String> get() = logged.map { it.first }
         override fun log(name: String, source: String?, params: Map<String, String>) {
-            events += name
+            logged += name to source
         }
     }
 
@@ -81,7 +83,15 @@ class SubscriptionViewModelTest {
         entitlement: EntitlementRepository,
         billing: BillingGateway,
         analytics: Analytics = FakeAnalytics(),
-    ) = SubscriptionViewModel(entitlement, billing, analytics)
+        source: String? = null,
+    ) = SubscriptionViewModel(
+        entitlement,
+        billing,
+        analytics,
+        SavedStateHandle(
+            if (source == null) emptyMap() else mapOf(SubscriptionViewModel.SOURCE_KEY to source),
+        ),
+    )
 
     @Test
     fun initialState_reflectsOwnedEntitlement() = runTest {
@@ -169,10 +179,17 @@ class SubscriptionViewModelTest {
     }
 
     @Test
-    fun logsPaywallImpression_onOpen() = runTest {
+    fun logsPaywallImpression_onOpen_defaultsToSettingsSource() = runTest {
         val analytics = FakeAnalytics()
-        vm(FakeEntitlement(none()), FakeBilling(), analytics)
-        assertThat(analytics.events).containsExactly("paywall_impression")
+        vm(FakeEntitlement(none()), FakeBilling(), analytics) // no source arg
+        assertThat(analytics.logged).containsExactly("paywall_impression" to "settings")
+    }
+
+    @Test
+    fun logsPaywallImpression_withGateSource_fromSavedStateHandle() = runTest {
+        val analytics = FakeAnalytics()
+        vm(FakeEntitlement(none()), FakeBilling(), analytics, source = "budgets")
+        assertThat(analytics.logged).containsExactly("paywall_impression" to "budgets")
     }
 
     @Test

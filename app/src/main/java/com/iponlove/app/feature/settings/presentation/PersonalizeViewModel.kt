@@ -76,8 +76,11 @@ class PersonalizeViewModel @Inject constructor(
 
     /** A tap on a locked (Premium) swatch — logs the §10.10 funnel touchpoint before the screen
      *  routes to the paywall. */
-    fun onLockedPaletteTap() {
-        analytics.log("upsell_tap", source = "palette")
+    /** Locked-palette tap: logs the §10.10 touchpoint and returns the paywall entry source. */
+    fun onLockedPaletteTap(): String {
+        val source = "palette"
+        analytics.log("upsell_tap", source = source)
+        return source
     }
 
     fun toggleDarkMode(isDark: Boolean) {

@@ -61,7 +61,7 @@ fun TransactionsScreen(
     onOpenRecurring: () -> Unit,
     onAddTransaction: () -> Unit,
     onEditTransaction: (String) -> Unit,
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: TransactionsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -75,7 +75,7 @@ fun TransactionsScreen(
         onPreviousMonth = viewModel::previousMonth,
         onNextMonth = viewModel::nextMonth,
         // Locked ← at the DEEP_HISTORY −12mo wall: log the touchpoint, then route to the paywall.
-        onDeepHistoryUpsell = { viewModel.onDeepHistoryUpsell(); onOpenPremium() },
+        onDeepHistoryUpsell = { onOpenPremium(viewModel.onDeepHistoryUpsell()) },
     )
 }
 

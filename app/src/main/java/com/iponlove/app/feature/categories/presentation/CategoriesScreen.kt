@@ -79,7 +79,7 @@ import com.iponlove.app.feature.categories.domain.model.CategoryType
 @Composable
 fun CategoriesBody(
     modifier: Modifier = Modifier,
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: CategoriesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -189,7 +189,7 @@ fun CategoriesBody(
         CapReachedSheet(
             prompt = prompt,
             onDismiss = viewModel::dismissUpsell,
-            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
+            onUpgrade = { onOpenPremium(viewModel.onUpsellUpgrade()) },
         )
     }
 }

@@ -71,7 +71,7 @@ import java.io.File
 @Composable
 fun NoteEditorScreen(
     onBack: () -> Unit,
-    onOpenPremium: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: NoteEditorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -262,7 +262,7 @@ fun NoteEditorScreen(
         CapReachedSheet(
             prompt = prompt,
             onDismiss = viewModel::dismissUpsell,
-            onUpgrade = { viewModel.onUpsellUpgrade(); onOpenPremium() },
+            onUpgrade = { onOpenPremium(viewModel.onUpsellUpgrade()) },
         )
     }
 }

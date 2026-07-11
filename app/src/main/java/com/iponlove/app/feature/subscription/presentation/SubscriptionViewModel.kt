@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.subscription.presentation
 
 import android.app.Activity
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iponlove.app.core.analytics.Analytics
@@ -33,15 +34,19 @@ class SubscriptionViewModel @Inject constructor(
     private val entitlement: EntitlementRepository,
     private val billing: BillingGateway,
     private val analytics: Analytics,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SubscriptionUiState())
     val uiState: StateFlow<SubscriptionUiState> = _uiState
 
     init {
-        // Screen open == a paywall impression (the VM is scoped to this nav entry). Source is the
-        // only entry point today; becomes a nav arg once other surfaces route here (Phase 2).
-        analytics.log("paywall_impression", source = "settings")
+        // Screen open == a paywall impression (the VM is scoped to this nav entry). The entry
+        // surface arrives as a nav arg — "settings" from the Settings Premium row, or a gate's
+        // cap key (the same string the gate logs to `upsell_tap`) — so the funnel can attribute
+        // each impression to what drove it (Item 21). Defaults to "settings" if the route omits it.
+        val source = savedStateHandle.get<String>(SOURCE_KEY) ?: DEFAULT_SOURCE
+        analytics.log("paywall_impression", source = source)
 
         entitlement.observeSelf()
             .onEach { self ->
@@ -111,5 +116,12 @@ class SubscriptionViewModel @Inject constructor(
                     }
             }
         }
+    }
+
+    companion object {
+        /** Nav-arg key for the entry surface that opened the paywall (read off [SavedStateHandle]). */
+        const val SOURCE_KEY = "source"
+        /** Fallback surface when the route carries no source (e.g. the Settings Premium row). */
+        const val DEFAULT_SOURCE = "settings"
     }
 }
