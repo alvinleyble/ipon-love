@@ -341,6 +341,11 @@ private fun EditorForm(
                 Text("Paid for ${state.partnerName}", modifier = Modifier.weight(1f))
                 Switch(checked = editor.paidForPartner, onCheckedChange = onPaidForPartnerChange)
             }
+            Text(
+                "Adds what ${state.partnerName} owes you to the Partner Debt Tracker.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (editor.paidForPartner) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
