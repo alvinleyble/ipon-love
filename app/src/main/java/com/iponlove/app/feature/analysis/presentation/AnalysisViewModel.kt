@@ -2,6 +2,9 @@ package com.iponlove.app.feature.analysis.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.analytics.Analytics
+import com.iponlove.app.core.entitlement.PremiumGate
+import com.iponlove.app.core.entitlement.Scope
 import com.iponlove.app.feature.analysis.domain.model.AnalysisPeriod
 import com.iponlove.app.feature.analysis.domain.model.AnalysisWindow
 import com.iponlove.app.feature.analysis.domain.model.ExpenseFlowData
@@ -47,6 +50,8 @@ class AnalysisViewModel @Inject constructor(
     observeCurrentUser: ObserveCurrentUserUseCase,
     observePairingState: ObservePairingStateUseCase,
     private val onboardingRepository: OnboardingRepository,
+    private val premiumGate: PremiumGate,
+    private val analytics: Analytics,
 ) : ViewModel() {
 
     private val anchor = MutableStateFlow(LocalDate.now())
@@ -195,6 +200,11 @@ class AnalysisViewModel @Inject constructor(
                 lastMonthIncome = lastMonthIncome,
             )
         }.combine(showPairingCard) { state, showCard -> state.copy(showPairingCard = showCard) }
+            // ANALYSIS_EXTENDED_RANGES soft-gate (S10): individual scope, same seam as the S9
+            // boolean gates. Always false while dormant, so the extended tabs stay open pre-flip.
+            .combine(premiumGate.observeLocked(Scope.INDIVIDUAL)) { state, locked ->
+                state.copy(extendedRangesLocked = locked)
+            }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -208,6 +218,12 @@ class AnalysisViewModel @Inject constructor(
     /** Switch granularity, keeping the same anchor date (the window snaps around it). */
     fun selectPeriod(newPeriod: AnalysisPeriod) {
         period.value = newPeriod
+    }
+
+    /** A tap on a premium-locked extended range (3M/6M/12M/ALL) — logs the §10.10 funnel
+     *  touchpoint before the screen routes to the paywall; the range itself does not change. */
+    fun onExtendedRangeUpsell() {
+        analytics.log("upsell_tap", source = "analysis_extended_ranges")
     }
 
     fun previous() {

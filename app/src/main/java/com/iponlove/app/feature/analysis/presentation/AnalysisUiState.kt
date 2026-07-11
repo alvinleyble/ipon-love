@@ -35,6 +35,12 @@ data class AnalysisUiState(
     val lastMonthIncome: BigDecimal? = null,
     /** Unpaired + not-yet-dismissed — shows the pairing nudge card (ADR-0024). */
     val showPairingCard: Boolean = false,
+    /**
+     * True when the extended ranges (3M/6M/12M/ALL) are premium-locked for this user
+     * (`ANALYSIS_EXTENDED_RANGES`, S10 — enforcement ON + no access, individual scope). Drives the
+     * lock badge on those tabs and routes a locked tap to the paywall. Always false while dormant.
+     */
+    val extendedRangesLocked: Boolean = false,
 ) {
     val hasExpenses: Boolean get() = totalExpense.signum() > 0
 }

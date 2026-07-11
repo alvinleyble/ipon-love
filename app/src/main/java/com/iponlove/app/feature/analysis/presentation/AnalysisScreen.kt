@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -69,6 +70,7 @@ private val IncomeColor = Color(0xFF2E7D32)
 @Composable
 fun AnalysisScreen(
     onOpenCouple: () -> Unit = {},
+    onOpenPremium: () -> Unit = {},
     viewModel: AnalysisViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -79,6 +81,8 @@ fun AnalysisScreen(
         onNext = viewModel::next,
         onOpenCouple = onOpenCouple,
         onDismissPairingCard = viewModel::dismissPairingCard,
+        // Locked extended-range tap: log the funnel touchpoint, then route to the paywall.
+        onExtendedRangeUpsell = { viewModel.onExtendedRangeUpsell(); onOpenPremium() },
     )
 }
 
@@ -91,6 +95,7 @@ private fun AnalysisContent(
     onNext: () -> Unit,
     onOpenCouple: () -> Unit,
     onDismissPairingCard: () -> Unit,
+    onExtendedRangeUpsell: () -> Unit = {},
 ) {
     StartTourOnFirstVisit(TutorialTours.ANALYSIS)
     val pagerState = rememberPagerState(pageCount = { 3 })
@@ -105,10 +110,16 @@ private fun AnalysisContent(
         }
     }
     val onSelectPeriodCoupled: (AnalysisPeriod) -> Unit = { period ->
-        if (pagerState.currentPage == CALENDAR_TAB && period != AnalysisPeriod.MONTH) {
-            scope.launch { pagerState.animateScrollToPage(DONUT_TAB) }
+        // ANALYSIS_EXTENDED_RANGES soft-gate (S10): a locked 3M/6M/12M/ALL tap routes to the
+        // paywall and does NOT switch the range; free ranges (1D/1W/1M) fall through unchanged.
+        if (period.isExtendedRange && state.extendedRangesLocked) {
+            onExtendedRangeUpsell()
+        } else {
+            if (pagerState.currentPage == CALENDAR_TAB && period != AnalysisPeriod.MONTH) {
+                scope.launch { pagerState.animateScrollToPage(DONUT_TAB) }
+            }
+            onSelectPeriod(period)
         }
-        onSelectPeriod(period)
     }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Analysis") }) }) { padding ->
@@ -118,7 +129,11 @@ private fun AnalysisContent(
                 .fillMaxSize(),
         ) {
             // Persistent header — always visible regardless of period or tab.
-            PeriodSelector(selected = state.period, onSelect = onSelectPeriodCoupled)
+            PeriodSelector(
+                selected = state.period,
+                onSelect = onSelectPeriodCoupled,
+                lockedExtended = state.extendedRangesLocked,
+            )
             PeriodStepper(
                 label = state.periodLabel,
                 onPrevious = onPrevious,
@@ -258,7 +273,11 @@ private fun CalendarTab(state: AnalysisUiState) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PeriodSelector(selected: AnalysisPeriod, onSelect: (AnalysisPeriod) -> Unit) {
+private fun PeriodSelector(
+    selected: AnalysisPeriod,
+    onSelect: (AnalysisPeriod) -> Unit,
+    lockedExtended: Boolean = false,
+) {
     val periods = AnalysisPeriod.entries
     ScrollableTabRow(
         selectedTabIndex = periods.indexOf(selected),
@@ -267,10 +286,24 @@ private fun PeriodSelector(selected: AnalysisPeriod, onSelect: (AnalysisPeriod) 
         modifier = Modifier.coachMarkTarget(TutorialTargets.ANALYSIS_PERIOD),
     ) {
         periods.forEach { period ->
+            val locked = lockedExtended && period.isExtendedRange
             Tab(
                 selected = selected == period,
                 onClick = { onSelect(period) },
-                text = { Text(period.shortLabel(), style = MaterialTheme.typography.labelLarge) },
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(period.shortLabel(), style = MaterialTheme.typography.labelLarge)
+                        if (locked) {
+                            Spacer(Modifier.width(2.dp))
+                            Icon(
+                                imageVector = Icons.Filled.Lock,
+                                contentDescription = "Premium",
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
             )
         }
     }

@@ -281,7 +281,10 @@ private fun IponAppContent(
             // Analysis: single-node graph (uniform nesting per ADR-0033 decision 1).
             navigation(startDestination = NavRegistry.ANALYSIS.route, route = NavRegistry.ANALYSIS.graphRoute()) {
                 composable(NavRegistry.ANALYSIS.route) {
-                    AnalysisScreen(onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) })
+                    AnalysisScreen(
+                        onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) },
+                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                    )
                 }
             }
 

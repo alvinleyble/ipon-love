@@ -12,5 +12,14 @@ enum class AnalysisPeriod {
     QUARTER,
     SEMI_ANNUAL,
     ANNUAL,
-    ALL_TIME,
+    ALL_TIME;
+
+    /**
+     * True for the longer ranges gated behind Premium (`ANALYSIS_EXTENDED_RANGES`, paywall S10):
+     * 3M/6M/12M/ALL. The three short ranges (1D/1W/1M) stay free. This is a pure classification —
+     * the actual lock is `PremiumGate.observeLocked` (enforcement + entitlement); a locked tap on
+     * one of these routes to the paywall instead of switching the range.
+     */
+    val isExtendedRange: Boolean
+        get() = this == QUARTER || this == SEMI_ANNUAL || this == ANNUAL || this == ALL_TIME
 }
