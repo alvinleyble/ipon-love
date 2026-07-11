@@ -17,6 +17,8 @@ import java.time.Instant
 class FakePartnerDebtDao : PartnerDebtDao {
     val debts = linkedMapOf<String, PartnerDebtEntity>()
     val payments = linkedMapOf<String, DebtPaymentEntity>()
+    /** This session's current couple, as [coupleIdOf] would read from the local users row. */
+    var currentCoupleId: String? = "c-1"
     private val changes = MutableStateFlow(0)
 
     override fun observeDebts(coupleId: String): Flow<List<PartnerDebtEntity>> =
@@ -59,6 +61,11 @@ class FakePartnerDebtDao : PartnerDebtDao {
         payments.clear()
         changes.value++
     }
+
+    override suspend fun coupleIdOf(userId: String): String? = currentCoupleId
+
+    override suspend fun debtIdsForCouple(coupleId: String): List<String> =
+        debts.values.filter { it.coupleId == coupleId }.map { it.id }
 
     override suspend fun dirtyDebts(): List<PartnerDebtEntity> = debts.values.filter { it.pendingSync }
 

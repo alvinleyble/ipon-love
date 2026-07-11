@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.partnerdebt.data.sync
 
+import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.BaseTableSyncer
 import com.iponlove.app.core.sync.ConflictResolver
 import com.iponlove.app.core.sync.SyncCursorStore
@@ -18,11 +19,23 @@ import javax.inject.Inject
 class DebtPaymentTableSyncer @Inject constructor(
     private val dao: PartnerDebtDao,
     private val remote: DebtPaymentRemoteSource,
+    private val currentUser: CurrentUserProvider,
     cursors: SyncCursorStore,
     resolver: ConflictResolver,
 ) : BaseTableSyncer<DebtPaymentEntity>(SyncTable.DEBT_PAYMENTS, cursors, resolver) {
 
-    override suspend fun dirtyRows(): List<DebtPaymentEntity> = dao.dirtyPayments()
+    // Push only payments whose parent debt is in this session's current couple (v1.6.5 Item 20
+    // follow-up). Payments have no couple_id — the payment RLS keys off debt_id -> the debt's
+    // couple, so we mirror it exactly: a payment is ownable iff its debtId is one of the current
+    // couple's local debts. Unpaired (no couple) -> empty set -> all skipped, as no couple row is
+    // then ownable. Skipping an un-ownable row keeps one stale-couple payment from wedging the
+    // atomic batch; it stays a benign orphan until a pull converges.
+    override suspend fun dirtyRows(): List<DebtPaymentEntity> {
+        val myCoupleId = dao.coupleIdOf(currentUser.userId())
+            ?: return emptyList()
+        val myDebtIds = dao.debtIdsForCouple(myCoupleId).toHashSet()
+        return dao.dirtyPayments().filter { it.debtId in myDebtIds }
+    }
 
     override suspend fun clearPending(ids: List<String>) = dao.clearPaymentPending(ids)
 

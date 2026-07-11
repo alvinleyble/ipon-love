@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.partnerdebt
 
 import com.google.common.truth.Truth.assertThat
+import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.ConflictResolver
 import com.iponlove.app.core.sync.InMemoryCursorStore
 import com.iponlove.app.core.sync.SyncTable
@@ -41,8 +42,9 @@ class PartnerDebtTableSyncerTest {
     private val debtRemote = FakeDebtRemote()
     private val paymentRemote = FakePaymentRemote()
     private val cursors = InMemoryCursorStore()
-    private val debtSyncer = PartnerDebtTableSyncer(dao, debtRemote, cursors, ConflictResolver())
-    private val paymentSyncer = DebtPaymentTableSyncer(dao, paymentRemote, cursors, ConflictResolver())
+    private val currentUser = CurrentUserProvider { "me" }
+    private val debtSyncer = PartnerDebtTableSyncer(dao, debtRemote, currentUser, cursors, ConflictResolver())
+    private val paymentSyncer = DebtPaymentTableSyncer(dao, paymentRemote, currentUser, cursors, ConflictResolver())
 
     @Test
     fun syncers_useTheirOwnTables() {
@@ -85,5 +87,72 @@ class PartnerDebtTableSyncerTest {
         val row = dao.payments.getValue("p")
         assertThat(row.amount.toPlainString()).isEqualTo("99.00")
         assertThat(cursors.cursor(SyncTable.DEBT_PAYMENTS)).isEqualTo(20)
+    }
+
+    // ---- push ownership filter (v1.6.5 Item 20 follow-up) ----
+
+    @Test
+    fun debt_push_skipsStaleCoupleRow_soItCantWedgeTheBatch() = runTest {
+        dao.currentCoupleId = "c-1"
+        dao.debts["a"] = partnerDebtEntity(id = "a", coupleId = "c-1", pendingSync = true)
+        dao.debts["stale"] = partnerDebtEntity(id = "stale", coupleId = "old-couple", pendingSync = true)
+
+        debtSyncer.push()
+
+        assertThat(debtRemote.pushed.map { it.id }).containsExactly("a")
+        assertThat(dao.debts.getValue("stale").pendingSync).isTrue() // benign orphan, still local
+    }
+
+    @Test
+    fun debt_push_whenUnpaired_skipsEveryCoupleRow() = runTest {
+        dao.currentCoupleId = null
+        dao.debts["a"] = partnerDebtEntity(id = "a", coupleId = "c-1", pendingSync = true)
+
+        assertThat(debtSyncer.push()).isFalse()
+        assertThat(debtRemote.pushed).isEmpty()
+    }
+
+    @Test
+    fun payment_push_onlyForDebtsInCurrentCouple() = runTest {
+        dao.currentCoupleId = "c-1"
+        dao.debts["mine"] = partnerDebtEntity(id = "mine", coupleId = "c-1")
+        dao.debts["stale"] = partnerDebtEntity(id = "stale", coupleId = "old-couple")
+        dao.payments["p-ok"] = debtPaymentEntity(id = "p-ok", debtId = "mine", pendingSync = true)
+        dao.payments["p-stale"] = debtPaymentEntity(id = "p-stale", debtId = "stale", pendingSync = true)
+        dao.payments["p-orphan"] = debtPaymentEntity(id = "p-orphan", debtId = "absent", pendingSync = true)
+
+        paymentSyncer.push()
+
+        assertThat(paymentRemote.pushed.map { it.id }).containsExactly("p-ok")
+        assertThat(dao.payments.getValue("p-ok").pendingSync).isFalse()
+        assertThat(dao.payments.getValue("p-stale").pendingSync).isTrue()
+        assertThat(dao.payments.getValue("p-orphan").pendingSync).isTrue()
+    }
+
+    @Test
+    fun payment_push_nettingRow_keysOffParentDebt_notCounterDebt() = runTest {
+        // A netting payment references debtId (its parent) + counterDebtId (the opposing debt);
+        // RLS gates on debt_id only, so pushability keys off the parent — netting stays intact
+        // even when the counter-debt id resolves to no local row.
+        dao.currentCoupleId = "c-1"
+        dao.debts["mine"] = partnerDebtEntity(id = "mine", coupleId = "c-1")
+        dao.payments["net"] = debtPaymentEntity(
+            id = "net", debtId = "mine", counterDebtId = "absent-counter",
+            isNetting = true, pendingSync = true,
+        )
+
+        paymentSyncer.push()
+
+        assertThat(paymentRemote.pushed.map { it.id }).containsExactly("net")
+    }
+
+    @Test
+    fun payment_push_whenUnpaired_skipsEverything() = runTest {
+        dao.currentCoupleId = null
+        dao.debts["mine"] = partnerDebtEntity(id = "mine", coupleId = "c-1")
+        dao.payments["p"] = debtPaymentEntity(id = "p", debtId = "mine", pendingSync = true)
+
+        assertThat(paymentSyncer.push()).isFalse()
+        assertThat(paymentRemote.pushed).isEmpty()
     }
 }

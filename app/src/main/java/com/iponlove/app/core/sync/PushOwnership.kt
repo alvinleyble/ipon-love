@@ -19,3 +19,26 @@ package com.iponlove.app.core.sync
  */
 fun isLocallyPushable(userId: String?, coupleId: String?, me: String, myCoupleId: String?): Boolean =
     userId == me || (coupleId != null && coupleId == myCoupleId)
+
+/**
+ * The couple-scoped counterpart of [isLocallyPushable], for the *always-couple* tables
+ * (`partner_debts` / `partner_debt_payments`, v1.6.5 Item 20 follow-up). These are **not**
+ * flip-model — `couple_id` is `NOT NULL`, there is no personal form, and RLS is purely
+ * `couple_id = auth_couple_id()` — so a row is pushable exactly when its couple is this
+ * session's **current** couple.
+ *
+ * The hazard is the same unpair-race F1 residual budgets shared: a dirty row still stamped
+ * with a dissolved couple's id can never satisfy RLS and would fail the table's atomic upsert
+ * batch, wedging every pending row (and sign-out, ADR-0021). Both debt tables are purged on
+ * unpair, so this only guards the narrow window where a dirty row outlives (or is re-created
+ * after) that purge; skipped rows stay benign local orphans until a pull converges them.
+ *
+ * `partner_debt_payments` carries no `couple_id` of its own — its couple is its parent debt's
+ * (`debt_id -> partner_debts.couple_id`), matching the payment RLS subquery — so the caller
+ * resolves the parent debt's couple before applying this.
+ *
+ * [myCoupleId] null (unpaired, or the local users row absent) makes every couple row stale and
+ * correctly skipped.
+ */
+fun isCoupleRowPushable(coupleId: String?, myCoupleId: String?): Boolean =
+    myCoupleId != null && coupleId == myCoupleId

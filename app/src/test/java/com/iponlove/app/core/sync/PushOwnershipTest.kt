@@ -38,4 +38,22 @@ class PushOwnershipTest {
         assertThat(isLocallyPushable(userId = me, coupleId = null, me = me, myCoupleId = null)).isTrue()
         assertThat(isLocallyPushable(userId = null, coupleId = "couple-1", me = me, myCoupleId = null)).isFalse()
     }
+
+    // ---- isCoupleRowPushable — the always-couple tables (partner_debts / payments) ----
+
+    @Test
+    fun currentCoupleDebt_isPushable() {
+        assertThat(isCoupleRowPushable(coupleId = myCouple, myCoupleId = myCouple)).isTrue()
+    }
+
+    @Test
+    fun staleCoupleDebt_fromDissolvedCouple_isNotPushable() {
+        assertThat(isCoupleRowPushable(coupleId = "old-couple", myCoupleId = myCouple)).isFalse()
+    }
+
+    @Test
+    fun coupleRow_whenUnpaired_isNeverPushable() {
+        assertThat(isCoupleRowPushable(coupleId = myCouple, myCoupleId = null)).isFalse()
+        assertThat(isCoupleRowPushable(coupleId = null, myCoupleId = null)).isFalse()
+    }
 }

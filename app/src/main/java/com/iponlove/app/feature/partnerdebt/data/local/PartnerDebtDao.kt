@@ -65,6 +65,20 @@ interface PartnerDebtDao {
     @Query("DELETE FROM partner_debt_payments")
     suspend fun deleteAllPayments()
 
+    // ---- push ownership resolution (v1.6.5 Item 20 follow-up) ----
+
+    /** This session's current couple, from the local users row (same source as AccountDao). */
+    @Query("SELECT coupleId FROM users WHERE id = :userId")
+    suspend fun coupleIdOf(userId: String): String?
+
+    /**
+     * Ids of every local debt belonging to [coupleId] (deleted included — the payment RLS
+     * subquery has no is_deleted filter, so a payment against a soft-deleted-but-same-couple
+     * debt still pushes). Used to decide which dirty payments this session can own.
+     */
+    @Query("SELECT id FROM partner_debts WHERE coupleId = :coupleId")
+    suspend fun debtIdsForCouple(coupleId: String): List<String>
+
     // ---- sync engine plumbing: debts ----
 
     @Query("SELECT * FROM partner_debts WHERE pendingSync = 1")
