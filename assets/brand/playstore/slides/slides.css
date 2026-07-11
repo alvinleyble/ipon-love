@@ -1,0 +1,67 @@
+/* Love, Ipon — Play Store screenshot design system.
+   Canvas: 1080×1920. Tokens extend showcase/feature-graphic.html:
+   plum bg #3A1727→#1E0C15, rose #EA8AB3, blush #FBE5EE, cream #FFF7F4. */
+
+* { margin: 0; padding: 0; border: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; }
+
+body {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  background: linear-gradient(160deg, #3A1727 0%, #241019 55%, #1E0C15 100%);
+  font-family: "Baskerville", "Hoefler Text", Georgia, serif;
+}
+
+/* soft rose glow — position varies per slide via body class */
+.glow {
+  position: absolute; width: 1200px; height: 1200px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(234,138,179,.15), rgba(234,138,179,0) 70%);
+  pointer-events: none;
+}
+body.glow-tl .glow { left: -420px; top: -400px; }
+body.glow-tr .glow { right: -420px; top: -400px; }
+
+/* faint oversized heart-outline deco — side alternates per slide */
+.deco { position: absolute; width: 840px; height: 840px; opacity: .07; pointer-events: none; }
+body.deco-r .deco { right: -280px; top: 170px; transform: rotate(-9deg); }
+body.deco-l .deco { left: -280px; top: 210px; transform: rotate(9deg); }
+
+/* ---- copy block ---- */
+.copy { position: relative; z-index: 2; text-align: center; padding: 108px 84px 0; }
+
+h1 {
+  font-size: 92px; line-height: 1.12; letter-spacing: .005em;
+  font-weight: 600; color: #FFF7F4; white-space: nowrap;
+}
+h1 em { font-style: italic; font-weight: 500; color: #EA8AB3; }
+h1.h-sm { font-size: 84px; }
+
+.sub {
+  font-family: "Avenir Next", "Avenir", -apple-system, system-ui, sans-serif;
+  font-size: 37px; line-height: 1.42; font-weight: 500; color: #D9A8BE;
+  max-width: 850px; margin: 28px auto 0;
+}
+
+/* ---- hero (slide 1) extras ---- */
+.lockup { display: flex; align-items: center; justify-content: center; gap: 24px; margin-bottom: 56px; }
+.lockup .word { font-size: 56px; line-height: 1; color: #FFF7F4; letter-spacing: .01em; }
+.lockup .word .love { font-style: italic; font-weight: 400; }
+.lockup .word .ipon { font-weight: 600; }
+.tagline {
+  font-family: "Avenir Next", "Avenir", -apple-system, system-ui, sans-serif;
+  font-size: 29px; font-weight: 600; color: #EA8AB3;
+  text-transform: uppercase; letter-spacing: .17em; margin-top: 34px;
+}
+
+/* ---- phone frame ---- */
+.phone {
+  position: relative; z-index: 1; flex: none;
+  width: 780px; margin-top: 64px;
+  background: #120A10; border-radius: 64px; padding: 17px;
+  border: 1.5px solid rgba(234,138,179,.28);
+  box-shadow: 0 60px 160px rgba(0,0,0,.62), 0 0 110px rgba(234,138,179,.10);
+}
+.screen { border-radius: 48px; overflow: hidden; background: #1A1012; }
+.screen img { display: block; width: 100%; }
+/* Accounts capture is the only one with a device status bar (~92px @1084w → 64px @746w) */
+.screen img.crop-statusbar { margin-top: -64px; }

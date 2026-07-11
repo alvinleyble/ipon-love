@@ -46,6 +46,14 @@ showcase/   Design exploration pages (open in a browser)
   icon-directions.html         The original 4 directions
   heart-wallet.html            The chosen direction, developed
   feature-graphic.html         Render source for the Play feature graphic
+
+phone-screenshots/  Raw device captures (Rose dark theme) used by playstore/
+
+playstore/  Play Store listing screenshots (1080×1920, serif brand voice)
+  slides/slides.css            Shared design system (plum bg, Baskerville, rose accents)
+  slides/slide-01…08.html      One page per slide; copy lives here
+  render.sh                    Renders all 8 → png/ (Edge headless 2× + sips)
+  png/playstore-01…08.png      Upload these to Play Console (phone screenshots)
 ```
 
 ## Regenerating the Play feature graphic
@@ -63,6 +71,16 @@ sips -z 500 1024 fg-2x.png --out png/feature-graphic-1024x500.png
 
 `sips` flattens the alpha channel, so the output satisfies Play's
 "no transparency" rule automatically.
+
+## Regenerating the Play Store screenshots
+
+Edit copy/layout in `playstore/slides/`, then `./playstore/render.sh` — same
+2×-then-`sips` recipe as the feature graphic, one Edge invocation per slide.
+Outputs are Play-compliant (exactly 1080×1920, alpha flattened, ≪8 MB).
+Slide order = gallery order: hero, combined view, debts, goals, budgets,
+donut, flow, calendar. New raw captures go in `phone-screenshots/` (Rose dark
+theme; the Accounts capture is the only one whose device status bar needs the
+`crop-statusbar` class in its slide).
 
 ## Regenerating the Play Store PNG
 
