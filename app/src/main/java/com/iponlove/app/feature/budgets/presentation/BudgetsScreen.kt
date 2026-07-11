@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -111,6 +112,7 @@ fun BudgetsBody(
             onCategoryChange = viewModel::onCategoryChange,
             onAmountChange = viewModel::onAmountChange,
             onRolloverChange = viewModel::onRolloverToggle,
+            onRolloverLockedTap = { viewModel.onRolloverLockedTap(); onOpenPremium() },
             onSave = viewModel::save,
             onCancel = viewModel::cancelEdit,
         )
@@ -273,6 +275,7 @@ private fun BudgetEditorDialog(
     onCategoryChange: (String?) -> Unit,
     onAmountChange: (String) -> Unit,
     onRolloverChange: (Boolean) -> Unit,
+    onRolloverLockedTap: () -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -317,7 +320,13 @@ private fun BudgetEditorDialog(
                 Spacer(Modifier.height(12.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        // Locked: the whole row routes to the paywall (soft gate); unlocked: inert.
+                        .then(
+                            if (state.rolloverLocked) Modifier.clickable(onClick = onRolloverLockedTap)
+                            else Modifier
+                        ),
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text("Roll over from last month", style = MaterialTheme.typography.bodyLarge)
@@ -327,7 +336,17 @@ private fun BudgetEditorDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Switch(checked = editor.rolloverEnabled, onCheckedChange = onRolloverChange)
+                    if (state.rolloverLocked) {
+                        // Soft gate (S9): the toggle is replaced by a Premium lock; the underlying
+                        // saved value is left untouched (T1 freeze) — a lapsed budget keeps rolling.
+                        Icon(
+                            Icons.Filled.Lock,
+                            contentDescription = "Premium",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    } else {
+                        Switch(checked = editor.rolloverEnabled, onCheckedChange = onRolloverChange)
+                    }
                 }
             }
         },

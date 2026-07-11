@@ -27,6 +27,12 @@ data class RecurringUiState(
     val selectedDay: Int? = null,
     /** day-of-month → rules firing that day in the displayed [calendarMonth]. */
     val firingsByDay: Map<Int, List<RecurringRuleListItem>> = emptyMap(),
+    /**
+     * Whether the calendar *visualization* is locked (S9 — `Feature.RECURRING_CALENDAR`, individual
+     * scope): enforcement ON and no premium. Only the calendar view is gated (blurred preview +
+     * upsell); creating/running rules and the list view stay free (§8.2). False while dormant.
+     */
+    val calendarLocked: Boolean = false,
 )
 
 /** A rule rendered for the list, with ids resolved to names and the schedule humanized. */

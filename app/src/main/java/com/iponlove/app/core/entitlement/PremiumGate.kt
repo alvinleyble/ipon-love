@@ -1,6 +1,9 @@
 package com.iponlove.app.core.entitlement
 
 import com.iponlove.app.core.config.AppConfigRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import java.time.Instant
 import javax.inject.Inject
@@ -60,4 +63,25 @@ class PremiumGate @Inject constructor(
             CapCheck.Allowed
         }
     }
+
+    /**
+     * Whether a **boolean soft-gated** [Feature] (S9 — palette allowlist, calculator, budget
+     * rollover, recurring calendar) is locked right now: enforcement ON *and* no
+     * [Effective access][EffectiveAccess] for [scope]. Unlike [checkCap] this reads no count and no
+     * [PlanLimits] — a boolean gate is on/off, not "N vs unlimited."
+     *
+     * Reactive by design (a [Flow], not a one-shot): a purchase, a partner's shared unlock, or an
+     * enforcement flip re-emits so the surface re-locks/unlocks live without a restart — which is
+     * also what makes the palette **G8 revert non-destructive**: the effective palette is *derived*
+     * from this flow at render time, never written, so a re-unlock auto-restores the chosen one.
+     * All S9 gates are [Scope.INDIVIDUAL]; the parameter is kept for a future shared soft gate.
+     */
+    fun observeLocked(scope: Scope = Scope.INDIVIDUAL): Flow<Boolean> =
+        combine(
+            appConfig.observe(),
+            entitlement.observeSelf(),
+            entitlement.observePartner(),
+        ) { config, self, partner ->
+            EffectiveAccess.shouldLock(config.enforcementEnabled, scope, self, partner, Instant.now())
+        }.distinctUntilChanged()
 }

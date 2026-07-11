@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.TextButton
@@ -37,6 +38,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -68,7 +70,12 @@ fun PersonalizeScreen(
     viewModel: PersonalizeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    val liveColorScheme = paletteColorScheme(state.draftPalette, state.draftIsDark)
+    // Render the *effective* palette (G8): a locked Premium palette shows as the free default here
+    // and app-wide, while the chosen one stays saved and auto-restores on unlock.
+    val liveColorScheme = paletteColorScheme(
+        state.draftPalette.effective(state.paletteLocked),
+        state.draftIsDark,
+    )
     val context = LocalContext.current
 
     // Couple-scoped Settings tour — no-ops until paired (ADR-0038); anchors to the Couple entry.
@@ -102,8 +109,11 @@ fun PersonalizeScreen(
 
                 PaletteGrid(
                     palettes = ThemePalette.entries,
-                    selected = state.draftPalette,
+                    // Highlight the effective (rendered) palette, not the possibly-locked chosen one.
+                    selected = state.draftPalette.effective(state.paletteLocked),
+                    locked = state.paletteLocked,
                     onSelect = viewModel::selectPalette,
+                    onLockedTap = { viewModel.onLockedPaletteTap(); onOpenPremium() },
                 )
 
                 Spacer(Modifier.height(28.dp))
@@ -266,7 +276,9 @@ fun PersonalizeScreen(
 private fun PaletteGrid(
     palettes: List<ThemePalette>,
     selected: ThemePalette,
+    locked: Boolean,
     onSelect: (ThemePalette) -> Unit,
+    onLockedTap: () -> Unit,
 ) {
     val rowSize = 3
     palettes.chunked(rowSize).forEach { row ->
@@ -275,10 +287,12 @@ private fun PaletteGrid(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         ) {
             row.forEach { palette ->
+                val isLocked = locked && !palette.isFree
                 PaletteSwatch(
                     palette = palette,
-                    isSelected = palette == selected,
-                    onClick = { onSelect(palette) },
+                    isSelected = palette == selected && !isLocked,
+                    isLocked = isLocked,
+                    onClick = { if (isLocked) onLockedTap() else onSelect(palette) },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -294,6 +308,7 @@ private fun PaletteGrid(
 private fun PaletteSwatch(
     palette: ThemePalette,
     isSelected: Boolean,
+    isLocked: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -308,13 +323,20 @@ private fun PaletteSwatch(
                 .size(56.dp)
                 .clip(CircleShape)
                 .background(seedColor)
+                // Dim a locked (Premium) swatch so the lock badge reads clearly.
+                .then(if (isLocked) Modifier.alpha(0.45f) else Modifier)
                 .then(
                     if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onBackground, CircleShape)
                     else Modifier
                 ),
         ) {
-            if (isSelected) {
-                Text("✓", color = Color.White, style = MaterialTheme.typography.titleMedium)
+            when {
+                isLocked -> Icon(
+                    Icons.Filled.Lock,
+                    contentDescription = "Premium",
+                    tint = Color.White,
+                )
+                isSelected -> Text("✓", color = Color.White, style = MaterialTheme.typography.titleMedium)
             }
         }
         Spacer(Modifier.height(4.dp))

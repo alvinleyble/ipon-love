@@ -16,6 +16,12 @@ data class BudgetsUiState(
     val editor: BudgetEditorState? = null,
     /** Non-null while the count-cap upsell sheet is showing (S7; only ever set under enforcement). */
     val upsell: UpsellPrompt? = null,
+    /**
+     * Whether the rollover toggle is locked (S9 — `Feature.BUDGET_ROLLOVER`, individual scope):
+     * enforcement ON and no premium. The editor shows a locked switch that routes to the paywall
+     * instead of toggling. False while dormant, so the toggle works exactly as before pre-flip.
+     */
+    val rolloverLocked: Boolean = false,
 )
 
 /** One budget with its derived progress for the displayed month. */

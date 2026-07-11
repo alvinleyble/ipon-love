@@ -43,6 +43,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkManager
+import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.core.session.AccountSwitchGuard
 import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.SyncEngine
@@ -98,6 +99,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var coupleChannelManager: CoupleChannelManager
     @Inject lateinit var themeDraft: ThemeDraftRepository
     @Inject lateinit var accountSwitchGuard: AccountSwitchGuard
+    @Inject lateinit var premiumGate: PremiumGate
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -139,7 +141,16 @@ class MainActivity : FragmentActivity() {
             val savedTheme by observeThemePreferences()
                 .collectAsState(initial = ThemePreferences())
             val draftTheme by themeDraft.draft.collectAsState()
-            val themePreferences = draftTheme ?: savedTheme
+            // G8: derive the *effective* palette app-wide from the live lock state. A locked
+            // Premium palette renders as the free default everywhere (not just on Personalize),
+            // and re-grant/enforcement-off auto-restores the chosen one — non-destructively, since
+            // the chosen palette is never written down, only downgraded at read.
+            val paletteLocked by premiumGate.observeLocked()
+                .collectAsState(initial = false)
+            val merged = draftTheme ?: savedTheme
+            val themePreferences = merged.copy(
+                palette = merged.palette.effective(paletteLocked),
+            )
             val appLockPrefs by observeAppLock()
                 .collectAsState(initial = AppLockPreferences())
             val isLocked by appLockManager.isLocked.collectAsState()

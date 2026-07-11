@@ -253,7 +253,10 @@ private fun IponAppContent(
                     )
                 }
                 composable(NavRegistry.RECURRING.route) {
-                    RecurringScreen(onBack = { navController.popBackStack() })
+                    RecurringScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
+                    )
                 }
             }
 
@@ -298,7 +301,9 @@ private fun IponAppContent(
 
             // Calculator: single-node graph.
             navigation(startDestination = NavRegistry.CALCULATOR.route, route = NavRegistry.CALCULATOR.graphRoute()) {
-                composable(NavRegistry.CALCULATOR.route) { CalculatorScreen() }
+                composable(NavRegistry.CALCULATOR.route) {
+                    CalculatorScreen(onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) })
+                }
             }
 
             // Savings: root + goal editor + goal detail.

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.entitlement.CapCheck
+import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.budgets.domain.model.Budget
 import com.iponlove.app.feature.budgets.domain.usecase.BudgetProgressCalculator
@@ -39,6 +40,7 @@ class BudgetsViewModel @Inject constructor(
     private val resetBudgetRollover: ResetBudgetRolloverUseCase,
     private val duplicateBudget: DuplicateBudgetToNextMonthUseCase,
     private val checkBudgetCap: CheckBudgetCapUseCase,
+    private val premiumGate: PremiumGate,
     private val analytics: Analytics,
 ) : ViewModel() {
 
@@ -100,9 +102,12 @@ class BudgetsViewModel @Inject constructor(
                 expenseCategories = categories.filter { it.type == CategoryType.EXPENSE },
                 editor = editorState,
             )
-            // Combine already carries the 5-arg maximum; fold the upsell flow in a second step.
+            // Combine already carries the 5-arg maximum; fold the upsell + rollover-lock flows in
+            // a second step.
         }.let { base ->
-            combine(base, upsell) { state, upsellState -> state.copy(upsell = upsellState) }
+            combine(base, upsell, premiumGate.observeLocked()) { state, upsellState, rolloverLocked ->
+                state.copy(upsell = upsellState, rolloverLocked = rolloverLocked)
+            }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -157,7 +162,19 @@ class BudgetsViewModel @Inject constructor(
 
     fun onAmountChange(value: String) = editor.update { it?.copy(amountText = value, amountError = false) }
 
-    fun onRolloverToggle(enabled: Boolean) = editor.update { it?.copy(rolloverEnabled = enabled) }
+    fun onRolloverToggle(enabled: Boolean) {
+        // Defensive: a locked toggle can't be flipped (the screen shows a locked switch that routes
+        // to the paywall instead). An already-enabled budget keeps its rollover (T1 freeze — never
+        // reset the user's data), it just can't be changed while locked.
+        if (uiState.value.rolloverLocked) return
+        editor.update { it?.copy(rolloverEnabled = enabled) }
+    }
+
+    /** A tap on the locked rollover toggle — logs the §10.10 funnel touchpoint before the screen
+     *  routes to the paywall. */
+    fun onRolloverLockedTap() {
+        analytics.log("upsell_tap", source = "budget_rollover")
+    }
 
     fun save() {
         val s = editor.value ?: return

@@ -18,6 +18,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,22 +28,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.FeatureLockedPanel
 import com.iponlove.app.feature.calculator.domain.CalculatorEngine
 import com.iponlove.app.feature.calculator.domain.CalculatorOperator
 import com.iponlove.app.feature.calculator.domain.CalculatorState
 
 /**
  * Standalone arithmetic calculator (V1.5 slice 6, item 12) — no data/domain layer beyond the
- * pure [CalculatorEngine]; state lives locally since there's nothing to persist or sync.
+ * pure [CalculatorEngine]; state lives locally since there's nothing to persist or sync. Under
+ * enforcement the whole module is a soft gate (S9 — `Feature.CALCULATOR`): a Premium wall stands
+ * in for the keypad. Dormant by default, so it renders exactly as before until the enforcement flip.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CalculatorScreen() {
+fun CalculatorScreen(
+    onOpenPremium: () -> Unit = {},
+    viewModel: CalculatorViewModel = hiltViewModel(),
+) {
     var state by remember { mutableStateOf(CalculatorState()) }
+    val locked by viewModel.locked.collectAsState()
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Calculator") }) },
     ) { padding ->
+        if (locked) {
+            FeatureLockedPanel(
+                title = "Calculator is Premium",
+                body = "Unlock the built-in calculator and more with Love, Ipon Premium.",
+                onUpgrade = { viewModel.onUpsellTap(); onOpenPremium() },
+                modifier = Modifier.padding(padding),
+            )
+            return@Scaffold
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()

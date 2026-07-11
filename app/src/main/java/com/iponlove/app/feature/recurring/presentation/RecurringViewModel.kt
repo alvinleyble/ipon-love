@@ -2,6 +2,8 @@ package com.iponlove.app.feature.recurring.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.analytics.Analytics
+import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
@@ -43,6 +45,8 @@ class RecurringViewModel @Inject constructor(
     private val pauseRule: PauseRecurringRuleUseCase,
     private val resumeRule: ResumeRecurringRuleUseCase,
     private val skipNextOccurrence: SkipNextRecurringOccurrenceUseCase,
+    private val premiumGate: PremiumGate,
+    private val analytics: Analytics,
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<RecurringEditorState?>(null)
@@ -91,6 +95,8 @@ class RecurringViewModel @Inject constructor(
                 selectedDay = cal.selectedDay,
                 firingsByDay = firingsByDay,
             )
+        }.combine(premiumGate.observeLocked()) { state, calendarLocked ->
+            state.copy(calendarLocked = calendarLocked)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -191,6 +197,12 @@ class RecurringViewModel @Inject constructor(
 
     fun skipNext(id: String) {
         viewModelScope.launch { skipNextOccurrence(id) }
+    }
+
+    /** A tap on the locked calendar preview — logs the §10.10 funnel touchpoint before the screen
+     *  routes to the paywall. */
+    fun onCalendarLockedTap() {
+        analytics.log("upsell_tap", source = "recurring_calendar")
     }
 
     fun toggleViewMode() {

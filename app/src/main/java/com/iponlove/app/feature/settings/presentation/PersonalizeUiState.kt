@@ -15,4 +15,10 @@ data class PersonalizeUiState(
     val showPremiumEntry: Boolean = false,
     /** Labels the Premium row "active" vs "upgrade" — the user's own cached entitlement. */
     val isPremium: Boolean = false,
+    /**
+     * Whether the Premium palettes are locked right now (S9 allowlist gate): enforcement ON and
+     * no premium. Drives the greyed swatch + lock badge; a locked swatch routes to the paywall
+     * instead of selecting. False while dormant, so nothing changes until the enforcement flip.
+     */
+    val paletteLocked: Boolean = false,
 )

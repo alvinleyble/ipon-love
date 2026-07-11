@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -52,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
@@ -87,6 +89,7 @@ private val DATE_LABEL: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, 
 @Composable
 fun RecurringScreen(
     onBack: () -> Unit,
+    onOpenPremium: () -> Unit = {},
     viewModel: RecurringViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -131,7 +134,13 @@ fun RecurringScreen(
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
 
                 state.viewMode == RecurringViewMode.CALENDAR ->
-                    RecurringCalendarView(state = state, onPrev = viewModel::prevMonth, onNext = viewModel::nextMonth, onDayClick = viewModel::selectDay)
+                    RecurringCalendarView(
+                        state = state,
+                        onPrev = viewModel::prevMonth,
+                        onNext = viewModel::nextMonth,
+                        onDayClick = viewModel::selectDay,
+                        onLockedTap = { viewModel.onCalendarLockedTap(); onOpenPremium() },
+                    )
 
                 !state.canAdd ->
                     EmptyState(
@@ -193,15 +202,68 @@ private fun RecurringCalendarView(
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onDayClick: (Int) -> Unit,
+    onLockedTap: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    val locked = state.calendarLocked
+    Box(modifier = Modifier.fillMaxSize()) {
+        RecurringCalendarContent(
+            state = state,
+            onPrev = onPrev,
+            onNext = onNext,
+            // Locked: the calendar is a non-interactive blurred preview — swallow day/step taps.
+            onDayClick = if (locked) ({ }) else onDayClick,
+            onStep = !locked,
+            modifier = if (locked) Modifier.blur(12.dp) else Modifier,
+        )
+        if (locked) {
+            // §8.2 blurred-preview soft gate: only the calendar *visualization* is Premium; the
+            // list view + rule creation stay free. Tapping the preview routes to the paywall.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clickable(onClick = onLockedTap),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Filled.Lock,
+                        contentDescription = "Premium",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        "Calendar view is Premium",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    Text(
+                        "Tap to unlock the recurring calendar",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecurringCalendarContent(
+    state: RecurringUiState,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onDayClick: (Int) -> Unit,
+    onStep: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         // Month stepper
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            IconButton(onClick = onPrev) {
+            IconButton(onClick = onPrev, enabled = onStep) {
                 Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
             }
             Text(
@@ -209,7 +271,7 @@ private fun RecurringCalendarView(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
-            IconButton(onClick = onNext) {
+            IconButton(onClick = onNext, enabled = onStep) {
                 Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next month")
             }
         }

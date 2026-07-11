@@ -4,6 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.core.config.AppConfig
 import com.iponlove.app.core.config.AppConfigRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -110,5 +111,40 @@ class PremiumGateTest {
         val result = gate(self = expired, enforcement = true)
             .checkCap(Scope.INDIVIDUAL, currentCount = 10, limitOf = PlanLimits::maxPersonalAccounts)
         assertThat(result).isEqualTo(CapCheck.Blocked(freeLimit = 10, premiumMax = 100))
+    }
+
+    // --- observeLocked: the S9 boolean soft-gate seam ---
+
+    @Test
+    fun `observeLocked is false while dormant even for a free user`() = runTest {
+        val locked = gate(self = free, enforcement = false).observeLocked().first()
+        assertThat(locked).isFalse()
+    }
+
+    @Test
+    fun `observeLocked is true for an enforced free user`() = runTest {
+        val locked = gate(self = free, enforcement = true).observeLocked().first()
+        assertThat(locked).isTrue()
+    }
+
+    @Test
+    fun `observeLocked is false for an enforced premium user`() = runTest {
+        val locked = gate(self = premium, enforcement = true).observeLocked().first()
+        assertThat(locked).isFalse()
+    }
+
+    @Test
+    fun `observeLocked (individual, the S9 default) ignores a premium partner`() = runTest {
+        // All S9 soft gates are individual — a partner's premium must not unlock the user's own
+        // palette/calculator/rollover/calendar.
+        val locked = gate(self = free, partner = premium, enforcement = true).observeLocked().first()
+        assertThat(locked).isTrue()
+    }
+
+    @Test
+    fun `observeLocked shared scope is unlocked by a premium partner (D1)`() = runTest {
+        val locked = gate(self = free, partner = premium, enforcement = true)
+            .observeLocked(Scope.SHARED).first()
+        assertThat(locked).isFalse()
     }
 }
