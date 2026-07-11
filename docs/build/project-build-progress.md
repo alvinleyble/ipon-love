@@ -6,7 +6,7 @@
 
 ---
 
-## Current state (as of 2026-07-11, Phase 2 · S10 COMPLETE — Phase 2 done, ready for Phase 3 pre-flip)
+## Current state (as of 2026-07-12, Phase 2 · S10 COMPLETE — Phase 2 done, ready for Phase 3 pre-flip)
 
 **V1 through V1.6.4 are committed on `main`** (latest code: `a19e910` multi-image receipts). Per-item detail for every shipped batch lives in the version docs indexed below — this section tracks only what's *in flight*.
 
@@ -19,6 +19,8 @@
 **Non-paywall UI fix shipped alongside — v1.6.5 Item 13 (Nickname rename + 10-char cap) `DONE 4681267` (2026-07-11, Sonnet, on-device verified):** every user-facing "Name"/"Display name" label renamed to "Nickname"; `AuthCredentials.validateName` hard-caps at 10 chars, letters + spaces only (was 50, any chars), with a new shared `filterNameInput()` live-filter reused by both `ProfileViewModel.onNameChange` and `AuthViewModel.onNameChange` so bad input is stripped/truncated as you type, not just rejected on save. Long-name resilience: a new generic `core/ui/TextEllipsis.kt` (`String.ellipsize(max)`) guards `PartnerDebtScreen.kt`'s three partner-name interpolation sites (NetSummaryCard, DebtCard header, the "Add a debt" direction chips — the acute reported overflow case, which also got a `maxLines=1`/`Ellipsis` backstop) at 15 display chars, since a partner's name is synced from *their* device and can still exceed the new cap. No schema/Room change (stays **v25**). +9 tier-1 JVM tests; `testStagingDebugUnitTest` + `assembleStagingDebug` green. Full detail: [v1.6.5.md](v1.6.5.md) Item 13.
 
 **Brand/marketing shipped alongside — v1.6.5 Item 22 (Play Store listing screenshot set) `DONE 43f59c1` (2026-07-11, Fable 5):** 8 Play-compliant 1080×1920 listing screenshots (serif Heart-Wallet brand voice over the plum gradient; Rose-dark captures) + the reusable render pipeline in `assets/brand/playstore/` (regen documented in `assets/brand/README.md`). Repo assets only — no app code, no version bump, no tests. Play Console upload is Alvin's manual step. Full detail: [v1.6.5.md](v1.6.5.md) Item 22.
+
+**Paywall follow-up shipped alongside — v1.6.5 Item 21 (`paywall_impression` source hardcoded) `DONE a76565c` (2026-07-12, Sonnet):** closes the S5 TODO — every upsell-trigger VM method (14 methods across 13 VMs) now returns the same source string it logs to `upsell_tap`, so the two events can never drift; `IponApp` carries it as a `source` nav arg via a new `subscriptionRoute(source)` helper at all 12 `onOpenPremium` sites, and `SubscriptionViewModel` reads it off a new `SavedStateHandle` param (`DEFAULT_SOURCE = "settings"` when absent). Pure analytics attribution — no behavior change, no schema/Room change (stays **v25**). +2 tier-1 tests; `testStagingDebugUnitTest` + `assembleStagingDebug` green. **Not on-device verified** (Alvin opted to skip the manual pass this slice). Full detail: [v1.6.5.md](v1.6.5.md) Item 21.
 
 | Version | What | Doc |
 |---|---|---|
