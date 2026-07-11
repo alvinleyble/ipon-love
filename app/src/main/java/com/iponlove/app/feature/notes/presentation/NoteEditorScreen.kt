@@ -42,6 +42,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -60,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.iponlove.app.feature.notes.domain.model.NoteAttachment
+import com.iponlove.app.feature.notes.domain.usecase.NoteCharLimit
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.ui.material3.OutlinedRichTextEditor
 import java.io.File
@@ -100,6 +103,25 @@ fun NoteEditorScreen(
     LaunchedEffect(contentSeeded) {
         if (contentSeeded) {
             snapshotFlow { richTextState.toHtml() }.collect { draftHtml = it }
+        }
+    }
+
+    // Body character limit (base ceiling = premium max; S10 will resolve this per-tier). Counts the
+    // reader-visible text (WYSIWYG), and hard-blocks growth by trimming any overflow at the cursor
+    // back to the cap the instant an edit overshoots — so a persisted note can never exceed it.
+    val charLimit = NoteCharLimit.DEFAULT_MAX
+    val bodyLength by remember { derivedStateOf { richTextState.annotatedString.text.length } }
+    LaunchedEffect(contentSeeded) {
+        if (!contentSeeded) return@LaunchedEffect
+        snapshotFlow { richTextState.annotatedString.text.length }.collect { length ->
+            val overflow = NoteCharLimit.overflow(length, charLimit)
+            if (overflow > 0) {
+                // Strip exactly the characters that overshot, ending at the cursor — trims a paste
+                // to fit and rejects the extra keystroke at the ceiling, leaving the caret at the cap.
+                val end = richTextState.selection.end
+                val start = (end - overflow).coerceAtLeast(0)
+                richTextState.removeTextRange(TextRange(start, end))
+            }
         }
     }
 
@@ -196,6 +218,20 @@ fun NoteEditorScreen(
                     }
                     if (!state.isPartnerNote) {
                         FormattingToolbar(richTextState)
+                        if (NoteCharLimit.shouldShowCounter(bodyLength, charLimit)) {
+                            Text(
+                                text = "%,d / %,d".format(bodyLength, charLimit),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (NoteCharLimit.isOver(bodyLength, charLimit)) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.End)
+                                    .padding(vertical = 2.dp),
+                            )
+                        }
                     }
                     OutlinedRichTextEditor(
                         state = richTextState,
