@@ -47,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -98,10 +99,16 @@ fun AccountsBody(
 
     Column(modifier = modifier) {
         // Personal accounts only (own accounts, own or shared-by-me) — never wire this into
-        // the Combined view (ADR-0011).
+        // the Combined view (ADR-0011). Net assets covers active accounts only (see ViewModel).
         if (!state.isLoading && state.accounts.isNotEmpty()) {
-            val netAssets = state.balances.values.fold(BigDecimal.ZERO, BigDecimal::add)
-            SummaryHeader(label = "Net assets", amount = netAssets)
+            SummaryHeader(label = "Net assets", amount = state.netAssets)
+        }
+
+        if (!state.isLoading && (state.hasArchived || state.showArchived)) {
+            ArchivedToggleRow(
+                showArchived = state.showArchived,
+                onToggle = viewModel::setShowArchived,
+            )
         }
 
         Box(modifier = Modifier.weight(1f).fillMaxSize()) {
@@ -202,6 +209,20 @@ fun AccountsBody(
 }
 
 @Composable
+private fun ArchivedToggleRow(showArchived: Boolean, onToggle: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        IponFilterChip(
+            selected = showArchived,
+            onClick = { onToggle(!showArchived) },
+            label = { Text("Show archived") },
+        )
+    }
+}
+
+@Composable
 private fun AccountCard(
     account: Account,
     balance: BigDecimal,
@@ -220,7 +241,12 @@ private fun AccountCard(
     else MaterialTheme.colorScheme.onPrimaryContainer
     val imageVector = account.icon?.let { ACCOUNT_ICONS[it] }
 
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (account.isArchived) 0.5f else 1f)
+            .clickable(onClick = onClick),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -262,7 +288,8 @@ private fun AccountCard(
                     }
                 }
                 Text(
-                    text = account.type.label(),
+                    text = if (account.isArchived) "${account.type.label()} · Archived"
+                    else account.type.label(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

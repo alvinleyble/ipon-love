@@ -12,6 +12,10 @@ data class CategoriesUiState(
     val isLoading: Boolean = true,
     val categories: List<Category> = emptyList(),
     val filter: CategoryFilter = CategoryFilter.ALL,
+    /** When true the list also renders archived categories (so they can be unarchived); default off. */
+    val showArchived: Boolean = false,
+    /** Whether any archived category exists in the current filter — gates the "Show archived" toggle. */
+    val hasArchived: Boolean = false,
     /** Whether the user is paired — gates the "Share with partner" action (ADR-0018). */
     val isPaired: Boolean = false,
     val editor: CategoryEditorState? = null,

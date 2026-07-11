@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -91,7 +92,13 @@ fun CategoriesBody(
     }
 
     Column(modifier = modifier) {
-        FilterRow(selected = state.filter, onSelect = viewModel::setFilter)
+        FilterRow(
+            selected = state.filter,
+            onSelect = viewModel::setFilter,
+            showArchived = state.showArchived,
+            canShowArchivedToggle = state.hasArchived || state.showArchived,
+            onToggleArchived = viewModel::setShowArchived,
+        )
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isLoading ->
@@ -188,16 +195,31 @@ fun CategoriesBody(
 }
 
 @Composable
-private fun FilterRow(selected: CategoryFilter, onSelect: (CategoryFilter) -> Unit) {
+private fun FilterRow(
+    selected: CategoryFilter,
+    onSelect: (CategoryFilter) -> Unit,
+    showArchived: Boolean,
+    canShowArchivedToggle: Boolean,
+    onToggleArchived: (Boolean) -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         CategoryFilter.entries.forEach { filter ->
             IponFilterChip(
                 selected = filter == selected,
                 onClick = { onSelect(filter) },
                 label = { Text(filter.label()) },
+            )
+        }
+        if (canShowArchivedToggle) {
+            Spacer(Modifier.weight(1f))
+            IponFilterChip(
+                selected = showArchived,
+                onClick = { onToggleArchived(!showArchived) },
+                label = { Text("Archived") },
             )
         }
     }
@@ -221,7 +243,12 @@ private fun CategoryCard(
     else MaterialTheme.colorScheme.onSecondaryContainer
     val imageVector = category.icon?.let { CATEGORY_ICONS[it] }
 
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (category.isArchived) 0.5f else 1f)
+            .clickable(onClick = onClick),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -263,7 +290,8 @@ private fun CategoryCard(
                     }
                 }
                 Text(
-                    text = category.type.label(),
+                    text = if (category.isArchived) "${category.type.label()} · Archived"
+                    else category.type.label(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

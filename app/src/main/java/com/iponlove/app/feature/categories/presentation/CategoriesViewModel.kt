@@ -44,6 +44,7 @@ class CategoriesViewModel @Inject constructor(
     private val editor = MutableStateFlow<CategoryEditorState?>(null)
     private val filter = MutableStateFlow(CategoryFilter.ALL)
     private val upsell = MutableStateFlow<UpsellPrompt?>(null)
+    private val showArchived = MutableStateFlow(false)
 
     // Which cap raised the current upsell — the analytics source for its "Get Premium" tap.
     private var upsellSource: String? = null
@@ -52,18 +53,28 @@ class CategoriesViewModel @Inject constructor(
     private var coupleId: String? = null
 
     val uiState: StateFlow<CategoriesUiState> =
-        combine(observeCategories(), observeCoupleMembers(), filter, editor, upsell) {
-                all, members, activeFilter, editorState, upsellState ->
+        combine(
+            // Pull archived rows too; the [showArchived] toggle decides what the list renders.
+            observeCategories(includeArchived = true),
+            observeCoupleMembers(),
+            filter,
+            editor,
+            // Pack the archived toggle alongside the upsell flow to stay within combine's 5-arg arity.
+            combine(upsell, showArchived) { u, s -> u to s },
+        ) { all, members, activeFilter, editorState, (upsellState, showArch) ->
             coupleId = members?.me?.coupleId
-            val visible = when (activeFilter) {
+            val typeFiltered = when (activeFilter) {
                 CategoryFilter.ALL -> all
                 CategoryFilter.INCOME -> all.filter { it.type == CategoryType.INCOME }
                 CategoryFilter.EXPENSE -> all.filter { it.type == CategoryType.EXPENSE }
             }
+            val visible = if (showArch) typeFiltered else typeFiltered.filterNot { it.isArchived }
             CategoriesUiState(
                 isLoading = false,
                 categories = visible,
                 filter = activeFilter,
+                showArchived = showArch,
+                hasArchived = typeFiltered.any { it.isArchived },
                 isPaired = members != null,
                 editor = editorState,
                 upsell = upsellState,
@@ -76,6 +87,11 @@ class CategoriesViewModel @Inject constructor(
 
     fun setFilter(value: CategoryFilter) {
         filter.value = value
+    }
+
+    /** Toggle whether archived categories are listed (so their "Unarchive" action is reachable). */
+    fun setShowArchived(value: Boolean) {
+        showArchived.value = value
     }
 
     fun startCreate() {

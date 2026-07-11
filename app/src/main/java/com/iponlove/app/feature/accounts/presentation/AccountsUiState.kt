@@ -11,6 +11,12 @@ data class AccountsUiState(
     val accounts: List<Account> = emptyList(),
     /** Current balance per account id (opening + ledger, ADR-0007). */
     val balances: Map<String, BigDecimal> = emptyMap(),
+    /** Net assets across active (non-archived) accounts only — stable regardless of [showArchived]. */
+    val netAssets: BigDecimal = BigDecimal.ZERO,
+    /** When true the list also renders archived accounts (so they can be unarchived); default off. */
+    val showArchived: Boolean = false,
+    /** Whether any archived account exists — gates showing the "Show archived" toggle at all. */
+    val hasArchived: Boolean = false,
     /** Whether the user is paired — gates the "Share with partner" action (ADR-0018). */
     val isPaired: Boolean = false,
     /** Non-null while the add/edit sheet is open. */

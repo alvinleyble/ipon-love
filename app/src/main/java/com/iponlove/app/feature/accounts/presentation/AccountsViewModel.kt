@@ -47,6 +47,7 @@ class AccountsViewModel @Inject constructor(
 
     private val editor = MutableStateFlow<AccountEditorState?>(null)
     private val upsell = MutableStateFlow<UpsellPrompt?>(null)
+    private val showArchived = MutableStateFlow(false)
 
     // Which cap raised the current upsell — the analytics source for its "Get Premium" tap.
     private var upsellSource: String? = null
@@ -56,21 +57,30 @@ class AccountsViewModel @Inject constructor(
 
     val uiState: StateFlow<AccountsUiState> =
         combine(
-            observeAccounts(),
+            // Pull archived rows too; the [showArchived] toggle decides what the list renders.
+            observeAccounts(includeArchived = true),
             observeBalanceLedger(),
             observeCoupleMembers(),
             editor,
-            upsell,
-        ) { accounts, ledger, members, editorState, upsellState ->
+            // Pack the archived toggle alongside the upsell flow to stay within combine's 5-arg arity.
+            combine(upsell, showArchived) { u, s -> u to s },
+        ) { accounts, ledger, members, editorState, (upsellState, showArch) ->
             coupleId = members?.me?.coupleId
             // Current balance = opening_balance + ledger, derived locally (ADR-0007). For a
             // shared account the ledger carries both partners' postings (ADR-0018).
             val openingBalances = accounts.associate { it.id to it.openingBalance }
             val balances = AccountBalanceCalculator.balances(openingBalances, ledger)
+            // Net assets always covers active accounts only, so revealing archived rows never
+            // moves the headline figure.
+            val netAssets = accounts.filterNot { it.isArchived }
+                .fold(BigDecimal.ZERO) { acc, a -> acc + (balances[a.id] ?: a.openingBalance) }
             AccountsUiState(
                 isLoading = false,
-                accounts = accounts,
+                accounts = if (showArch) accounts else accounts.filterNot { it.isArchived },
                 balances = balances,
+                netAssets = netAssets,
+                showArchived = showArch,
+                hasArchived = accounts.any { it.isArchived },
                 isPaired = members != null,
                 editor = editorState,
                 upsell = upsellState,
@@ -179,6 +189,11 @@ class AccountsViewModel @Inject constructor(
 
     fun archive(id: String, archived: Boolean) {
         viewModelScope.launch { archiveAccount(id, archived) }
+    }
+
+    /** Toggle whether archived accounts are listed (so their "Unarchive" action is reachable). */
+    fun setShowArchived(value: Boolean) {
+        showArchived.value = value
     }
 
     /** Persist a drag-handle reorder from the Manage tab (item 9b) — [orderedIds] top-to-bottom. */
