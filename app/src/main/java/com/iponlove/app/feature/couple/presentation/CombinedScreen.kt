@@ -50,7 +50,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.iponlove.app.core.ui.FullScreenImagePager
 import com.iponlove.app.core.ui.MonthStepperRow
-import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.feature.couple.domain.model.CombinedEntry
@@ -207,15 +207,15 @@ private fun CoupleBudgetCard(
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "${formatPhp(budget.spent)} of ${formatPhp(budget.limit)}",
+                        text = "${money(budget.spent)} of ${money(budget.limit)}",
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f),
                     )
                     Text(
                         text = if (budget.isOverBudget) {
-                            "Over by ${formatPhp(budget.spent - budget.limit)}"
+                            "Over by ${money(budget.spent - budget.limit)}"
                         } else {
-                            "${formatPhp(budget.remaining)} left"
+                            "${money(budget.remaining)} left"
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (budget.isOverBudget) {
@@ -294,7 +294,7 @@ private fun MemberSpendCard(member: MemberSpend, modifier: Modifier = Modifier) 
                     fontWeight = FontWeight.SemiBold,
                 )
             }
-            Text(formatPhp(member.monthlyExpense), style = MaterialTheme.typography.titleMedium)
+            Text(money(member.monthlyExpense), style = MaterialTheme.typography.titleMedium)
         }
     }
 }
@@ -399,7 +399,7 @@ private fun CombinedEntry.signedAmount(): String {
         TransactionType.EXPENSE -> "−"
         TransactionType.TRANSFER -> ""
     }
-    return prefix + formatPhp(amount)
+    return prefix + money(amount)
 }
 
 @Composable

@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.ellipsize
-import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtItem
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtNet
@@ -158,7 +158,7 @@ private fun NetSummaryCard(net: DebtNet?) {
                 NetDirection.I_OWE -> {
                     Text("You owe $partner", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        formatPhp(net.amount),
+                        money(net.amount),
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -167,7 +167,7 @@ private fun NetSummaryCard(net: DebtNet?) {
                 NetDirection.OWED_TO_ME -> {
                     Text("$partner owes you", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        formatPhp(net.amount),
+                        money(net.amount),
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -211,7 +211,7 @@ private fun DebtCard(
 
             if (debt.isSettled) {
                 Text(
-                    text = "Settled · ${formatPhp(debt.original)}",
+                    text = "Settled · ${money(debt.original)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
@@ -223,7 +223,7 @@ private fun DebtCard(
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "${formatPhp(debt.remaining)} of ${formatPhp(debt.original)} left",
+                        text = "${money(debt.remaining)} of ${money(debt.original)} left",
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f),
                     )
@@ -261,7 +261,7 @@ private fun PaymentRow(
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = "${formatPhp(payment.amount)} · ${formatShortDate(payment.date)}",
+            text = "${money(payment.amount)} · ${formatShortDate(payment.date)}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -360,7 +360,7 @@ private fun SettleDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "${formatPhp(editor.remaining)} left on ${editor.debtLabel}",
+                    text = "${money(editor.remaining)} left on ${editor.debtLabel}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -371,7 +371,7 @@ private fun SettleDialog(
                     singleLine = true,
                     isError = editor.amountError,
                     supportingText = if (editor.amountError) {
-                        { Text("Enter an amount up to ${formatPhp(editor.remaining)}") }
+                        { Text("Enter an amount up to ${money(editor.remaining)}") }
                     } else {
                         null
                     },
@@ -412,7 +412,7 @@ private fun ReceiveDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Record ${formatPhp(editor.amount)} received for ${editor.debtLabel}",
+                    text = "Record ${money(editor.amount)} received for ${editor.debtLabel}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

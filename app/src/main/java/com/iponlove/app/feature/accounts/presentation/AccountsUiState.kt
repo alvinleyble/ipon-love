@@ -19,6 +19,8 @@ data class AccountsUiState(
     val hasArchived: Boolean = false,
     /** Whether the user is paired — gates the "Share with partner" action (ADR-0018). */
     val isPaired: Boolean = false,
+    /** Global Privacy mode (Item 15) — drives the Net-assets header's eye icon. */
+    val privacyModeEnabled: Boolean = false,
     /** Non-null while the add/edit sheet is open. */
     val editor: AccountEditorState? = null,
     /** Non-null while the count-cap upsell sheet is showing (S7; only ever set under enforcement). */

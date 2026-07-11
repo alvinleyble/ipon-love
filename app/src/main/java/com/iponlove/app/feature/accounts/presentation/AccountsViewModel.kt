@@ -16,6 +16,8 @@ import com.iponlove.app.feature.accounts.domain.usecase.ShareAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.UnshareAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.UpsertAccountUseCase
 import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.AccountBalanceCalculator
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveBalanceLedgerUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,6 +45,8 @@ class AccountsViewModel @Inject constructor(
     private val reorderAccounts: ReorderAccountsUseCase,
     private val checkAccountCap: CheckAccountCapUseCase,
     private val analytics: Analytics,
+    observePrivacyMode: ObservePrivacyModeUseCase,
+    private val setPrivacyMode: SetPrivacyModeUseCase,
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<AccountEditorState?>(null)
@@ -85,6 +89,8 @@ class AccountsViewModel @Inject constructor(
                 editor = editorState,
                 upsell = upsellState,
             )
+        }.combine(observePrivacyMode()) { state, privacyModeOn ->
+            state.copy(privacyModeEnabled = privacyModeOn)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -196,6 +202,12 @@ class AccountsViewModel @Inject constructor(
     /** Toggle whether archived accounts are listed (so their "Unarchive" action is reachable). */
     fun setShowArchived(value: Boolean) {
         showArchived.value = value
+    }
+
+    /** The Net-assets header's eye icon — flips the same global Privacy mode (Item 15) as the
+     *  Settings switch; every entry point writes through to the one DataStore flag. */
+    fun togglePrivacyMode() {
+        viewModelScope.launch { setPrivacyMode(!uiState.value.privacyModeEnabled) }
     }
 
     /** Persist a drag-handle reorder from the Manage tab (item 9b) — [orderedIds] top-to-bottom. */

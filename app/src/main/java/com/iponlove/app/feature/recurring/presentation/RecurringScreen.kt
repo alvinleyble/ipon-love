@@ -68,7 +68,7 @@ import com.iponlove.app.core.ui.EntityGrid
 import com.iponlove.app.core.ui.EntityPickerOption
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
-import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.core.ui.money
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
@@ -626,7 +626,7 @@ private fun Long.toLocalDate(): LocalDate = Instant.ofEpochMilli(this).atZone(Zo
 @Composable
 private fun RecurringRuleListItem.signedAmount(): String {
     val prefix = if (type == TransactionType.INCOME) "+" else "−"
-    return prefix + formatPhp(amount)
+    return prefix + money(amount)
 }
 
 @Composable

@@ -48,7 +48,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.MonthStepperRow
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
-import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
@@ -260,7 +260,7 @@ private fun TransactionListItem.signedAmount(): String {
         TransactionType.EXPENSE -> "−"
         TransactionType.TRANSFER -> ""
     }
-    return prefix + formatPhp(amount)
+    return prefix + money(amount)
 }
 
 @Composable

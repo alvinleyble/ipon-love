@@ -62,7 +62,7 @@ import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.EntityColorPicker
 import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.SummaryHeader
-import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.IconPicker
 import com.iponlove.app.core.ui.parseHexColor
@@ -101,7 +101,12 @@ fun AccountsBody(
         // Personal accounts only (own accounts, own or shared-by-me) — never wire this into
         // the Combined view (ADR-0011). Net assets covers active accounts only (see ViewModel).
         if (!state.isLoading && state.accounts.isNotEmpty()) {
-            SummaryHeader(label = "Net assets", amount = state.netAssets)
+            SummaryHeader(
+                label = "Net assets",
+                amount = state.netAssets,
+                isPrivacyModeOn = state.privacyModeEnabled,
+                onTogglePrivacyMode = viewModel::togglePrivacyMode,
+            )
         }
 
         if (!state.isLoading && (state.hasArchived || state.showArchived)) {
@@ -295,7 +300,7 @@ private fun AccountCard(
                 )
             }
             Text(
-                text = formatPhp(balance),
+                text = money(balance),
                 style = MaterialTheme.typography.titleMedium,
             )
             Box {

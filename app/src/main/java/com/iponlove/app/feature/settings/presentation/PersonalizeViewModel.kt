@@ -9,8 +9,10 @@ import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.feature.settings.data.ThemeDraftRepository
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
+import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SaveThemePreferencesUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,12 +25,23 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import javax.inject.Inject
 
+/** Kotlin's typed `combine` tops out at 5 flows with no built-in 4-tuple, so this stands in for
+ *  one to keep the [PersonalizeViewModel] init's `combine(...) { }` readable. */
+private data class EntitlementSnapshot(
+    val enforcementOn: Boolean,
+    val isPremium: Boolean,
+    val paletteLocked: Boolean,
+    val privacyModeOn: Boolean,
+)
+
 @HiltViewModel
 class PersonalizeViewModel @Inject constructor(
     private val observeTheme: ObserveThemePreferencesUseCase,
     private val saveTheme: SaveThemePreferencesUseCase,
     private val themeDraft: ThemeDraftRepository,
     private val analytics: Analytics,
+    private val setPrivacyModeUseCase: SetPrivacyModeUseCase,
+    observePrivacyMode: ObservePrivacyModeUseCase,
     appConfig: AppConfigRepository,
     entitlement: EntitlementRepository,
     premiumGate: PremiumGate,
@@ -52,17 +65,26 @@ class PersonalizeViewModel @Inject constructor(
             appConfig.observe(),
             entitlement.observeSelf(),
             premiumGate.observeLocked(),
-        ) { config, self, paletteLocked ->
-            Triple(config.enforcementEnabled, self.isActive(Instant.now()), paletteLocked)
-        }.onEach { (enforcementOn, isPremium, paletteLocked) ->
+            observePrivacyMode(),
+        ) { config, self, paletteLocked, privacyModeOn ->
+            EntitlementSnapshot(config.enforcementEnabled, self.isActive(Instant.now()), paletteLocked, privacyModeOn)
+        }.onEach { snapshot ->
             _uiState.update {
                 it.copy(
-                    showPremiumEntry = enforcementOn,
-                    isPremium = isPremium,
-                    paletteLocked = paletteLocked,
+                    showPremiumEntry = snapshot.enforcementOn,
+                    isPremium = snapshot.isPremium,
+                    paletteLocked = snapshot.paletteLocked,
+                    privacyModeEnabled = snapshot.privacyModeOn,
                 )
             }
         }.launchIn(viewModelScope)
+    }
+
+    /** Instant, undrafted — unlike the palette/mode preview above, Privacy mode has no Save/Apply
+     *  gate (Item 15): every entry point (this switch, the Net-asset eye icons) writes straight
+     *  through and all observers re-collect from the same DataStore flow. */
+    fun setPrivacyMode(enabled: Boolean) {
+        viewModelScope.launch { setPrivacyModeUseCase(enabled) }
     }
 
     fun selectPalette(palette: ThemePalette) {

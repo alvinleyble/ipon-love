@@ -21,4 +21,7 @@ data class PersonalizeUiState(
      * instead of selecting. False while dormant, so nothing changes until the enforcement flip.
      */
     val paletteLocked: Boolean = false,
+    /** Global Privacy mode (Item 15) — masks money app-wide when on. Persists instantly on
+     *  toggle, unlike the palette/mode draft above (no Save/Apply gate). */
+    val privacyModeEnabled: Boolean = false,
 )

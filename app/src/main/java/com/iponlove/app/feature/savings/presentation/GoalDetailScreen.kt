@@ -51,7 +51,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.parseHexColor
 import java.math.BigDecimal
@@ -208,12 +208,12 @@ private fun GoalHeader(state: GoalDetailUiState, accent: androidx.compose.ui.gra
                 Spacer(Modifier.size(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        formatPhp(state.savedAmount),
+                        money(state.savedAmount),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        "of ${formatPhp(state.targetAmount)} goal",
+                        "of ${money(state.targetAmount)} goal",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -255,7 +255,7 @@ private fun ContributionCard(row: ContributionRow, onEdit: () -> Unit, onDelete:
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(formatPhp(row.amount), style = MaterialTheme.typography.titleMedium)
+                Text(money(row.amount), style = MaterialTheme.typography.titleMedium)
                 Text(
                     "${row.byLabel} · ${formatShortDate(row.date)}" + (row.note?.let { " · $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall,

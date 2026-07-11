@@ -49,14 +49,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CapReachedSheet
-import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.core.ui.money
 import java.math.BigDecimal
 
 private const val OVERALL_ID = "__overall__"
 
-/** Like [formatPhp] but keeps a leading `-` legible instead of "₱-200.00" (ADR-0036 decision 2). */
+/** Like [money] but keeps a leading `-` legible instead of "₱-200.00" (ADR-0036 decision 2). */
+@Composable
 private fun formatSignedPhp(amount: BigDecimal): String =
-    if (amount.signum() < 0) "-" + formatPhp(amount.negate()) else formatPhp(amount)
+    if (amount.signum() < 0) "-" + money(amount.negate()) else money(amount)
 
 /**
  * Chrome-less Budgets body — no Scaffold/TopAppBar/FAB. The Manage host provides the single
@@ -202,15 +203,15 @@ private fun BudgetCard(
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "${formatPhp(row.spent)} of ${formatSignedPhp(row.limit)}",
+                    text = "${money(row.spent)} of ${formatSignedPhp(row.limit)}",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f),
                 )
                 Text(
                     text = if (row.isOverBudget) {
-                        "Over by ${formatPhp(row.spent - row.limit)}"
+                        "Over by ${money(row.spent - row.limit)}"
                     } else {
-                        "${formatPhp(row.remaining)} left"
+                        "${money(row.remaining)} left"
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (row.isOverBudget) {
@@ -224,9 +225,9 @@ private fun BudgetCard(
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = if (row.carriedAmount.signum() > 0) {
-                        "Base ${formatPhp(row.baseAmount)} + ${formatPhp(row.carriedAmount)} carried over from last month"
+                        "Base ${money(row.baseAmount)} + ${money(row.carriedAmount)} carried over from last month"
                     } else {
-                        "Base ${formatPhp(row.baseAmount)} − ${formatPhp(row.carriedAmount.abs())} deficit carried over from last month"
+                        "Base ${money(row.baseAmount)} − ${money(row.carriedAmount.abs())} deficit carried over from last month"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (row.carriedAmount.signum() < 0) {

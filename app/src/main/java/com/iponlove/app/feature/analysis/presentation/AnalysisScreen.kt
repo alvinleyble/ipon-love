@@ -53,7 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
-import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.core.ui.money
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.analysis.domain.model.AnalysisPeriod
@@ -409,7 +409,7 @@ private fun SummaryCard(
             if (lastMonthIncome != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Last month income: ${formatPhp(lastMonthIncome)}",
+                    text = "Last month income: ${money(lastMonthIncome)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -430,7 +430,7 @@ private fun SummaryItem(label: String, amount: BigDecimal, color: Color, modifie
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = formatPhp(amount),
+            text = money(amount),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = color,
@@ -459,7 +459,7 @@ private fun BreakdownSection(state: AnalysisUiState) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = formatPhp(state.totalExpense),
+                    text = money(state.totalExpense),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
@@ -495,7 +495,7 @@ private fun LegendRow(color: Color, name: String, amount: BigDecimal, percentLab
             modifier = Modifier.padding(end = 12.dp),
         )
         Text(
-            text = formatPhp(amount),
+            text = money(amount),
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
         )
@@ -620,7 +620,7 @@ private fun MetricItem(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = formatPhp(amount),
+            text = money(amount),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = color,

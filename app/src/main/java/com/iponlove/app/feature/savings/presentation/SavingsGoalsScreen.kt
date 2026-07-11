@@ -43,7 +43,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
-import com.iponlove.app.core.ui.formatPhp
+import com.iponlove.app.core.ui.money
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.core.ui.parseHexColor
@@ -139,7 +139,7 @@ private fun GoalCard(item: SavingsGoalProgress, onClick: () -> Unit) {
                         }
                     }
                     Text(
-                        "${formatPhp(item.savedAmount)} of ${formatPhp(goal.targetAmount)}",
+                        "${money(item.savedAmount)} of ${money(goal.targetAmount)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

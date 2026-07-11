@@ -24,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,6 +49,7 @@ import com.iponlove.app.core.session.AccountSwitchGuard
 import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.core.sync.SyncWorker
+import com.iponlove.app.core.ui.LocalPrivacyMode
 import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
 import com.iponlove.app.core.ui.theme.IponTheme
 import com.iponlove.app.feature.applock.domain.model.AppLockPreferences
@@ -67,6 +69,7 @@ import com.iponlove.app.feature.onboarding.domain.usecase.ShouldShowOnboardingUs
 import com.iponlove.app.feature.recurring.domain.usecase.MaterializeRecurringRulesUseCase
 import com.iponlove.app.feature.settings.data.ThemeDraftRepository
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
+import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
 import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
 import androidx.glance.appwidget.updateAll
@@ -92,6 +95,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var watchUnpair: WatchUnpairUseCase
     @Inject lateinit var shouldShowOnboarding: ShouldShowOnboardingUseCase
     @Inject lateinit var observeThemePreferences: ObserveThemePreferencesUseCase
+    @Inject lateinit var observePrivacyMode: ObservePrivacyModeUseCase
     @Inject lateinit var observeAppLock: ObserveAppLockUseCase
     @Inject lateinit var appLockManager: AppLockManager
     @Inject lateinit var appVersionGateManager: AppVersionGateManager
@@ -154,7 +158,9 @@ class MainActivity : FragmentActivity() {
             val appLockPrefs by observeAppLock()
                 .collectAsState(initial = AppLockPreferences())
             val isLocked by appLockManager.isLocked.collectAsState()
+            val privacyModeOn by observePrivacyMode().collectAsState(initial = false)
 
+            CompositionLocalProvider(LocalPrivacyMode provides privacyModeOn) {
             IponTheme(themePreferences = themePreferences) {
                 val authViewModel: AuthViewModel = hiltViewModel()
                 val status by authViewModel.status.collectAsState()
@@ -298,6 +304,7 @@ class MainActivity : FragmentActivity() {
                         }
                     }
                 }
+            }
             }
         }
     }

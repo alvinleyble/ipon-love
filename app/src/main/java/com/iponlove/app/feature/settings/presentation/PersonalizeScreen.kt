@@ -142,6 +142,28 @@ fun PersonalizeScreen(
                 }
 
                 Spacer(Modifier.height(28.dp))
+                Text("Privacy", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Hide amounts", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Mask money values on screen",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = state.privacyModeEnabled,
+                        onCheckedChange = viewModel::setPrivacyMode,
+                    )
+                }
+
+                Spacer(Modifier.height(28.dp))
                 HorizontalDivider()
                 ListItem(
                     headlineContent = { Text("Profile") },
