@@ -61,6 +61,7 @@ fun TransactionsScreen(
     onOpenRecurring: () -> Unit,
     onAddTransaction: () -> Unit,
     onEditTransaction: (String) -> Unit,
+    onOpenPremium: () -> Unit = {},
     viewModel: TransactionsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -73,6 +74,8 @@ fun TransactionsScreen(
         onDelete = viewModel::delete,
         onPreviousMonth = viewModel::previousMonth,
         onNextMonth = viewModel::nextMonth,
+        // Locked ← at the DEEP_HISTORY −12mo wall: log the touchpoint, then route to the paywall.
+        onDeepHistoryUpsell = { viewModel.onDeepHistoryUpsell(); onOpenPremium() },
     )
 }
 
@@ -87,6 +90,7 @@ private fun TransactionsContent(
     onDelete: (String) -> Unit,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
+    onDeepHistoryUpsell: () -> Unit = {},
 ) {
     StartTourOnFirstVisit(TutorialTours.RECORDS)
     Scaffold(
@@ -118,6 +122,8 @@ private fun TransactionsContent(
                     onPrevious = onPreviousMonth,
                     onNext = onNextMonth,
                     canGoNext = state.canGoToNextMonth,
+                    canGoPrevious = state.canGoToPreviousMonth,
+                    onPreviousLocked = onDeepHistoryUpsell,
                 )
             }
             PullToRefreshBox(

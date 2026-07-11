@@ -4,8 +4,11 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.glance.appwidget.updateAll
+import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.date.DayGrouping
 import com.iponlove.app.core.date.MonthWindow
+import com.iponlove.app.core.entitlement.PremiumGate
+import com.iponlove.app.core.entitlement.Scope
 import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.feature.widget.presentation.AddTransactionWidget
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -41,12 +44,20 @@ class TransactionsViewModel @Inject constructor(
     observeHasAnyTransaction: ObserveHasAnyTransactionUseCase,
     private val deleteTransaction: DeleteTransactionUseCase,
     private val syncEngine: SyncEngine,
+    private val premiumGate: PremiumGate,
+    private val analytics: Analytics,
 ) : ViewModel() {
 
     private val isRefreshing = MutableStateFlow(false)
 
     /** The calendar month currently paged to (ADR-0032); independent of Combined's own. */
     private val viewedMonth = MutableStateFlow(LocalDate.now(ZONE).withDayOfMonth(1))
+
+    /** DEEP_HISTORY back-wall lock (individual scope, S10); false while dormant. Held as a
+     *  StateFlow so [previousMonth] can read it synchronously as a backstop. */
+    private val deepHistoryLocked: StateFlow<Boolean> =
+        premiumGate.observeLocked(Scope.INDIVIDUAL)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val transactionsInRange: Flow<List<Transaction>> = viewedMonth.flatMapLatest { month ->
@@ -82,6 +93,14 @@ class TransactionsViewModel @Inject constructor(
                 canGoToNextMonth = MonthWindow.canStepForward(month, today),
             )
         }.combine(isRefreshing) { state, refreshing -> state.copy(isRefreshing = refreshing) }
+            // DEEP_HISTORY back-wall (S10). viewedMonth.value is read fresh — the same anchor that
+            // produced `state`. Always allowed while dormant (locked = false).
+            .combine(deepHistoryLocked) { state, locked ->
+                state.copy(
+                    canGoToPreviousMonth =
+                        MonthWindow.canStepBack(viewedMonth.value, LocalDate.now(ZONE), locked),
+                )
+            }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -89,7 +108,15 @@ class TransactionsViewModel @Inject constructor(
             )
 
     fun previousMonth() {
+        // Backstop for the DEEP_HISTORY back-wall (the ← is also lock-affordanced in the UI).
+        if (!MonthWindow.canStepBack(viewedMonth.value, LocalDate.now(ZONE), deepHistoryLocked.value)) return
         viewedMonth.value = MonthWindow.step(viewedMonth.value, forward = false)
+    }
+
+    /** A tap on the locked ← at the −12mo wall — logs the §10.10 touchpoint before the screen
+     *  routes to the paywall; the month does not move. */
+    fun onDeepHistoryUpsell() {
+        analytics.log("upsell_tap", source = "deep_history")
     }
 
     fun nextMonth() {

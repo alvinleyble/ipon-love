@@ -250,6 +250,7 @@ private fun IponAppContent(
                         onOpenRecurring = { navController.navigate(NavRegistry.RECURRING.route) },
                         onAddTransaction = { navController.navigate(ADD_TRANSACTION_ROUTE) },
                         onEditTransaction = { id -> navController.navigate("$EDIT_TRANSACTION_ROUTE/$id") },
+                        onOpenPremium = { navController.navigate(SUBSCRIPTION_ROUTE) },
                     )
                 }
                 composable(NavRegistry.RECURRING.route) {

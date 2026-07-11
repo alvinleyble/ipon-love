@@ -34,10 +34,30 @@ data class MonthWindow(
         /**
          * True when [monthStart]'s month is strictly before [today]'s — i.e. paging forward is
          * still allowed. The Records and Combined ledgers cap forward stepping at the current
-         * month so they can't page into empty future months (backward is always allowed; premium
-         * "deeper past" is a separate gating concern). Budgets/recurring keep future navigation.
+         * month so they can't page into empty future months. Budgets/recurring keep future
+         * navigation. (The backward "deeper past" gate is [canStepBack].)
          */
         fun canStepForward(monthStart: LocalDate, today: LocalDate): Boolean =
             YearMonth.from(monthStart) < YearMonth.from(today)
+
+        /** How many months of history a free user can page back over (DEEP_HISTORY, paywall
+         *  §10.1): the −12 floor. −13 and beyond is Premium. Remote-overridable is out of scope
+         *  for this gate — it's a hardcoded product boundary. */
+        const val FREE_HISTORY_MONTHS = 12L
+
+        /**
+         * True when paging one month *earlier* than [monthStart] is still allowed — the
+         * DEEP_HISTORY back-wall (paywall §10.1). [locked] folds in enforcement + entitlement
+         * (from `PremiumGate.observeLocked`): while dormant or for a premium user it is false, so
+         * history is unlimited. When locked, a free user can page back only to the month
+         * [FREE_HISTORY_MONTHS] before [today]'s (the −12 floor); at that floor this returns false
+         * so the step can't cross into the −13th month. The Records + Combined month steppers and
+         * the Analysis free ranges all enforce this on their shared anchor.
+         */
+        fun canStepBack(monthStart: LocalDate, today: LocalDate, locked: Boolean): Boolean {
+            if (!locked) return true
+            val floor = YearMonth.from(today).minusMonths(FREE_HISTORY_MONTHS)
+            return YearMonth.from(monthStart) > floor
+        }
     }
 }

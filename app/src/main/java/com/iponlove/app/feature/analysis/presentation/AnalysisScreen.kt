@@ -83,6 +83,8 @@ fun AnalysisScreen(
         onDismissPairingCard = viewModel::dismissPairingCard,
         // Locked extended-range tap: log the funnel touchpoint, then route to the paywall.
         onExtendedRangeUpsell = { viewModel.onExtendedRangeUpsell(); onOpenPremium() },
+        // Locked ← at the DEEP_HISTORY −12mo wall: same treatment, its own analytics source.
+        onDeepHistoryUpsell = { viewModel.onDeepHistoryUpsell(); onOpenPremium() },
     )
 }
 
@@ -96,6 +98,7 @@ private fun AnalysisContent(
     onOpenCouple: () -> Unit,
     onDismissPairingCard: () -> Unit,
     onExtendedRangeUpsell: () -> Unit = {},
+    onDeepHistoryUpsell: () -> Unit = {},
 ) {
     StartTourOnFirstVisit(TutorialTours.ANALYSIS)
     val pagerState = rememberPagerState(pageCount = { 3 })
@@ -138,11 +141,13 @@ private fun AnalysisContent(
                 label = state.periodLabel,
                 onPrevious = onPrevious,
                 onNext = onNext,
-                // Backward is always allowed (the −12mo floor is a later paywall gate); forward is
-                // capped at the current period for the free 1D/1W/1M ranges (Item 3B). ALL_TIME
-                // has nothing to step to in either direction.
+                // Forward is capped at the current period for the free 1D/1W/1M ranges (Item 3B);
+                // ALL_TIME has nothing to step to in either direction. Backward is unlimited except
+                // at the DEEP_HISTORY −12mo wall (locked, free ranges) where the ← becomes a lock.
                 canPrevious = state.period != AnalysisPeriod.ALL_TIME,
                 canNext = state.canStepForward,
+                previousLocked = !state.canStepBackward,
+                onPreviousLocked = onDeepHistoryUpsell,
             )
 
             if (state.isLoading) {
@@ -316,14 +321,24 @@ private fun PeriodStepper(
     onNext: () -> Unit,
     canPrevious: Boolean = true,
     canNext: Boolean = true,
+    previousLocked: Boolean = false,
+    onPreviousLocked: () -> Unit = {},
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        IconButton(onClick = onPrevious, enabled = canPrevious) {
-            Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous period")
+        // At the DEEP_HISTORY back-wall the ← becomes a lock → paywall (§10.3), taking precedence
+        // over the plain disabled state (which only applies to ALL_TIME). Free ranges only.
+        if (previousLocked) {
+            IconButton(onClick = onPreviousLocked) {
+                Icon(Icons.Filled.Lock, contentDescription = "Unlock older history")
+            }
+        } else {
+            IconButton(onClick = onPrevious, enabled = canPrevious) {
+                Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous period")
+            }
         }
         Text(
             text = label,

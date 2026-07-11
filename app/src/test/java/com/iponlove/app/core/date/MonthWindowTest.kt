@@ -67,4 +67,34 @@ class MonthWindowTest {
         val firstOfMonth = LocalDate.of(2026, 6, 1)
         assertThat(MonthWindow.canStepForward(LocalDate.of(2026, 5, 1), firstOfMonth)).isTrue()
     }
+
+    // --- canStepBack: the DEEP_HISTORY back-wall (S10) ---
+
+    @Test
+    fun canStepBack_unlockedIsAlwaysAllowed_unlimitedHistory() {
+        // Dormant / premium (locked = false) never caps the past, however far back.
+        val today = LocalDate.of(2026, 7, 15)
+        assertThat(MonthWindow.canStepBack(LocalDate.of(2020, 1, 1), today, locked = false)).isTrue()
+        assertThat(MonthWindow.canStepBack(LocalDate.of(2024, 7, 1), today, locked = false)).isTrue()
+    }
+
+    @Test
+    fun canStepBack_lockedBlocksAtTheTwelveMonthFloor() {
+        val today = LocalDate.of(2026, 7, 15) // floor month = Jul 2025 (−12)
+        // Above the floor: still steppable back.
+        assertThat(MonthWindow.canStepBack(LocalDate.of(2026, 7, 1), today, locked = true)).isTrue()
+        assertThat(MonthWindow.canStepBack(LocalDate.of(2025, 8, 1), today, locked = true)).isTrue()
+        // At the −12 floor: can't cross into the −13th month.
+        assertThat(MonthWindow.canStepBack(LocalDate.of(2025, 7, 1), today, locked = true)).isFalse()
+        // Already below the floor (defensive): also blocked.
+        assertThat(MonthWindow.canStepBack(LocalDate.of(2025, 6, 1), today, locked = true)).isFalse()
+    }
+
+    @Test
+    fun canStepBack_comparesWholeMonthOnly() {
+        // Day-of-month is ignored — the floor is a month boundary.
+        val today = LocalDate.of(2026, 7, 31)
+        assertThat(MonthWindow.canStepBack(LocalDate.of(2025, 7, 20), today, locked = true)).isFalse()
+        assertThat(MonthWindow.canStepBack(LocalDate.of(2025, 8, 20), today, locked = true)).isTrue()
+    }
 }

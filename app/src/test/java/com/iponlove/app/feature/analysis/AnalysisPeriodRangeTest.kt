@@ -169,4 +169,50 @@ class AnalysisPeriodRangeTest {
     fun canStepForward_allTime_isFalse() {
         assertThat(AnalysisPeriodRange.canStepForward(today, AnalysisPeriod.ALL_TIME, today, zone)).isFalse()
     }
+
+    // ─── canStepBack: DEEP_HISTORY back-wall on the free ranges (S10) ─────────
+
+    // today = 2026-06-15 (declared above) ⇒ −12 floor month = Jun 2025.
+
+    @Test
+    fun canStepBack_unlockedIsAlwaysAllowed_onEveryRange() {
+        // Dormant / premium (locked = false) never caps history.
+        val old = LocalDate.of(2020, 1, 1)
+        for (p in AnalysisPeriod.entries) {
+            assertThat(AnalysisPeriodRange.canStepBack(old, p, today, locked = false)).isTrue()
+        }
+    }
+
+    @Test
+    fun canStepBack_month_lockedBlocksBelowTheFloor() {
+        fun month(anchor: LocalDate) = AnalysisPeriodRange.canStepBack(anchor, AnalysisPeriod.MONTH, today, locked = true)
+        assertThat(month(LocalDate.of(2025, 8, 10))).isTrue()  // above floor → can step to Jul 2025
+        assertThat(month(LocalDate.of(2025, 7, 10))).isTrue()  // one above floor → can step to floor
+        assertThat(month(LocalDate.of(2025, 6, 10))).isFalse() // at the floor → can't cross to May 2025
+    }
+
+    @Test
+    fun canStepBack_day_cannotBackDoorTheMonthFloor() {
+        // A 1D anchor can page within the floor month but not step into the month before it.
+        fun day(anchor: LocalDate) = AnalysisPeriodRange.canStepBack(anchor, AnalysisPeriod.DAY, today, locked = true)
+        assertThat(day(LocalDate.of(2025, 6, 15))).isTrue()  // mid-floor-month → back to 6/14 (same month)
+        assertThat(day(LocalDate.of(2025, 6, 1))).isFalse()  // first of floor month → 5/31 is below floor
+    }
+
+    @Test
+    fun canStepBack_week_cannotBackDoorTheMonthFloor() {
+        fun week(anchor: LocalDate) = AnalysisPeriodRange.canStepBack(anchor, AnalysisPeriod.WEEK, today, locked = true)
+        assertThat(week(LocalDate.of(2025, 6, 20))).isTrue()  // stepping back a week stays in Jun 2025
+        assertThat(week(LocalDate.of(2025, 6, 3))).isFalse()  // back a week → May 2025, below the floor
+    }
+
+    @Test
+    fun canStepBack_extendedRangesAreNotBackCappedHere() {
+        // 3M/6M/12M/ALL are gated by ANALYSIS_EXTENDED_RANGES; DEEP_HISTORY leaves them uncapped.
+        val old = LocalDate.of(2020, 1, 1)
+        assertThat(AnalysisPeriodRange.canStepBack(old, AnalysisPeriod.QUARTER, today, locked = true)).isTrue()
+        assertThat(AnalysisPeriodRange.canStepBack(old, AnalysisPeriod.SEMI_ANNUAL, today, locked = true)).isTrue()
+        assertThat(AnalysisPeriodRange.canStepBack(old, AnalysisPeriod.ANNUAL, today, locked = true)).isTrue()
+        assertThat(AnalysisPeriodRange.canStepBack(old, AnalysisPeriod.ALL_TIME, today, locked = true)).isTrue()
+    }
 }

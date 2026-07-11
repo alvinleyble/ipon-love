@@ -21,6 +21,11 @@ data class TransactionsUiState(
     val canAdd: Boolean = false,
     /** False once paged to the current month — the ledger can't step into empty future months. */
     val canGoToNextMonth: Boolean = false,
+    /**
+     * False only at the DEEP_HISTORY −12mo back-wall while locked (S10) — the ← becomes an
+     * "unlock older history" affordance routing to the paywall. Always true while dormant.
+     */
+    val canGoToPreviousMonth: Boolean = true,
 )
 
 /** A transaction rendered for the list, with account/category ids resolved to names. */

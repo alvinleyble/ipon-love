@@ -20,6 +20,12 @@ data class AnalysisUiState(
     val flowMetrics: FlowMetricsUi? = null,
     /** False disables the stepper's "next" button — forward cap for 1D/1W/1M (Item 3B). */
     val canStepForward: Boolean = false,
+    /**
+     * False only when a free-range (1D/1W/1M) back-step would cross the DEEP_HISTORY −12mo wall
+     * while locked (S10) — drives the lock affordance on the stepper's ←. Always true while
+     * dormant, for premium users, and for the extended ranges (which are gated separately).
+     */
+    val canStepBackward: Boolean = true,
     /** Daily-net calendar grid for MONTH view; null for DAY/WEEK. */
     val calendarNet: CalendarNetUi? = null,
     /** 1-based day-of-month with the highest expense; null when no expenses. MONTH only. */

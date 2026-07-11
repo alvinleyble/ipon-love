@@ -22,6 +22,11 @@ data class CombinedUiState(
     val hasAnySharedActivityEver: Boolean = false,
     /** False once paged to the current month — the ledger can't step into empty future months. */
     val canGoToNextMonth: Boolean = false,
+    /**
+     * False only at the DEEP_HISTORY −12mo back-wall while locked (S10) — the ← becomes an
+     * "unlock older history" affordance routing to the paywall. Always true while dormant.
+     */
+    val canGoToPreviousMonth: Boolean = true,
     /** The couple's joint budget for the displayed month, or null if none is set yet. */
     val coupleBudget: CoupleBudgetUi? = null,
     /** Non-null while the set/edit budget dialog is open. */

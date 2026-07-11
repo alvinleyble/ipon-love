@@ -102,6 +102,7 @@ fun CoupleScreen(
                 when (page) {
                     0 -> CombinedBody(
                         viewModel = combinedViewModel,
+                        onOpenPremium = onOpenPremium,
                         modifier = Modifier.fillMaxSize(),
                     )
                     1 -> PartnerDebtBody(

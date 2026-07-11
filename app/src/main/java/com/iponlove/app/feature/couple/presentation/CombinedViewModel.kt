@@ -2,8 +2,11 @@ package com.iponlove.app.feature.couple.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.date.DayGrouping
 import com.iponlove.app.core.date.MonthWindow
+import com.iponlove.app.core.entitlement.PremiumGate
+import com.iponlove.app.core.entitlement.Scope
 import com.iponlove.app.feature.budgets.domain.model.Budget
 import com.iponlove.app.feature.budgets.domain.usecase.DeleteBudgetUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveSharedBudgetUseCase
@@ -55,6 +58,8 @@ class CombinedViewModel @Inject constructor(
     private val upsertSharedBudget: UpsertSharedBudgetUseCase,
     private val deleteBudget: DeleteBudgetUseCase,
     private val syncEngine: SyncEngine,
+    private val premiumGate: PremiumGate,
+    private val analytics: Analytics,
 ) : ViewModel() {
 
     private val budgetEditor = MutableStateFlow<BudgetEditorState?>(null)
@@ -62,6 +67,12 @@ class CombinedViewModel @Inject constructor(
 
     /** The calendar month currently paged to (ADR-0032); independent of Records' own. */
     private val viewedMonth = MutableStateFlow(LocalDate.now(ZONE).withDayOfMonth(1))
+
+    /** DEEP_HISTORY back-wall lock (individual scope, S10); false while dormant. Held as a
+     *  StateFlow so [previousMonth] can read it synchronously as a backstop. */
+    private val deepHistoryLocked: StateFlow<Boolean> =
+        premiumGate.observeLocked(Scope.INDIVIDUAL)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
 
     // Captured from the latest emission so the editor's save/clear can act without re-deriving:
     // the couple to stamp ownership on, the month to target, and the existing budget to reuse.
@@ -154,6 +165,14 @@ class CombinedViewModel @Inject constructor(
                 state.copy(hasAnySharedActivityEver = hasAnyEver)
             }
             .combine(isRefreshing) { state, refreshing -> state.copy(isRefreshing = refreshing) }
+            // DEEP_HISTORY back-wall (S10). viewedMonth.value is read fresh — the same anchor that
+            // produced `state`. Always allowed while dormant (locked = false).
+            .combine(deepHistoryLocked) { state, locked ->
+                state.copy(
+                    canGoToPreviousMonth =
+                        MonthWindow.canStepBack(viewedMonth.value, LocalDate.now(ZONE), locked),
+                )
+            }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -161,7 +180,15 @@ class CombinedViewModel @Inject constructor(
             )
 
     fun previousMonth() {
+        // Backstop for the DEEP_HISTORY back-wall (the ← is also lock-affordanced in the UI).
+        if (!MonthWindow.canStepBack(viewedMonth.value, LocalDate.now(ZONE), deepHistoryLocked.value)) return
         viewedMonth.value = MonthWindow.step(viewedMonth.value, forward = false)
+    }
+
+    /** A tap on the locked ← at the −12mo wall — logs the §10.10 touchpoint before the screen
+     *  routes to the paywall; the month does not move. */
+    fun onDeepHistoryUpsell() {
+        analytics.log("upsell_tap", source = "deep_history")
     }
 
     fun nextMonth() {

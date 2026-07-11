@@ -68,6 +68,13 @@ class AnalysisViewModel @Inject constructor(
         onboardingRepository.observePairingCardDismissed(),
     ) { pairing, dismissed -> pairing !is PairingState.Paired && !dismissed }
 
+    /** The single individual-scope lock driving both S10 Analysis gates: the extended-range
+     *  soft-gate (sub-gate 2) and the DEEP_HISTORY back-wall (sub-gate 3). Held as a StateFlow so
+     *  [previous] can read it synchronously as a backstop. Always false while dormant. */
+    private val individualLocked: StateFlow<Boolean> =
+        premiumGate.observeLocked(Scope.INDIVIDUAL)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
+
     val uiState: StateFlow<AnalysisUiState> =
         combine(
             observeTransactions(),
@@ -200,10 +207,16 @@ class AnalysisViewModel @Inject constructor(
                 lastMonthIncome = lastMonthIncome,
             )
         }.combine(showPairingCard) { state, showCard -> state.copy(showPairingCard = showCard) }
-            // ANALYSIS_EXTENDED_RANGES soft-gate (S10): individual scope, same seam as the S9
-            // boolean gates. Always false while dormant, so the extended tabs stay open pre-flip.
-            .combine(premiumGate.observeLocked(Scope.INDIVIDUAL)) { state, locked ->
-                state.copy(extendedRangesLocked = locked)
+            // S10 Analysis gates (individual scope, same seam as the S9 boolean gates). Both fold
+            // in the same lock; always false while dormant, so tabs + back-stepping stay open
+            // pre-flip. `anchor`/`period` are read fresh here (same values that produced `state`).
+            .combine(individualLocked) { state, locked ->
+                state.copy(
+                    extendedRangesLocked = locked,
+                    canStepBackward = AnalysisPeriodRange.canStepBack(
+                        anchor.value, period.value, LocalDate.now(ZoneId.systemDefault()), locked,
+                    ),
+                )
             }
             .stateIn(
                 scope = viewModelScope,
@@ -226,7 +239,16 @@ class AnalysisViewModel @Inject constructor(
         analytics.log("upsell_tap", source = "analysis_extended_ranges")
     }
 
+    /** A tap on the locked ← at the DEEP_HISTORY −12mo wall — logs the §10.10 touchpoint before
+     *  the screen routes to the paywall; the anchor does not move. */
+    fun onDeepHistoryUpsell() {
+        analytics.log("upsell_tap", source = "deep_history")
+    }
+
     fun previous() {
+        // Backstop for the DEEP_HISTORY back-wall (the ← is also lock-affordanced in the UI).
+        val zone = ZoneId.systemDefault()
+        if (!AnalysisPeriodRange.canStepBack(anchor.value, period.value, LocalDate.now(zone), individualLocked.value)) return
         anchor.value = AnalysisPeriodRange.step(anchor.value, period.value, forward = false)
     }
 

@@ -6,6 +6,7 @@ import com.iponlove.app.feature.analysis.domain.model.AnalysisWindow
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 
@@ -78,6 +79,25 @@ object AnalysisPeriodRange {
             AnalysisPeriod.SEMI_ANNUAL,
             AnalysisPeriod.ANNUAL -> true
         }
+
+    /**
+     * True when paging one period *earlier* than [anchor] is still allowed — the DEEP_HISTORY
+     * back-wall (paywall §10.1) for the Analysis free ranges. [locked] folds in enforcement +
+     * entitlement (`PremiumGate.observeLocked`): false (dormant / premium) ⇒ unlimited history.
+     *
+     * The −12-month floor (shared with the Records/Combined month steppers via
+     * [MonthWindow.FREE_HISTORY_MONTHS]) is enforced **at month granularity on the anchor**, so
+     * 1W/1D can't back-door the wall a day/week at a time — the step is blocked once it would move
+     * the anchor into a month earlier than the floor. The premium extended ranges (3M/6M/12M/ALL)
+     * are gated separately ([AnalysisPeriod.isExtendedRange] / `ANALYSIS_EXTENDED_RANGES`) and are
+     * not back-capped here; a locked user can't be on them anyway.
+     */
+    fun canStepBack(anchor: LocalDate, period: AnalysisPeriod, today: LocalDate, locked: Boolean): Boolean {
+        if (!locked || period.isExtendedRange) return true
+        val floor = YearMonth.from(today).minusMonths(MonthWindow.FREE_HISTORY_MONTHS)
+        val resulting = step(anchor, period, forward = false)
+        return !YearMonth.from(resulting).isBefore(floor)
+    }
 
     /**
      * Moves [anchor] one [period] unit; [forward] = true is later, false is earlier.

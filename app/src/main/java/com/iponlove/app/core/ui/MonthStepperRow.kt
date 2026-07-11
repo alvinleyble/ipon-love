@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,14 +29,23 @@ fun MonthStepperRow(
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
     canGoNext: Boolean = true,
+    canGoPrevious: Boolean = true,
+    onPreviousLocked: () -> Unit = {},
 ) {
     Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        IconButton(onClick = onPrevious) {
-            Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
+        // At the DEEP_HISTORY back-wall (canGoPrevious = false, locked) the ← becomes a lock that
+        // routes to the paywall instead of stepping — an "Unlock older history" affordance (§10.3),
+        // not a dead disabled button. Dormant/premium: canGoPrevious is true, so it steps as before.
+        IconButton(onClick = if (canGoPrevious) onPrevious else onPreviousLocked) {
+            if (canGoPrevious) {
+                Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
+            } else {
+                Icon(Icons.Filled.Lock, contentDescription = "Unlock older history")
+            }
         }
         Text(
             text = label,
