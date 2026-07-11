@@ -147,4 +147,37 @@ class PremiumGateTest {
             .observeLocked(Scope.SHARED).first()
         assertThat(locked).isFalse()
     }
+
+    // --- observeLimit: the S10 resolved-size-limit seam (maxNoteChars) ---
+
+    @Test
+    fun `observeLimit is the premium ceiling while dormant`() = runTest {
+        // Enforcement OFF ⇒ premium ceiling regardless of entitlement — byte-identical to the
+        // pre-S10 hardcoded DEFAULT_MAX, so nothing changes for the note editor pre-flip.
+        val limit = gate(self = free, enforcement = false)
+            .observeLimit(Scope.INDIVIDUAL, PlanLimits::maxNoteChars).first()
+        assertThat(limit).isEqualTo(50_000)
+    }
+
+    @Test
+    fun `observeLimit drops to the free cap for an enforced free user`() = runTest {
+        val limit = gate(self = free, enforcement = true)
+            .observeLimit(Scope.INDIVIDUAL, PlanLimits::maxNoteChars).first()
+        assertThat(limit).isEqualTo(5_000)
+    }
+
+    @Test
+    fun `observeLimit stays at the premium ceiling for an enforced premium user`() = runTest {
+        val limit = gate(self = premium, enforcement = true)
+            .observeLimit(Scope.INDIVIDUAL, PlanLimits::maxNoteChars).first()
+        assertThat(limit).isEqualTo(50_000)
+    }
+
+    @Test
+    fun `observeLimit (individual) ignores a premium partner`() = runTest {
+        // maxNoteChars is individual — a partner's premium must not raise the user's own ceiling.
+        val limit = gate(self = free, partner = premium, enforcement = true)
+            .observeLimit(Scope.INDIVIDUAL, PlanLimits::maxNoteChars).first()
+        assertThat(limit).isEqualTo(5_000)
+    }
 }

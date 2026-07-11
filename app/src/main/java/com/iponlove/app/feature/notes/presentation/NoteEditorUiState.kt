@@ -2,6 +2,7 @@ package com.iponlove.app.feature.notes.presentation
 
 import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.notes.domain.model.NoteAttachment
+import com.iponlove.app.feature.notes.domain.usecase.NoteCharLimit
 
 /**
  * Editor state. [loaded] gates the screen until the seed values are ready (an existing note
@@ -26,4 +27,11 @@ data class NoteEditorUiState(
     val isPartnerNote: Boolean = false,
     /** Set when an attachment add is blocked by the free cap (S8); drives the upsell sheet. */
     val upsell: UpsellPrompt? = null,
+    /**
+     * The entitlement-resolved note-body character ceiling (S10 — `maxNoteChars`, individual scope).
+     * Defaults to the premium max so pre-emission / dormant behaviour matches the pre-split ceiling;
+     * drops to the free cap only when enforcement is ON without access. The editor freezes an
+     * already-over-cap note rather than truncating it (see `NoteCharLimit.effectiveLimit`).
+     */
+    val noteCharLimit: Int = NoteCharLimit.DEFAULT_MAX,
 )

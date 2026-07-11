@@ -6,6 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.entitlement.CapCheck
+import com.iponlove.app.core.entitlement.PlanLimits
+import com.iponlove.app.core.entitlement.PremiumGate
+import com.iponlove.app.core.entitlement.Scope
 import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
@@ -43,6 +46,7 @@ class NoteEditorViewModel @Inject constructor(
     private val checkNoteAttachmentCap: CheckNoteAttachmentCapUseCase,
     private val analytics: Analytics,
     observePairingState: ObservePairingStateUseCase,
+    premiumGate: PremiumGate,
 ) : ViewModel() {
 
     private val saved = savedStateHandle
@@ -91,6 +95,14 @@ class NoteEditorViewModel @Inject constructor(
                 val paired = state is PairingState.Paired
                 val coupleId = (state as? PairingState.Paired)?.couple?.id
                 _uiState.update { it.copy(isPaired = paired, coupleId = coupleId) }
+            }
+        }
+
+        // S10 maxNoteChars split: the editor's ceiling now tracks the resolved tier limit (free
+        // 5k / premium 50k), individual scope. Dormant → premium max, so nothing changes pre-flip.
+        viewModelScope.launch {
+            premiumGate.observeLimit(Scope.INDIVIDUAL, PlanLimits::maxNoteChars).collect { limit ->
+                _uiState.update { it.copy(noteCharLimit = limit) }
             }
         }
     }

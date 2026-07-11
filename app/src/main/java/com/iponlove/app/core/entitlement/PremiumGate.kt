@@ -84,4 +84,32 @@ class PremiumGate @Inject constructor(
         ) { config, self, partner ->
             EffectiveAccess.shouldLock(config.enforcementEnabled, scope, self, partner, Instant.now())
         }.distinctUntilChanged()
+
+    /**
+     * The effective **size limit** of a capped feature right now, as a live value a surface can
+     * enforce continuously (S10 — `maxNoteChars`, the note-editor ceiling). Unlike [checkCap] — a
+     * one-shot create decision that only ever reads the FREE cap and treats "unlocked" as
+     * unlimited — this resolves a concrete ceiling *both* tiers honour: the PREMIUM limit unless the
+     * feature is [locked][EffectiveAccess.shouldLock] for [scope], in which case the FREE limit. So
+     * it stays at PREMIUM while dormant (enforcement OFF) — byte-identical to the pre-S10 hardcoded
+     * ceiling — and only drops to FREE once enforcement is ON without access. Reactive (a [Flow])
+     * so a purchase, a partner unlock, or an enforcement flip re-emits and the surface re-caps live.
+     *
+     * **Freeze (T1 / §10.7):** this is the *tier* ceiling only. A caller already holding data above
+     * it must **not** truncate down to it (that deletes a user's content on flip day) — it freezes
+     * the existing size and blocks only growth. See `NoteCharLimit.effectiveLimit`.
+     */
+    fun observeLimit(
+        scope: Scope = Scope.INDIVIDUAL,
+        limitOf: (PlanLimits) -> Int,
+    ): Flow<Int> =
+        combine(
+            appConfig.observe(),
+            entitlement.observeSelf(),
+            entitlement.observePartner(),
+        ) { config, self, partner ->
+            val locked =
+                EffectiveAccess.shouldLock(config.enforcementEnabled, scope, self, partner, Instant.now())
+            limitOf(PlanLimits.resolve(hasAccess = !locked, config.capOverridesJson))
+        }.distinctUntilChanged()
 }

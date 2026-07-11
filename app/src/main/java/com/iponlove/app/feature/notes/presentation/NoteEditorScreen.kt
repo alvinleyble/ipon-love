@@ -89,12 +89,17 @@ fun NoteEditorScreen(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri -> uri?.let { viewModel.addImage(it) } }
 
+    // The body length at seed time — the T1 freeze floor: an existing note longer than a lowered
+    // tier cap is frozen at this length, never truncated on open (see NoteCharLimit.effectiveLimit).
+    var seededLength by remember { mutableStateOf(0) }
+
     LaunchedEffect(state.loaded) {
         if (!state.loaded) return@LaunchedEffect
         // Prefer a restored draft over the loaded DB values so recreation doesn't clobber edits.
         if (title == null) title = state.initialTitle
         if (!contentSeeded) {
             richTextState.setHtml(draftHtml ?: state.initialHtml)
+            seededLength = richTextState.annotatedString.text.length
             contentSeeded = true
         }
     }
@@ -106,12 +111,14 @@ fun NoteEditorScreen(
         }
     }
 
-    // Body character limit (base ceiling = premium max; S10 will resolve this per-tier). Counts the
-    // reader-visible text (WYSIWYG), and hard-blocks growth by trimming any overflow at the cursor
-    // back to the cap the instant an edit overshoots — so a persisted note can never exceed it.
-    val charLimit = NoteCharLimit.DEFAULT_MAX
+    // Body character limit: the entitlement-resolved tier cap (S10 — free 5k / premium 50k), but
+    // never below what the note already holds (freeze floor). Counts the reader-visible text
+    // (WYSIWYG), and hard-blocks growth by trimming any overflow at the cursor back to the cap the
+    // instant an edit overshoots — so a persisted note can never *grow* past it. Re-keyed on
+    // charLimit so a live enforcement/entitlement flip re-evaluates against the new ceiling.
+    val charLimit = NoteCharLimit.effectiveLimit(state.noteCharLimit, seededLength)
     val bodyLength by remember { derivedStateOf { richTextState.annotatedString.text.length } }
-    LaunchedEffect(contentSeeded) {
+    LaunchedEffect(contentSeeded, charLimit) {
         if (!contentSeeded) return@LaunchedEffect
         snapshotFlow { richTextState.annotatedString.text.length }.collect { length ->
             val overflow = NoteCharLimit.overflow(length, charLimit)
