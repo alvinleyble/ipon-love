@@ -1,9 +1,11 @@
 package com.iponlove.app.feature.categories.data.sync
 
+import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.BaseTableSyncer
 import com.iponlove.app.core.sync.ConflictResolver
 import com.iponlove.app.core.sync.SyncCursorStore
 import com.iponlove.app.core.sync.SyncTable
+import com.iponlove.app.core.sync.isLocallyPushable
 import com.iponlove.app.feature.categories.data.local.CategoryDao
 import com.iponlove.app.feature.categories.data.local.CategoryEntity
 import com.iponlove.app.feature.categories.data.remote.CategoryRemoteSource
@@ -19,11 +21,17 @@ import javax.inject.Inject
 class CategoryTableSyncer @Inject constructor(
     private val dao: CategoryDao,
     private val remote: CategoryRemoteSource,
+    private val currentUser: CurrentUserProvider,
     cursors: SyncCursorStore,
     resolver: ConflictResolver,
 ) : BaseTableSyncer<CategoryEntity>(SyncTable.CATEGORIES, cursors, resolver) {
 
-    override suspend fun dirtyRows(): List<CategoryEntity> = dao.dirtyRows()
+    // Push only rows this session can own (v1.6.5 Item 20) — see AccountTableSyncer.
+    override suspend fun dirtyRows(): List<CategoryEntity> {
+        val me = currentUser.userId()
+        val myCoupleId = dao.coupleIdOf(me)
+        return dao.dirtyRows().filter { isLocallyPushable(it.userId, it.coupleId, me, myCoupleId) }
+    }
 
     override suspend fun clearPending(ids: List<String>) = dao.clearPending(ids)
 

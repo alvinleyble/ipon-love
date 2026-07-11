@@ -13,6 +13,9 @@ import java.time.Instant
 /** In-memory [AccountDao] mirroring the real query semantics for fast JVM tests. */
 class FakeAccountDao : AccountDao {
     val store = linkedMapOf<String, AccountEntity>()
+
+    /** Stands in for the local users row's coupleId that [coupleIdOf] would read. */
+    var currentCoupleId: String? = null
     private val changes = MutableStateFlow(0)
 
     override fun observeAccounts(userId: String, includeArchived: Boolean): Flow<List<AccountEntity>> =
@@ -70,6 +73,8 @@ class FakeAccountDao : AccountDao {
     }
 
     override suspend fun dirtyRows(): List<AccountEntity> = store.values.filter { it.pendingSync }
+
+    override suspend fun coupleIdOf(userId: String): String? = currentCoupleId
 
     override suspend fun clearPending(ids: List<String>) {
         ids.forEach { id -> store[id]?.let { store[id] = it.copy(pendingSync = false) } }

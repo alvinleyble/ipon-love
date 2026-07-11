@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.accounts
 
 import com.google.common.truth.Truth.assertThat
+import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.ConflictResolver
 import com.iponlove.app.core.sync.InMemoryCursorStore
 import com.iponlove.app.core.sync.SyncTable
@@ -36,7 +37,7 @@ class AccountTableSyncerTest {
     private val dao = FakeAccountDao()
     private val remote = FakeAccountRemoteSource()
     private val cursors = InMemoryCursorStore()
-    private val syncer = AccountTableSyncer(dao, remote, cursors, ConflictResolver())
+    private val syncer = AccountTableSyncer(dao, remote, CurrentUserProvider { "user-1" }, cursors, ConflictResolver())
 
     @Test
     fun push_mapsDirtyRowsToDto_andClearsAckedFlag() = runTest {
@@ -47,6 +48,30 @@ class AccountTableSyncerTest {
 
         assertThat(remote.pushed.map { it.id }).containsExactly("a")
         assertThat(dao.store.getValue("a").pendingSync).isFalse()
+    }
+
+    @Test
+    fun push_skipsRowsThisSessionCannotOwn_soOnePoisonRowCannotWedgeTheBatch() = runTest {
+        // I am user-1, paired into couple-1.
+        dao.currentCoupleId = "couple-1"
+        // Ownable — my own personal row, and a couple row of my current couple.
+        dao.store["own"] = accountEntity(id = "own", userId = "user-1", pendingSync = true)
+        dao.store["ours"] = accountEntity(
+            id = "ours", userId = null, coupleId = "couple-1", createdBy = "user-1", pendingSync = true,
+        )
+        // Poison — the un-share bug: a partner-created shared account reverted onto user-2 (Item 20).
+        dao.store["poison"] = accountEntity(id = "poison", userId = "user-2", coupleId = null, pendingSync = true)
+        // Stale couple — an unpair-race leftover pointing at a dissolved couple.
+        dao.store["stale"] = accountEntity(id = "stale", userId = null, coupleId = "old-couple", pendingSync = true)
+
+        syncer.push()
+
+        // Only the two ownable rows go over the wire; the un-pushable ones are left behind.
+        assertThat(remote.pushed.map { it.id }).containsExactly("own", "ours")
+        // …and stay dirty as benign local orphans, not cleared as if pushed.
+        assertThat(dao.store.getValue("poison").pendingSync).isTrue()
+        assertThat(dao.store.getValue("stale").pendingSync).isTrue()
+        assertThat(dao.store.getValue("own").pendingSync).isFalse()
     }
 
     @Test

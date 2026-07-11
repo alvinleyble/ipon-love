@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.budgets
 
 import com.google.common.truth.Truth.assertThat
+import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.ConflictResolver
 import com.iponlove.app.core.sync.InMemoryCursorStore
 import com.iponlove.app.core.sync.SyncTable
@@ -28,7 +29,7 @@ class BudgetTableSyncerTest {
     private val dao = FakeBudgetDao()
     private val remote = FakeBudgetRemoteSource()
     private val cursors = InMemoryCursorStore()
-    private val syncer = BudgetTableSyncer(dao, remote, cursors, ConflictResolver())
+    private val syncer = BudgetTableSyncer(dao, remote, CurrentUserProvider { "user-1" }, cursors, ConflictResolver())
 
     @Test
     fun usesBudgetsTable() {
@@ -44,6 +45,20 @@ class BudgetTableSyncerTest {
 
         assertThat(remote.pushed.map { it.id }).containsExactly("a")
         assertThat(dao.store.getValue("a").pendingSync).isFalse()
+    }
+
+    @Test
+    fun push_skipsStaleCoupleBudgetFromAnUnpairRace(): Unit = runTest {
+        dao.currentCoupleId = "couple-1"
+        dao.store["own"] = budgetEntity(id = "own", userId = "user-1", pendingSync = true)
+        dao.store["ours"] = budgetEntity(id = "ours", userId = null, coupleId = "couple-1", pendingSync = true)
+        // Stale: a shared budget edited offline while the couple dissolved (Item 20).
+        dao.store["stale"] = budgetEntity(id = "stale", userId = null, coupleId = "old-couple", pendingSync = true)
+
+        syncer.push()
+
+        assertThat(remote.pushed.map { it.id }).containsExactly("own", "ours")
+        assertThat(dao.store.getValue("stale").pendingSync).isTrue()
     }
 
     @Test

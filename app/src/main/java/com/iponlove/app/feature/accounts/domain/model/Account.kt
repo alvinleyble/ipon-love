@@ -26,4 +26,12 @@ data class Account(
      * writes it — sharing is a separate action (share/un-share), not an editable field.
      */
     val isShared: Boolean = false,
+    /**
+     * True when the current user created this row (`created_by == me`). Only unsharing is
+     * gated on it: a shared account reverts to its creator, so only the creator may un-share
+     * — a non-creator's revert would stamp the row with the *other* partner's `user_id`, a row
+     * RLS forbids them to push, wedging sync (ADR-0018, v1.6.5 Item 20). Meaningful only while
+     * [isShared]; false on personal rows and on legacy shared rows with no `created_by`.
+     */
+    val isCreator: Boolean = false,
 )

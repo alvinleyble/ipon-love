@@ -79,6 +79,11 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE pendingSync = 1")
     suspend fun dirtyRows(): List<AccountEntity>
 
+    /** The current user's couple, read from the local users row — feeds the push ownership
+     *  filter (v1.6.5 Item 20). Null when unpaired or the row hasn't synced in. */
+    @Query("SELECT coupleId FROM users WHERE id = :userId")
+    suspend fun coupleIdOf(userId: String): String?
+
     @Query("UPDATE accounts SET pendingSync = 0 WHERE id IN (:ids)")
     suspend fun clearPending(ids: List<String>)
 

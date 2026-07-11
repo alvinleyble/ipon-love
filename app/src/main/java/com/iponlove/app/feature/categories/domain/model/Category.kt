@@ -17,4 +17,11 @@ data class Category(
      * partners' pickers. Set by the data layer (`couple_id != null`); not editor-writable.
      */
     val isShared: Boolean = false,
+    /**
+     * True when the current user created this row (`created_by == me`). Gates un-sharing:
+     * only the creator may make a shared category personal, else the revert stamps the row
+     * with the partner's `user_id` — a row RLS forbids them to push (ADR-0018, v1.6.5 Item 20).
+     * Meaningful only while [isShared]; false on personal and legacy no-`created_by` rows.
+     */
+    val isCreator: Boolean = false,
 )

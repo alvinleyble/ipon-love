@@ -12,11 +12,25 @@ class CategoryMapperTest {
 
     @Test
     fun entityToDomain_keepsTypeAndDropsSyncColumns() {
-        val domain = categoryEntity(id = "c", name = "Salary", type = CategoryType.INCOME).toDomain()
+        val domain = categoryEntity(id = "c", name = "Salary", type = CategoryType.INCOME)
+            .toDomain(currentUserId = "user-1")
 
         assertThat(domain.id).isEqualTo("c")
         assertThat(domain.name).isEqualTo("Salary")
         assertThat(domain.type).isEqualTo(CategoryType.INCOME)
+    }
+
+    @Test
+    fun entityToDomain_isCreator_gatesUnshareToTheCreator() {
+        val shared = categoryEntity(id = "c", userId = null, coupleId = "c-1", createdBy = "user-1")
+
+        assertThat(shared.toDomain(currentUserId = "user-1").isCreator).isTrue()
+        assertThat(shared.toDomain(currentUserId = "user-2").isCreator).isFalse()
+        // Legacy shared row with no created_by → nobody's to un-share.
+        assertThat(
+            categoryEntity(id = "c", userId = null, coupleId = "c-1", createdBy = null)
+                .toDomain(currentUserId = "user-1").isCreator,
+        ).isFalse()
     }
 
     @Test

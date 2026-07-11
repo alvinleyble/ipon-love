@@ -274,16 +274,18 @@ private fun CategoryCard(
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     // Share/un-share is a couple-only capability (ADR-0018), shown only when paired.
+                    // Only the creator may un-share (v1.6.5 Item 20); hide "Make personal" for the
+                    // non-creator partner, whose revert would wedge sync.
                     if (isPaired) {
-                        if (category.isShared) {
-                            DropdownMenuItem(
-                                text = { Text("Make personal") },
-                                onClick = { menuOpen = false; onUnshare() },
-                            )
-                        } else {
+                        if (!category.isShared) {
                             DropdownMenuItem(
                                 text = { Text("Share with partner") },
                                 onClick = { menuOpen = false; onShare() },
+                            )
+                        } else if (category.isCreator) {
+                            DropdownMenuItem(
+                                text = { Text("Make personal") },
+                                onClick = { menuOpen = false; onUnshare() },
                             )
                         }
                     }

@@ -31,10 +31,10 @@ class AccountRepositoryImpl @Inject constructor(
     override fun observeAccounts(includeArchived: Boolean): Flow<List<Account>> = flow {
         val userId = currentUser.userIdOrNull()
         if (userId == null) emit(emptyList())
-        else emitAll(dao.observeAccounts(userId, includeArchived).map { rows -> rows.map { it.toDomain() } })
+        else emitAll(dao.observeAccounts(userId, includeArchived).map { rows -> rows.map { it.toDomain(userId) } })
     }
 
-    override suspend fun getAccount(id: String): Account? = dao.getById(id)?.toDomain()
+    override suspend fun getAccount(id: String): Account? = dao.getById(id)?.toDomain(currentUser.userIdOrNull())
 
     override suspend fun countOwnedAccounts(): Int = dao.countOwned(currentUser.userId())
 
@@ -104,8 +104,12 @@ class AccountRepositoryImpl @Inject constructor(
 
     override suspend fun unshareAccount(id: String) {
         val existing = dao.getById(id) ?: return
-        // Revert-to-creator (ADR-0018): the account goes back to whoever created it, regardless
-        // of who un-shares. The partner's replica is demoted automatically via partner_accounts.
+        // Creator-only (ADR-0018, v1.6.5 Item 20): a shared account reverts to its creator, so a
+        // non-creator un-sharing would stamp the row with the *other* partner's user_id — a row
+        // RLS forbids this device to push, wedging every pending accounts row. The UI already
+        // hides "Make personal" for non-creators; this is the defence-in-depth backstop (mirrors
+        // goals' owner-only mutateOwn). Null createdBy (legacy shared row) is nobody's to un-share.
+        if (existing.createdBy != currentUser.userId()) return
         val creator = existing.createdBy ?: existing.userId ?: return
         dao.upsert(
             existing.copy(

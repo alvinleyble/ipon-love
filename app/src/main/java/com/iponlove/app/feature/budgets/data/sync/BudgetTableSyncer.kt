@@ -1,9 +1,11 @@
 package com.iponlove.app.feature.budgets.data.sync
 
+import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.sync.BaseTableSyncer
 import com.iponlove.app.core.sync.ConflictResolver
 import com.iponlove.app.core.sync.SyncCursorStore
 import com.iponlove.app.core.sync.SyncTable
+import com.iponlove.app.core.sync.isLocallyPushable
 import com.iponlove.app.feature.budgets.data.local.BudgetDao
 import com.iponlove.app.feature.budgets.data.local.BudgetEntity
 import com.iponlove.app.feature.budgets.data.remote.BudgetRemoteSource
@@ -19,11 +21,18 @@ import javax.inject.Inject
 class BudgetTableSyncer @Inject constructor(
     private val dao: BudgetDao,
     private val remote: BudgetRemoteSource,
+    private val currentUser: CurrentUserProvider,
     cursors: SyncCursorStore,
     resolver: ConflictResolver,
 ) : BaseTableSyncer<BudgetEntity>(SyncTable.BUDGETS, cursors, resolver) {
 
-    override suspend fun dirtyRows(): List<BudgetEntity> = dao.dirtyRows()
+    // Budgets have no un-share bug (no revert path), but as a flip-model table they share the
+    // unpair-race hazard, so the same ownership filter applies (v1.6.5 Item 20).
+    override suspend fun dirtyRows(): List<BudgetEntity> {
+        val me = currentUser.userId()
+        val myCoupleId = dao.coupleIdOf(me)
+        return dao.dirtyRows().filter { isLocallyPushable(it.userId, it.coupleId, me, myCoupleId) }
+    }
 
     override suspend fun clearPending(ids: List<String>) = dao.clearPending(ids)
 

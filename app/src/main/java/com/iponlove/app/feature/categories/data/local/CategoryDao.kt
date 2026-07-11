@@ -78,6 +78,11 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE pendingSync = 1")
     suspend fun dirtyRows(): List<CategoryEntity>
 
+    /** The current user's couple, read from the local users row — feeds the push ownership
+     *  filter (v1.6.5 Item 20). Null when unpaired or the row hasn't synced in. */
+    @Query("SELECT coupleId FROM users WHERE id = :userId")
+    suspend fun coupleIdOf(userId: String): String?
+
     @Query("UPDATE categories SET pendingSync = 0 WHERE id IN (:ids)")
     suspend fun clearPending(ids: List<String>)
 

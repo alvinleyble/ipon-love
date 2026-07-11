@@ -197,17 +197,19 @@ class AccountRepositoryImplTest {
     }
 
     @Test
-    fun unshareAccount_revertsToCreator_evenWhenAnotherMemberTriggersIt() = runTest {
-        // Partner (user-1) un-shares an account the other member (owner-2) created: it goes
-        // back to its creator, not to whoever clicked un-share (revert-to-creator, ADR-0018).
-        dao.store["a"] = accountEntity(
+    fun unshareAccount_byNonCreator_isNoOp() = runTest {
+        // Creator-only un-share (ADR-0018, v1.6.5 Item 20): user-1 tries to un-share an account
+        // the *other* member (owner-2) created. Reverting would stamp owner-2's user_id onto a
+        // row user-1 cannot push — RLS-rejected, wedging sync — so it must be a no-op instead.
+        val original = accountEntity(
             id = "a", userId = null, coupleId = "couple-1", createdBy = "owner-2",
         )
+        dao.store["a"] = original
 
         repository.unshareAccount("a")
 
-        assertThat(dao.store.getValue("a").userId).isEqualTo("owner-2")
-        assertThat(dao.store.getValue("a").coupleId).isNull()
+        // Row untouched: still couple-owned, not marked dirty.
+        assertThat(dao.store.getValue("a")).isEqualTo(original)
     }
 
     @Test

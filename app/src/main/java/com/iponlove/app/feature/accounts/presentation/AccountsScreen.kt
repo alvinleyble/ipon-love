@@ -277,16 +277,18 @@ private fun AccountCard(
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     // Share/un-share is a couple-only capability (ADR-0018), shown only when paired.
+                    // Only the creator may un-share (v1.6.5 Item 20) — a non-creator's revert would
+                    // stamp the partner's user_id onto the row and wedge sync, so hide it for them.
                     if (isPaired) {
-                        if (account.isShared) {
-                            DropdownMenuItem(
-                                text = { Text("Make personal") },
-                                onClick = { menuOpen = false; onUnshare() },
-                            )
-                        } else {
+                        if (!account.isShared) {
                             DropdownMenuItem(
                                 text = { Text("Share with partner") },
                                 onClick = { menuOpen = false; onShare() },
+                            )
+                        } else if (account.isCreator) {
+                            DropdownMenuItem(
+                                text = { Text("Make personal") },
+                                onClick = { menuOpen = false; onUnshare() },
                             )
                         }
                     }

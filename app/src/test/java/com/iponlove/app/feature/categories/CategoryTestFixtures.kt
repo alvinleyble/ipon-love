@@ -12,6 +12,9 @@ import java.time.Instant
 /** In-memory [CategoryDao] mirroring the real query semantics for fast JVM tests. */
 class FakeCategoryDao : CategoryDao {
     val store = linkedMapOf<String, CategoryEntity>()
+
+    /** Stands in for the local users row's coupleId that [coupleIdOf] would read. */
+    var currentCoupleId: String? = null
     private val changes = MutableStateFlow(0)
 
     override fun observeCategories(userId: String, includeArchived: Boolean): Flow<List<CategoryEntity>> =
@@ -70,6 +73,8 @@ class FakeCategoryDao : CategoryDao {
     }
 
     override suspend fun dirtyRows(): List<CategoryEntity> = store.values.filter { it.pendingSync }
+
+    override suspend fun coupleIdOf(userId: String): String? = currentCoupleId
 
     override suspend fun clearPending(ids: List<String>) {
         ids.forEach { id -> store[id]?.let { store[id] = it.copy(pendingSync = false) } }

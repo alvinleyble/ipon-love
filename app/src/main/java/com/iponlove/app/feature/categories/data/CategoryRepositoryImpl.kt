@@ -31,13 +31,13 @@ class CategoryRepositoryImpl @Inject constructor(
     override fun observeCategories(includeArchived: Boolean): Flow<List<Category>> = flow {
         val userId = currentUser.userIdOrNull()
         if (userId == null) emit(emptyList())
-        else emitAll(dao.observeCategories(userId, includeArchived).map { rows -> rows.map { it.toDomain() } })
+        else emitAll(dao.observeCategories(userId, includeArchived).map { rows -> rows.map { it.toDomain(userId) } })
     }
 
     override fun observeAllCategories(): Flow<List<Category>> =
-        dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+        dao.observeAll().map { rows -> rows.map { it.toDomain(currentUser.userIdOrNull()) } }
 
-    override suspend fun getCategory(id: String): Category? = dao.getById(id)?.toDomain()
+    override suspend fun getCategory(id: String): Category? = dao.getById(id)?.toDomain(currentUser.userIdOrNull())
 
     override suspend fun countOwnedCategories(): Int = dao.countOwned(currentUser.userId())
 
@@ -104,6 +104,10 @@ class CategoryRepositoryImpl @Inject constructor(
 
     override suspend fun unshareCategory(id: String) {
         val existing = dao.getById(id) ?: return
+        // Creator-only (ADR-0018, v1.6.5 Item 20): only the creator may make a shared category
+        // personal; a non-creator's revert would stamp the partner's user_id onto the row and
+        // wedge sync. UI hides "Make personal" for non-creators; this is the backstop.
+        if (existing.createdBy != currentUser.userId()) return
         val creator = existing.createdBy ?: existing.userId ?: return
         dao.upsert(
             existing.copy(

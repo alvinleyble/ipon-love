@@ -6,7 +6,7 @@ import com.iponlove.app.feature.accounts.domain.model.Account
 
 /** Entity ↔ Domain ↔ DTO conversions. Pure functions — unit-tested. */
 
-fun AccountEntity.toDomain(): Account = Account(
+fun AccountEntity.toDomain(currentUserId: String?): Account = Account(
     id = id,
     name = name,
     type = type,
@@ -16,6 +16,9 @@ fun AccountEntity.toDomain(): Account = Account(
     position = position,
     isArchived = isArchived,
     isShared = coupleId != null,
+    // Creator gate for un-share (ADR-0018): true only when *I* created this row. Null
+    // createdBy (legacy pre-created_by shared row) is nobody's to un-share via the UI.
+    isCreator = createdBy != null && createdBy == currentUserId,
 )
 
 /** Entity → DTO for push. Drops `pendingSync` (local-only, ADR-0002). */

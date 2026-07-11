@@ -51,6 +51,11 @@ interface BudgetDao {
     @Query("SELECT * FROM budgets WHERE pendingSync = 1")
     suspend fun dirtyRows(): List<BudgetEntity>
 
+    /** The current user's couple, read from the local users row — feeds the push ownership
+     *  filter (v1.6.5 Item 20). Null when unpaired or the row hasn't synced in. */
+    @Query("SELECT coupleId FROM users WHERE id = :userId")
+    suspend fun coupleIdOf(userId: String): String?
+
     @Query("UPDATE budgets SET pendingSync = 0 WHERE id IN (:ids)")
     suspend fun clearPending(ids: List<String>)
 

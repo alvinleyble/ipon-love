@@ -11,11 +11,30 @@ class AccountMapperTest {
 
     @Test
     fun entityToDomain_dropsOwnershipAndSyncColumns() {
-        val domain = accountEntity(id = "a", name = "Wallet").toDomain()
+        val domain = accountEntity(id = "a", name = "Wallet").toDomain(currentUserId = "user-1")
 
         assertThat(domain.id).isEqualTo("a")
         assertThat(domain.name).isEqualTo("Wallet")
         // Domain has no userId / updatedAt / pendingSync to leak — covered by it compiling.
+    }
+
+    @Test
+    fun entityToDomain_isCreator_trueOnlyForMyCreatedRow() {
+        val shared = accountEntity(id = "a", userId = null, coupleId = "c-1", createdBy = "user-1")
+
+        // I created it → I may un-share it.
+        assertThat(shared.toDomain(currentUserId = "user-1").isCreator).isTrue()
+        // My partner created it → hidden from me.
+        assertThat(shared.toDomain(currentUserId = "user-2").isCreator).isFalse()
+        // No session id (sign-out transition) → not the creator.
+        assertThat(shared.toDomain(currentUserId = null).isCreator).isFalse()
+    }
+
+    @Test
+    fun entityToDomain_isCreator_falseWhenCreatedByNull() {
+        // Legacy shared row with no created_by is nobody's to un-share.
+        val legacy = accountEntity(id = "a", userId = null, coupleId = "c-1", createdBy = null)
+        assertThat(legacy.toDomain(currentUserId = "user-1").isCreator).isFalse()
     }
 
     @Test
@@ -53,13 +72,13 @@ class AccountMapperTest {
             id = "a", userId = null, coupleId = "couple-1", createdBy = "user-1", serverRev = 9,
         )
 
-        assertThat(original.toDomain().isShared).isTrue()
+        assertThat(original.toDomain(currentUserId = "user-1").isShared).isTrue()
         // couple_id + created_by survive the wire round-trip (ADR-0018).
         assertThat(original.toDto().toEntity()).isEqualTo(original.copy(pendingSync = false))
     }
 
     @Test
     fun personalEntity_isNotShared() {
-        assertThat(accountEntity(id = "a").toDomain().isShared).isFalse()
+        assertThat(accountEntity(id = "a").toDomain(currentUserId = "user-1").isShared).isFalse()
     }
 }

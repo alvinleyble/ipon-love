@@ -137,17 +137,32 @@ class CategoryRepositoryImplTest {
     }
 
     @Test
-    fun unshareCategory_revertsToCreator() = runTest {
+    fun unshareCategory_byCreator_revertsToCreator() = runTest {
+        // I (user-1) created it → I may make it personal again.
         dao.store["c"] = categoryEntity(
-            id = "c", userId = null, coupleId = "couple-1", createdBy = "owner-2",
+            id = "c", userId = null, coupleId = "couple-1", createdBy = "user-1",
         )
 
         repository.unshareCategory("c")
 
         val row = dao.store.getValue("c")
-        assertThat(row.userId).isEqualTo("owner-2")
+        assertThat(row.userId).isEqualTo("user-1")
         assertThat(row.coupleId).isNull()
         assertThat(row.pendingSync).isTrue()
+    }
+
+    @Test
+    fun unshareCategory_byNonCreator_isNoOp() = runTest {
+        // Creator-only (ADR-0018, v1.6.5 Item 20): the other member (owner-2) created it, so
+        // user-1 un-sharing it must not stamp owner-2's user_id onto an un-pushable row.
+        val original = categoryEntity(
+            id = "c", userId = null, coupleId = "couple-1", createdBy = "owner-2",
+        )
+        dao.store["c"] = original
+
+        repository.unshareCategory("c")
+
+        assertThat(dao.store.getValue("c")).isEqualTo(original)
     }
 
     @Test
