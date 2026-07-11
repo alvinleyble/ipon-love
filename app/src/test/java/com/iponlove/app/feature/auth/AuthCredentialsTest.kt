@@ -57,7 +57,8 @@ class AuthCredentialsTest {
     fun validNamePasses() {
         AuthCredentials.validateName("Patty") // no throw
         AuthCredentials.validateName("  Alvin  ") // trimmed, still valid
-        AuthCredentials.validateName("a".repeat(50)) // exactly the max — no throw
+        AuthCredentials.validateName("a".repeat(10)) // exactly the max — no throw
+        AuthCredentials.validateName("Anne Marie") // spaces allowed, still within 10
     }
 
     @Test
@@ -68,8 +69,23 @@ class AuthCredentialsTest {
 
     @Test
     fun overLongNameRejected() {
-        assertThat(errorFrom { AuthCredentials.validateName("a".repeat(51)) })
+        assertThat(errorFrom { AuthCredentials.validateName("a".repeat(11)) })
             .isEqualTo(AuthError.INVALID_NAME)
+    }
+
+    @Test
+    fun nameWithDigitsOrSymbolsRejected() {
+        assertThat(errorFrom { AuthCredentials.validateName("Alvin1") }).isEqualTo(AuthError.INVALID_NAME)
+        assertThat(errorFrom { AuthCredentials.validateName("Al-vin") }).isEqualTo(AuthError.INVALID_NAME)
+        assertThat(errorFrom { AuthCredentials.validateName("Alvin!") }).isEqualTo(AuthError.INVALID_NAME)
+    }
+
+    @Test
+    fun filterNameInputTruncatesAndStripsDisallowedChars() {
+        assertThat(AuthCredentials.filterNameInput("Alvin123")).isEqualTo("Alvin")
+        assertThat(AuthCredentials.filterNameInput("a".repeat(15))).isEqualTo("a".repeat(10))
+        assertThat(AuthCredentials.filterNameInput("Anne Marie Extra")).isEqualTo("Anne Marie")
+        assertThat(AuthCredentials.filterNameInput("Al-vin!")).isEqualTo("Alvin")
     }
 
     @Test

@@ -11,6 +11,7 @@ import com.iponlove.app.core.sync.SyncWorker
 import com.iponlove.app.feature.auth.domain.model.AuthException
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.domain.repository.SignUpResult
+import com.iponlove.app.feature.auth.domain.usecase.AuthCredentials
 import com.iponlove.app.feature.auth.domain.usecase.ObserveAuthStatusUseCase
 import com.iponlove.app.feature.auth.domain.usecase.SignInUseCase
 import com.iponlove.app.feature.auth.domain.usecase.SignOutUseCase
@@ -52,7 +53,8 @@ class AuthViewModel @Inject constructor(
     private val _form = MutableStateFlow(AuthUiState())
     val form: StateFlow<AuthUiState> = _form
 
-    fun onNameChange(value: String) = _form.update { it.copy(name = value, error = null) }
+    fun onNameChange(value: String) =
+        _form.update { it.copy(name = AuthCredentials.filterNameInput(value), error = null) }
 
     fun onEmailChange(value: String) = _form.update { it.copy(email = value, error = null) }
 

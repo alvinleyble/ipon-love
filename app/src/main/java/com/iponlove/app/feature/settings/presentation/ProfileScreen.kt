@@ -58,7 +58,7 @@ fun ProfileScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
-            Text("Display name", style = MaterialTheme.typography.titleMedium)
+            Text("Nickname", style = MaterialTheme.typography.titleMedium)
             Text(
                 "This is what your partner sees in the combined view and on shared notes.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -68,7 +68,7 @@ fun ProfileScreen(
             OutlinedTextField(
                 value = state.nameDraft,
                 onValueChange = viewModel::onNameChange,
-                label = { Text("Name") },
+                label = { Text("Nickname") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
@@ -82,7 +82,7 @@ fun ProfileScreen(
                 enabled = state.canSave,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (state.saved) "Saved!" else "Save name")
+                Text(if (state.saved) "Saved!" else "Save nickname")
             }
 
             // The attribution color only means anything once there's a partner to attribute

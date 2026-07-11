@@ -3,6 +3,7 @@ package com.iponlove.app.feature.settings.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iponlove.app.feature.auth.domain.model.AuthException
+import com.iponlove.app.feature.auth.domain.usecase.AuthCredentials
 import com.iponlove.app.feature.user.domain.usecase.GetAccountEmailUseCase
 import com.iponlove.app.feature.user.domain.usecase.ObserveCurrentUserUseCase
 import com.iponlove.app.feature.user.domain.usecase.UpdateAccentColorUseCase
@@ -45,7 +46,7 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun onNameChange(value: String) =
-        _uiState.update { it.copy(nameDraft = value, saved = false) }
+        _uiState.update { it.copy(nameDraft = AuthCredentials.filterNameInput(value), saved = false) }
 
     fun saveName() {
         val name = _uiState.value.nameDraft
@@ -55,8 +56,8 @@ class ProfileViewModel @Inject constructor(
                 updateDisplayName(name)
                 _uiState.update { it.copy(saved = true) }
             } catch (_: AuthException) {
-                // Reuses registration's validation (≤50, non-blank); the UI already guards
-                // blank via canSave, so this only catches the over-long case — leave unsaved.
+                // Reuses registration's validation (≤10, letters+spaces, non-blank); the input
+                // filter already blocks bad chars/length, so this is just a defensive backstop.
             }
         }
     }

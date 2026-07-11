@@ -94,7 +94,7 @@ private fun AuthContent(
                 OutlinedTextField(
                     value = state.name,
                     onValueChange = onNameChange,
-                    label = { Text("Your name") },
+                    label = { Text("Your nickname") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Text,
@@ -209,7 +209,7 @@ internal fun AuthError.message(): String = when (this) {
     AuthError.WEAK_PASSWORD ->
         "Password must be at least 6 characters, with uppercase, lowercase, a number, and a symbol"
     AuthError.INVALID_EMAIL -> "Enter a valid email address"
-    AuthError.INVALID_NAME -> "Enter your name (up to 50 characters)"
+    AuthError.INVALID_NAME -> "Enter a nickname (letters only, up to 10 characters)"
     AuthError.PASSWORD_MISMATCH -> "Passwords don't match"
     AuthError.SAME_AS_OLD_PASSWORD -> "New password must be different from your current password"
     AuthError.RATE_LIMITED -> "Please wait a bit before making another request"

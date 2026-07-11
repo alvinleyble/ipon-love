@@ -11,18 +11,24 @@ import com.iponlove.app.feature.auth.domain.model.AuthException
 internal object AuthCredentials {
 
     const val MIN_PASSWORD_LENGTH = 6
-    const val MAX_NAME_LENGTH = 50
+    const val MAX_NAME_LENGTH = 10
+    private val NAME_CHARSET = Regex("^[\\p{L} ]+$")
 
     /**
-     * The display name shown to a partner (combined view, shared-note attribution). Required at
-     * registration: trimmed, non-blank, and at most [MAX_NAME_LENGTH] chars (ADR-0016).
+     * The nickname shown to a partner (combined view, shared-note attribution). Required at
+     * registration: trimmed, non-blank, letters + spaces only, and at most [MAX_NAME_LENGTH]
+     * chars — kept short so combined-view attribution stays tidy (ADR-0016).
      */
     fun validateName(name: String) {
         val trimmed = name.trim()
-        if (trimmed.isEmpty() || trimmed.length > MAX_NAME_LENGTH) {
+        if (trimmed.isEmpty() || trimmed.length > MAX_NAME_LENGTH || !NAME_CHARSET.matches(trimmed)) {
             throw AuthException(AuthError.INVALID_NAME)
         }
     }
+
+    /** Live `onValueChange` filter: strips non-letter/space characters, then caps the length. */
+    fun filterNameInput(value: String): String =
+        value.filter { it.isLetter() || it == ' ' }.take(MAX_NAME_LENGTH)
 
     fun validateEmail(email: String) {
         // Intentionally loose — "contains an @ with text on both sides". The server does the

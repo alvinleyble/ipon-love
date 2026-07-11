@@ -36,15 +36,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CapReachedSheet
+import com.iponlove.app.core.ui.ellipsize
 import com.iponlove.app.core.ui.formatPhp
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtItem
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtNet
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtPaymentItem
 import com.iponlove.app.feature.partnerdebt.domain.model.NetDirection
+
+/** Keeps a long partner name from overflowing the tight chip/header layouts below. */
+private const val PARTNER_NAME_DISPLAY_MAX = 15
 
 /**
  * Chrome-less Debts body — no Scaffold/TopAppBar/FAB. The Couple tab host ([CoupleScreen])
@@ -148,7 +153,7 @@ private fun NetSummaryCard(net: DebtNet?) {
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            val partner = net?.counterpartName ?: "your partner"
+            val partner = (net?.counterpartName ?: "your partner").ellipsize(PARTNER_NAME_DISPLAY_MAX)
             when (net?.direction) {
                 NetDirection.I_OWE -> {
                     Text("You owe $partner", style = MaterialTheme.typography.titleMedium)
@@ -182,7 +187,7 @@ private fun DebtCard(
     onReceive: (DebtPaymentItem) -> Unit,
     onDelete: () -> Unit,
 ) {
-    val partner = debt.counterpartName ?: "Partner"
+    val partner = (debt.counterpartName ?: "Partner").ellipsize(PARTNER_NAME_DISPLAY_MAX)
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -281,6 +286,7 @@ private fun AddDebtDialog(
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    val shortPartnerName = partnerName.ellipsize(PARTNER_NAME_DISPLAY_MAX)
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text("Add a debt") },
@@ -290,12 +296,24 @@ private fun AddDebtDialog(
                     IponFilterChip(
                         selected = editor.direction == DebtDirection.I_OWE,
                         onClick = { onDirectionChange(DebtDirection.I_OWE) },
-                        label = { Text("I owe $partnerName") },
+                        label = {
+                            Text(
+                                "I owe $shortPartnerName",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
                     )
                     IponFilterChip(
                         selected = editor.direction == DebtDirection.THEY_OWE,
                         onClick = { onDirectionChange(DebtDirection.THEY_OWE) },
-                        label = { Text("$partnerName owes me") },
+                        label = {
+                            Text(
+                                "$shortPartnerName owes me",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
                     )
                 }
                 OutlinedTextField(
