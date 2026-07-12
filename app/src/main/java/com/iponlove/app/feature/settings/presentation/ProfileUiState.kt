@@ -20,6 +20,13 @@ data class ProfileUiState(
     val isResetFinancesLoading: Boolean = false,
     val resetFinancesError: String? = null,
     val financesJustReset: Boolean = false,
+    // Delete account (ADR-0045) — a self-contained flow like reset above, but destroys the
+    // account entirely. On success the session teardown navigates away, so there is no
+    // "just deleted" success field.
+    val showDeleteAccountDialog: Boolean = false,
+    val deleteAccountPassword: String = "",
+    val isDeleteAccountLoading: Boolean = false,
+    val deleteAccountError: String? = null,
     // Optimistic default: the ConnectivityObserver seeds the real state within milliseconds of
     // collection, so the confirm never flashes disabled when actually online.
     val isOnline: Boolean = true,
@@ -29,4 +36,8 @@ data class ProfileUiState(
     /** Reset needs the network for its re-auth (ADR-0037), so the confirm is gated on [isOnline]. */
     val canConfirmReset: Boolean
         get() = isOnline && resetFinancesPassword.isNotBlank() && !isResetFinancesLoading
+
+    /** Delete needs the network for its re-auth + RPC (ADR-0045), so the confirm is gated on [isOnline]. */
+    val canConfirmDelete: Boolean
+        get() = isOnline && deleteAccountPassword.isNotBlank() && !isDeleteAccountLoading
 }

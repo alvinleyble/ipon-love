@@ -7,57 +7,59 @@ import com.iponlove.app.feature.auth.domain.model.AuthException
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.domain.repository.AuthRepository
 import com.iponlove.app.feature.auth.domain.repository.SignUpResult
-import com.iponlove.app.feature.settings.domain.model.ResetFinancesCounts
-import com.iponlove.app.feature.settings.domain.repository.ResetFinancesRepository
-import com.iponlove.app.feature.settings.domain.usecase.ResetFinancesUseCase
+import com.iponlove.app.feature.settings.domain.repository.AccountDeletionRepository
+import com.iponlove.app.feature.settings.domain.usecase.DeleteUserAccountUseCase
 import com.iponlove.app.feature.user.domain.usecase.GetAccountEmailUseCase
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-class ResetFinancesUseCaseTest {
+/**
+ * The re-auth gate (ADR-0045): a wrong password must throw before the destructive
+ * [AccountDeletionRepository.deleteAccount] is ever reached — nothing is deleted. Mirrors
+ * [ResetFinancesUseCaseTest].
+ */
+class DeleteUserAccountUseCaseTest {
 
-    private suspend fun errorFrom(block: suspend () -> Unit): AuthError {
-        return try {
-            block()
-            error("expected AuthException")
-        } catch (e: AuthException) {
-            e.error
-        }
+    private suspend fun errorFrom(block: suspend () -> Unit): AuthError = try {
+        block()
+        error("expected AuthException")
+    } catch (e: AuthException) {
+        e.error
     }
 
-    private val authRepository = FakeAuthRepository()
+    private val authRepository = FakeAuthRepositoryForDelete()
     private val getAccountEmail = GetAccountEmailUseCase(
         object : CurrentUserProvider {
             override fun userId() = "user-1"
-            override fun email() = "wifey@iponlove.com"
+            override fun email() = "hubby@iponlove.com"
         },
     )
-    private val resetFinancesRepository = FakeResetFinancesRepository()
-    private val useCase = ResetFinancesUseCase(authRepository, getAccountEmail, resetFinancesRepository)
+    private val deletionRepository = FakeAccountDeletionRepository()
+    private val useCase = DeleteUserAccountUseCase(authRepository, getAccountEmail, deletionRepository)
 
     @Test
-    fun invoke_correctPassword_signsInThenResets() = runTest {
+    fun invoke_correctPassword_reAuthsThenDeletes() = runTest {
         authRepository.expectedPassword = "correct-password"
 
         useCase("correct-password")
 
-        assertThat(authRepository.signInCalledWith).isEqualTo("wifey@iponlove.com" to "correct-password")
-        assertThat(resetFinancesRepository.resetCalled).isTrue()
+        assertThat(authRepository.signInCalledWith).isEqualTo("hubby@iponlove.com" to "correct-password")
+        assertThat(deletionRepository.deleteCalled).isTrue()
     }
 
     @Test
-    fun invoke_wrongPassword_throwsAndNeverResets() = runTest {
+    fun invoke_wrongPassword_throwsAndNeverDeletes() = runTest {
         authRepository.expectedPassword = "correct-password"
 
         val error = errorFrom { useCase("wrong-password") }
 
         assertThat(error).isEqualTo(AuthError.INVALID_CREDENTIALS)
-        assertThat(resetFinancesRepository.resetCalled).isFalse()
+        assertThat(deletionRepository.deleteCalled).isFalse()
     }
 }
 
-private class FakeAuthRepository : AuthRepository {
+private class FakeAuthRepositoryForDelete : AuthRepository {
     var expectedPassword: String? = null
     var signInCalledWith: Pair<String, String>? = null
 
@@ -77,13 +79,9 @@ private class FakeAuthRepository : AuthRepository {
     override suspend fun updatePassword(newPassword: String) = error("not used by this test")
 }
 
-private class FakeResetFinancesRepository : ResetFinancesRepository {
-    var resetCalled = false
-
-    override suspend fun previewCounts(): ResetFinancesCounts =
-        ResetFinancesCounts(transactions = 0, accounts = 0)
-
-    override suspend fun reset() {
-        resetCalled = true
+private class FakeAccountDeletionRepository : AccountDeletionRepository {
+    var deleteCalled = false
+    override suspend fun deleteAccount() {
+        deleteCalled = true
     }
 }

@@ -140,6 +140,10 @@ _Avoid_: settlement leg, linked debt, transfer expense
 A user-initiated "restart fresh" action (password re-authed **and online-gated**, in Settings → Profile) that **zeroes the numbers but keeps the structure**: it soft-deletes the user's own [[Transaction|transactions]] and sets their own personal accounts' [[Opening balance|opening balances]] to ₱0, in one local transaction, then syncs like any other write. Balances read ₱0 (empty ledger + zeroed opening balance). Deliberately keeps *everything else* untouched — accounts (the rows), categories, budgets, [[Paused (recurring rule)|recurring rules]], savings goals **and their contributions/progress**, notes, and all couple/shared state — so it touches zero partner data. Distinct from a full account deletion (which removes the identity — users row, auth, pairing). Reversed from the original "preserve opening balance, also wipe budgets/recurring/goal-contributions" design on the 2026-07-12 grill. See ADR-0037.
 _Avoid_: wipe, clear data, factory reset, delete account
 
+**Delete account**:
+A user-initiated, password-re-authed and **online-gated** (Settings → Profile) **hard deletion** of the whole account — the one sanctioned exception to the tombstone rule (soft-delete only, ADR-0010). A single `delete_account()` SECURITY DEFINER RPC dissolves the [[Couple]] first via the existing `unpair()` (so the partner is cleaned up the normal way — reverts, bell, replica purge — and their own data is untouched), purges the user's Storage objects, then deletes their `auth.users` row, letting the `ON DELETE CASCADE` graph physically remove [[the users row]] and every owned entity in one transaction. The client then clears the local session and wipes Room, landing on the auth graph; the freed email can re-register. Distinct from [[Reset finances]], which keeps the identity and only zeroes the numbers — the two share only the destructive-Settings-action shape, not a code path. Required by Google Play's User Data policy (plus a web deletion request page). See ADR-0045.
+_Avoid_: deactivate, close account, reset finances, unpair
+
 ### Recurring
 
 **Paused (recurring rule)**:

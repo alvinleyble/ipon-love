@@ -137,6 +137,22 @@ fun ProfileScreen(
             ) {
                 Text(if (state.financesJustReset) "Finances reset" else "Reset finances")
             }
+
+            Spacer(Modifier.height(28.dp))
+            Text("Delete account", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Permanently delete your account and all your data. This can't be undone.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = viewModel::openDeleteAccount,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Delete account")
+            }
         }
     }
 
@@ -151,6 +167,20 @@ fun ProfileScreen(
             onPasswordChange = viewModel::onResetFinancesPasswordChange,
             onConfirm = viewModel::confirmResetFinances,
             onDismiss = viewModel::dismissResetFinances,
+        )
+    }
+
+    if (state.showDeleteAccountDialog) {
+        DeleteAccountDialog(
+            isPaired = state.isPaired,
+            password = state.deleteAccountPassword,
+            isLoading = state.isDeleteAccountLoading,
+            isOnline = state.isOnline,
+            canConfirm = state.canConfirmDelete,
+            error = state.deleteAccountError,
+            onPasswordChange = viewModel::onDeleteAccountPasswordChange,
+            onConfirm = viewModel::confirmDeleteAccount,
+            onDismiss = viewModel::dismissDeleteAccount,
         )
     }
 }
@@ -228,6 +258,82 @@ private fun ResetFinancesDialog(
                     CircularProgressIndicator(modifier = Modifier.size(16.dp))
                 } else {
                     Text("Reset finances")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isLoading) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun DeleteAccountDialog(
+    isPaired: Boolean,
+    password: String,
+    isLoading: Boolean,
+    isOnline: Boolean,
+    canConfirm: Boolean,
+    error: String?,
+    onPasswordChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete account?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "This permanently deletes your account and all your data — transactions, " +
+                        "accounts, budgets, notes, and photos. This can't be undone.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (isPaired) {
+                    Text(
+                        "You'll be unpaired from your partner first. Their own data is untouched.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    "Enter your password to confirm.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = onPasswordChange,
+                    label = { Text("Password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (!isOnline) {
+                    Text(
+                        "You need an internet connection to delete your account.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (error != null) {
+                    Text(
+                        error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = canConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                } else {
+                    Text("Delete account")
                 }
             }
         },

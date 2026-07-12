@@ -4,9 +4,13 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.iponlove.app.feature.settings.data.AccountDeletionRepositoryImpl
 import com.iponlove.app.feature.settings.data.PrivacyModeRepositoryImpl
 import com.iponlove.app.feature.settings.data.ResetFinancesRepositoryImpl
 import com.iponlove.app.feature.settings.data.ThemeRepositoryImpl
+import com.iponlove.app.feature.settings.data.remote.AccountDeletionRemoteSource
+import com.iponlove.app.feature.settings.data.remote.SupabaseAccountDeletionRemoteSource
+import com.iponlove.app.feature.settings.domain.repository.AccountDeletionRepository
 import com.iponlove.app.feature.settings.domain.repository.PrivacyModeRepository
 import com.iponlove.app.feature.settings.domain.repository.ResetFinancesRepository
 import com.iponlove.app.feature.settings.domain.repository.ThemeRepository
@@ -60,4 +64,11 @@ interface SettingsModule {
     @Binds
     @Singleton
     fun bindResetFinancesRepository(impl: ResetFinancesRepositoryImpl): ResetFinancesRepository
+
+    @Binds
+    @Singleton
+    fun bindAccountDeletionRepository(impl: AccountDeletionRepositoryImpl): AccountDeletionRepository
+
+    @Binds
+    fun bindAccountDeletionRemoteSource(impl: SupabaseAccountDeletionRemoteSource): AccountDeletionRemoteSource
 }

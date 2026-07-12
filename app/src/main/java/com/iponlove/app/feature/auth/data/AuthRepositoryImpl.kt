@@ -65,6 +65,8 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signOut() = mapErrors { client.auth.signOut() }
 
+    override suspend fun clearLocalSession() = mapErrors { client.auth.clearSession() }
+
     override suspend fun sendPasswordReset(email: String) = mapErrors {
         client.auth.resetPasswordForEmail(email, redirectUrl = PASSWORD_RECOVERY_REDIRECT_URL)
     }

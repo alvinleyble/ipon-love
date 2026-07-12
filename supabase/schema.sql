@@ -951,6 +951,43 @@ security definer
 set search_path = public
 as $$ select now() $$;
 
+-- Delete account (ADR-0045, v1.6.5 Item 6) — the one sanctioned exception to
+-- ADR-0010's "never hard delete." Dissolves the couple first via the tested
+-- unpair() (so the partner is cleaned up the normal way + rung), purges the
+-- caller's Storage rows (the FK cascade can't reach storage.objects), then
+-- deletes the caller's auth.users row — letting the ON DELETE CASCADE graph
+-- physically remove public.users + every owned row + GoTrue's own session
+-- tables. One atomic transaction. SECURITY DEFINER (postgres) so it reaches
+-- auth.users/storage.objects; auth.uid() still reads the caller's JWT.
+create or replace function delete_account()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_uid uuid := auth.uid();
+begin
+    if v_uid is null then
+        raise exception 'not authenticated';
+    end if;
+
+    if auth_couple_id() is not null then
+        perform unpair();
+    end if;
+
+    delete from storage.objects
+        where bucket_id in ('receipts', 'note-images')
+          and name like v_uid::text || '/%';
+
+    delete from auth.users where id = v_uid;
+end;
+$$;
+
+-- Destructive: keep it off anon (the internal auth.uid() guard is the real gate).
+revoke all on function delete_account() from public, anon;
+grant execute on function delete_account() to authenticated;
+
 -- ============================================================================
 --  Realtime "bell" channel authorization  [ADR-0015]
 --  Live sync uses a PRIVATE Realtime Broadcast channel `couple:{coupleId}` as a
