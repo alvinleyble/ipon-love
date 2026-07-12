@@ -137,7 +137,7 @@ An optional fee on a `TRANSFER` transaction, represented as a second, linked `EX
 _Avoid_: settlement leg, linked debt, transfer expense
 
 **Reset finances**:
-A user-initiated "restart fresh" action (password re-authed, in Settings) that soft-deletes only the user's **own** money-movement rows — [[Transaction|transactions]], [[Paused (recurring rule)|recurring rules]], budgets, and goal contributions — in one local transaction, then syncs the tombstones like any other delete. Deliberately keeps *structure* (accounts, categories, savings-goal definitions, opening balances), all notes, and all couple/shared state; balances fall to their [[Opening balance]]. Distinct from a full account deletion (which removes the identity — users row, auth, pairing). See ADR-0037.
+A user-initiated "restart fresh" action (password re-authed **and online-gated**, in Settings → Profile) that **zeroes the numbers but keeps the structure**: it soft-deletes the user's own [[Transaction|transactions]] and sets their own personal accounts' [[Opening balance|opening balances]] to ₱0, in one local transaction, then syncs like any other write. Balances read ₱0 (empty ledger + zeroed opening balance). Deliberately keeps *everything else* untouched — accounts (the rows), categories, budgets, [[Paused (recurring rule)|recurring rules]], savings goals **and their contributions/progress**, notes, and all couple/shared state — so it touches zero partner data. Distinct from a full account deletion (which removes the identity — users row, auth, pairing). Reversed from the original "preserve opening balance, also wipe budgets/recurring/goal-contributions" design on the 2026-07-12 grill. See ADR-0037.
 _Avoid_: wipe, clear data, factory reset, delete account
 
 ### Recurring

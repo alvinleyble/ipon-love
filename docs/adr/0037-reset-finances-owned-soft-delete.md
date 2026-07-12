@@ -1,4 +1,4 @@
-# Reset finances is an owned-row soft-delete, not a structure wipe
+# Reset finances zeroes the numbers and keeps the structure
 
 ## Context
 
@@ -6,14 +6,23 @@ Users want a "restart fresh" action to clear their money data without deleting t
 
 ## Decision
 
-**Reset finances** is a Settings action, gated behind password re-authentication (reusing the `ForgotPinDialog` re-auth pattern) with a live-count consequence summary. It soft-deletes only the rows the user **owns** (`owner/userId == me`) across four tables — transactions, recurring rules, budgets, and goal contributions — in a **single local Room transaction**, stamping `updated_at` + `pending_sync` on each, then fires an immediate offline-tolerant interactive push (ADR-0012). A `ResetFinancesUseCase` orchestrates it via a generic bulk-soft-delete helper (extracted so the future "Delete my account" path can reuse it).
+**Reset finances** is a Settings action (Profile → Account) gated behind password re-authentication (reusing the `ForgotPinDialog` re-auth pattern) with a live-count consequence summary, **plus an explicit online-only block** — the confirm button stays disabled while offline (`ConnectivityObserver`), because the re-auth needs the network and we don't want a half-understood offline attempt.
 
-**Survives the reset:** accounts, categories, savings-goal *definitions*, opening balances, all notes, all couple/shared/partner state (couple budget, shared goals, partner debts, partner-replicated rows), the `users` row, auth session, and pairing. Account balances simply fall to their opening balance because the ledger is empty.
+It does exactly two owned-row mutations, in a **single local transaction** (`LocalTransactionRunner`), then fires one immediate offline-tolerant interactive push (ADR-0012):
+
+1. **Transactions** — soft-deleted (`is_deleted = true`, fresh monotonic `updated_at`, `pending_sync = true`), clearing all history.
+2. **Personal accounts** — `opening_balance` set to ₱0 (an *update*, not a delete; archived accounts included, shared couple accounts skipped because they carry a null `user_id`). Combined with the emptied ledger, every balance reads ₱0.
+
+Both mutations go through the generic `bulkRestamp` helper (fetch owned rows → per-row monotonic stamp → upsert), extracted so a future "Delete my account" cascade can reuse it.
+
+**Survives the reset, untouched:** accounts (the rows themselves), categories, **budgets** (limits stay; "spent" falls to ₱0 on its own, being derived from the wiped transactions), **recurring rules** (forward-looking configuration; deterministic-UUID materialization means a wiped occurrence can never resurrect), **savings goals and all their contributions/progress**, all notes, and all couple/shared state. The result is a clean slate that keeps the user's whole configuration.
 
 ## Consequences
 
-- **Symmetric with the sync model, not a local hack.** A local-only wipe was rejected: the next pull (`server_rev > cursor`) would resurrect every "deleted" row. Soft-delete-and-push is the only design consistent with ADR-0010.
-- **Deliberately not "Delete my account"** (Post-V1 Horizon #11). That removes the identity — users row, auth, couple membership. Reset empties the ledger; delete removes the person. They share only the bulk-soft-delete helper.
-- **Ownership filter is the couple safety boundary.** Filtering every soft-delete by `owner/userId == me` prevents the reset from becoming a backdoor that wipes partner-replicated or jointly-owned shared rows. Shared transactions the user *authored* are their own rows and are wiped (the partner losing visibility is the correct consequence); the couple budget, shared goals, and partner debts are out of scope.
-- **Recurring is safe against zombie regeneration.** `MaterializeRecurringRulesUseCase`/`activeRules()` filter `isDeleted = 0`, and materialize is insert-if-absent by `DeterministicUuid.v5("ruleId:date")`, so soft-deleted rules stop generating and tombstoned occurrences are never resurrected.
-- **`opening_balance` is untouched** — it is account *setup*, not money movement, so a reset lands you at your opening balance rather than ₱0. Resetting it to zero was considered and rejected as out of Tier-1 scope.
+- **Symmetric with the sync model, not a local hack.** A local-only wipe was rejected: the next pull (`server_rev > cursor`) would resurrect every "deleted" row. Soft-delete-and-push is the only design consistent with ADR-0010; the account zeroing is a normal dirty-row update pushed the same way.
+- **Zeroing `opening_balance` reverses the original ADR** (which preserved it). The "keep your setup, zero every peso" model won on the grilling (2026-07-12): a fresh start should read ₱0, and the user re-enters real balances afterward. It is irreversible — which is why the password + online gate guards it.
+- **The wipe narrowed to transactions only.** The original decision soft-deleted transactions, recurring rules, budgets, *and* goal contributions. Grilling reversed budgets and recurring rules to **retained** (they're structure/config, and "spent" is derived so it zeroes for free), and reversed goal contributions to **retained** as well — savings progress is *accumulated value*, not history clutter, it never fed account balances (so keeping it creates no inconsistency), and wiping it was the **only** part of the reset that reached into shared couple data (a shared goal on the partner's screen). The reset now touches **zero shared/partner data**, making it couple-safe by construction rather than by an ownership filter on a shared-touching write.
+- **Ownership filter is still the couple safety boundary.** Both mutations filter by `user_id == me` (a shared account/transaction carries a different owner or a null `user_id`), so the reset can never write a partner-replicated or jointly-owned row. Shared transactions the user *authored* are their own rows and are wiped (the partner losing visibility is the correct, already-accepted consequence).
+- **Rollover budgets recompute, accepted as-is.** With every month's spend now ₱0, a rollover-enabled budget's effective limit inflates (each prior month's full budget carries forward as "unused"). This is identical to what manually deleting all transactions would do, it's severable via the existing per-month rollover toggle (ADR-0036), and building a rollover-severing step into reset was rejected as scope creep.
+- **Deliberately not "Delete my account"** (Post-V1 Horizon #11). That removes the identity — users row, auth, couple membership. Reset empties the ledger and zeroes balances; delete removes the person. They share only the `bulkRestamp` primitive.
+- **Online-only is a real constraint, made explicit.** Because the re-auth round-trips to Supabase, reset cannot complete offline. Rather than surface that as a post-confirm "can't reach server" error, the confirm is disabled up front with a "You need an internet connection to reset" hint. The tiny window where a connection drops after re-auth but before the push self-heals: the tombstones/updates are `pending_sync` and WorkManager carries them on reconnect.
