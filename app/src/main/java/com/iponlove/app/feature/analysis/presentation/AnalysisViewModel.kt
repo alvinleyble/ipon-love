@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.core.entitlement.Scope
+import com.iponlove.app.feature.accounts.domain.usecase.ObserveNetAssetsUseCase
 import com.iponlove.app.feature.analysis.domain.model.AnalysisPeriod
 import com.iponlove.app.feature.analysis.domain.model.AnalysisWindow
 import com.iponlove.app.feature.analysis.domain.model.ExpenseFlowData
@@ -19,6 +20,8 @@ import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCa
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
+import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
 import com.iponlove.app.feature.user.domain.model.User
 import com.iponlove.app.feature.user.domain.usecase.ObserveCurrentUserUseCase
@@ -49,6 +52,9 @@ class AnalysisViewModel @Inject constructor(
     observeCategories: ObserveCategoriesUseCase,
     observeCurrentUser: ObserveCurrentUserUseCase,
     observePairingState: ObservePairingStateUseCase,
+    observeNetAssets: ObserveNetAssetsUseCase,
+    observePrivacyMode: ObservePrivacyModeUseCase,
+    private val setPrivacyMode: SetPrivacyModeUseCase,
     private val onboardingRepository: OnboardingRepository,
     private val premiumGate: PremiumGate,
     private val analytics: Analytics,
@@ -218,6 +224,12 @@ class AnalysisViewModel @Inject constructor(
                     ),
                 )
             }
+            // Net assets (Item 14) — period-independent, so it rides its own outer combine
+            // rather than growing the per-period combine above.
+            .combine(observeNetAssets()) { state, netAssets -> state.copy(netAssets = netAssets) }
+            .combine(observePrivacyMode()) { state, privacyModeOn ->
+                state.copy(privacyModeEnabled = privacyModeOn)
+            }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -226,6 +238,12 @@ class AnalysisViewModel @Inject constructor(
 
     fun dismissPairingCard() {
         viewModelScope.launch { onboardingRepository.dismissPairingCard() }
+    }
+
+    /** The Net-assets header's eye icon — flips the same global Privacy mode (Item 15) as every
+     *  other entry point (Settings switch, Accounts eye icon); all write through to one flag. */
+    fun togglePrivacyMode() {
+        viewModelScope.launch { setPrivacyMode(!uiState.value.privacyModeEnabled) }
     }
 
     /** Switch granularity, keeping the same anchor date (the window snaps around it). */

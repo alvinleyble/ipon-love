@@ -11,6 +11,7 @@ import com.iponlove.app.feature.accounts.domain.usecase.ArchiveAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.CheckAccountCapUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.DeleteAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
+import com.iponlove.app.feature.accounts.domain.usecase.ObserveNetAssetsUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.ReorderAccountsUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.ShareAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.UnshareAccountUseCase
@@ -37,6 +38,7 @@ class AccountsViewModel @Inject constructor(
     observeAccounts: ObserveAccountsUseCase,
     observeBalanceLedger: ObserveBalanceLedgerUseCase,
     observeCoupleMembers: ObserveCoupleMembersUseCase,
+    observeNetAssets: ObserveNetAssetsUseCase,
     private val upsertAccount: UpsertAccountUseCase,
     private val archiveAccount: ArchiveAccountUseCase,
     private val deleteAccount: DeleteAccountUseCase,
@@ -74,15 +76,10 @@ class AccountsViewModel @Inject constructor(
             // shared account the ledger carries both partners' postings (ADR-0018).
             val openingBalances = accounts.associate { it.id to it.openingBalance }
             val balances = AccountBalanceCalculator.balances(openingBalances, ledger)
-            // Net assets always covers active accounts only, so revealing archived rows never
-            // moves the headline figure.
-            val netAssets = accounts.filterNot { it.isArchived }
-                .fold(BigDecimal.ZERO) { acc, a -> acc + (balances[a.id] ?: a.openingBalance) }
             AccountsUiState(
                 isLoading = false,
                 accounts = if (showArch) accounts else accounts.filterNot { it.isArchived },
                 balances = balances,
-                netAssets = netAssets,
                 showArchived = showArch,
                 hasArchived = accounts.any { it.isArchived },
                 isPaired = members != null,
@@ -91,6 +88,10 @@ class AccountsViewModel @Inject constructor(
             )
         }.combine(observePrivacyMode()) { state, privacyModeOn ->
             state.copy(privacyModeEnabled = privacyModeOn)
+        }.combine(observeNetAssets()) { state, netAssets ->
+            // Net assets always covers active accounts only (Item 14: shared with Analysis), so
+            // revealing archived rows here never moves the headline figure.
+            state.copy(netAssets = netAssets)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),

@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -81,6 +83,7 @@ fun AnalysisScreen(
         onNext = viewModel::next,
         onOpenCouple = onOpenCouple,
         onDismissPairingCard = viewModel::dismissPairingCard,
+        onTogglePrivacyMode = viewModel::togglePrivacyMode,
         // Locked extended-range tap: log the funnel touchpoint, then route to the paywall.
         onExtendedRangeUpsell = { onOpenPremium(viewModel.onExtendedRangeUpsell()) },
         // Locked ← at the DEEP_HISTORY −12mo wall: same treatment, its own analytics source.
@@ -97,6 +100,7 @@ private fun AnalysisContent(
     onNext: () -> Unit,
     onOpenCouple: () -> Unit,
     onDismissPairingCard: () -> Unit,
+    onTogglePrivacyMode: () -> Unit = {},
     onExtendedRangeUpsell: () -> Unit = {},
     onDeepHistoryUpsell: () -> Unit = {},
 ) {
@@ -125,7 +129,20 @@ private fun AnalysisContent(
         }
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Analysis") }) }) { padding ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Analysis") },
+                actions = {
+                    NetAssetsLabel(
+                        netAssets = state.netAssets,
+                        isPrivacyModeOn = state.privacyModeEnabled,
+                        onTogglePrivacyMode = onTogglePrivacyMode,
+                    )
+                },
+            )
+        },
+    ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
@@ -275,6 +292,37 @@ private fun CalendarTab(state: AnalysisUiState) {
 }
 
 // ─── Persistent header composables ──────────────────────────────────────────
+
+/** Compact, read-only "Net assets" figure in the TopAppBar (Item 14) — mirrors the Accounts
+ *  headline so both screens always agree; masks under Privacy mode via [money]. The eye icon
+ *  flips the same global Privacy-mode flag as every other entry point (Item 15). */
+@Composable
+private fun NetAssetsLabel(
+    netAssets: BigDecimal,
+    isPrivacyModeOn: Boolean,
+    onTogglePrivacyMode: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "Net assets",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = money(netAssets),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        IconButton(onClick = onTogglePrivacyMode) {
+            Icon(
+                imageVector = if (isPrivacyModeOn) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                contentDescription = if (isPrivacyModeOn) "Show amounts" else "Hide amounts",
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
