@@ -2,6 +2,8 @@ package com.iponlove.app.core.di
 
 import android.content.Context
 import coil.ImageLoader
+import com.iponlove.app.core.network.AndroidConnectivityObserver
+import com.iponlove.app.core.network.ConnectivityObserver
 import com.iponlove.app.core.network.StorageAuthInterceptor
 import com.iponlove.app.core.network.createIponSupabaseClient
 import dagger.Module
@@ -21,6 +23,11 @@ object NetworkModule {
     @Provides
     @Singleton
     fun supabaseClient(): SupabaseClient = createIponSupabaseClient()
+
+    @Provides
+    @Singleton
+    fun connectivityObserver(@ApplicationContext context: Context): ConnectivityObserver =
+        AndroidConnectivityObserver(context)
 
     /**
      * App-wide Coil loader ([IponApp][com.iponlove.app.IponApp] returns it from

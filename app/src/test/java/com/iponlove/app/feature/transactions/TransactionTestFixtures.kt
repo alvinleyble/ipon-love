@@ -56,6 +56,9 @@ class FakeTransactionDao : TransactionDao {
 
     override suspend fun getById(id: String): TransactionEntity? = store[id]
 
+    override suspend fun activeOwnedBy(userId: String): List<TransactionEntity> =
+        store.values.filter { it.userId == userId && !it.isDeleted }
+
     override suspend fun deleteById(id: String) {
         store.remove(id)
         changes.value++

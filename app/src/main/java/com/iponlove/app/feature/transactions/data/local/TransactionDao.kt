@@ -87,6 +87,11 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getById(id: String): TransactionEntity?
 
+    /** The user's own active rows, one-shot (Reset finances, ADR-0037) — every row here has
+     *  [userId] set, so no couple-shared exclusion is needed beyond the equality filter. */
+    @Query("SELECT * FROM transactions WHERE userId = :userId AND isDeleted = 0")
+    suspend fun activeOwnedBy(userId: String): List<TransactionEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(transaction: TransactionEntity)
 

@@ -30,6 +30,9 @@ class FakeAccountDao : AccountDao {
 
     override suspend fun getById(id: String): AccountEntity? = store[id]
 
+    override suspend fun activeOwnedBy(userId: String): List<AccountEntity> =
+        store.values.filter { it.userId == userId && !it.isDeleted }
+
     override suspend fun countOwned(userId: String): Int =
         store.values.count { it.userId == userId && !it.isDeleted }
 

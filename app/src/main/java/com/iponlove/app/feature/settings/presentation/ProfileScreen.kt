@@ -7,18 +7,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -27,9 +33,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.AccentColorRow
+import com.iponlove.app.feature.settings.domain.model.ResetFinancesCounts
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,6 +120,119 @@ fun ProfileScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            Spacer(Modifier.height(28.dp))
+            Text("Restart fresh", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Wipe your transaction history and reset every account balance to ₱0. Your " +
+                    "accounts, categories, budgets, savings goals, and recurring bills are kept.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = viewModel::openResetFinances,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (state.financesJustReset) "Finances reset" else "Reset finances")
+            }
         }
     }
+
+    if (state.showResetFinancesDialog) {
+        ResetFinancesDialog(
+            counts = state.resetFinancesCounts,
+            password = state.resetFinancesPassword,
+            isLoading = state.isResetFinancesLoading,
+            isOnline = state.isOnline,
+            canConfirm = state.canConfirmReset,
+            error = state.resetFinancesError,
+            onPasswordChange = viewModel::onResetFinancesPasswordChange,
+            onConfirm = viewModel::confirmResetFinances,
+            onDismiss = viewModel::dismissResetFinances,
+        )
+    }
+}
+
+@Composable
+private fun ResetFinancesDialog(
+    counts: ResetFinancesCounts?,
+    password: String,
+    isLoading: Boolean,
+    isOnline: Boolean,
+    canConfirm: Boolean,
+    error: String?,
+    onPasswordChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Reset finances?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (counts == null) {
+                    Text(
+                        "Checking what would change…",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else {
+                    Text(
+                        "This permanently deletes ${counts.transactions} transactions and sets " +
+                            "${counts.accounts} account balances to ₱0.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        "Everything else — accounts, categories, budgets, savings goals, and " +
+                            "recurring bills — is kept.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    "Enter your password to confirm.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = onPasswordChange,
+                    label = { Text("Password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (!isOnline) {
+                    Text(
+                        "You need an internet connection to reset.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (error != null) {
+                    Text(
+                        error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = canConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                } else {
+                    Text("Reset finances")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isLoading) { Text("Cancel") }
+        },
+    )
 }

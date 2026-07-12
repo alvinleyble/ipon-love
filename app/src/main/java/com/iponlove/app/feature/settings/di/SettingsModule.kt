@@ -5,8 +5,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.iponlove.app.feature.settings.data.PrivacyModeRepositoryImpl
+import com.iponlove.app.feature.settings.data.ResetFinancesRepositoryImpl
 import com.iponlove.app.feature.settings.data.ThemeRepositoryImpl
 import com.iponlove.app.feature.settings.domain.repository.PrivacyModeRepository
+import com.iponlove.app.feature.settings.domain.repository.ResetFinancesRepository
 import com.iponlove.app.feature.settings.domain.repository.ThemeRepository
 import dagger.Binds
 import dagger.Module
@@ -54,4 +56,8 @@ interface SettingsModule {
     @Binds
     @Singleton
     fun bindPrivacyModeRepository(impl: PrivacyModeRepositoryImpl): PrivacyModeRepository
+
+    @Binds
+    @Singleton
+    fun bindResetFinancesRepository(impl: ResetFinancesRepositoryImpl): ResetFinancesRepository
 }

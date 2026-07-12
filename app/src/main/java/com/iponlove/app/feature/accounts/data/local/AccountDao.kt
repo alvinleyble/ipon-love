@@ -29,6 +29,15 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE id = :id")
     suspend fun getById(id: String): AccountEntity?
 
+    /**
+     * The user's own active accounts, one-shot — read by Reset finances (ADR-0037) to zero
+     * each opening balance. `userId = :userId` admits only personal accounts (a shared account
+     * carries a null `userId`), so shared couple accounts are skipped by construction; archived
+     * ones are included (still yours, still carry a balance).
+     */
+    @Query("SELECT * FROM accounts WHERE userId = :userId AND isDeleted = 0")
+    suspend fun activeOwnedBy(userId: String): List<AccountEntity>
+
     /** Personal (non-shared) row count for the new-user onboarding gate (ADR-0024). */
     @Query("SELECT COUNT(*) FROM accounts WHERE userId = :userId AND isDeleted = 0")
     suspend fun countOwned(userId: String): Int

@@ -1,9 +1,12 @@
 package com.iponlove.app.feature.settings.presentation
 
+import com.iponlove.app.feature.settings.domain.model.ResetFinancesCounts
+
 /**
  * Profile screen state (ADR-0016). [nameDraft] is the editable field; [accentColor] and
  * [isPaired] drive the attribution-color picker, which is hidden when single. [email] is the
- * read-only account address.
+ * read-only account address. The `resetFinances*` fields back the "Restart fresh" confirm
+ * dialog (ADR-0037) — a self-contained flow, distinct from the name/color editors above.
  */
 data class ProfileUiState(
     val nameDraft: String = "",
@@ -11,6 +14,19 @@ data class ProfileUiState(
     val accentColor: String? = null,
     val isPaired: Boolean = false,
     val saved: Boolean = false,
+    val showResetFinancesDialog: Boolean = false,
+    val resetFinancesCounts: ResetFinancesCounts? = null,
+    val resetFinancesPassword: String = "",
+    val isResetFinancesLoading: Boolean = false,
+    val resetFinancesError: String? = null,
+    val financesJustReset: Boolean = false,
+    // Optimistic default: the ConnectivityObserver seeds the real state within milliseconds of
+    // collection, so the confirm never flashes disabled when actually online.
+    val isOnline: Boolean = true,
 ) {
     val canSave: Boolean get() = nameDraft.isNotBlank()
+
+    /** Reset needs the network for its re-auth (ADR-0037), so the confirm is gated on [isOnline]. */
+    val canConfirmReset: Boolean
+        get() = isOnline && resetFinancesPassword.isNotBlank() && !isResetFinancesLoading
 }

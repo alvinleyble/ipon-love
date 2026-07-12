@@ -7,7 +7,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.iponlove.app.core.sync.CoupleBell
 import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.FullSyncStep
+import com.iponlove.app.core.sync.LocalTransactionRunner
 import com.iponlove.app.core.sync.PreSyncStep
+import com.iponlove.app.core.sync.RoomTransactionRunner
 import com.iponlove.app.core.sync.SupabaseCoupleBell
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncCursorStore
@@ -16,6 +18,7 @@ import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.core.sync.TableSyncer
 import com.iponlove.app.core.sync.data.ClockOffsetStore
 import com.iponlove.app.core.sync.data.DataStoreSyncCursorStore
+import com.iponlove.app.core.database.IponDatabase
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import dagger.Module
 import dagger.Provides
@@ -62,6 +65,10 @@ object SyncModule {
     @Singleton
     fun clockOffsetStore(dataStore: DataStore<Preferences>): ClockOffsetStore =
         ClockOffsetStore(dataStore)
+
+    @Provides
+    fun localTransactionRunner(database: IponDatabase): LocalTransactionRunner =
+        RoomTransactionRunner(database)
 
     @Provides
     @Singleton
