@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CapReachedSheet
+import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import java.math.BigDecimal
 
@@ -307,7 +308,7 @@ private fun BudgetEditorDialog(
                 OutlinedTextField(
                     value = editor.amountText,
                     onValueChange = onAmountChange,
-                    label = { Text("Monthly limit (₱)") },
+                    label = { Text("Monthly limit (${currencyGlyph()})") },
                     singleLine = true,
                     isError = editor.amountError,
                     supportingText = if (editor.amountError) {

@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.iponlove.app.core.ui.LocalCurrencySymbol
 import com.iponlove.app.feature.analysis.presentation.CalendarNetUi
 import kotlin.math.ceil
 
@@ -47,6 +48,8 @@ fun DailyNetCalendarChart(
     val secondaryContainerColor = MaterialTheme.colorScheme.secondaryContainer
     val errorColor = MaterialTheme.colorScheme.error
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    // Captured in composable scope so the non-composable draw code + compactAmount can use it.
+    val glyph = LocalCurrencySymbol.current.glyph
 
     val totalCells = calendarNet.firstWeekdayOffset + calendarNet.daysInMonth
     val rowCount = ceil(totalCells / 7.0).toInt()
@@ -158,7 +161,7 @@ fun DailyNetCalendarChart(
             when {
                 hasIncome && hasExpense -> {
                     // Income row: centered in upper half of content zone.
-                    val incomeLabel = compactAmount(day.incomeFloat, "+")
+                    val incomeLabel = compactAmount(day.incomeFloat, "+", glyph)
                     val incomeMeasured = textMeasurer.measure(incomeLabel, amountStyle.copy(color = IncomeGreen))
                     val incomeRowCenterPx = cellY + (contentStartDp + halfSlotDp * 0.5f).dp.toPx()
                     drawText(
@@ -170,7 +173,7 @@ fun DailyNetCalendarChart(
                         ),
                     )
                     // Expense row: centered in lower half.
-                    val expenseLabel = compactAmount(day.expenseFloat, "-")
+                    val expenseLabel = compactAmount(day.expenseFloat, "-", glyph)
                     val expenseMeasured = textMeasurer.measure(expenseLabel, amountStyle.copy(color = errorColor))
                     val expenseRowCenterPx = cellY + (contentStartDp + halfSlotDp * 1.5f).dp.toPx()
                     drawText(
@@ -184,7 +187,7 @@ fun DailyNetCalendarChart(
                 }
                 hasIncome -> {
                     // Single income row, vertically centered in the full content zone.
-                    val incomeLabel = compactAmount(day.incomeFloat, "+")
+                    val incomeLabel = compactAmount(day.incomeFloat, "+", glyph)
                     val incomeMeasured = textMeasurer.measure(incomeLabel, amountStyle.copy(color = IncomeGreen))
                     val centerPx = cellY + (contentStartDp + halfSlotDp).dp.toPx()
                     drawText(
@@ -198,7 +201,7 @@ fun DailyNetCalendarChart(
                 }
                 hasExpense -> {
                     // Single expense row, vertically centered in the full content zone.
-                    val expenseLabel = compactAmount(day.expenseFloat, "-")
+                    val expenseLabel = compactAmount(day.expenseFloat, "-", glyph)
                     val expenseMeasured = textMeasurer.measure(expenseLabel, amountStyle.copy(color = errorColor))
                     val centerPx = cellY + (contentStartDp + halfSlotDp).dp.toPx()
                     drawText(
@@ -217,14 +220,14 @@ fun DailyNetCalendarChart(
 }
 
 /**
- * Compact PHP amount for a small calendar cell.
+ * Compact amount for a small calendar cell, prefixed with the chosen display symbol [glyph] (Item 18).
  *
  * Format spec: <1k→integer; 1k–9k→2dp k; 10k–999k→1dp k; ≥1M→2dp M.
  * sign is "+" for income rows and "-" for expense rows.
  */
-private fun compactAmount(absVal: Float, sign: String): String = when {
-    absVal >= 1_000_000f -> "$sign₱${String.format("%.2f", absVal / 1_000_000f)}M"
-    absVal >= 10_000f    -> "$sign₱${String.format("%.1f", absVal / 1_000f)}k"
-    absVal >= 1_000f     -> "$sign₱${String.format("%.2f", absVal / 1_000f)}k"
-    else                 -> "$sign₱${absVal.toInt()}"
+private fun compactAmount(absVal: Float, sign: String, glyph: String): String = when {
+    absVal >= 1_000_000f -> "$sign$glyph${String.format("%.2f", absVal / 1_000_000f)}M"
+    absVal >= 10_000f    -> "$sign$glyph${String.format("%.1f", absVal / 1_000f)}k"
+    absVal >= 1_000f     -> "$sign$glyph${String.format("%.2f", absVal / 1_000f)}k"
+    else                 -> "$sign$glyph${absVal.toInt()}"
 }

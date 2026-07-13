@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.parseHexColor
@@ -304,7 +305,7 @@ private fun ContributionDialog(
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { v -> amountText = v.filter { it.isDigit() || it == '.' } },
-                    label = { Text("Amount (₱)") },
+                    label = { Text("Amount (${currencyGlyph()})") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),

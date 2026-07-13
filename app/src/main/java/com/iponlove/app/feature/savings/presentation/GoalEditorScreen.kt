@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CapReachedSheet
+import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.EntityColorPicker
 import com.iponlove.app.core.ui.icons.IconPicker
 import com.iponlove.app.core.ui.parseHexColor
@@ -101,7 +102,7 @@ fun GoalEditorScreen(
             OutlinedTextField(
                 value = state.targetText,
                 onValueChange = viewModel::onTargetChange,
-                label = { Text("Target amount (₱)") },
+                label = { Text("Target amount (${currencyGlyph()})") },
                 singleLine = true,
                 enabled = !readOnly,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),

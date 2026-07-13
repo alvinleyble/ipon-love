@@ -50,6 +50,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.iponlove.app.core.ui.FullScreenImagePager
 import com.iponlove.app.core.ui.MonthStepperRow
+import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.parseHexColor
@@ -245,7 +246,7 @@ private fun BudgetEditorDialog(
             OutlinedTextField(
                 value = editor.amountText,
                 onValueChange = onAmountChange,
-                label = { Text("Monthly limit (₱)") },
+                label = { Text("Monthly limit (${currencyGlyph()})") },
                 singleLine = true,
                 isError = editor.amountError,
                 supportingText = if (editor.amountError) {

@@ -68,6 +68,7 @@ import com.iponlove.app.core.ui.EntityGrid
 import com.iponlove.app.core.ui.EntityPickerOption
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
+import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
@@ -476,7 +477,7 @@ private fun RecurringEditorDialog(
                 OutlinedTextField(
                     value = editor.amountText,
                     onValueChange = onAmountChange,
-                    label = { Text("Amount (₱)") },
+                    label = { Text("Amount (${currencyGlyph()})") },
                     singleLine = true,
                     isError = RecurringError.AMOUNT_NOT_POSITIVE in editor.errors,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),

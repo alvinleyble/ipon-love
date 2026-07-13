@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.settings.presentation
 
+import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
 
 data class PersonalizeUiState(
@@ -24,4 +25,7 @@ data class PersonalizeUiState(
     /** Global Privacy mode (Item 15) — masks money app-wide when on. Persists instantly on
      *  toggle, unlike the palette/mode draft above (no Save/Apply gate). */
     val privacyModeEnabled: Boolean = false,
+    /** The user's chosen display-currency symbol (Item 18). Persists instantly on tap, like
+     *  Privacy mode (no Save/Apply gate) — it's a cosmetic glyph swap, not a themed live preview. */
+    val currencySymbol: CurrencySymbol = CurrencySymbol.DEFAULT,
 )

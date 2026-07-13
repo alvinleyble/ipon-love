@@ -70,6 +70,7 @@ import com.iponlove.app.core.ui.EntityGrid
 import com.iponlove.app.core.ui.EntityPickerOption
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
+import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
@@ -247,7 +248,7 @@ private fun EditorForm(
         OutlinedTextField(
             value = editor.amountText,
             onValueChange = onAmountChange,
-            label = { Text("Amount (₱)") },
+            label = { Text("Amount (${currencyGlyph()})") },
             singleLine = true,
             isError = TransactionError.AMOUNT_NOT_POSITIVE in editor.errors,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -271,7 +272,7 @@ private fun EditorForm(
             OutlinedTextField(
                 value = editor.transferFeeText,
                 onValueChange = onTransferFeeChange,
-                label = { Text("Transfer fee (₱, optional)") },
+                label = { Text("Transfer fee (${currencyGlyph()}, optional)") },
                 supportingText = {
                     Text("Recorded as a separate expense under \"Transfer fees\".")
                 },
@@ -351,7 +352,7 @@ private fun EditorForm(
                 OutlinedTextField(
                     value = editor.amountOwedText,
                     onValueChange = onAmountOwedChange,
-                    label = { Text("Amount owed (₱)") },
+                    label = { Text("Amount owed (${currencyGlyph()})") },
                     supportingText = {
                         Text("How much ${state.partnerName} owes you — defaults to the full amount.")
                     },

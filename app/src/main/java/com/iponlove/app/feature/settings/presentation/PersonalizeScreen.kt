@@ -51,6 +51,7 @@ import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.theme.paletteColorScheme
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
+import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -162,6 +163,21 @@ fun PersonalizeScreen(
                         onCheckedChange = viewModel::setPrivacyMode,
                     )
                 }
+
+                Spacer(Modifier.height(28.dp))
+                Text("Currency", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Symbol shown with all amounts",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                CurrencyGrid(
+                    symbols = CurrencySymbol.entries,
+                    selected = state.currencySymbol,
+                    onSelect = viewModel::setCurrencySymbol,
+                )
 
                 Spacer(Modifier.height(28.dp))
                 HorizontalDivider()
@@ -363,6 +379,71 @@ private fun PaletteSwatch(
         }
         Spacer(Modifier.height(4.dp))
         Text(palette.label, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun CurrencyGrid(
+    symbols: List<CurrencySymbol>,
+    selected: CurrencySymbol,
+    onSelect: (CurrencySymbol) -> Unit,
+) {
+    val rowSize = 4
+    symbols.chunked(rowSize).forEach { row ->
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        ) {
+            row.forEach { symbol ->
+                CurrencySwatch(
+                    symbol = symbol,
+                    isSelected = symbol == selected,
+                    onClick = { onSelect(symbol) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            // fill empty cells in the last row so swatches keep their column width
+            repeat(rowSize - row.size) {
+                Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun CurrencySwatch(
+    symbol: CurrencySymbol,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.clickable(onClick = onClick),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant,
+                )
+                .then(
+                    if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                    else Modifier
+                ),
+        ) {
+            Text(
+                symbol.glyph,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(symbol.code, style = MaterialTheme.typography.labelSmall)
     }
 }
 

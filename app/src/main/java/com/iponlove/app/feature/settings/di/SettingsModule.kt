@@ -5,12 +5,14 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.iponlove.app.feature.settings.data.AccountDeletionRepositoryImpl
+import com.iponlove.app.feature.settings.data.CurrencySymbolRepositoryImpl
 import com.iponlove.app.feature.settings.data.PrivacyModeRepositoryImpl
 import com.iponlove.app.feature.settings.data.ResetFinancesRepositoryImpl
 import com.iponlove.app.feature.settings.data.ThemeRepositoryImpl
 import com.iponlove.app.feature.settings.data.remote.AccountDeletionRemoteSource
 import com.iponlove.app.feature.settings.data.remote.SupabaseAccountDeletionRemoteSource
 import com.iponlove.app.feature.settings.domain.repository.AccountDeletionRepository
+import com.iponlove.app.feature.settings.domain.repository.CurrencySymbolRepository
 import com.iponlove.app.feature.settings.domain.repository.PrivacyModeRepository
 import com.iponlove.app.feature.settings.domain.repository.ResetFinancesRepository
 import com.iponlove.app.feature.settings.domain.repository.ThemeRepository
@@ -31,8 +33,13 @@ annotation class ThemeDataStore
 @Qualifier
 annotation class PrivacyDataStore
 
+@Retention(AnnotationRetention.BINARY)
+@Qualifier
+annotation class CurrencyDataStore
+
 private val Context.themeDataStore: DataStore<Preferences> by preferencesDataStore(name = "theme_prefs")
 private val Context.privacyDataStore: DataStore<Preferences> by preferencesDataStore(name = "privacy_prefs")
+private val Context.currencyDataStore: DataStore<Preferences> by preferencesDataStore(name = "currency_prefs")
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -48,6 +55,12 @@ object SettingsDataStoreModule {
     @PrivacyDataStore
     fun privacyDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
         context.privacyDataStore
+
+    @Provides
+    @Singleton
+    @CurrencyDataStore
+    fun currencyDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+        context.currencyDataStore
 }
 
 @Module
@@ -60,6 +73,10 @@ interface SettingsModule {
     @Binds
     @Singleton
     fun bindPrivacyModeRepository(impl: PrivacyModeRepositoryImpl): PrivacyModeRepository
+
+    @Binds
+    @Singleton
+    fun bindCurrencySymbolRepository(impl: CurrencySymbolRepositoryImpl): CurrencySymbolRepository
 
     @Binds
     @Singleton

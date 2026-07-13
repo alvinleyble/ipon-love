@@ -62,6 +62,7 @@ import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.EntityColorPicker
 import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.SummaryHeader
+import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.IconPicker
@@ -385,7 +386,7 @@ private fun AccountEditorDialog(
                 OutlinedTextField(
                     value = editor.openingBalanceText,
                     onValueChange = onBalanceChange,
-                    label = { Text("Opening balance (₱)") },
+                    label = { Text("Opening balance (${currencyGlyph()})") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),

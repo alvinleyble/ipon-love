@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.ellipsize
+import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtItem
@@ -319,7 +320,7 @@ private fun AddDebtDialog(
                 OutlinedTextField(
                     value = editor.amountText,
                     onValueChange = onAmountChange,
-                    label = { Text("Amount (₱)") },
+                    label = { Text("Amount (${currencyGlyph()})") },
                     singleLine = true,
                     isError = editor.amountError,
                     supportingText = if (editor.amountError) {
@@ -367,7 +368,7 @@ private fun SettleDialog(
                 OutlinedTextField(
                     value = editor.amountText,
                     onValueChange = onAmountChange,
-                    label = { Text("Amount (₱)") },
+                    label = { Text("Amount (${currencyGlyph()})") },
                     singleLine = true,
                     isError = editor.amountError,
                     supportingText = if (editor.amountError) {

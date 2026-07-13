@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -30,8 +31,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.IponFilterChip
+import com.iponlove.app.core.ui.LocalCurrencySymbol
+import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.theme.IponTheme
+import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
+import com.iponlove.app.feature.settings.domain.usecase.ObserveCurrencySymbolUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.TransactionError
@@ -42,6 +47,7 @@ import javax.inject.Inject
 class QuickAddActivity : ComponentActivity() {
 
     @Inject lateinit var observeThemePreferences: ObserveThemePreferencesUseCase
+    @Inject lateinit var observeCurrencySymbol: ObserveCurrencySymbolUseCase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,8 +55,14 @@ class QuickAddActivity : ComponentActivity() {
         setContent {
             val themePreferences by observeThemePreferences()
                 .collectAsState(initial = ThemePreferences())
+            // This widget entry is its own composition root (not under MainActivity's provider),
+            // so it must supply LocalCurrencySymbol itself for the amount label to track the choice.
+            val currencySymbol by observeCurrencySymbol()
+                .collectAsState(initial = CurrencySymbol.DEFAULT)
             IponTheme(themePreferences = themePreferences) {
-                QuickAddSheet(onDismiss = ::finish)
+                CompositionLocalProvider(LocalCurrencySymbol provides currencySymbol) {
+                    QuickAddSheet(onDismiss = ::finish)
+                }
             }
         }
     }
@@ -86,7 +98,7 @@ private fun QuickAddSheet(
             OutlinedTextField(
                 value = state.amountText,
                 onValueChange = viewModel::onAmountChange,
-                label = { Text("Amount (₱)") },
+                label = { Text("Amount (${currencyGlyph()})") },
                 singleLine = true,
                 isError = TransactionError.AMOUNT_NOT_POSITIVE in state.errors,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),

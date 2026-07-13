@@ -2,16 +2,23 @@ package com.iponlove.app.core.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 import java.math.BigDecimal
 import java.text.DecimalFormat
 
 /**
- * Formats money as Philippine pesos, e.g. `₱1,250.00`. V1 is PHP-only, so the symbol
- * is fixed; grouping + 2 decimals are always shown.
+ * Formats money with the user's chosen display symbol (default ₱, [CurrencySymbol.DEFAULT]).
+ * The app is single-currency underneath — the symbol is purely cosmetic (Item 18), no FX; grouping
+ * + 2 decimals are always shown.
  */
-private val phpFormat = DecimalFormat("#,##0.00")
+private val amountFormat = DecimalFormat("#,##0.00")
 
-fun formatPhp(amount: BigDecimal): String = "₱" + phpFormat.format(amount)
+/** Formats [amount] with [symbol]'s glyph, e.g. `₱1,250.00` / `$1,250.00`. */
+fun formatAmount(amount: BigDecimal, symbol: CurrencySymbol): String =
+    symbol.glyph + amountFormat.format(amount)
+
+/** PHP-symbol convenience for any non-composable use; the composable [money] path is symbol-aware. */
+fun formatPhp(amount: BigDecimal): String = formatAmount(amount, CurrencySymbol.PHP)
 
 private const val MASKED_AMOUNT = "•••••"
 
@@ -19,11 +26,24 @@ private const val MASKED_AMOUNT = "•••••"
  *  once app-wide from [com.iponlove.app.MainActivity]; defaults false for previews/tests. */
 val LocalPrivacyMode = staticCompositionLocalOf { false }
 
-/** Pure branch behind [money] — masked when Privacy mode is on, [formatPhp] otherwise. */
-fun maskedOrFormatted(amount: BigDecimal, isPrivacyModeOn: Boolean): String =
-    if (isPrivacyModeOn) MASKED_AMOUNT else formatPhp(amount)
+/** The user's chosen display-currency symbol (Item 18) — provided once app-wide from
+ *  [com.iponlove.app.MainActivity]; defaults to PHP for previews/tests. */
+val LocalCurrencySymbol = staticCompositionLocalOf { CurrencySymbol.DEFAULT }
 
-/** Composable money formatter — the privacy-aware counterpart to [formatPhp]. Every on-screen
- *  money value should call this instead, so a single global toggle masks the whole app. */
+/** Pure branch behind [money] — masked when Privacy mode is on, else [formatAmount] with [symbol]. */
+fun maskedOrFormatted(
+    amount: BigDecimal,
+    isPrivacyModeOn: Boolean,
+    symbol: CurrencySymbol = CurrencySymbol.PHP,
+): String = if (isPrivacyModeOn) MASKED_AMOUNT else formatAmount(amount, symbol)
+
+/** Composable money formatter — the privacy- and symbol-aware counterpart to [formatPhp]. Every
+ *  on-screen money value should call this instead, so the global toggles mask/relabel the whole app. */
 @Composable
-fun money(amount: BigDecimal): String = maskedOrFormatted(amount, LocalPrivacyMode.current)
+fun money(amount: BigDecimal): String =
+    maskedOrFormatted(amount, LocalPrivacyMode.current, LocalCurrencySymbol.current)
+
+/** The current display symbol's glyph, for amount **input-field labels** like `"Amount (₱)"` that
+ *  aren't formatted money values but should still track the chosen symbol (Item 18). */
+@Composable
+fun currencyGlyph(): String = LocalCurrencySymbol.current.glyph
