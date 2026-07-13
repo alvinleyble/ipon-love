@@ -182,6 +182,23 @@ class AddTransactionViewModel @Inject constructor(
     fun onTransferFeeChange(value: String) = mutate { TransactionEditorReducer.onTransferFee(it, value) }
     fun onDateChange(date: Instant) = mutate { it.copy(date = date) }
 
+    /**
+     * Tap-time media-cap check (Item 28): consulted at the "Add photo" tap, *before* the system
+     * picker opens, so an enforced free user at the cap sees the cap sheet immediately instead of
+     * being made to browse and pick first (the S8 wart). Dormant or under-cap → [launchPicker]
+     * runs and the flow is exactly as before; [onImagePicked] keeps the same check as backstop.
+     */
+    fun onAddPhotoTap(launchPicker: () -> Unit) {
+        val current = editor.value ?: return
+        if (current.images.size >= TransactionImage.MAX) return // hard ceiling — add is disabled anyway
+        viewModelScope.launch {
+            when (val check = checkReceiptPhotoCap(current.images.size)) {
+                CapCheck.Allowed -> launchPicker()
+                is CapCheck.Blocked -> raiseUpsell("receipt_photos", "receipt photos", check)
+            }
+        }
+    }
+
     fun onImagePicked(uri: Uri) {
         val current = editor.value ?: return
         if (current.images.size >= TransactionImage.MAX) return // hard ceiling (= premium max); backstop lives in the save use case + repo

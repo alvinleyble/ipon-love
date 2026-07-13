@@ -106,6 +106,7 @@ fun AddTransactionScreen(
         onAmountOwedChange = viewModel::onAmountOwedChange,
         onTransferFeeChange = viewModel::onTransferFeeChange,
         onDateChange = viewModel::onDateChange,
+        onAddPhotoTap = viewModel::onAddPhotoTap,
         onImagePicked = viewModel::onImagePicked,
         onRemoveImage = viewModel::onRemoveImage,
         onSave = { viewModel.save(onBack) },
@@ -136,6 +137,7 @@ private fun AddTransactionContent(
     onAmountOwedChange: (String) -> Unit,
     onTransferFeeChange: (String) -> Unit,
     onDateChange: (Instant) -> Unit,
+    onAddPhotoTap: (launchPicker: () -> Unit) -> Unit,
     onImagePicked: (Uri) -> Unit,
     onRemoveImage: (String) -> Unit,
     onSave: () -> Unit,
@@ -182,6 +184,7 @@ private fun AddTransactionContent(
                 onAmountOwedChange = onAmountOwedChange,
                 onTransferFeeChange = onTransferFeeChange,
                 onDateChange = onDateChange,
+                onAddPhotoTap = onAddPhotoTap,
                 onImagePicked = onImagePicked,
                 onRemoveImage = onRemoveImage,
             )
@@ -205,6 +208,7 @@ private fun EditorForm(
     onAmountOwedChange: (String) -> Unit,
     onTransferFeeChange: (String) -> Unit,
     onDateChange: (Instant) -> Unit,
+    onAddPhotoTap: (launchPicker: () -> Unit) -> Unit,
     onImagePicked: (Uri) -> Unit,
     onRemoveImage: (String) -> Unit,
 ) {
@@ -367,7 +371,8 @@ private fun EditorForm(
         Spacer(Modifier.height(8.dp))
         ReceiptStrip(
             images = editor.images,
-            onAddReceipt = { galleryLauncher.launch("image/*") },
+            // Cap-checked at the tap (Item 28) — at the cap the sheet shows without opening the picker.
+            onAddReceipt = { onAddPhotoTap { galleryLauncher.launch("image/*") } },
             onRemoveReceipt = onRemoveImage,
             onViewReceipt = { index -> receiptViewerIndex = index },
         )

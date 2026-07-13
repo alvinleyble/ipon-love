@@ -180,9 +180,13 @@ fun NoteEditorScreen(
                         }
                         IconButton(
                             onClick = {
-                                pickMedia.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                                )
+                                // Cap-checked at the tap (Item 28) — an enforced free user (cap 0)
+                                // sees the cap sheet without the picker ever opening.
+                                viewModel.onAddImageTap {
+                                    pickMedia.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                    )
+                                }
                             },
                         ) {
                             Icon(Icons.Filled.Add, contentDescription = "Add image")

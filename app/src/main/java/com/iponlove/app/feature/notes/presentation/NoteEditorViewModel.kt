@@ -161,6 +161,24 @@ class NoteEditorViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Tap-time media-cap check (Item 28): consulted at the "Add image" tap, *before* the system
+     * picker opens, so an enforced free user (free = 0 attachments) sees the cap sheet immediately
+     * instead of being made to browse and pick first (the S8 wart). Dormant or under-cap →
+     * [launchPicker] runs and the flow is exactly as before; [addImage] keeps the same check as
+     * backstop (it also owns the noteId guard — a not-yet-persisted note still no-ops there).
+     */
+    fun onAddImageTap(launchPicker: () -> Unit) {
+        if (_uiState.value.isPartnerNote) return
+        if (_uiState.value.attachments.size >= MAX_ATTACHMENTS) return
+        viewModelScope.launch {
+            when (val check = checkNoteAttachmentCap(_uiState.value.attachments.size)) {
+                CapCheck.Allowed -> launchPicker()
+                is CapCheck.Blocked -> raiseUpsell("note_attachments", "note photos", check)
+            }
+        }
+    }
+
     fun addImage(uri: Uri) {
         if (_uiState.value.isPartnerNote) return
         // Hard ceiling (= premium max); defensive backstop for the UI's disabled add button.
