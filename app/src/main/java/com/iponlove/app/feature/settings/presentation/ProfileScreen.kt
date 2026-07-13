@@ -37,6 +37,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.AccentColorRow
+import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.feature.settings.domain.model.ResetFinancesCounts
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,7 +125,7 @@ fun ProfileScreen(
             Spacer(Modifier.height(28.dp))
             Text("Restart fresh", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Wipe your transaction history and reset every account balance to ₱0. Your " +
+                "Wipe your transaction history and reset every account balance to ${currencyGlyph()}0. Your " +
                     "accounts, categories, budgets, savings goals, and recurring bills are kept.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -210,7 +211,7 @@ private fun ResetFinancesDialog(
                 } else {
                     Text(
                         "This permanently deletes ${counts.transactions} transactions and sets " +
-                            "${counts.accounts} account balances to ₱0.",
+                            "${counts.accounts} account balances to ${currencyGlyph()}0.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
