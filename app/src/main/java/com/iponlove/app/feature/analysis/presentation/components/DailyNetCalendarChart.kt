@@ -20,6 +20,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iponlove.app.core.ui.LocalCurrencySymbol
+import com.iponlove.app.core.ui.LocalPrivacyMode
 import com.iponlove.app.feature.analysis.presentation.CalendarNetUi
 import kotlin.math.ceil
 
@@ -48,8 +49,10 @@ fun DailyNetCalendarChart(
     val secondaryContainerColor = MaterialTheme.colorScheme.secondaryContainer
     val errorColor = MaterialTheme.colorScheme.error
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
-    // Captured in composable scope so the non-composable draw code + compactAmount can use it.
+    // Captured in composable scope so the non-composable draw code + compactAmount can use them.
     val glyph = LocalCurrencySymbol.current.glyph
+    // Global Privacy mode (Item 15/24): mask the per-cell amounts, keeping sign + colour.
+    val privacyOn = LocalPrivacyMode.current
 
     val totalCells = calendarNet.firstWeekdayOffset + calendarNet.daysInMonth
     val rowCount = ceil(totalCells / 7.0).toInt()
@@ -161,7 +164,7 @@ fun DailyNetCalendarChart(
             when {
                 hasIncome && hasExpense -> {
                     // Income row: centered in upper half of content zone.
-                    val incomeLabel = compactAmount(day.incomeFloat, "+", glyph)
+                    val incomeLabel = compactAmount(day.incomeFloat, "+", glyph, privacyOn)
                     val incomeMeasured = textMeasurer.measure(incomeLabel, amountStyle.copy(color = IncomeGreen))
                     val incomeRowCenterPx = cellY + (contentStartDp + halfSlotDp * 0.5f).dp.toPx()
                     drawText(
@@ -173,7 +176,7 @@ fun DailyNetCalendarChart(
                         ),
                     )
                     // Expense row: centered in lower half.
-                    val expenseLabel = compactAmount(day.expenseFloat, "-", glyph)
+                    val expenseLabel = compactAmount(day.expenseFloat, "-", glyph, privacyOn)
                     val expenseMeasured = textMeasurer.measure(expenseLabel, amountStyle.copy(color = errorColor))
                     val expenseRowCenterPx = cellY + (contentStartDp + halfSlotDp * 1.5f).dp.toPx()
                     drawText(
@@ -187,7 +190,7 @@ fun DailyNetCalendarChart(
                 }
                 hasIncome -> {
                     // Single income row, vertically centered in the full content zone.
-                    val incomeLabel = compactAmount(day.incomeFloat, "+", glyph)
+                    val incomeLabel = compactAmount(day.incomeFloat, "+", glyph, privacyOn)
                     val incomeMeasured = textMeasurer.measure(incomeLabel, amountStyle.copy(color = IncomeGreen))
                     val centerPx = cellY + (contentStartDp + halfSlotDp).dp.toPx()
                     drawText(
@@ -201,7 +204,7 @@ fun DailyNetCalendarChart(
                 }
                 hasExpense -> {
                     // Single expense row, vertically centered in the full content zone.
-                    val expenseLabel = compactAmount(day.expenseFloat, "-", glyph)
+                    val expenseLabel = compactAmount(day.expenseFloat, "-", glyph, privacyOn)
                     val expenseMeasured = textMeasurer.measure(expenseLabel, amountStyle.copy(color = errorColor))
                     val centerPx = cellY + (contentStartDp + halfSlotDp).dp.toPx()
                     drawText(
@@ -219,13 +222,20 @@ fun DailyNetCalendarChart(
     }
 }
 
+/** Short dot token for a masked cell (Item 24) — narrower than the app-wide `•••••` so it fits a 64dp cell. */
+private const val MASKED_CELL = "•••"
+
 /**
  * Compact amount for a small calendar cell, prefixed with the chosen display symbol [glyph] (Item 18).
+ *
+ * When [masked] (global Privacy mode, Item 15/24) the value is replaced with [MASKED_CELL], keeping only
+ * the [sign] and (via the caller's colour) the income/expense signal — never the peso amount or glyph.
  *
  * Format spec: <1k→integer; 1k–9k→2dp k; 10k–999k→1dp k; ≥1M→2dp M.
  * sign is "+" for income rows and "-" for expense rows.
  */
-private fun compactAmount(absVal: Float, sign: String, glyph: String): String = when {
+private fun compactAmount(absVal: Float, sign: String, glyph: String, masked: Boolean): String = when {
+    masked               -> "$sign$MASKED_CELL"
     absVal >= 1_000_000f -> "$sign$glyph${String.format("%.2f", absVal / 1_000_000f)}M"
     absVal >= 10_000f    -> "$sign$glyph${String.format("%.1f", absVal / 1_000f)}k"
     absVal >= 1_000f     -> "$sign$glyph${String.format("%.2f", absVal / 1_000f)}k"
