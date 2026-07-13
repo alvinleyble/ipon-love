@@ -2,7 +2,7 @@
 
 > A personal finance app for couples in the Philippines.
 
-Track income and expenses, manage budgets, and stay financially aligned with your partner — offline-first, with real-time sync via Supabase.
+Track income and expenses, manage budgets, and stay financially aligned with your partner — offline-first, with Supabase background sync (nudged live by a realtime partner bell).
 
 ---
 
@@ -157,4 +157,4 @@ Stack: JUnit + Truth + Turbine + MockK + kotlinx-coroutines-test
 
 ## License
 
-Private — all rights reserved. © 2025 Alvin Leyble
+Private — all rights reserved. © 2026 Alvin Leyble

@@ -1,4 +1,4 @@
-# Architecture Document — Ipon, Love
+# Architecture Document — Love, Ipon
 
 **Version:** 1.2
 **Date:** June 2026

@@ -1,6 +1,6 @@
-# Ipon, Love — Domain Context
+# Love, Ipon — Domain Context
 
-The shared language of the Ipon, Love couples finance + notes app. This is a glossary, not a spec — it pins down what each term *means* so the code, docs, and conversations agree.
+The shared language of the Love, Ipon couples finance + notes app. This is a glossary, not a spec — it pins down what each term *means* so the code, docs, and conversations agree.
 
 ## Language
 

@@ -1,14 +1,14 @@
-# Product Requirements Document — Ipon, Love
+# Product Requirements Document — Love, Ipon
 
-**Version:** 1.2
-**Date:** June 2026
-**Status:** Clarified — pre-grilling pass
+**Version:** 1.6.5
+**Date:** July 2026
+**Status:** In beta (internal testing); grilled through grill #5 (entitlement mechanism, ads dropped) and ADRs to 0046
 
 ---
 
 ## 1. Overview
 
-**Ipon, Love** is an Android personal finance and productivity app designed for couples who want to track individual and shared expenses while staying financially connected. It combines a full-featured budget tracker with a notes system and a couple-sharing layer, wrapped in a clean, aesthetic, highly customizable UI.
+**Love, Ipon** is an Android personal finance and productivity app designed for couples who want to track individual and shared expenses while staying financially connected. It combines a full-featured budget tracker with a notes system and a couple-sharing layer, wrapped in a clean, aesthetic, highly customizable UI.
 
 The personal instance for the developer is branded **PattyWallet**.
 
@@ -44,7 +44,7 @@ Existing budget tracker apps (e.g., MyMoney on the Play Store) solve the core tr
 - AI chatbot or assistant
 - Password vault
 - Voice recording storage
-- Receipt/photo attachment on transactions
+- Receipt/photo attachment on transactions *(shipped post-V1)*
 - Web dashboard
 - CSV / PDF data export
 
