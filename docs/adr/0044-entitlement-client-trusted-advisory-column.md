@@ -39,3 +39,12 @@ Concretely:
 ## Suggested build
 
 Opus for the `core/entitlement` state/reconcile/`Effective access` logic (cross-ADR: sync, redacting views, unpair, couples governance) — JVM-testable behind a billing interface per the Testing Policy; Sonnet for mechanical gate placement once the pattern is locked.
+
+## As-built addendum (2026-07-13, flip re-grill)
+
+The Phase 1–2 build (S1–S10) implemented this ADR with four refinements the text above predates — all behavior-compatible, recorded here so the ADR matches the code:
+
+1. **`cap_overrides` is tier-scoped** — `{"free":{…},"premium":{…}}` (S2), so a free-tier tuning can never bleed onto premium limits.
+2. **Boolean gates read a reactive seam** — `PremiumGate.observeLocked(scope)` (S9), not per-call checks; count caps use create-time `checkCap` (S7/S8); concrete ceilings use `observeLimit(scope, limitOf)` (S10).
+3. **Revert-on-lapse (G8) is a pure read-time derivation, not a write** — `ThemePalette.effective(locked)` downgrades at render; the chosen palette is never mutated in DataStore, so re-unlock (or flipping enforcement back OFF) auto-restores with nothing to un-write. Same pattern for the note ceiling: `NoteCharLimit.effectiveLimit(tierLimit, seededLength)` freezes an over-cap note at its seeded length rather than truncating (S10 sub-gate 1).
+4. **Enforcement-OFF is therefore a zero-residue rollback lever** — a consequence of (3): no lock ever writes state, so the flip-day abort plan is just the kill-switch (§10.7b row A2).

@@ -412,9 +412,25 @@ States: `UNKNOWN` (cold start, no cache) · `ACTIVE` · `IN_GRACE` (Play billing
 1. **`GRANT` flip-flop (G7)** — if comps toggle each app foreground, the reconcile loop isn't respecting `entitlement_source`. Easiest thing to get wrong.
 2. **Freeze vs. delete (T1)** — over-cap data must go *read-only*, never disappear. A finance app that hides a user's data on flip day is the worst-case failure; test it explicitly before any flip.
 
+### 10.7b Flip re-grill addendum (2026-07-13) — composite rows the 2026-07-08 matrix couldn't have known
+
+The §10.7 matrix predates every built gate (S7–S10) and everything that shipped beside them (delete-account, reset-finances). Re-grilled 2026-07-13 against the as-built app; these rows **extend** the matrix for the S13 rehearsal (they don't replace it):
+
+| # | State | How to force | Expect |
+|---|---|---|---|
+| A1 | **Unpair / delete-account entitlement collapse** (Item 6 post-dates the grill) | Mixed couple (one GRANT, one free), enforcement ON → premium partner deletes account (or unpairs) | Free ex-partner: shared surfaces vanish with the couple (normal unpair aftermath); server revert hands shared accounts/categories to their creator — **a free creator can land over their personal cap → T1 freeze** (visible + read-only, block-on-create), never hidden. Buyer re-registering later gets premium back via Play reconcile (purchase is Play-account-bound) |
+| A2 | **Flip-back-OFF rollback (the abort lever)** — the matrix only ever tested the ON direction | After a full ON pass, flip `enforcement_enabled` back OFF | **Zero residue by construction:** every lock releases, the chosen premium palette auto-restores (G8 as-built is a *read-time derivation* — nothing was ever written on lock), note ceiling returns to 50k, Premium row hides. This is the documented flip-day abort plan |
+| A3 | **Composite heavy-user walkthrough** — each matrix row passed *in isolation*; flip day hits one account with all of them at once | One free account seeded over everything: >10 accounts, budgets at the per-month cap, premium palette, >12mo history, >5k note *with* 3 attachments, rollover-enabled budget | All gates hold simultaneously with no interaction bugs: freeze everywhere (nothing truncated/hidden — incl. the S10 note-freeze on the attachment-bearing note), palette reverts, 🔒 at the −12 wall, rollover **keeps rolling** (T1), upsell sheets never stack |
+| A4 | **Partner flip-propagation lag** | Flip ON while only one partner's device syncs; the other stays foregrounded without a sync | A per-device advisory window (one enforced, one dormant) — accepted by ADR-0044's client-trusted model; verify the late device converges cleanly on its next sync, no crash/duplicate-upsell |
+| A5 | **Analytics funnel live-fire** (S6 buffer is empty until the paywall is reachable — i.e. never yet exercised end-to-end) | During the ON pass, walk gates + paywall + a license-tester purchase | `analytics_events` rows land on staging via the sync flush: `paywall_impression` with the **Item 21 per-gate sources**, `upsell_tap` per feature key, `purchase_started/success`, `restore` |
+| A6 | **`cap_overrides` live-tuning lever** (built in S1/S2, never exercised) | Set a tier-scoped override on staging (e.g. free `maxAccounts` 10→12), sync | The new cap applies on next sync with no release; **premium caps unaffected** (the S2 tier-bleed guard); removing the override reverts |
+| A7 | **Picker pre-check (Item 28, the S8 wart — decided 2026-07-13: fix pre-flip, not accept)** | Free at the receipt/attachment cap, tap "Add photo" | The cap sheet appears **immediately — the system picker never opens** (v1.6.5 Item 28 must be built before S13) |
+
+**Also verified in the re-grill, no rows needed:** reset-finances (Item 16) has no entitlement interaction (transactions aren't capped; account rows survive); privacy/currency (Items 15/18) are cosmetic and orthogonal. **Doc-drift note:** ADR-0044's text predates the as-built seams (S2 tier-scoped overrides, S9 `observeLocked`, S10 `observeLimit` + note freeze, G8 read-time palette derivation) — behavior-compatible; a short as-built addendum was appended to the ADR 2026-07-13. **Env note:** this rehearsal runs on staging (prod Supabase doesn't exist yet); the eventual real flip re-runs a thin subset of §10.7+§10.7b against prod's `app_config` on the day.
+
 ### 10.8 Edge states
 
-- **Beta-tester comp:** grant Alvin + Patty + `testdev2-5` premium via the D3 **remote per-user override** (not a real Play purchase) — doubles as the primary "unlocked path" test lane and prevents the T1 freeze from tripping our own accounts on flip day.
+- **Beta-tester comp:** grant premium via the D3 **remote per-user override** (not a real Play purchase) — doubles as the primary "unlocked path" test lane and prevents the T1 freeze from tripping our own accounts on flip day. **Roster (locked 2026-07-13, re-grill):** comped = **Alvin + Patty** (real accounts — they test "free" only via testdevs, by design) **+ testdev2 + testdev3**; stays free = **testdev4, testdev5, testdev14, testdev17** (the locked lane); mixed couple = **testdev15 (GRANT) ⟷ testdev17 (free)** (the D1 cross-unlock pair, already paired since S7 testing).
 - **Refund / revocation:** the *only* way a one-time buyer loses premium (D7). With no RTDN (D4), it's caught on the next `queryPurchasesAsync` — accept a poll-lag (up to the WorkManager interval) before re-lock. Fine for cosmetic gates.
 - **Plan change:** N/A — one-time has no cadence to switch (this was a subscription-only concern).
 - **Logout / Play≠Supabase identity (Q3.4):** entitlement (Play-account-bound) persists across Supabase logins on the same device; the couple-propagation column is Supabase-login-bound, so it correctly follows whoever is logged in. Restore purchases covers a new device on the same Play account. Two logins sharing one Play account both read premium on that device — acceptable.
@@ -487,10 +503,11 @@ The ordered, self-contained slice plan for the dormant-infra build. **We clear c
   - [x] **sub-gate 2 — `ANALYSIS_EXTENDED_RANGES`** (soft-gate the *existing* 3M/6M/12M/ALL tabs — free = 1D/1W/1M) — **DONE `5ab69ea`** (2026-07-11, on-device verified). Wire-only via `observeLocked(INDIVIDUAL)` + `AnalysisPeriod.isExtendedRange`; locked tap → paywall (range unchanged) + `upsell_tap`. [v1.6.5.md](v1.6.5.md) Item 3.
   - [x] **sub-gate 3 — `DEEP_HISTORY`** (Records + Combined + Analysis 1D/1W/1M shared anchor, −12mo wall) — **DONE `4521293`** (2026-07-11, on-device verified). Two pure predicates share `MonthWindow.FREE_HISTORY_MONTHS = 12` (`MonthWindow.canStepBack` / `AnalysisPeriodRange.canStepBack`), enforced at month granularity on the anchor; back ← becomes a 🔒 → paywall at the floor (`upsell_tap` source=`deep_history`). [v1.6.5.md](v1.6.5.md) Item 3.
 
-**Phase 3 — pre-flip (only on Alvin's go, post-beta):**
-- [ ] **S11 — Play Console:** create the ₱249 managed product, license testers, staging test track.
-- [ ] **S12 — Beta comps:** grant Alvin + Patty + `testdev2-5` premium via the remote override (§10.8).
-- [ ] **S13 — Enforcement-ON rehearsal:** full §10.7 matrix in staging.
+**Phase 3 — pre-flip (only on Alvin's go, post-beta; re-grilled 2026-07-13 → §10.7b):**
+- [ ] **S11 — Play Console:** create the ₱249 managed product, license testers, staging test track. (Rehearsal must confirm the CTA shows the real Play price, not copy.)
+- [ ] **Item 28 rider — picker pre-check** ([v1.6.5.md](v1.6.5.md) Item 28, Sonnet low): gate check *before* the system picker opens (S8's deferred wart, decided fix-pre-flip). Build any time before S13.
+- [ ] **S12 — Beta comps:** grant premium via the remote override per the **locked roster** in §10.8 (comps: Alvin, Patty, testdev2-3; free lane: testdev4-5/14/17; mixed pair: testdev15⟷17).
+- [ ] **S13 — Enforcement-ON rehearsal:** full §10.7 matrix **+ the §10.7b addendum rows A1–A7** in staging, ending with the **A2 flip-back-OFF** rollback drill.
 - [ ] **Flip enforcement ON** — Alvin's explicit go only.
 
 ---
