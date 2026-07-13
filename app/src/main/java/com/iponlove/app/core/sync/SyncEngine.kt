@@ -1,6 +1,8 @@
 package com.iponlove.app.core.sync
 
+import android.util.Log
 import com.iponlove.app.core.sync.data.ClockOffsetStore
+import com.iponlove.app.core.sync.data.SyncStatusStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +46,7 @@ class SyncEngine(
     private val clock: SyncClock? = null,
     private val clockOffsetStore: ClockOffsetStore? = null,
     private val serverTimeFetcher: (suspend () -> Instant)? = null,
+    private val syncStatusStore: SyncStatusStore? = null,
     private val now: () -> Instant = Instant::now,
 ) {
     /** Stable FK order regardless of DI contribution order (ADR-0009). */
@@ -95,10 +98,17 @@ class SyncEngine(
             pullAllParallel()
             calibrateClock()
             pushError?.let { throw it }
-            _state.value = SyncState.Success(now())
+            val finishedAt = now()
+            // Best-effort bookkeeping (Item 9): the sync itself succeeded, so a DataStore IO
+            // hiccup here must not flip the run to Error.
+            runCatching { syncStatusStore?.save(finishedAt) }
+            _state.value = SyncState.Success(finishedAt)
             deferred.complete(true)
             return true
         } catch (t: Throwable) {
+            // Log.w, not Log.d — Log.d is suppressed on some OEM ROMs (the test device), and the
+            // UI shows friendly copy only (Item 9), so this is the one place the raw cause lands.
+            Log.w(TAG, "Full sync failed", t)
             _state.value = SyncState.Error(t.message ?: t.javaClass.simpleName)
             deferred.completeExceptionally(t)
             throw t
@@ -194,5 +204,9 @@ class SyncEngine(
         val serverNow = serverTimeFetcher.invoke()
         clock.recordServerTime(serverNow)
         clockOffsetStore.save(clock)
+    }
+
+    private companion object {
+        const val TAG = "SyncEngine"
     }
 }

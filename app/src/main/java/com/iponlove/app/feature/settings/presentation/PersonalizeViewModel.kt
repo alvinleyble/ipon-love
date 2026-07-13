@@ -6,6 +6,10 @@ import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.config.AppConfigRepository
 import com.iponlove.app.core.entitlement.EntitlementRepository
 import com.iponlove.app.core.entitlement.PremiumGate
+import com.iponlove.app.core.network.ConnectivityObserver
+import com.iponlove.app.core.sync.SyncEngine
+import com.iponlove.app.core.sync.SyncState
+import com.iponlove.app.core.sync.data.SyncStatusStore
 import com.iponlove.app.feature.settings.data.ThemeDraftRepository
 import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
@@ -55,6 +59,9 @@ class PersonalizeViewModel @Inject constructor(
     appConfig: AppConfigRepository,
     entitlement: EntitlementRepository,
     premiumGate: PremiumGate,
+    private val syncEngine: SyncEngine,
+    syncStatusStore: SyncStatusStore,
+    connectivity: ConnectivityObserver,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PersonalizeUiState())
@@ -102,6 +109,32 @@ class PersonalizeViewModel @Inject constructor(
         observeBudgetStartDay()
             .onEach { day -> _uiState.update { it.copy(budgetStartDay = day) } }
             .launchIn(viewModelScope)
+
+        // Sync card (Item 9): engine state (in-memory, boots Idle) + the persisted last-synced
+        // timestamp + connectivity. A separate combine — the snapshot one above is at its max.
+        combine(
+            syncEngine.state,
+            syncStatusStore.observe(),
+            connectivity.observe(),
+        ) { syncState, lastSyncedAt, online ->
+            Triple(syncState, lastSyncedAt, online)
+        }.onEach { (syncState, lastSyncedAt, online) ->
+            _uiState.update {
+                it.copy(
+                    isSyncing = syncState is SyncState.Syncing,
+                    syncFailed = syncState is SyncState.Error,
+                    lastSyncedAt = lastSyncedAt,
+                    isOnline = online,
+                )
+            }
+        }.launchIn(viewModelScope)
+    }
+
+    /** "Sync now" — the same full sync() as pull-to-refresh; single-flight coalescing absorbs
+     *  double-taps (ADR-0015). Failure surfaces reactively via [SyncEngine.state] as friendly
+     *  copy only; the raw cause is already logged in the engine (Item 9). */
+    fun syncNow() {
+        viewModelScope.launch { runCatching { syncEngine.sync() } }
     }
 
     /** Instant, undrafted — unlike the palette/mode preview above, Privacy mode has no Save/Apply

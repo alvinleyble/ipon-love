@@ -2,6 +2,7 @@ package com.iponlove.app.core.session
 
 import com.iponlove.app.core.database.IponDatabase
 import com.iponlove.app.core.sync.SyncCursorStore
+import com.iponlove.app.core.sync.data.SyncStatusStore
 import com.iponlove.app.feature.applock.domain.repository.AppLockRepository
 import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
 import com.iponlove.app.navigation.NavConfigRepository
@@ -30,6 +31,8 @@ import javax.inject.Inject
  *    previous user's PIN behind would lock the incoming account out behind a code it never set
  *    (and, conversely, expose the switch as a data-isolation gap). Cleared here so the next
  *    account starts with no lock and can set its own.
+ *  - the last-synced timestamp (Item 9) — it describes the previous account's sync history,
+ *    so the next account's Settings must not read "Last synced X ago" off it.
  *
  * Does NOT touch [LastActiveUserStore]: that is the guard's own bookkeeping and must outlive
  * the wipe. The Supabase session is cleared separately by the auth layer.
@@ -40,6 +43,7 @@ class LocalDataWiper @Inject constructor(
     private val navConfig: NavConfigRepository,
     private val onboarding: OnboardingRepository,
     private val appLock: AppLockRepository,
+    private val syncStatus: SyncStatusStore,
 ) {
     suspend fun wipe() {
         cursors.reset()
@@ -47,5 +51,6 @@ class LocalDataWiper @Inject constructor(
         navConfig.reset()
         onboarding.reset()
         appLock.clearPin()
+        syncStatus.clear()
     }
 }

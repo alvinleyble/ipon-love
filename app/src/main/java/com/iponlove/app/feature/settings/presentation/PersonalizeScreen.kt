@@ -52,6 +52,8 @@ import android.net.Uri
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
+import com.iponlove.app.core.ui.relativeTimeLabel
+import java.time.Instant
 import com.iponlove.app.core.ui.theme.paletteColorScheme
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
@@ -207,6 +209,17 @@ fun PersonalizeScreen(
                 HorizontalDivider()
 
                 Spacer(Modifier.height(28.dp))
+                Text("Sync", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                SyncCard(
+                    lastSyncedAt = state.lastSyncedAt,
+                    isSyncing = state.isSyncing,
+                    syncFailed = state.syncFailed,
+                    isOnline = state.isOnline,
+                    onSyncNow = viewModel::syncNow,
+                )
+
+                Spacer(Modifier.height(28.dp))
                 HorizontalDivider()
                 ListItem(
                     headlineContent = { Text("Profile") },
@@ -344,6 +357,55 @@ fun PersonalizeScreen(
                     onDismiss = { showBudgetStartDayDialog = false },
                 )
             }
+        }
+    }
+}
+
+/**
+ * The Settings sync status card (v1.6.5 Item 9): last-synced line + status line + "Sync now".
+ * Friendly copy only — the raw failure cause goes to logcat in the engine, never here.
+ */
+@Composable
+private fun SyncCard(
+    lastSyncedAt: Instant?,
+    isSyncing: Boolean,
+    syncFailed: Boolean,
+    isOnline: Boolean,
+    onSyncNow: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                if (lastSyncedAt != null) "Last synced ${relativeTimeLabel(lastSyncedAt)}"
+                else "Not synced yet",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            // One status line, priority-ordered: an in-flight sync beats everything, offline
+            // beats a stale error (reconnecting is the fix), and Error is transient (Item 9).
+            val statusLine = when {
+                isSyncing -> "Syncing…"
+                !isOnline -> "Offline — changes sync when you reconnect"
+                syncFailed -> "Couldn't sync — try again"
+                else -> null
+            }
+            if (statusLine != null) {
+                Text(
+                    statusLine,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (syncFailed && !isSyncing && isOnline) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Button(
+            onClick = onSyncNow,
+            enabled = isOnline && !isSyncing,
+        ) {
+            Text(if (isSyncing) "Syncing…" else "Sync now")
         }
     }
 }

@@ -2,6 +2,7 @@ package com.iponlove.app.feature.settings.presentation
 
 import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
+import java.time.Instant
 
 data class PersonalizeUiState(
     val draftPalette: ThemePalette = ThemePalette.ROSE,
@@ -31,4 +32,14 @@ data class PersonalizeUiState(
     /** The personal "budget month starts on day N" setting (Item 10b / ADR-0046). 1 = calendar
      *  months (default). Personal budgets only; persists instantly on pick. */
     val budgetStartDay: Int = 1,
+    /** Sync card (Item 9). Last successful full sync, persisted across launches via
+     *  SyncStatusStore; null = never synced (or wiped on account switch). */
+    val lastSyncedAt: Instant? = null,
+    /** A full sync() is in flight — "Sync now" disables into "Syncing…". */
+    val isSyncing: Boolean = false,
+    /** The engine's last run failed. Transient friendly copy only — the raw cause goes to
+     *  logcat (`Log.w`) in the engine, never the UI. */
+    val syncFailed: Boolean = false,
+    /** Offline disables "Sync now" with a reconnect hint (ConnectivityObserver, Item 16 infra). */
+    val isOnline: Boolean = true,
 )

@@ -2,6 +2,7 @@ package com.iponlove.app.core.session
 
 import com.iponlove.app.core.database.IponDatabase
 import com.iponlove.app.core.sync.SyncCursorStore
+import com.iponlove.app.core.sync.data.SyncStatusStore
 import com.iponlove.app.feature.applock.domain.repository.AppLockRepository
 import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
 import com.iponlove.app.navigation.NavConfigRepository
@@ -18,7 +19,8 @@ class LocalDataWiperTest {
     private val navConfig = mockk<NavConfigRepository>(relaxed = true)
     private val onboarding = mockk<OnboardingRepository>(relaxed = true)
     private val appLock = mockk<AppLockRepository>(relaxed = true)
-    private val wiper = LocalDataWiper(database, cursors, navConfig, onboarding, appLock)
+    private val syncStatus = mockk<SyncStatusStore>(relaxed = true)
+    private val wiper = LocalDataWiper(database, cursors, navConfig, onboarding, appLock, syncStatus)
 
     @Test
     fun wipe_clearsRoom_resetsCursors_navConfig_onboardingFlags_andAppLockPin() = runTest {
@@ -31,6 +33,8 @@ class LocalDataWiperTest {
         // The app-lock PIN must be cleared so a switched-in account isn't locked behind the
         // previous user's code (cross-account isolation).
         coVerify(exactly = 1) { appLock.clearPin() }
+        // The last-synced timestamp is the previous account's sync history (Item 9).
+        coVerify(exactly = 1) { syncStatus.clear() }
     }
 
     @Test

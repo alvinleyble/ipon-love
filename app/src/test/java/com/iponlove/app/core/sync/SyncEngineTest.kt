@@ -5,7 +5,9 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.core.sync.data.ClockOffsetStore
+import com.iponlove.app.core.sync.data.SyncStatusStore
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
@@ -250,6 +252,95 @@ class SyncEngineTest {
         // Offset should be approximately +5000ms (give or take a few ms for execution time).
         assertThat(clock.offsetMillis).isGreaterThan(4_900L)
         assertThat(clock.offsetMillis).isLessThan(5_100L)
+    }
+
+    // --- Item 9: last-synced persistence (SyncStatusStore) ---
+
+    @Test
+    fun sync_persistsLastSyncedAt_onSuccess() = runTest {
+        val store = SyncStatusStore(testDataStore())
+        val fixed = Instant.parse("2026-07-14T08:30:00Z")
+        val engine = SyncEngine(syncers = emptySet(), syncStatusStore = store, now = { fixed })
+
+        engine.sync()
+
+        // Written at the same instant the state flips to Success.
+        assertThat(store.observe().first()).isEqualTo(fixed)
+        assertThat(engine.state.value).isEqualTo(SyncState.Success(fixed))
+    }
+
+    @Test
+    fun sync_doesNotPersistLastSyncedAt_onFailure() = runTest {
+        val store = SyncStatusStore(testDataStore())
+        val engine = SyncEngine(
+            syncers = setOf(object : TableSyncer {
+                override val table = SyncTable.USERS
+                override suspend fun push() = false
+                override suspend fun pull(): Unit = throw IllegalStateException("network")
+            }),
+            syncStatusStore = store,
+        )
+
+        runCatching { engine.sync() }
+
+        assertThat(store.observe().first()).isNull()
+    }
+
+    @Test
+    fun syncStatusStore_roundTrip_andClear() = runTest {
+        val store = SyncStatusStore(testDataStore())
+        assertThat(store.observe().first()).isNull()
+
+        val at = Instant.ofEpochMilli(1_234_567L)
+        store.save(at)
+        assertThat(store.observe().first()).isEqualTo(at)
+
+        store.clear()
+        assertThat(store.observe().first()).isNull()
+    }
+
+    @Test
+    fun sync_coalescedRuns_writeLastSyncedAtOnce() = runTest {
+        val writes = AtomicInteger(0)
+        val store = object : SyncStatusStore(testDataStore()) {
+            override suspend fun save(at: Instant) {
+                writes.incrementAndGet()
+                super.save(at)
+            }
+        }
+        val gate = CompletableDeferred<Unit>()
+        val gated = object : TableSyncer {
+            override val table = SyncTable.USERS
+            override suspend fun push() = false
+            override suspend fun pull() { gate.await() }
+        }
+        val engine = SyncEngine(setOf(gated), syncStatusStore = store)
+
+        val first = launch { engine.sync() }
+        runCurrent() // first run parks at the gate, holding the lock
+        val second = launch { engine.sync() } // coalesces — must not write a second time
+        runCurrent()
+
+        gate.complete(Unit)
+        first.join()
+        second.join()
+
+        assertThat(writes.get()).isEqualTo(1)
+    }
+
+    @Test
+    fun pushOnly_andPullOnly_neverPersistLastSyncedAt() = runTest {
+        // "Last synced" means a full push+pull round trip — the silent micro-paths don't count.
+        val store = SyncStatusStore(testDataStore())
+        val engine = SyncEngine(
+            setOf(RecordingSyncer(SyncTable.USERS, mutableListOf())),
+            syncStatusStore = store,
+        )
+
+        engine.pushOnly()
+        engine.pullOnly()
+
+        assertThat(store.observe().first()).isNull()
     }
 
     @Test

@@ -18,6 +18,7 @@ import com.iponlove.app.core.sync.SyncTrigger
 import com.iponlove.app.core.sync.TableSyncer
 import com.iponlove.app.core.sync.data.ClockOffsetStore
 import com.iponlove.app.core.sync.data.DataStoreSyncCursorStore
+import com.iponlove.app.core.sync.data.SyncStatusStore
 import com.iponlove.app.core.database.IponDatabase
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import dagger.Module
@@ -67,6 +68,11 @@ object SyncModule {
         ClockOffsetStore(dataStore)
 
     @Provides
+    @Singleton
+    fun syncStatusStore(dataStore: DataStore<Preferences>): SyncStatusStore =
+        SyncStatusStore(dataStore)
+
+    @Provides
     fun localTransactionRunner(database: IponDatabase): LocalTransactionRunner =
         RoomTransactionRunner(database)
 
@@ -78,6 +84,7 @@ object SyncModule {
         fullSyncSteps: Set<@JvmSuppressWildcards FullSyncStep>,
         clock: SyncClock,
         clockOffsetStore: ClockOffsetStore,
+        syncStatusStore: SyncStatusStore,
         client: SupabaseClient,
     ): SyncEngine = SyncEngine(
         syncers = syncers,
@@ -85,6 +92,7 @@ object SyncModule {
         fullSyncSteps = fullSyncSteps,
         clock = clock,
         clockOffsetStore = clockOffsetStore,
+        syncStatusStore = syncStatusStore,
         serverTimeFetcher = {
             val raw = client.postgrest.rpc("get_server_time").decodeAs<String>()
             OffsetDateTime.parse(raw).toInstant()
