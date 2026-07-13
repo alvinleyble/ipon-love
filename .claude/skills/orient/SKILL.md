@@ -11,6 +11,7 @@ Establish current build state fast and cheaply. The point is to read the **right
 
 1. `docs/build/project-build-progress.md` — the "Current state" section + the version index table + the "Living reference" block (Room version, infra state, per-feature pattern).
 2. The **in-flight version doc** only — pick it from "Current state": whichever `docs/build/vX.Y.md` has uncommitted / TODO / NEEDS DECISION items. Do not read every version doc.
+   - **If the in-flight work is the paywall / entitlement**, its design does NOT live in the version doc — also read `docs/build/subscription-paywall-design.md` (§8 feature map, §9 architecture, §10 build spec, §11 grill seams) and ADR-0044. The version doc only lists the paywall *items*; this is their spec.
 3. If a specific feature is about to be touched: **one** reference feature folder for the copy-paste pattern (default `app/src/main/java/com/iponlove/app/feature/budgets/`), and the relevant table(s) in `supabase/schema.sql`. Skip this step for pure orientation with no target yet.
 
 ## Do NOT read

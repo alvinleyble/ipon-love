@@ -17,11 +17,13 @@ Run this when a slice is built and compiling. It performs the post-slice ritual 
 
 2. **Stage only the code diff** — `git add` the source/test paths for this slice. Do **not** stage `docs/build/` yet. Show `git status` + a short `git diff --stat` so the user sees exactly what's staged.
 
-3. **Draft the code commit message** — conventional-commit subject (`feat:` / `fix:` / etc.) referencing the version item, e.g. `feat: budget rollover (v1.6.2 Item 5)`. Author is Alvin (git identity already configured). End the body with:
+3. **Draft the code commit message** — conventional-commit subject (`feat:` / `fix:` / etc.) referencing the version item, e.g. `feat: budget rollover (v1.6.2 Item 5)`. Author is Alvin (git identity already configured). End the body with a `Co-Authored-By` trailer naming the **model that actually built this slice** (per the item's booked Model line — most slices are Sonnet, not Opus):
 
    ```
-   Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+   Co-Authored-By: Claude <model> <noreply@anthropic.com>
    ```
+
+   e.g. `Claude Sonnet 5` for a Sonnet slice, `Claude Opus 4.8` for an Opus one. Don't default to Opus.
 
 4. **STOP. Ask for commit permission.** HARD RULE (CLAUDE.md + memory): never run `git commit` or `git push` without Alvin's explicit per-time approval. Present the staged diff and drafted message, then wait. Once approved and committed, capture the resulting **sha** for Phase 2.
 
@@ -33,7 +35,7 @@ Run this when a slice is built and compiling. It performs the post-slice ritual 
 
 7. **Stage the docs diff** — `git add docs/build/…`. Show `git status` + `git diff --stat`.
 
-8. **Draft the docs commit message** — `docs:` subject naming the slice + version item, e.g. `docs: mark v1.6.5 Item 3 done (<sha>)`. Same `Co-Authored-By` trailer.
+8. **Draft the docs commit message** — `docs:` subject naming the slice + version item, e.g. `docs: mark v1.6.5 Item 3 done (<sha>)`. Same `Co-Authored-By` trailer as step 3 (the model that built the slice).
 
 9. **STOP. Ask for commit permission** — same hard rule. Present and wait. Permission for one commit never carries to the next.
 
