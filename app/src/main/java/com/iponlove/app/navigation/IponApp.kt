@@ -43,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,6 +96,7 @@ import com.iponlove.app.feature.subscription.presentation.SubscriptionViewModel.
 import com.iponlove.app.feature.transactions.presentation.AddTransactionScreen
 import com.iponlove.app.feature.transactions.presentation.AddTransactionViewModel.Companion.TXN_ID_KEY
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private const val APP_LOCK_SETUP_ROUTE = "app_lock_setup"
@@ -176,6 +178,18 @@ private fun IponAppContent(
     // The "tap More" step advances by *observing* the sheet actually open, not by driving it.
     LaunchedEffect(showMore) {
         if (showMore) tutorialViewModel.onTargetActivated(TutorialTargets.MORE)
+    }
+    // End a screen tour when the user navigates away from its screen: once the current step's target
+    // has laid out, watch for it leaving composition (its bounds get unregistered) and dismiss the
+    // tour then — this stops a stale ring bleeding onto the next screen and frees the single-active
+    // slot so that screen's own tour can start. Shell-chrome targets (bottom bar) never leave, so
+    // the shell tour is unaffected and correctly survives tab switches.
+    val activeStepKey = tutorialState.currentStep?.targetKey
+    LaunchedEffect(tutorialState.activeTourId, tutorialState.stepIndex, activeStepKey) {
+        val key = activeStepKey ?: return@LaunchedEffect
+        snapshotFlow { coachState.boundsOf(key) != null }.first { it }   // wait until laid out
+        snapshotFlow { coachState.boundsOf(key) != null }.first { !it }  // then until it disappears
+        tutorialViewModel.dismissForNavigation()
     }
 
     val visiblePins = state.visiblePinIds.mapNotNull { NavRegistry.byId[it] }

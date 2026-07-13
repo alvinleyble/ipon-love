@@ -19,6 +19,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateMapOf
@@ -54,6 +55,16 @@ class CoachMarkState {
 
     internal fun register(key: String, rect: Rect) {
         bounds[key] = rect
+    }
+
+    /**
+     * Drop a target's bounds when it leaves composition (e.g. its screen was navigated away from),
+     * so the overlay never anchors a lingering ring to a stale location on the next screen. Only
+     * screen targets tagged via the [Composable] overload are cleaned up this way; persistent shell
+     * chrome (bottom bar) is tagged with the plain overload and deliberately keeps its bounds.
+     */
+    internal fun unregister(key: String) {
+        bounds.remove(key)
     }
 
     internal fun boundsOf(key: String): Rect? = bounds[key]
@@ -95,6 +106,11 @@ val LocalTutorialController = staticCompositionLocalOf<TutorialController?> { nu
 @Composable
 fun Modifier.coachMarkTarget(key: String): Modifier {
     val state = LocalCoachMarkState.current ?: return this
+    // Clear this target's bounds when the screen leaves composition so a tour that was still
+    // active can't keep drawing its ring at this now-gone element's old coordinates elsewhere.
+    DisposableEffect(state, key) {
+        onDispose { state.unregister(key) }
+    }
     return this.coachMarkTarget(key, state)
 }
 
@@ -150,16 +166,29 @@ fun CoachMarkOverlay(
         val gapPx = with(density) { 12.dp.toPx() }
         val padPx = with(density) { 16.dp.toPx() }
         val maxCardWidthPx = with(density) { 300.dp.toPx() }
+        // Outward breathing room so the ring frames the target instead of hugging its raw layout
+        // bounds — drawn flush against the text/button edges otherwise, which reads as clipped or
+        // misaligned rather than a highlight. Also what the tooltip's gap is measured from, so the
+        // card doesn't crowd the ring either.
+        val ringInsetPx = with(density) { 6.dp.toPx() }
+        val ring = target?.let {
+            Rect(
+                left = it.left - ringInsetPx,
+                top = it.top - ringInsetPx,
+                right = it.right + ringInsetPx,
+                bottom = it.bottom + ringInsetPx,
+            )
+        }
 
         // Highlight ring around the target — no pointer input, so the real target beneath stays
         // tappable (the overlay is a later Box sibling but hit-testing falls through it).
-        if (target != null) {
+        if (ring != null) {
             androidx.compose.foundation.layout.Box(
                 Modifier
-                    .offset { IntOffset(target.left.roundToInt(), target.top.roundToInt()) }
+                    .offset { IntOffset(ring.left.roundToInt(), ring.top.roundToInt()) }
                     .size(
-                        width = with(density) { target.width.toDp() },
-                        height = with(density) { target.height.toDp() },
+                        width = with(density) { ring.width.toDp() },
+                        height = with(density) { ring.height.toDp() },
                     )
                     .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp)),
             )
@@ -168,20 +197,20 @@ fun CoachMarkOverlay(
         // Tooltip card, anchored above the target when it sits in the lower half of the screen
         // (the common case for a bottom-bar target), otherwise below it. With no target, centered.
         // Positioned via a layout modifier so the measured card size is known before placement.
-        val placeAbove = target != null && target.center.y > rootH / 2f
+        val placeAbove = ring != null && ring.center.y > rootH / 2f
         androidx.compose.foundation.layout.Box(
             Modifier.layout { measurable, c ->
                 val cardConstraints = Constraints(maxWidth = maxCardWidthPx.roundToInt())
                 val placeable = measurable.measure(cardConstraints)
                 val y = when {
-                    target == null -> (rootH - placeable.height) / 2f
-                    placeAbove -> target.top - gapPx - placeable.height
-                    else -> target.bottom + gapPx
+                    ring == null -> (rootH - placeable.height) / 2f
+                    placeAbove -> ring.top - gapPx - placeable.height
+                    else -> ring.bottom + gapPx
                 }
-                val x = if (target == null) {
+                val x = if (ring == null) {
                     (rootW - placeable.width) / 2f
                 } else {
-                    target.center.x - placeable.width / 2f
+                    ring.center.x - placeable.width / 2f
                 }
                 val yClamped = y.coerceIn(padPx, (rootH - placeable.height - padPx).coerceAtLeast(padPx))
                 val xClamped = x.coerceIn(padPx, (rootW - placeable.width - padPx).coerceAtLeast(padPx))

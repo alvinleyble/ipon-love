@@ -132,6 +132,18 @@ class TutorialViewModel @Inject constructor(
     /** Skip = mark only this tour seen (ADR-0038 dec. 5); other tours still fire on their visits. */
     fun skip() = finish()
 
+    /**
+     * The current step's target left the screen — the user navigated away mid-tour. Drop the
+     * overlay but leave the tour *unseen* (unlike [skip]), so it re-arms on the next real visit to
+     * its screen, and — crucially — frees the single-active-tour slot so the destination screen's
+     * own first-visit tour can start instead of being blocked by this stale one.
+     */
+    fun dismissForNavigation() {
+        if (!_uiState.value.active) return
+        _uiState.value = TutorialUiState()
+        activeSteps = emptyList()
+    }
+
     private fun finish() {
         val tourId = _uiState.value.activeTourId
         _uiState.value = TutorialUiState()
