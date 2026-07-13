@@ -34,7 +34,7 @@ import com.iponlove.app.feature.couple.presentation.PairedContent
 private enum class PairChoice { NONE, INVITE, CODE }
 
 /**
- * Onboarding step 2/3 — the explicit pair-or-solo fork (ADR-0024): "Invite my partner"
+ * Onboarding step 3/4 — the explicit pair-or-solo fork (ADR-0024): "Invite my partner"
  * ([CoupleViewModel.createCouple]) vs. "I have a code" ([CoupleViewModel.redeemInvite]) vs.
  * Solo. Reuses [CoupleViewModel] (same use cases as Settings → Couple) so two partners both
  * onboarding still converge on one couple, but presents a progressive fork instead of both

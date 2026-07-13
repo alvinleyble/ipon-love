@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.feature.onboarding.domain.model.StarterBundle
 
-/** Onboarding step 3/3 — à-la-carte starter-template picker (ADR-0024). All bundles are
+/** Onboarding step 4/4 — à-la-carte starter-template picker (ADR-0024). All bundles are
  *  pre-checked; unchecking everything and continuing is a valid, fully-skippable path. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

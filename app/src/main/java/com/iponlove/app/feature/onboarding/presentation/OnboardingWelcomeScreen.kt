@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
-/** Onboarding step 1/3 — value-prop (ADR-0024). */
+/** Onboarding step 1/4 — value-prop (ADR-0024). */
 @Composable
 fun OnboardingWelcomeScreen(onContinue: () -> Unit) {
     Surface(modifier = Modifier.fillMaxSize()) {
