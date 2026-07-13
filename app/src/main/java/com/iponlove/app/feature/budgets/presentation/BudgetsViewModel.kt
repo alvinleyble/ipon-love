@@ -7,6 +7,7 @@ import com.iponlove.app.core.entitlement.CapCheck
 import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.budgets.domain.model.Budget
+import com.iponlove.app.feature.budgets.domain.usecase.BudgetCycle
 import com.iponlove.app.feature.budgets.domain.usecase.BudgetProgressCalculator
 import com.iponlove.app.feature.budgets.domain.usecase.CheckBudgetCapUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.DeleteBudgetUseCase
@@ -14,17 +15,22 @@ import com.iponlove.app.feature.budgets.domain.usecase.DuplicateBudgetToNextMont
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveBudgetsUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.ResetBudgetRolloverUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.UpsertBudgetUseCase
+import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetStartDayUseCase
+import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -42,11 +48,25 @@ class BudgetsViewModel @Inject constructor(
     private val checkBudgetCap: CheckBudgetCapUseCase,
     private val premiumGate: PremiumGate,
     private val analytics: Analytics,
+    private val observeBudgetStartDay: ObserveBudgetStartDayUseCase,
 ) : ViewModel() {
 
     private val month = MutableStateFlow(YearMonth.now())
     private val editor = MutableStateFlow<BudgetEditorState?>(null)
     private val upsell = MutableStateFlow<UpsellPrompt?>(null)
+
+    init {
+        // With a non-calendar start day, "today" often belongs to the cycle keyed to the *previous*
+        // calendar month (ADR-0046: on Jul 13 @ start-day 15 the current cycle is "2026-06", Jun 15
+        // – Jul 14). Re-anchor the stepper to the cycle we're actually in, so the tab opens on it.
+        // Runs before any user step; a startDay of 1 already matches YearMonth.now(), so this no-ops.
+        viewModelScope.launch {
+            val startDay = observeBudgetStartDay().first()
+            if (startDay != BudgetCycle.MIN_START_DAY) {
+                month.value = YearMonth.parse(BudgetCycle.cycleKey(Instant.now(), startDay))
+            }
+        }
+    }
 
     // Budgets for the displayed month, captured so a new budget can update the existing
     // one for the same category instead of creating a duplicate.
@@ -64,55 +84,82 @@ class BudgetsViewModel @Inject constructor(
             month,
             editor,
         ) { budgets, transactions, categories, displayedMonth, editorState ->
-            val monthKey = displayedMonth.toString()
-            val categoryNames = categories.associate { it.id to it.name }
-            val current = budgets.filter { it.yearMonth == monthKey }
-            monthBudgets = current
-            allBudgets = budgets
-
-            val rows = current.map { budget ->
-                val spent = BudgetProgressCalculator.spent(budget, transactions)
-                val sameCategoryBudgets = budgets.filter { it.categoryId == budget.categoryId }
-                val limit = BudgetProgressCalculator.effectiveLimit(budget, sameCategoryBudgets, transactions)
-                val fraction = if (limit.signum() > 0) {
-                    (spent.toFloat() / limit.toFloat()).coerceIn(0f, 1f)
-                } else {
-                    0f
-                }
-                BudgetRow(
-                    id = budget.id,
-                    categoryId = budget.categoryId,
-                    title = budget.categoryId?.let { categoryNames[it] ?: "Category" } ?: "Overall",
-                    spent = spent,
-                    baseAmount = budget.amount,
-                    limit = limit,
-                    remaining = limit - spent,
-                    fraction = fraction,
-                    isOverBudget = spent > limit,
-                    rolloverEnabled = budget.rolloverEnabled,
-                    carriedAmount = limit - budget.amount,
-                )
-            }
-
-            BudgetsUiState(
-                isLoading = false,
-                monthLabel = displayedMonth.format(MONTH_FORMATTER),
-                nextMonthShortLabel = displayedMonth.plusMonths(1).format(SHORT_MONTH_FORMATTER),
-                rows = rows,
-                expenseCategories = categories.filter { it.type == CategoryType.EXPENSE },
-                editor = editorState,
-            )
-            // Combine already carries the 5-arg maximum; fold the upsell + rollover-lock flows in
-            // a second step.
-        }.let { base ->
-            combine(base, upsell, premiumGate.observeLocked()) { state, upsellState, rolloverLocked ->
-                state.copy(upsell = upsellState, rolloverLocked = rolloverLocked)
+            RawBudgets(budgets, transactions, categories, displayedMonth, editorState)
+            // The first combine is at its 5-flow maximum; the budget-cycle start day (which the row
+            // math + header range both need) folds in via a second combine alongside upsell + lock.
+        }.let { rawFlow ->
+            combine(
+                rawFlow,
+                upsell,
+                premiumGate.observeLocked(),
+                observeBudgetStartDay(),
+            ) { raw, upsellState, rolloverLocked, startDay ->
+                buildUiState(raw, upsellState, rolloverLocked, startDay)
             }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
             initialValue = BudgetsUiState(),
         )
+
+    private fun buildUiState(
+        raw: RawBudgets,
+        upsellState: UpsellPrompt?,
+        rolloverLocked: Boolean,
+        startDay: Int,
+    ): BudgetsUiState {
+        val monthKey = raw.displayedMonth.toString()
+        val categoryNames = raw.categories.associate { it.id to it.name }
+        val current = raw.budgets.filter { it.yearMonth == monthKey }
+        monthBudgets = current
+        allBudgets = raw.budgets
+
+        val rows = current.map { budget ->
+            val spent = BudgetProgressCalculator.spent(budget, raw.transactions, startDay = startDay)
+            val sameCategoryBudgets = raw.budgets.filter { it.categoryId == budget.categoryId }
+            val limit = BudgetProgressCalculator.effectiveLimit(
+                budget, sameCategoryBudgets, raw.transactions, startDay = startDay,
+            )
+            val fraction = if (limit.signum() > 0) {
+                (spent.toFloat() / limit.toFloat()).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            BudgetRow(
+                id = budget.id,
+                categoryId = budget.categoryId,
+                title = budget.categoryId?.let { categoryNames[it] ?: "Category" } ?: "Overall",
+                spent = spent,
+                baseAmount = budget.amount,
+                limit = limit,
+                remaining = limit - spent,
+                fraction = fraction,
+                isOverBudget = spent > limit,
+                rolloverEnabled = budget.rolloverEnabled,
+                carriedAmount = limit - budget.amount,
+            )
+        }
+
+        return BudgetsUiState(
+            isLoading = false,
+            monthLabel = cycleLabel(raw.displayedMonth, startDay),
+            nextMonthShortLabel = raw.displayedMonth.plusMonths(1).format(SHORT_MONTH_FORMATTER),
+            rows = rows,
+            expenseCategories = raw.categories.filter { it.type == CategoryType.EXPENSE },
+            editor = raw.editor,
+            upsell = upsellState,
+            rolloverLocked = rolloverLocked,
+        )
+    }
+
+    /** "July 2026" for calendar months (start-day 1), else the cycle's date range ("Jul 15 – Aug 14"). */
+    private fun cycleLabel(displayedMonth: YearMonth, startDay: Int): String =
+        if (startDay == BudgetCycle.MIN_START_DAY) {
+            displayedMonth.format(MONTH_FORMATTER)
+        } else {
+            val window = BudgetCycle.window(displayedMonth.toString(), startDay)
+            "${window.firstDay.format(RANGE_FORMATTER)} – ${window.lastDay.format(RANGE_FORMATTER)}"
+        }
 
     fun previousMonth() {
         month.value = month.value.minusMonths(1)
@@ -235,9 +282,20 @@ class BudgetsViewModel @Inject constructor(
         }
     }
 
+    /** The five reactive inputs of the first combine, bundled so the cycle start day can fold in via
+     *  a second combine (Kotlin's typed `combine` tops out at 5 flows). */
+    private data class RawBudgets(
+        val budgets: List<Budget>,
+        val transactions: List<Transaction>,
+        val categories: List<Category>,
+        val displayedMonth: YearMonth,
+        val editor: BudgetEditorState?,
+    )
+
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
         val MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
         val SHORT_MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM")
+        val RANGE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d")
     }
 }

@@ -30,12 +30,13 @@ class CheckBudgetAlertsUseCase @Inject constructor() {
         alreadyFiredKeys: Set<String>,
         currentMonth: String,
         zone: ZoneId = ZoneId.systemDefault(),
+        startDay: Int = 1,
     ): List<BudgetAlertResult> {
         val results = mutableListOf<BudgetAlertResult>()
         for (budget in budgets) {
             if (budget.yearMonth != currentMonth) continue
             if (budget.amount <= BigDecimal.ZERO) continue
-            val spent = BudgetProgressCalculator.spent(budget, transactions, zone)
+            val spent = BudgetProgressCalculator.spent(budget, transactions, zone, startDay)
             val percent = (spent.divide(budget.amount, 4, java.math.RoundingMode.HALF_UP) * BigDecimal(100)).toInt()
             for (threshold in THRESHOLDS) {
                 if (percent >= threshold) {

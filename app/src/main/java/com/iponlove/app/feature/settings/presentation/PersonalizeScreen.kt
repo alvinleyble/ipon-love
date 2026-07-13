@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.TextButton
@@ -36,6 +37,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -78,6 +82,7 @@ fun PersonalizeScreen(
         state.draftIsDark,
     )
     val context = LocalContext.current
+    var showBudgetStartDayDialog by remember { mutableStateOf(false) }
 
     // Couple-scoped Settings tour — no-ops until paired (ADR-0038); anchors to the Couple entry.
     StartTourOnFirstVisit(TutorialTours.COUPLE_SETTINGS)
@@ -178,6 +183,28 @@ fun PersonalizeScreen(
                     selected = state.currencySymbol,
                     onSelect = viewModel::setCurrencySymbol,
                 )
+
+                Spacer(Modifier.height(28.dp))
+                Text("Finance", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(4.dp))
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("Budget month starts on") },
+                    supportingContent = {
+                        Text(
+                            if (state.budgetStartDay == 1) {
+                                "1st (calendar month)"
+                            } else {
+                                "${budgetStartDayLabel(state.budgetStartDay)} — payday-aligned budgets"
+                            },
+                        )
+                    },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable { showBudgetStartDayDialog = true },
+                )
+                HorizontalDivider()
 
                 Spacer(Modifier.height(28.dp))
                 HorizontalDivider()
@@ -306,8 +333,88 @@ fun PersonalizeScreen(
                     Text("Sign out", color = MaterialTheme.colorScheme.error)
                 }
             }
+
+            if (showBudgetStartDayDialog) {
+                BudgetStartDayDialog(
+                    selected = state.budgetStartDay,
+                    onSelect = {
+                        viewModel.setBudgetStartDay(it)
+                        showBudgetStartDayDialog = false
+                    },
+                    onDismiss = { showBudgetStartDayDialog = false },
+                )
+            }
         }
     }
+}
+
+/**
+ * Preset payday choices for the budget-cycle start day (ADR-0046 amendment: the mechanism accepts
+ * 1..31, but the offered choices are the common PH paydays). "End of month" stores 31, which the
+ * cycle math clamps to each month's last day.
+ */
+private val BUDGET_START_DAY_PRESETS = listOf(
+    1 to "1st (calendar month)",
+    10 to "10th of the month",
+    15 to "15th of the month",
+    25 to "25th of the month",
+    31 to "End of the month",
+)
+
+private fun budgetStartDayLabel(day: Int): String =
+    BUDGET_START_DAY_PRESETS.firstOrNull { it.first == day }?.second ?: "1st (calendar month)"
+
+/** Preset picker for the budget-cycle start day (ADR-0046). Day 1 = calendar months. */
+@Composable
+private fun BudgetStartDayDialog(
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Budget month starts on") },
+        text = {
+            Column {
+                Text(
+                    "Applies to your personal budgets, including past ones. " +
+                        "Handy if you're paid mid-month.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                BUDGET_START_DAY_PRESETS.forEach { (day, label) ->
+                    val isSelected = day == selected
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                else Color.Transparent,
+                            )
+                            .clickable { onSelect(day) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(Modifier.weight(1f))
+                        if (isSelected) {
+                            Text("✓", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        },
+    )
 }
 
 @Composable

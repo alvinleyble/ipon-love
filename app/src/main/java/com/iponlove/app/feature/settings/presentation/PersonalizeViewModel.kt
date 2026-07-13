@@ -10,10 +10,12 @@ import com.iponlove.app.feature.settings.data.ThemeDraftRepository
 import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
+import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetStartDayUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveCurrencySymbolUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SaveThemePreferencesUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetBudgetStartDayUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetCurrencySymbolUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,8 +48,10 @@ class PersonalizeViewModel @Inject constructor(
     private val analytics: Analytics,
     private val setPrivacyModeUseCase: SetPrivacyModeUseCase,
     private val setCurrencySymbolUseCase: SetCurrencySymbolUseCase,
+    private val setBudgetStartDayUseCase: SetBudgetStartDayUseCase,
     observePrivacyMode: ObservePrivacyModeUseCase,
     observeCurrencySymbol: ObserveCurrencySymbolUseCase,
+    observeBudgetStartDay: ObserveBudgetStartDayUseCase,
     appConfig: AppConfigRepository,
     entitlement: EntitlementRepository,
     premiumGate: PremiumGate,
@@ -92,6 +96,12 @@ class PersonalizeViewModel @Inject constructor(
                 )
             }
         }.launchIn(viewModelScope)
+
+        // Collected on its own (the combine above is at its 5-flow maximum) — it updates a single
+        // independent field.
+        observeBudgetStartDay()
+            .onEach { day -> _uiState.update { it.copy(budgetStartDay = day) } }
+            .launchIn(viewModelScope)
     }
 
     /** Instant, undrafted — unlike the palette/mode preview above, Privacy mode has no Save/Apply
@@ -105,6 +115,12 @@ class PersonalizeViewModel @Inject constructor(
      *  every observer (via the app-wide LocalCurrencySymbol) re-collects from the same DataStore flow. */
     fun setCurrencySymbol(symbol: CurrencySymbol) {
         viewModelScope.launch { setCurrencySymbolUseCase(symbol) }
+    }
+
+    /** Instant, undrafted (ADR-0046) — the repo clamps to 1..31. Personal budgets re-window
+     *  retroactively; spent/rollover are derived, so nothing is rewritten. */
+    fun setBudgetStartDay(day: Int) {
+        viewModelScope.launch { setBudgetStartDayUseCase(day) }
     }
 
     fun selectPalette(palette: ThemePalette) {

@@ -11,11 +11,16 @@ import java.time.ZoneId
 /**
  * Derives how much a budget has been spent, from the transaction ledger — only EXPENSE
  * transactions count (income and transfers never consume a budget), within the budget's
- * month, and (for a category budget) within its category. An overall budget
- * (`categoryId == null`) counts every expense that month.
+ * cycle, and (for a category budget) within its category. An overall budget
+ * (`categoryId == null`) counts every expense in the cycle.
  *
- * The month a transaction falls in is timezone-dependent, so [zone] is explicit for
+ * The cycle a transaction falls in is timezone-dependent, so [zone] is explicit for
  * determinism in tests (V1 is PH-only, so the app passes the system zone).
+ *
+ * [startDay] is the personal "budget month starts on day N" setting (ADR-0046). The default `1`
+ * is calendar months, byte-identical to the pre-setting behaviour; a non-1 value re-windows the
+ * cycle to a payday-aligned range via [BudgetCycle]. The `yearMonth` label is unchanged — only
+ * which transactions bucket into it.
  */
 object BudgetProgressCalculator {
 
@@ -23,35 +28,39 @@ object BudgetProgressCalculator {
         budget: Budget,
         transactions: List<Transaction>,
         zone: ZoneId = ZoneId.systemDefault(),
+        startDay: Int = 1,
     ): BigDecimal =
         transactions.asSequence()
             .filter { it.type == TransactionType.EXPENSE }
             .filter { budget.categoryId == null || it.categoryId == budget.categoryId }
-            .filter { yearMonthKey(it.date, zone) == budget.yearMonth }
+            .filter { BudgetCycle.cycleKey(it.date, startDay, zone) == budget.yearMonth }
             .fold(BigDecimal.ZERO) { running, txn -> running + txn.amount }
 
     /**
      * The rollover-adjusted limit for [budget]: its own [Budget.amount] plus, when
-     * [Budget.rolloverEnabled], the previous month's leftover (positive) or deficit
+     * [Budget.rolloverEnabled], the previous cycle's leftover (positive) or deficit
      * (negative — never floored at ₱0, ADR-0036) carried in.
      *
      * Chains backward through consecutive `yearMonth` rows in [sameCategoryBudgets] (which
      * must already be filtered to [budget]'s category — including the `null` "overall"
-     * category). A month with no row at all breaks the chain: the carry resets to ₱0
-     * rather than skipping through the gap to reach further back.
+     * category). A cycle with no row at all breaks the chain: the carry resets to ₱0
+     * rather than skipping through the gap to reach further back. The label chain is
+     * independent of [startDay] — consecutive cycles are always consecutive `YearMonth`s;
+     * [startDay] only affects the per-cycle [spent].
      */
     fun effectiveLimit(
         budget: Budget,
         sameCategoryBudgets: List<Budget>,
         transactions: List<Transaction>,
         zone: ZoneId = ZoneId.systemDefault(),
+        startDay: Int = 1,
     ): BigDecimal {
         if (!budget.rolloverEnabled) return budget.amount
         val previousMonth = YearMonth.parse(budget.yearMonth).minusMonths(1).toString()
         val previous = sameCategoryBudgets.firstOrNull { it.yearMonth == previousMonth }
             ?: return budget.amount
-        val previousLimit = effectiveLimit(previous, sameCategoryBudgets, transactions, zone)
-        val previousSpent = spent(previous, transactions, zone)
+        val previousLimit = effectiveLimit(previous, sameCategoryBudgets, transactions, zone, startDay)
+        val previousSpent = spent(previous, transactions, zone, startDay)
         return budget.amount + (previousLimit - previousSpent)
     }
 }

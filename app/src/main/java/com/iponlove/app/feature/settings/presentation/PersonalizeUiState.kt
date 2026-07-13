@@ -28,4 +28,7 @@ data class PersonalizeUiState(
     /** The user's chosen display-currency symbol (Item 18). Persists instantly on tap, like
      *  Privacy mode (no Save/Apply gate) — it's a cosmetic glyph swap, not a themed live preview. */
     val currencySymbol: CurrencySymbol = CurrencySymbol.DEFAULT,
+    /** The personal "budget month starts on day N" setting (Item 10b / ADR-0046). 1 = calendar
+     *  months (default). Personal budgets only; persists instantly on pick. */
+    val budgetStartDay: Int = 1,
 )
