@@ -2,7 +2,7 @@ package com.iponlove.app.feature.transactions.presentation
 
 import android.content.Context
 import android.net.Uri
-import androidx.glance.appwidget.updateAll
+import com.iponlove.app.feature.widget.presentation.Widgets
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -25,7 +25,6 @@ import com.iponlove.app.feature.transactions.domain.usecase.GetTransactionUseCas
 import com.iponlove.app.feature.transactions.domain.usecase.SaveTransactionImagesUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.SaveTransferUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.UpsertTransactionUseCase
-import com.iponlove.app.feature.widget.presentation.AddTransactionWidget
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -274,7 +273,7 @@ class AddTransactionViewModel @Inject constructor(
                 // parent transaction exists (deferred persistence — see SaveTransactionImagesUseCase).
                 saveTransactionImages(result.transaction.id, s.images)
                 clearDraft()
-                AddTransactionWidget().updateAll(context)
+                Widgets.updateAll(context)
                 onDone()
             }
         }

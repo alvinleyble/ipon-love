@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.accounts.presentation
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iponlove.app.core.analytics.Analytics
@@ -21,7 +22,9 @@ import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCas
 import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.AccountBalanceCalculator
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveBalanceLedgerUseCase
+import com.iponlove.app.feature.widget.presentation.Widgets
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +38,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AccountsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     observeAccounts: ObserveAccountsUseCase,
     observeBalanceLedger: ObserveBalanceLedgerUseCase,
     observeCoupleMembers: ObserveCoupleMembersUseCase,
@@ -158,6 +162,7 @@ class AccountsViewModel @Inject constructor(
         viewModelScope.launch {
             upsertAccount(account)
             editor.value = null
+            Widgets.updateAll(context)
         }
     }
 
@@ -197,7 +202,10 @@ class AccountsViewModel @Inject constructor(
     }
 
     fun archive(id: String, archived: Boolean) {
-        viewModelScope.launch { archiveAccount(id, archived) }
+        viewModelScope.launch {
+            archiveAccount(id, archived)
+            Widgets.updateAll(context)
+        }
     }
 
     /** Toggle whether archived accounts are listed (so their "Unarchive" action is reachable). */
@@ -217,7 +225,10 @@ class AccountsViewModel @Inject constructor(
     }
 
     fun delete(id: String) {
-        viewModelScope.launch { deleteAccount(id) }
+        viewModelScope.launch {
+            deleteAccount(id)
+            Widgets.updateAll(context)
+        }
     }
 
     private companion object {

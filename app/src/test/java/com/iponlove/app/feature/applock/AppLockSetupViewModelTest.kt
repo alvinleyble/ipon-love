@@ -50,7 +50,7 @@ class AppLockSetupViewModelTest {
     @Test
     fun confirmSet_matchingPins_unlocksTheSession() = runTest {
         coEvery { observeAppLock() } returns flowOf(AppLockPreferences())
-        val appLockManager = AppLockManager()
+        val appLockManager = AppLockManager { }
         val viewModel = viewModel(appLockManager)
 
         "1234".forEach { viewModel.onDigit(it) }
@@ -63,7 +63,7 @@ class AppLockSetupViewModelTest {
     @Test
     fun confirmSet_mismatchedPins_doesNotUnlock() = runTest {
         coEvery { observeAppLock() } returns flowOf(AppLockPreferences())
-        val appLockManager = AppLockManager()
+        val appLockManager = AppLockManager { }
         val viewModel = viewModel(appLockManager)
 
         "1234".forEach { viewModel.onDigit(it) }

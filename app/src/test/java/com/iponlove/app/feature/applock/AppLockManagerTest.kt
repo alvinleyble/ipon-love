@@ -8,19 +8,19 @@ class AppLockManagerTest {
 
     @Test
     fun startsLocked() {
-        assertThat(AppLockManager().isLocked.value).isTrue()
+        assertThat(AppLockManager { }.isLocked.value).isTrue()
     }
 
     @Test
     fun unlock_setsLockedFalse() {
-        val manager = AppLockManager()
+        val manager = AppLockManager { }
         manager.unlock()
         assertThat(manager.isLocked.value).isFalse()
     }
 
     @Test
     fun lock_setsLockedTrue() {
-        val manager = AppLockManager()
+        val manager = AppLockManager { }
         manager.unlock()
         manager.lock()
         assertThat(manager.isLocked.value).isTrue()
@@ -28,7 +28,7 @@ class AppLockManagerTest {
 
     @Test
     fun cancelAutoLock_beforeTimerFires_preservesUnlockedState() {
-        val manager = AppLockManager()
+        val manager = AppLockManager { }
         manager.unlock()
         manager.scheduleAutoLock()
         manager.cancelAutoLock()

@@ -1,7 +1,6 @@
 package com.iponlove.app.feature.widget.presentation
 
 import android.content.Context
-import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
@@ -93,7 +92,7 @@ class QuickAddViewModel @Inject constructor(
                     isPrivate = false,
                 ),
             )
-            AddTransactionWidget().updateAll(context)
+            Widgets.updateAll(context)
             onSaved()
         }
     }

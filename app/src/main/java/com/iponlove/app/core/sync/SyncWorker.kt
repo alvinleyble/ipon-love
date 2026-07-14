@@ -12,6 +12,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
+import com.iponlove.app.feature.widget.presentation.Widgets
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
@@ -32,6 +33,9 @@ class SyncWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result = try {
         syncEngine.sync()
+        // A background pull may have changed balances — repaint the home-screen widgets (the
+        // foreground post-sync path in MainActivity covers app-open; this covers WorkManager).
+        Widgets.updateAll(applicationContext)
         enqueueBudgetAlerts()
         Result.success()
     } catch (e: Exception) {

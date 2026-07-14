@@ -75,8 +75,7 @@ import com.iponlove.app.feature.settings.domain.usecase.ObserveCurrencySymbolUse
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
 import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
-import androidx.glance.appwidget.updateAll
-import com.iponlove.app.feature.widget.presentation.AddTransactionWidget
+import com.iponlove.app.feature.widget.presentation.Widgets
 import com.iponlove.app.navigation.IponApp
 import com.iponlove.app.navigation.OnboardingGraph
 import dagger.hilt.android.AndroidEntryPoint
@@ -162,7 +161,9 @@ class MainActivity : FragmentActivity() {
             val appLockPrefs by observeAppLock()
                 .collectAsState(initial = AppLockPreferences())
             val isLocked by appLockManager.isLocked.collectAsState()
-            val privacyModeOn by observePrivacyMode().collectAsState(initial = false)
+            // Seeds hidden (Item 25): privacy mode is session-scoped and defaults ON, so the first
+            // frame masks amounts until the session flag emits (which is also true on cold open).
+            val privacyModeOn by observePrivacyMode().collectAsState(initial = true)
             val currencySymbol by observeCurrencySymbol().collectAsState(initial = CurrencySymbol.DEFAULT)
 
             CompositionLocalProvider(
@@ -220,7 +221,7 @@ class MainActivity : FragmentActivity() {
                                 ExistingWorkPolicy.REPLACE,
                                 BudgetAlertWorker.buildRequest(),
                             )
-                            AddTransactionWidget().updateAll(applicationContext)
+                            Widgets.updateAll(applicationContext)
                         }
                         LaunchedEffect(current.userId) { watchUnpair() }
                         // Keep IponApp always composed — never a branch swap. Swapping the
@@ -269,6 +270,9 @@ class MainActivity : FragmentActivity() {
                     }
 
                     AuthStatus.Unauthenticated -> {
+                        // Sign-out (or a never-signed-in launch): repaint the balance widget so it
+                        // masks the previous session's figure off the home screen (grill 2026-07-14).
+                        LaunchedEffect(Unit) { Widgets.updateAll(applicationContext) }
                         var showForgotPassword by remember { mutableStateOf(false) }
                         if (showForgotPassword) {
                             val forgotPasswordViewModel: ForgotPasswordViewModel = hiltViewModel()

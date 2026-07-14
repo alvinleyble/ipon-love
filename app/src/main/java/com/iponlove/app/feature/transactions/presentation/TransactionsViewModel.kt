@@ -3,14 +3,13 @@ package com.iponlove.app.feature.transactions.presentation
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.glance.appwidget.updateAll
+import com.iponlove.app.feature.widget.presentation.Widgets
 import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.date.DayGrouping
 import com.iponlove.app.core.date.MonthWindow
 import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.core.entitlement.Scope
 import com.iponlove.app.core.sync.SyncEngine
-import com.iponlove.app.feature.widget.presentation.AddTransactionWidget
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
@@ -145,7 +144,7 @@ class TransactionsViewModel @Inject constructor(
     fun delete(id: String) {
         viewModelScope.launch {
             deleteTransaction(id)
-            AddTransactionWidget().updateAll(context)
+            Widgets.updateAll(context)
         }
     }
 
