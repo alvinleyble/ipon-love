@@ -87,6 +87,8 @@ import com.iponlove.app.feature.savings.presentation.GoalDetailScreen
 import com.iponlove.app.feature.savings.presentation.GoalEditorScreen
 import com.iponlove.app.feature.savings.presentation.GoalEditorViewModel.Companion.GOAL_ID_KEY
 import com.iponlove.app.feature.savings.presentation.SavingsGoalsScreen
+import com.iponlove.app.feature.settings.presentation.AppearanceScreen
+import com.iponlove.app.feature.settings.presentation.FinanceScreen
 import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
 import com.iponlove.app.feature.settings.presentation.ProfileScreen
 import com.iponlove.app.feature.settings.presentation.SettingsCoupleScreen
@@ -102,6 +104,8 @@ import kotlinx.coroutines.launch
 private const val APP_LOCK_SETUP_ROUTE = "app_lock_setup"
 private const val NOTE_EDITOR_ROUTE = "note_editor"
 private const val PROFILE_ROUTE = "profile"
+private const val APPEARANCE_ROUTE = "settings_appearance"
+private const val FINANCE_ROUTE = "settings_finance"
 private const val SUBSCRIPTION_ROUTE = "subscription"
 /** Paywall route carrying the entry surface as a nav arg (Item 21) — e.g. "subscription?source=budgets". */
 private fun subscriptionRoute(source: String) = "$SUBSCRIPTION_ROUTE?$SOURCE_KEY=$source"
@@ -171,8 +175,8 @@ private fun IponAppContent(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
 
-    // A home-screen widget can request a module to open on launch (Item 33: balance widget ->
-    // Manage -> Accounts). Fires once per requested route, after the NavHost graph is set; the
+    // A home-screen widget can request a module to open on launch (Item 33: balance widget →
+    // Manage → Accounts). Fires once per requested route, after the NavHost graph is set; the
     // switchTab lands on the module's root (Manage defaults to its Accounts sub-tab).
     LaunchedEffect(deepLinkRoute) {
         val dest = deepLinkRoute?.let { NavRegistry.byId[it] } ?: return@LaunchedEffect
@@ -386,6 +390,8 @@ private fun IponAppContent(
                 composable(NavRegistry.SETTINGS.route) {
                     PersonalizeScreen(
                         onBack = { navController.popBackStack() },
+                        onOpenAppearance = { navController.navigate(APPEARANCE_ROUTE) },
+                        onOpenFinance = { navController.navigate(FINANCE_ROUTE) },
                         onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
                         onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                         onOpenSecurity = { navController.navigate(APP_LOCK_SETUP_ROUTE) },
@@ -397,6 +403,15 @@ private fun IponAppContent(
                         onReplayTutorial = { tutorialViewModel.replay() },
                         onSignOut = onSignOut,
                     )
+                }
+                composable(APPEARANCE_ROUTE) {
+                    AppearanceScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
+                    )
+                }
+                composable(FINANCE_ROUTE) {
+                    FinanceScreen(onBack = { navController.popBackStack() })
                 }
                 composable(PROFILE_ROUTE) {
                     ProfileScreen(onBack = { navController.popBackStack() })
