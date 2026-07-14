@@ -8,8 +8,9 @@ import org.junit.Test
 import java.math.BigDecimal
 
 /**
- * The balance widget's display truth table (grill 2026-07-14). The lock-bypass rows are the point:
- * no session or a set-PIN lock must mask hard and disable the eye, regardless of the local reveal.
+ * The balance widget's display truth table (grill 2026-07-14). Only a missing session masks hard
+ * and disables the eye — the app lock deliberately does not gate the widget (Alvin's on-device
+ * call, 2026-07-14: parity with the quick-add widget, which needs no unlock).
  */
 class WidgetDisplayTest {
 
@@ -17,16 +18,12 @@ class WidgetDisplayTest {
 
     private fun resolve(
         hasSession: Boolean = true,
-        isPinSet: Boolean = false,
-        isLocked: Boolean = false,
         globalHide: Boolean = false,
         userToggled: Boolean = false,
     ) = resolveWidgetDisplay(
         netAssets = amount,
         symbol = CurrencySymbol.PHP,
         hasSession = hasSession,
-        isPinSet = isPinSet,
-        isLocked = isLocked,
         globalHide = globalHide,
         userToggled = userToggled,
     )
@@ -36,17 +33,6 @@ class WidgetDisplayTest {
     @Test fun `no session masks hard even when reveal is toggled on`() {
         assertThat(resolve(hasSession = false, userToggled = true))
             .isEqualTo(WidgetDisplay.HardMasked)
-    }
-
-    @Test fun `set-PIN lock masks hard even when reveal is toggled on`() {
-        assertThat(resolve(isPinSet = true, isLocked = true, userToggled = true))
-            .isEqualTo(WidgetDisplay.HardMasked)
-    }
-
-    @Test fun `locked but no PIN set does not hard-mask`() {
-        // A user with no app lock is "locked" only by AppLockManager's default flag — never mask them.
-        assertThat(resolve(isPinSet = false, isLocked = true))
-            .isInstanceOf(WidgetDisplay.Soft::class.java)
     }
 
     // --- Soft state: default follows global "Hide amounts", eye flips it ---

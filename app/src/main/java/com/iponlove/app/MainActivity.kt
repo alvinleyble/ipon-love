@@ -82,6 +82,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -90,6 +91,11 @@ class MainActivity : FragmentActivity() {
 
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
+
+    // A one-shot module route requested by a home-screen widget tap (e.g. the balance widget →
+    // Manage → Accounts, Item 33). Consumed by IponApp once the shell is mounted, then cleared;
+    // set from both onCreate (cold launch) and onNewIntent (singleTask — app already running).
+    private val pendingWidgetRoute = MutableStateFlow<String?>(null)
 
     @Inject lateinit var supabaseClient: SupabaseClient
     @Inject lateinit var materializeRecurringRules: MaterializeRecurringRulesUseCase
@@ -114,6 +120,7 @@ class MainActivity : FragmentActivity() {
             requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         handleAuthDeepLink(intent)
+        consumeWidgetRoute(intent)
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 appLockManager.cancelAutoLock()
@@ -141,6 +148,11 @@ class MainActivity : FragmentActivity() {
             override fun onStop(owner: LifecycleOwner) {
                 appLockManager.scheduleAutoLock()
                 coupleChannelManager.setForeground(false)
+                // Repaint the home-screen widgets on background: leaving the app is exactly when
+                // the user is about to look at them, and it's the last reliable in-process moment
+                // before the ROM may freeze us (Alvin's device defers Glance dispatch minutes
+                // otherwise — on-device find, 2026-07-14). Also picks up any in-app privacy toggle.
+                lifecycleScope.launch { Widgets.updateAll(applicationContext) }
             }
         })
         enableEdgeToEdge()
@@ -232,7 +244,12 @@ class MainActivity : FragmentActivity() {
                             true -> OnboardingGraph(onComplete = { onboardingDecision = false })
                             false -> {
                                 val form by authViewModel.form.collectAsState()
-                                IponApp(onSignOut = authViewModel::signOut)
+                                val widgetRoute by pendingWidgetRoute.collectAsState()
+                                IponApp(
+                                    onSignOut = authViewModel::signOut,
+                                    deepLinkRoute = widgetRoute,
+                                    onDeepLinkHandled = { pendingWidgetRoute.value = null },
+                                )
                                 if (form.signOutPendingConfirm) {
                                     SignOutPendingDialog(
                                         onConfirm = authViewModel::confirmSignOutDiscardingChanges,
@@ -323,7 +340,19 @@ class MainActivity : FragmentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // singleTask: keep the Activity's intent current so any later reads see this one, then
+        // handle both the auth deep link and a widget's requested route.
+        setIntent(intent)
         handleAuthDeepLink(intent)
+        consumeWidgetRoute(intent)
+    }
+
+    /** Latch a widget-requested module route (once), stripping the extra so it can't re-fire on a
+     *  later Activity recreation (e.g. rotation) after it's already been navigated. */
+    private fun consumeWidgetRoute(intent: Intent) {
+        val route = intent.getStringExtra(EXTRA_START_ROUTE) ?: return
+        intent.removeExtra(EXTRA_START_ROUTE)
+        pendingWidgetRoute.value = route
     }
 
     private fun handleAuthDeepLink(intent: Intent) {
@@ -338,8 +367,14 @@ class MainActivity : FragmentActivity() {
         )
     }
 
-    private companion object {
-        const val TAG = "MainActivity"
+    companion object {
+        /** Intent extra: a [NavRegistry] module id to open on launch, set by a widget tap (Item 33). */
+        const val EXTRA_START_ROUTE = "com.iponlove.app.extra.START_ROUTE"
+
+        /** [EXTRA_START_ROUTE] value for Manage (whose default sub-tab is Accounts). */
+        const val ROUTE_MANAGE = "manage"
+
+        private const val TAG = "MainActivity"
     }
 }
 

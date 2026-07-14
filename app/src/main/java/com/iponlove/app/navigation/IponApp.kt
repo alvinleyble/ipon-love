@@ -138,6 +138,8 @@ private fun NavDestination.graphRoute(): String = route + GRAPH_SUFFIX
 fun IponApp(
     onSignOut: () -> Unit,
     navViewModel: NavbarViewModel = hiltViewModel(),
+    deepLinkRoute: String? = null,
+    onDeepLinkHandled: () -> Unit = {},
 ) {
     val state by navViewModel.uiState.collectAsState()
 
@@ -147,7 +149,13 @@ fun IponApp(
         }
         return
     }
-    IponAppContent(state = state, onSignOut = onSignOut, navViewModel = navViewModel)
+    IponAppContent(
+        state = state,
+        onSignOut = onSignOut,
+        navViewModel = navViewModel,
+        deepLinkRoute = deepLinkRoute,
+        onDeepLinkHandled = onDeepLinkHandled,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -156,10 +164,21 @@ private fun IponAppContent(
     state: NavUiState,
     onSignOut: () -> Unit,
     navViewModel: NavbarViewModel,
+    deepLinkRoute: String? = null,
+    onDeepLinkHandled: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+
+    // A home-screen widget can request a module to open on launch (Item 33: balance widget ->
+    // Manage -> Accounts). Fires once per requested route, after the NavHost graph is set; the
+    // switchTab lands on the module's root (Manage defaults to its Accounts sub-tab).
+    LaunchedEffect(deepLinkRoute) {
+        val dest = deepLinkRoute?.let { NavRegistry.byId[it] } ?: return@LaunchedEffect
+        navController.switchTab(dest)
+        onDeepLinkHandled()
+    }
 
     // NavHost can't swap its start without rebuilding the graph (wiping the back stack), so the
     // home destination is captured once. Reordering pins later updates the bar, not home. The

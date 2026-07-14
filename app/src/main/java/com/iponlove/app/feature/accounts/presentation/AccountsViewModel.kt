@@ -221,7 +221,11 @@ class AccountsViewModel @Inject constructor(
 
     /** Persist a drag-handle reorder from the Manage tab (item 9b) — [orderedIds] top-to-bottom. */
     fun reorder(orderedIds: List<String>) {
-        viewModelScope.launch { reorderAccounts(orderedIds) }
+        viewModelScope.launch {
+            reorderAccounts(orderedIds)
+            // Repaint the balance widget: its tall form lists accounts in this order (Item 33).
+            Widgets.updateAll(context)
+        }
     }
 
     fun delete(id: String) {

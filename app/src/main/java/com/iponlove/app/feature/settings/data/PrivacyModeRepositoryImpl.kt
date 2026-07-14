@@ -2,6 +2,7 @@ package com.iponlove.app.feature.settings.data
 
 import com.iponlove.app.feature.applock.presentation.AppLockManager
 import com.iponlove.app.feature.settings.domain.repository.PrivacyModeRepository
+import com.iponlove.app.feature.widget.presentation.WidgetRefresher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +26,7 @@ import javax.inject.Singleton
 @Singleton
 class PrivacyModeRepositoryImpl @Inject constructor(
     appLockManager: AppLockManager,
+    widgetRefresher: WidgetRefresher,
 ) : PrivacyModeRepository {
 
     // true = amounts hidden. Seeds hidden so the very first frame after a cold open is masked.
@@ -34,7 +36,14 @@ class PrivacyModeRepositoryImpl @Inject constructor(
 
     init {
         scope.launch {
-            appLockManager.autoLockElapsed.collect { hidden.value = true }
+            appLockManager.autoLockElapsed.collect {
+                hidden.value = true
+                // Repaint the balance widget AFTER the flag flips, so its snapshot reads the
+                // re-hidden state. With the app lock no longer gating the widget (Item 33,
+                // Alvin's call) this is the only re-mask signal a no-PIN user gets —
+                // AppLockManager's own setLocked repaint dedups away when isLocked never cycles.
+                widgetRefresher.refresh()
+            }
         }
     }
 

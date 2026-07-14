@@ -5,7 +5,9 @@ import com.iponlove.app.core.sync.SyncCursorStore
 import com.iponlove.app.core.sync.data.SyncStatusStore
 import com.iponlove.app.feature.applock.domain.repository.AppLockRepository
 import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
+import com.iponlove.app.feature.widget.presentation.WidgetRefresher
 import com.iponlove.app.navigation.NavConfigRepository
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder
 import io.mockk.mockk
@@ -20,7 +22,9 @@ class LocalDataWiperTest {
     private val onboarding = mockk<OnboardingRepository>(relaxed = true)
     private val appLock = mockk<AppLockRepository>(relaxed = true)
     private val syncStatus = mockk<SyncStatusStore>(relaxed = true)
-    private val wiper = LocalDataWiper(database, cursors, navConfig, onboarding, appLock, syncStatus)
+    private val widgets = mockk<WidgetRefresher>(relaxed = true)
+    private val wiper =
+        LocalDataWiper(database, cursors, navConfig, onboarding, appLock, syncStatus, widgets)
 
     @Test
     fun wipe_clearsRoom_resetsCursors_navConfig_onboardingFlags_andAppLockPin() = runTest {
@@ -49,5 +53,28 @@ class LocalDataWiperTest {
             cursors.reset()
             database.clearAll()
         }
+    }
+
+    @Test
+    fun wipe_repaintsWidgets_afterRoomClears() = runTest {
+        wiper.wipe()
+
+        // The widget must repaint off the emptied state so the previous account's balances never
+        // linger on the home screen across a sign-out/switch/delete (Alvin's on-device find,
+        // 2026-07-14) — and only after the data it reads is gone.
+        coVerifyOrder {
+            database.clearAll()
+            widgets.refresh()
+        }
+    }
+
+    @Test
+    fun wipe_survivesAWidgetRepaintFailure() = runTest {
+        coEvery { widgets.refresh() } throws IllegalStateException("glance unavailable")
+
+        wiper.wipe() // must not throw — a cosmetic repaint can't fail the wipe
+
+        coVerify(exactly = 1) { database.clearAll() }
+        coVerify(exactly = 1) { syncStatus.clear() }
     }
 }

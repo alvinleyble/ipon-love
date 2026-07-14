@@ -147,8 +147,9 @@ dependencies {
     // Rich text editor for Notes (HTML-serialized; Compose Multiplatform lib)
     implementation(libs.richeditor.compose)
 
-    // Glance home screen widget
+    // Glance home screen widget (+ material3 adapter for the brand ColorProviders)
     implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
 
     // Biometric local app lock
     implementation(libs.androidx.biometric)

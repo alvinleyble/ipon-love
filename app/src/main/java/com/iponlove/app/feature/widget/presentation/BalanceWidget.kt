@@ -3,6 +3,7 @@ package com.iponlove.app.feature.widget.presentation
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -14,14 +15,20 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
+import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
@@ -35,14 +42,14 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import com.iponlove.app.MainActivity
 import com.iponlove.app.R
-import com.iponlove.app.feature.applock.presentation.AppLockManager
+import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.domain.repository.AuthRepository
-import com.iponlove.app.feature.applock.domain.usecase.ObserveAppLockUseCase
+import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountBalancesUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveNetAssetsUseCase
-import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 import com.iponlove.app.feature.settings.domain.usecase.ObserveCurrencySymbolUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import dagger.hilt.EntryPoint
@@ -56,23 +63,29 @@ private const val MASKED = "•••••"
 
 /**
  * Home-screen widget showing **net assets** (own + shared-by-me active accounts — ADR-0011/0007).
- * Glance can't `@Inject` and paints a one-shot snapshot per [provideGlance] (it can't observe a
- * Flow), so it reaches the use cases via [WidgetEntryPoint] and reads snapshots with `.first()`;
- * accuracy then depends on every balance-changing write calling [Widgets.updateAll]. The privacy /
- * lock mask and the in-widget eye toggle live in [resolveWidgetDisplay] (grill 2026-07-14).
+ * `SizeMode.Responsive` (Item 33): the [COMPACT] size renders the net-assets glance alone; resized
+ * to [TALL] it adds a scrollable per-account breakdown ([ObserveAccountBalancesUseCase]) below the
+ * same header, so the rows sum to the headline figure. Glance can't `@Inject` and paints a one-shot
+ * snapshot per [provideGlance] (it can't observe a Flow), so it reaches the use cases via
+ * [WidgetEntryPoint] and reads snapshots with `.first()`; accuracy then depends on every
+ * balance-changing write calling [Widgets.updateAll]. The privacy mask and the in-widget eye
+ * toggle live in [resolveWidgetDisplay]; the list mirrors it via [buildAccountRows] (suppressed
+ * when signed out). The app lock does NOT gate the widget — like quick-add, no unlock needed
+ * (Alvin's on-device call, 2026-07-14). Body + row taps open Manage → Accounts (grill 2026-07-14).
  */
 class BalanceWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
 
+    override val sizeMode = SizeMode.Responsive(setOf(COMPACT, TALL))
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val ep = EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
 
         val netAssets = ep.netAssetsUseCase().invoke().first()
+        val accountBalances = ep.accountBalancesUseCase().invoke().first()
         val symbol = ep.currencySymbolUseCase().invoke().first()
         val globalHide = ep.privacyModeUseCase().invoke().first()
-        val appLock = ep.appLockUseCase().invoke().first()
-        val isLocked = ep.appLockManager().isLocked.value
         // Wait past the brief Loading window so a real session isn't misread as "logged out". On a
         // cold process (the periodic tick after Android kills the app in the background, common on
         // slow devices) this Loading window includes Hilt/Supabase-client/Room cold-start, not just
@@ -91,18 +104,29 @@ class BalanceWidget : GlanceAppWidget() {
                 netAssets = netAssets,
                 symbol = symbol,
                 hasSession = hasSession,
-                isPinSet = appLock.isPinSet,
-                isLocked = isLocked,
                 globalHide = globalHide,
                 userToggled = userToggled,
             )
-            GlanceTheme { BalanceWidgetContent(display) }
+            // Responsive picks the closest declared size; anything at least the tall height shows
+            // the list form (the compact form stays byte-identical to the Item 32 glance).
+            val tall = LocalSize.current.height >= TALL.height
+            // Brand Rose light/dark, not the default wallpaper-derived dynamic colors (Alvin,
+            // 2026-07-14 — the widget came out purple beside the pink quick-add widget).
+            GlanceTheme(colors = IponWidgetColors) {
+                if (tall) {
+                    TallWidget(display, buildAccountRows(display, accountBalances, symbol))
+                } else {
+                    CompactWidget(display)
+                }
+            }
         }
     }
 
     companion object {
         val USER_TOGGLED_KEY = booleanPreferencesKey("balance_widget_user_toggled")
         private const val TIMEOUT_MS = 8000L
+        private val COMPACT = DpSize(110.dp, 64.dp)
+        private val TALL = DpSize(180.dp, 220.dp)
     }
 }
 
@@ -111,69 +135,128 @@ class BalanceWidget : GlanceAppWidget() {
 @InstallIn(SingletonComponent::class)
 interface WidgetEntryPoint {
     fun netAssetsUseCase(): ObserveNetAssetsUseCase
+    fun accountBalancesUseCase(): ObserveAccountBalancesUseCase
     fun currencySymbolUseCase(): ObserveCurrencySymbolUseCase
     fun privacyModeUseCase(): ObservePrivacyModeUseCase
-    fun appLockUseCase(): ObserveAppLockUseCase
     fun authRepository(): AuthRepository
-    fun appLockManager(): AppLockManager
 }
 
+/** Intent that brings the (singleTask) app forward and lands on Manage → Accounts (its default tab). */
+private fun manageAccountsIntent(context: Context): Intent =
+    Intent(context, MainActivity::class.java)
+        .putExtra(MainActivity.EXTRA_START_ROUTE, MainActivity.ROUTE_MANAGE)
+
+/** Compact form (≈2×1): the Item 32 net-assets glance, unchanged. */
 @Composable
-private fun BalanceWidgetContent(display: WidgetDisplay) {
+private fun CompactWidget(display: WidgetDisplay) {
     val context = LocalContext.current
-    val amountText = when (display) {
-        WidgetDisplay.HardMasked -> MASKED
-        is WidgetDisplay.Soft -> display.text ?: MASKED
-    }
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(GlanceTheme.colors.widgetBackground)
-            .clickable(actionStartActivity(Intent(context, MainActivity::class.java)))
+            .clickable(actionStartActivity(manageAccountsIntent(context)))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = GlanceModifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Image(
-                provider = ImageProvider(R.drawable.ic_widget_heart),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
-                modifier = GlanceModifier.size(14.dp),
-            )
-            Spacer(GlanceModifier.width(6.dp))
-            Text(
-                text = "Net assets",
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
-            )
-            Spacer(GlanceModifier.defaultWeight())
-            Image(
-                provider = ImageProvider(R.drawable.ic_widget_refresh),
-                contentDescription = "Refresh",
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
-                modifier = GlanceModifier
-                    .size(18.dp)
-                    .clickable(actionRunCallback<RefreshBalanceWidgetAction>()),
-            )
-        }
+        HeaderLabelRow()
         Spacer(GlanceModifier.height(4.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = amountText,
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-            )
-            if (display is WidgetDisplay.Soft) {
-                Spacer(GlanceModifier.width(10.dp))
+        AmountRow(display)
+    }
+}
+
+/** Tall form: the same header over a scrollable per-account list (or a lock/empty hint). */
+@Composable
+private fun TallWidget(display: WidgetDisplay, rows: List<AccountRowDisplay>?) {
+    val context = LocalContext.current
+    Column(
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .background(GlanceTheme.colors.widgetBackground)
+            .padding(14.dp),
+    ) {
+        // Header + amount tap opens Manage → Accounts. A LazyColumn's items each need their own
+        // click (an outer clickable doesn't cover scrolled rows), so the list area is handled per row.
+        Column(modifier = GlanceModifier.clickable(actionStartActivity(manageAccountsIntent(context)))) {
+            HeaderLabelRow()
+            Spacer(GlanceModifier.height(4.dp))
+            AmountRow(display)
+        }
+        Spacer(GlanceModifier.height(10.dp))
+        when {
+            rows == null -> Hint("Sign in to view")           // signed out: list suppressed
+            rows.isEmpty() -> Hint("No accounts yet")
+            else -> LazyColumn(modifier = GlanceModifier.fillMaxWidth().defaultWeight()) {
+                items(rows) { row -> AccountRow(row) }
+            }
+        }
+    }
+}
+
+/** Heart + "Net assets" label + manual-refresh icon — identical in both forms. */
+@Composable
+private fun HeaderLabelRow() {
+    Row(
+        modifier = GlanceModifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Image(
+            provider = ImageProvider(R.drawable.ic_widget_heart),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+            modifier = GlanceModifier.size(14.dp),
+        )
+        Spacer(GlanceModifier.width(6.dp))
+        Text(
+            text = "Net assets",
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurfaceVariant,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
+        Spacer(GlanceModifier.defaultWeight())
+        Image(
+            provider = ImageProvider(R.drawable.ic_widget_refresh),
+            contentDescription = "Refresh",
+            colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
+            modifier = GlanceModifier
+                .size(18.dp)
+                .clickable(actionRunCallback<RefreshBalanceWidgetAction>()),
+        )
+    }
+}
+
+/** The net-assets figure + the soft-reveal eye (eye shown only in the [WidgetDisplay.Soft] state). */
+@Composable
+private fun AmountRow(display: WidgetDisplay) {
+    val amountText = when (display) {
+        WidgetDisplay.HardMasked -> MASKED
+        is WidgetDisplay.Soft -> display.text ?: MASKED
+    }
+    Row(
+        modifier = GlanceModifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = amountText,
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurface,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+        )
+        Spacer(GlanceModifier.defaultWeight())
+        if (display is WidgetDisplay.Soft) {
+            // Pinned to the row's far right (not floating after the amount, whose width changes
+            // between masked and revealed) and wrapped in a generous tap box — the bare 22dp icon
+            // was mis-tapped into the open-app body click ~80% of the time (Alvin, 2026-07-14).
+            Box(
+                modifier = GlanceModifier
+                    .width(48.dp)
+                    .height(36.dp)
+                    .clickable(actionRunCallback<ToggleBalanceRevealAction>()),
+                contentAlignment = Alignment.Center,
+            ) {
                 Image(
                     provider = ImageProvider(
                         if (display.revealed) R.drawable.ic_widget_eye_off
@@ -181,11 +264,52 @@ private fun BalanceWidgetContent(display: WidgetDisplay) {
                     ),
                     contentDescription = if (display.revealed) "Hide amount" else "Show amount",
                     colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
-                    modifier = GlanceModifier
-                        .size(22.dp)
-                        .clickable(actionRunCallback<ToggleBalanceRevealAction>()),
+                    modifier = GlanceModifier.size(24.dp),
                 )
             }
         }
     }
+}
+
+/** One account row: color dot · name · masked-or-real balance; taps open Manage → Accounts. */
+@Composable
+private fun AccountRow(row: AccountRowDisplay) {
+    val context = LocalContext.current
+    val dotColor: ColorProvider =
+        parseHexColor(row.colorHex)?.let { ColorProvider(it) } ?: GlanceTheme.colors.primary
+    Row(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .clickable(actionStartActivity(manageAccountsIntent(context)))
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(GlanceModifier.size(10.dp).cornerRadius(5.dp).background(dotColor)) {}
+        Spacer(GlanceModifier.width(8.dp))
+        Text(
+            text = row.name,
+            maxLines = 1,
+            style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp),
+        )
+        Spacer(GlanceModifier.defaultWeight())
+        Spacer(GlanceModifier.width(8.dp))
+        Text(
+            text = row.amountText ?: MASKED,
+            maxLines = 1,
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurfaceVariant,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
+    }
+}
+
+/** Muted single-line placeholder for the list area (lock hint / empty state). */
+@Composable
+private fun Hint(text: String) {
+    Text(
+        text = text,
+        style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp),
+    )
 }

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:description="@string/app_name"
+    android:description="@string/balance_widget_description"
     android:initialLayout="@layout/balance_widget_initial"
+    android:previewLayout="@layout/balance_widget_preview"
     android:minWidth="110dp"
     android:minHeight="64dp"
     android:targetCellWidth="2"

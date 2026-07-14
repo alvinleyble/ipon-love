@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Love, Ipon</string>
+    <string name="balance_widget_label">Balance &amp; accounts</string>
+    <string name="balance_widget_description">Net assets at a glance — resize to see each account.</string>
+    <string name="add_transaction_widget_label">Quick add</string>
+    <string name="add_transaction_widget_description">Add a transaction in one tap.</string>
 </resources>

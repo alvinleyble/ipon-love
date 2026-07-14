@@ -5,6 +5,7 @@ import com.iponlove.app.core.sync.SyncCursorStore
 import com.iponlove.app.core.sync.data.SyncStatusStore
 import com.iponlove.app.feature.applock.domain.repository.AppLockRepository
 import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
+import com.iponlove.app.feature.widget.presentation.WidgetRefresher
 import com.iponlove.app.navigation.NavConfigRepository
 import javax.inject.Inject
 
@@ -44,6 +45,7 @@ class LocalDataWiper @Inject constructor(
     private val onboarding: OnboardingRepository,
     private val appLock: AppLockRepository,
     private val syncStatus: SyncStatusStore,
+    private val widgetRefresher: WidgetRefresher,
 ) {
     suspend fun wipe() {
         cursors.reset()
@@ -52,5 +54,12 @@ class LocalDataWiper @Inject constructor(
         onboarding.reset()
         appLock.clearPin()
         syncStatus.clear()
+        // Repaint the home-screen widgets off the now-empty state, HERE and not only in
+        // MainActivity's (cancellable) composition: without this, the balance widget kept showing
+        // the previous account's figures until the next account's first sync finished — a
+        // cross-account leak on sign-out / account-switch / delete-account (Alvin, 2026-07-14).
+        // Best-effort: a repaint failure must never fail the wipe (whose partial-run invariants
+        // actually matter — see the ordering note above).
+        runCatching { widgetRefresher.refresh() }
     }
 }
