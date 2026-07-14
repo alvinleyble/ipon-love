@@ -35,4 +35,18 @@ interface AuthRepository {
 
     /** Sets a new password on the current (recovery) session. */
     suspend fun updatePassword(newPassword: String)
+
+    /**
+     * Requests an email change on the current session. Supabase sends a confirmation link to the
+     * new address; the change is not live (and the synced users row email, ADR-0013, does not
+     * follow) until that link is clicked.
+     */
+    suspend fun updateEmail(newEmail: String)
+
+    /**
+     * Re-fetches the current user from the server and updates the in-memory session, so a
+     * server-confirmed change (e.g. a completed email change, Item 8) is reflected without an app
+     * restart. Best-effort by convention — callers wrap it in `runCatching` (offline is expected).
+     */
+    suspend fun refreshCurrentUser()
 }

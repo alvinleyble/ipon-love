@@ -75,6 +75,8 @@ private class FakeAuthRepository : AuthRepository {
     override suspend fun clearLocalSession() = error("not used by this test")
     override suspend fun sendPasswordReset(email: String) = error("not used by this test")
     override suspend fun updatePassword(newPassword: String) = error("not used by this test")
+    override suspend fun updateEmail(newEmail: String) = error("not used by this test")
+    override suspend fun refreshCurrentUser() = error("not used by this test")
 }
 
 private class FakeResetFinancesRepository : ResetFinancesRepository {

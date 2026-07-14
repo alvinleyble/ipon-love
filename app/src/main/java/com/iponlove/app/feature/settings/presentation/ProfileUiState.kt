@@ -30,8 +30,36 @@ data class ProfileUiState(
     // Optimistic default: the ConnectivityObserver seeds the real state within milliseconds of
     // collection, so the confirm never flashes disabled when actually online.
     val isOnline: Boolean = true,
+    // Change password (Item 8) — a self-contained re-auth flow; on success the dialog shows a
+    // confirmation instead of the form.
+    val showChangePasswordDialog: Boolean = false,
+    val currentPasswordInput: String = "",
+    val newPasswordInput: String = "",
+    val confirmPasswordInput: String = "",
+    val isChangePasswordLoading: Boolean = false,
+    val changePasswordError: String? = null,
+    val passwordChanged: Boolean = false,
+    // Change email (Item 8) — re-auth + a Supabase confirmation link; the address only flips once
+    // the user taps the link, so success shows a "check your inbox" state, not a live change.
+    val showChangeEmailDialog: Boolean = false,
+    val changeEmailPasswordInput: String = "",
+    val newEmailInput: String = "",
+    val isChangeEmailLoading: Boolean = false,
+    val changeEmailError: String? = null,
+    val emailChangeRequested: Boolean = false,
 ) {
     val canSave: Boolean get() = nameDraft.isNotBlank()
+
+    /** Change password needs the network for re-auth; all three fields must be filled. */
+    val canConfirmChangePassword: Boolean
+        get() = isOnline && !isChangePasswordLoading &&
+            currentPasswordInput.isNotBlank() && newPasswordInput.isNotBlank() &&
+            confirmPasswordInput.isNotBlank()
+
+    /** Change email needs the network for re-auth + the change request. */
+    val canConfirmChangeEmail: Boolean
+        get() = isOnline && !isChangeEmailLoading &&
+            changeEmailPasswordInput.isNotBlank() && newEmailInput.isNotBlank()
 
     /** Reset needs the network for its re-auth (ADR-0037), so the confirm is gated on [isOnline]. */
     val canConfirmReset: Boolean

@@ -76,6 +76,22 @@ class AuthRepositoryImpl @Inject constructor(
         Unit
     }
 
+    override suspend fun updateEmail(newEmail: String) = mapErrors {
+        // Supabase emails a confirmation link to the new address; the session's email only flips
+        // once it's clicked (the "Secure email change" flow). No local state changes here.
+        client.auth.updateUser { email = newEmail }
+        Unit
+    }
+
+    override suspend fun refreshCurrentUser() = mapErrors {
+        // Pulls the latest user (GET /auth/v1/user) and writes it back into the local session, so
+        // a completed email change surfaces without a restart. With "Secure email change" on, this
+        // still returns the old email until *both* confirmations land — exactly the desired
+        // behavior (the UI only shows the new address once the change is actually applied).
+        client.auth.retrieveUserForCurrentSession(updateSession = true)
+        Unit
+    }
+
     /** Run an auth SDK call, translating its failures to a typed [AuthException]. */
     private suspend inline fun <T> mapErrors(block: () -> T): T = try {
         block()

@@ -36,6 +36,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.iponlove.app.core.ui.AccentColorRow
 import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.feature.settings.domain.model.ResetFinancesCounts
@@ -47,6 +49,13 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    // Re-pull the account email whenever Profile becomes visible (incl. returning from the email
+    // client after tapping a change-email confirmation link) so it updates without a restart —
+    // Item 8. ON_RESUME fires on first entry too, so this also covers the initial load.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.refreshEmail()
+    }
 
     Scaffold(
         topBar = {
@@ -121,6 +130,20 @@ fun ProfileScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = viewModel::openChangePassword,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Change password")
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = viewModel::openChangeEmail,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Change email")
+            }
 
             Spacer(Modifier.height(28.dp))
             Text("Restart fresh", style = MaterialTheme.typography.titleMedium)
@@ -184,6 +207,191 @@ fun ProfileScreen(
             onDismiss = viewModel::dismissDeleteAccount,
         )
     }
+
+    if (state.showChangePasswordDialog) {
+        ChangePasswordDialog(
+            state = state,
+            onCurrentChange = viewModel::onCurrentPasswordChange,
+            onNewChange = viewModel::onNewPasswordChange,
+            onConfirmChange = viewModel::onConfirmPasswordChange,
+            onConfirm = viewModel::confirmChangePassword,
+            onDismiss = viewModel::dismissChangePassword,
+        )
+    }
+
+    if (state.showChangeEmailDialog) {
+        ChangeEmailDialog(
+            state = state,
+            onPasswordChange = viewModel::onChangeEmailPasswordChange,
+            onEmailChange = viewModel::onNewEmailChange,
+            onConfirm = viewModel::confirmChangeEmail,
+            onDismiss = viewModel::dismissChangeEmail,
+        )
+    }
+}
+
+@Composable
+private fun ChangePasswordDialog(
+    state: ProfileUiState,
+    onCurrentChange: (String) -> Unit,
+    onNewChange: (String) -> Unit,
+    onConfirmChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (state.passwordChanged) "Password changed" else "Change password") },
+        text = {
+            if (state.passwordChanged) {
+                Text(
+                    "Your password has been updated. Use it the next time you sign in.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = state.currentPasswordInput,
+                        onValueChange = onCurrentChange,
+                        label = { Text("Current password") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = state.newPasswordInput,
+                        onValueChange = onNewChange,
+                        label = { Text("New password") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = state.confirmPasswordInput,
+                        onValueChange = onConfirmChange,
+                        label = { Text("Confirm new password") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (!state.isOnline) {
+                        Text(
+                            "You need an internet connection to change your password.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    if (state.changePasswordError != null) {
+                        Text(
+                            state.changePasswordError,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (state.passwordChanged) {
+                TextButton(onClick = onDismiss) { Text("Done") }
+            } else {
+                TextButton(onClick = onConfirm, enabled = state.canConfirmChangePassword) {
+                    if (state.isChangePasswordLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    } else {
+                        Text("Change password")
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            if (!state.passwordChanged) {
+                TextButton(onClick = onDismiss, enabled = !state.isChangePasswordLoading) { Text("Cancel") }
+            }
+        },
+    )
+}
+
+@Composable
+private fun ChangeEmailDialog(
+    state: ProfileUiState,
+    onPasswordChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (state.emailChangeRequested) "Confirm your new email" else "Change email") },
+        text = {
+            if (state.emailChangeRequested) {
+                Text(
+                    "We've sent a confirmation link to ${state.newEmailInput.trim()}. Your email " +
+                        "changes once you tap that link — until then you keep signing in with your " +
+                        "current address.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Enter your new email and your current password to confirm.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    OutlinedTextField(
+                        value = state.newEmailInput,
+                        onValueChange = onEmailChange,
+                        label = { Text("New email") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = state.changeEmailPasswordInput,
+                        onValueChange = onPasswordChange,
+                        label = { Text("Current password") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (!state.isOnline) {
+                        Text(
+                            "You need an internet connection to change your email.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    if (state.changeEmailError != null) {
+                        Text(
+                            state.changeEmailError,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (state.emailChangeRequested) {
+                TextButton(onClick = onDismiss) { Text("Done") }
+            } else {
+                TextButton(onClick = onConfirm, enabled = state.canConfirmChangeEmail) {
+                    if (state.isChangeEmailLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    } else {
+                        Text("Send confirmation")
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            if (!state.emailChangeRequested) {
+                TextButton(onClick = onDismiss, enabled = !state.isChangeEmailLoading) { Text("Cancel") }
+            }
+        },
+    )
 }
 
 @Composable

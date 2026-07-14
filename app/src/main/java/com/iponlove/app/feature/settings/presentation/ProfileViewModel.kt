@@ -8,6 +8,9 @@ import com.iponlove.app.core.network.ConnectivityObserver
 import com.iponlove.app.core.sync.SyncWorker
 import com.iponlove.app.feature.auth.domain.model.AuthException
 import com.iponlove.app.feature.auth.domain.usecase.AuthCredentials
+import com.iponlove.app.feature.auth.domain.usecase.ChangeEmailUseCase
+import com.iponlove.app.feature.auth.domain.usecase.ChangePasswordUseCase
+import com.iponlove.app.feature.auth.domain.usecase.RefreshSessionUseCase
 import com.iponlove.app.feature.auth.presentation.message
 import com.iponlove.app.feature.settings.domain.usecase.DeleteUserAccountUseCase
 import com.iponlove.app.feature.settings.domain.usecase.PreviewResetFinancesUseCase
@@ -28,13 +31,16 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     observeCurrentUser: ObserveCurrentUserUseCase,
-    getAccountEmail: GetAccountEmailUseCase,
+    private val getAccountEmail: GetAccountEmailUseCase,
     connectivity: ConnectivityObserver,
     private val updateDisplayName: UpdateDisplayNameUseCase,
     private val updateAccentColor: UpdateAccentColorUseCase,
     private val previewResetFinances: PreviewResetFinancesUseCase,
     private val resetFinances: ResetFinancesUseCase,
     private val deleteUserAccount: DeleteUserAccountUseCase,
+    private val changePassword: ChangePasswordUseCase,
+    private val changeEmail: ChangeEmailUseCase,
+    private val refreshSession: RefreshSessionUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState(email = getAccountEmail()))
@@ -85,6 +91,19 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch { updateAccentColor(hex) }
     }
 
+    /**
+     * Refreshed on every Profile resume (Item 8): pulls the server user into the local session
+     * then re-reads the email, so a confirmed email change shows without an app restart. The email
+     * is otherwise a one-shot session read, which goes stale after a change. Best-effort — offline
+     * leaves the cached value in place.
+     */
+    fun refreshEmail() {
+        viewModelScope.launch {
+            refreshSession()
+            _uiState.update { it.copy(email = getAccountEmail()) }
+        }
+    }
+
     fun openResetFinances() {
         _uiState.update { it.copy(showResetFinancesDialog = true, resetFinancesError = null) }
         viewModelScope.launch {
@@ -124,6 +143,96 @@ class ProfileViewModel @Inject constructor(
             } catch (e: AuthException) {
                 _uiState.update {
                     it.copy(isResetFinancesLoading = false, resetFinancesError = e.error.message())
+                }
+            }
+        }
+    }
+
+    // ---- Change password (Item 8) ----
+
+    fun openChangePassword() = _uiState.update {
+        it.copy(
+            showChangePasswordDialog = true,
+            currentPasswordInput = "",
+            newPasswordInput = "",
+            confirmPasswordInput = "",
+            changePasswordError = null,
+            passwordChanged = false,
+        )
+    }
+
+    fun dismissChangePassword() = _uiState.update { it.copy(showChangePasswordDialog = false) }
+
+    fun onCurrentPasswordChange(value: String) =
+        _uiState.update { it.copy(currentPasswordInput = value, changePasswordError = null) }
+
+    fun onNewPasswordChange(value: String) =
+        _uiState.update { it.copy(newPasswordInput = value, changePasswordError = null) }
+
+    fun onConfirmPasswordChange(value: String) =
+        _uiState.update { it.copy(confirmPasswordInput = value, changePasswordError = null) }
+
+    fun confirmChangePassword() {
+        val s = _uiState.value
+        if (!s.canConfirmChangePassword) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isChangePasswordLoading = true, changePasswordError = null) }
+            try {
+                changePassword(s.currentPasswordInput, s.newPasswordInput, s.confirmPasswordInput)
+                _uiState.update {
+                    it.copy(
+                        isChangePasswordLoading = false,
+                        passwordChanged = true,
+                        currentPasswordInput = "",
+                        newPasswordInput = "",
+                        confirmPasswordInput = "",
+                    )
+                }
+            } catch (e: AuthException) {
+                _uiState.update {
+                    it.copy(isChangePasswordLoading = false, changePasswordError = e.error.message())
+                }
+            }
+        }
+    }
+
+    // ---- Change email (Item 8) ----
+
+    fun openChangeEmail() = _uiState.update {
+        it.copy(
+            showChangeEmailDialog = true,
+            changeEmailPasswordInput = "",
+            newEmailInput = "",
+            changeEmailError = null,
+            emailChangeRequested = false,
+        )
+    }
+
+    fun dismissChangeEmail() = _uiState.update { it.copy(showChangeEmailDialog = false) }
+
+    fun onChangeEmailPasswordChange(value: String) =
+        _uiState.update { it.copy(changeEmailPasswordInput = value, changeEmailError = null) }
+
+    fun onNewEmailChange(value: String) =
+        _uiState.update { it.copy(newEmailInput = value, changeEmailError = null) }
+
+    fun confirmChangeEmail() {
+        val s = _uiState.value
+        if (!s.canConfirmChangeEmail) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isChangeEmailLoading = true, changeEmailError = null) }
+            try {
+                changeEmail(s.changeEmailPasswordInput, s.newEmailInput)
+                _uiState.update {
+                    it.copy(
+                        isChangeEmailLoading = false,
+                        emailChangeRequested = true,
+                        changeEmailPasswordInput = "",
+                    )
+                }
+            } catch (e: AuthException) {
+                _uiState.update {
+                    it.copy(isChangeEmailLoading = false, changeEmailError = e.error.message())
                 }
             }
         }
