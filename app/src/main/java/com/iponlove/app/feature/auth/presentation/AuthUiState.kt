@@ -21,9 +21,14 @@ data class AuthUiState(
     // Raised when sign-out couldn't flush pending changes (offline): wiping local data would
     // lose them, so the UI confirms before proceeding (ADR-0021).
     val signOutPendingConfirm: Boolean = false,
+    // Sign-in lockout (Item 17): consecutive failed sign-ins; when > 0 the button is blocked with
+    // a countdown, mirroring the PIN lockout. Both reset on a successful sign-in.
+    val failedSignInAttempts: Int = 0,
+    val signInLockoutSeconds: Long = 0,
 ) {
     val canSubmit: Boolean
         get() = email.isNotBlank() && password.isNotBlank() && !isSubmitting &&
+            signInLockoutSeconds == 0L &&
             // A display name and a matching confirm-password entry are required to register,
             // but not to sign in (ADR-0016, ADR-0027 decision 4).
             (mode == AuthMode.SIGN_IN || (name.isNotBlank() && confirmPassword.isNotBlank()))

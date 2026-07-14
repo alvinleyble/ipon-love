@@ -171,6 +171,16 @@ private fun AuthContent(
                     Text(if (state.mode == AuthMode.SIGN_IN) "Sign in" else "Create account")
                 }
             }
+            if (state.signInLockoutSeconds > 0) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Too many attempts. Try again in ${state.signInLockoutSeconds}s.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onToggleMode, enabled = !state.isSubmitting) {
                 Text(

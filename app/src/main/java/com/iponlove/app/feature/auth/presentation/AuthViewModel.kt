@@ -8,8 +8,10 @@ import androidx.work.WorkManager
 import com.iponlove.app.core.session.LocalDataWiper
 import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.core.sync.SyncWorker
+import com.iponlove.app.feature.auth.domain.model.AuthError
 import com.iponlove.app.feature.auth.domain.model.AuthException
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
+import com.iponlove.app.feature.auth.domain.model.LoginLockoutPolicy
 import com.iponlove.app.feature.auth.domain.repository.SignUpResult
 import com.iponlove.app.feature.auth.domain.usecase.AuthCredentials
 import com.iponlove.app.feature.auth.domain.usecase.ObserveAuthStatusUseCase
@@ -22,7 +24,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,6 +57,8 @@ class AuthViewModel @Inject constructor(
     private val _form = MutableStateFlow(AuthUiState())
     val form: StateFlow<AuthUiState> = _form
 
+    private var lockoutClearJob: Job? = null
+
     fun onNameChange(value: String) =
         _form.update { it.copy(name = AuthCredentials.filterNameInput(value), error = null) }
 
@@ -81,10 +87,38 @@ class AuthViewModel @Inject constructor(
                     )
                 }
                 // On success the status stream flips and the gate swaps screens; clear the
-                // spinner in case we stayed (sign-up awaiting confirmation).
-                _form.update { it.copy(isSubmitting = false) }
+                // spinner in case we stayed (sign-up awaiting confirmation). A clean sign-in also
+                // clears any accumulated failed-attempt count.
+                lockoutClearJob?.cancel()
+                _form.update {
+                    it.copy(isSubmitting = false, failedSignInAttempts = 0, signInLockoutSeconds = 0)
+                }
             } catch (e: AuthException) {
                 _form.update { it.copy(isSubmitting = false, error = e.error) }
+                // Only a wrong-credentials sign-in counts toward the lockout — a network/rate-limit
+                // failure isn't a guess, and sign-up isn't rate-gated here (Item 17).
+                if (state.mode == AuthMode.SIGN_IN && e.error == AuthError.INVALID_CREDENTIALS) {
+                    registerFailedSignIn()
+                }
+            }
+        }
+    }
+
+    private fun registerFailedSignIn() {
+        val result = LoginLockoutPolicy.onFailure(_form.value.failedSignInAttempts)
+        _form.update {
+            it.copy(
+                failedSignInAttempts = result.failedAttempts,
+                signInLockoutSeconds = result.lockoutSeconds,
+            )
+        }
+        if (result.lockoutSeconds > 0) {
+            // Auto-re-enable the button once the cooldown elapses, so the user doesn't have to guess
+            // when they can retry (mirrors AppLockViewModel's lockout clear).
+            lockoutClearJob?.cancel()
+            lockoutClearJob = viewModelScope.launch {
+                delay(result.lockoutSeconds * 1000)
+                _form.update { it.copy(signInLockoutSeconds = 0) }
             }
         }
     }
