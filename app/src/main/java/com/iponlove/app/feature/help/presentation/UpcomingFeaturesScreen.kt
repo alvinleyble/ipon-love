@@ -108,8 +108,8 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Subscription plans (Q3 2026)",
-                description = "Optional paid plans unlocking extra features — core budgeting stays free.",
+                title = "Premium (Q3 2026)",
+                description = "A one-time upgrade that unlocks extra features — core budgeting stays free.",
             )
         }
     }
