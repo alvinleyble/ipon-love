@@ -976,6 +976,10 @@ begin
         perform unpair();
     end if;
 
+    -- storage.objects has its own BEFORE DELETE guard trigger (Supabase-platform,
+    -- not ours) that blocks direct DELETEs — even from this SECURITY DEFINER
+    -- function — unless this transaction-local GUC is set first (fixed 2026-07-14).
+    perform set_config('storage.allow_delete_query', 'true', true);
     delete from storage.objects
         where bucket_id in ('receipts', 'note-images')
           and name like v_uid::text || '/%';
