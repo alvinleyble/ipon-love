@@ -98,16 +98,6 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Restart fresh (Q3 2026)",
-                description = "Reset your transactions, recurring rules, budgets, and savings progress without deleting your account or losing your accounts and categories.",
-            )
-            Spacer(Modifier.height(8.dp))
-            RoadmapCard(
-                title = "Choose your currency symbol (Q3 2026)",
-                description = "Swap the ₱ symbol for another currency's symbol. Display only — no conversion, and amounts stay in one currency underneath.",
-            )
-            Spacer(Modifier.height(8.dp))
-            RoadmapCard(
                 title = "Premium (Q3 2026)",
                 description = "A one-time upgrade that unlocks extra features — core budgeting stays free.",
             )
