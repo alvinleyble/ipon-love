@@ -50,6 +50,8 @@ import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.domain.repository.AuthRepository
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountBalancesUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveNetAssetsUseCase
+import com.iponlove.app.feature.widget.data.WidgetSessionStore
+import com.iponlove.app.feature.widget.data.resolveWidgetSession
 import com.iponlove.app.feature.settings.domain.usecase.ObserveCurrencySymbolUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import dagger.hilt.EntryPoint
@@ -82,20 +84,39 @@ class BalanceWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val ep = EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
 
+        // Session state for the mask/eye comes from a fast local hint (Item 36) written on every auth
+        // transition by WidgetSessionHintWriter — reading it never blocks on the Supabase SDK's
+        // cold-start session read, which on a frozen process took up to 8s and, on timeout,
+        // hard-masked logged-in users (hiding the eye) and stalled taps. The live probe runs only in
+        // the one-time migration gap where the hint was never written; its result is seeded so the
+        // gap self-closes.
+        val store = ep.widgetSessionStore()
+        val resolution = resolveWidgetSession(store.hasSession()) {
+            withTimeoutOrNull(FALLBACK_PROBE_MS) {
+                ep.authRepository().status.first { it !is AuthStatus.Loading }
+            }?.let { it is AuthStatus.Authenticated }
+        }
+        resolution.seedHint?.let { store.set(it) }
+        val hasSession = resolution.hasSession
+
+        // The account/net-assets reads below are scoped to the *live* Supabase user id
+        // (CurrentUserProvider.currentUserOrNull()), which is null until the SDK restores the session
+        // on a cold process — so reading them too early emits an empty list and the widget shows
+        // "No accounts yet" even though the cached hint says logged in (Item 36 follow-up: the mask is
+        // decided from the hint, but the data still needs the real session). When we're logged in,
+        // wait for the session to actually load before reading; a warm process is already
+        // Authenticated so this returns immediately, and Glance keeps the prior render visible while
+        // we wait (no flash of empty).
+        if (hasSession) {
+            withTimeoutOrNull(SESSION_LOAD_MS) {
+                ep.authRepository().status.first { it is AuthStatus.Authenticated }
+            }
+        }
+
         val netAssets = ep.netAssetsUseCase().invoke().first()
         val accountBalances = ep.accountBalancesUseCase().invoke().first()
         val symbol = ep.currencySymbolUseCase().invoke().first()
         val globalHide = ep.privacyModeUseCase().invoke().first()
-        // Wait past the brief Loading window so a real session isn't misread as "logged out". On a
-        // cold process (the periodic tick after Android kills the app in the background, common on
-        // slow devices) this Loading window includes Hilt/Supabase-client/Room cold-start, not just
-        // the SDK's local-storage session read — 2.5s was too tight and was hard-masking logged-in
-        // users (bug found 2026-07-14). Glance widget updates run with a generous WorkManager-backed
-        // budget, so 8s is safe; never hang forever regardless.
-        val status = withTimeoutOrNull(TIMEOUT_MS) {
-            ep.authRepository().status.first { it !is AuthStatus.Loading }
-        } ?: AuthStatus.Unauthenticated
-        val hasSession = status is AuthStatus.Authenticated
 
         provideContent {
             val prefs = currentState<Preferences>()
@@ -124,7 +145,13 @@ class BalanceWidget : GlanceAppWidget() {
 
     companion object {
         val USER_TOGGLED_KEY = booleanPreferencesKey("balance_widget_user_toggled")
-        private const val TIMEOUT_MS = 8000L
+        // Only used in the rare migration-gap probe (hint never written); the common path reads the
+        // persisted hint with no wait. Never hang forever regardless.
+        private const val FALLBACK_PROBE_MS = 4000L
+        // Cold-process wait for the Supabase session to restore before reading user-scoped accounts
+        // (else they read empty → "No accounts yet"). Instant on a warm/Authenticated process; only
+        // bites on a cold process, where Glance keeps the prior render visible meanwhile.
+        private const val SESSION_LOAD_MS = 8000L
         private val COMPACT = DpSize(110.dp, 64.dp)
         private val TALL = DpSize(180.dp, 220.dp)
     }
@@ -139,6 +166,7 @@ interface WidgetEntryPoint {
     fun currencySymbolUseCase(): ObserveCurrencySymbolUseCase
     fun privacyModeUseCase(): ObservePrivacyModeUseCase
     fun authRepository(): AuthRepository
+    fun widgetSessionStore(): WidgetSessionStore
 }
 
 /** Intent that brings the (singleTask) app forward and lands on Manage → Accounts (its default tab). */

@@ -9,6 +9,7 @@ import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.data.ClockOffsetStore
 import com.iponlove.app.feature.budgets.presentation.BudgetAlertNotifier
+import com.iponlove.app.feature.widget.data.WidgetSessionHintWriter
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,7 @@ class IponApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject lateinit var clockOffsetStore: ClockOffsetStore
     @Inject lateinit var budgetAlertNotifier: BudgetAlertNotifier
     @Inject lateinit var coupleChannelManager: CoupleChannelManager
+    @Inject lateinit var widgetSessionHintWriter: WidgetSessionHintWriter
 
     // Coil asks for this lazily on first image load; every AsyncImage in the app then goes
     // through the auth-attaching loader (private Storage buckets — see StorageAuthInterceptor).
@@ -44,6 +46,9 @@ class IponApp : Application(), Configuration.Provider, ImageLoaderFactory {
         // Launch the live-sync collectors once per process. They idle (no socket, no push)
         // until MainActivity reports foreground + an authenticated, paired user (ADR-0015).
         coupleChannelManager.start()
+        // Mirror the session state into a fast local hint so the balance widget never blocks on the
+        // Supabase SDK's cold-start session read (Item 36).
+        widgetSessionHintWriter.start(appScope)
     }
 
     override val workManagerConfiguration: Configuration

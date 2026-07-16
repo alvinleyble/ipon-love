@@ -146,6 +146,11 @@ class MainActivity : FragmentActivity() {
                     if (supabaseClient.auth.currentUserOrNull() != null) {
                         materializeRecurringRules()
                         runCatching { syncEngine.sync() }
+                        // Repaint the widgets with whatever the foreground sync pulled. Unlike the
+                        // background SyncWorker, the in-process foreground sync didn't otherwise
+                        // refresh them, so a just-added widget only caught up on the next onStop or
+                        // the 30-min tick — slow on a fresh setup (Item 36).
+                        Widgets.updateAll(applicationContext)
                     }
                 }
             }
@@ -247,6 +252,11 @@ class MainActivity : FragmentActivity() {
                             null -> SplashScreen()
                             true -> OnboardingGraph(onComplete = { onboardingDecision = false })
                             false -> {
+                                // Repaint the widgets once the main app mounts. On a fresh setup the
+                                // post-login repaint (above) ran against an empty Room *before*
+                                // onboarding created any accounts; this fires after they exist, so a
+                                // widget added during setup populates without waiting (Item 36).
+                                LaunchedEffect(Unit) { Widgets.updateAll(applicationContext) }
                                 val form by authViewModel.form.collectAsState()
                                 val widgetRoute by pendingWidgetRoute.collectAsState()
                                 IponApp(

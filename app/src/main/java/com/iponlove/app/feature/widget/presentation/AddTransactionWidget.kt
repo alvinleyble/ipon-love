@@ -3,7 +3,6 @@ package com.iponlove.app.feature.widget.presentation
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -30,14 +29,16 @@ import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
 import com.iponlove.app.R
 
 class AddTransactionWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
-            GlanceTheme {
+            // Brand Rose light/dark — the same [IponWidgetColors] the balance widget uses, so both
+            // home-screen widgets follow the system night mode and read as one set (Item 36). Was a
+            // fixed light-pink card with dark-rose text that never adapted to dark mode.
+            GlanceTheme(colors = IponWidgetColors) {
                 AddTransactionWidgetContent()
             }
         }
@@ -50,7 +51,7 @@ private fun AddTransactionWidgetContent() {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(Color(0xFFFFD9E3))
+            .background(GlanceTheme.colors.widgetBackground)
             .clickable(actionStartActivity(Intent(context, QuickAddActivity::class.java)))
             .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
@@ -59,7 +60,7 @@ private fun AddTransactionWidgetContent() {
             Text(
                 text = "Love, Ipon",
                 style = TextStyle(
-                    color = ColorProvider(Color(0xFF9F3758)),
+                    color = GlanceTheme.colors.onSurfaceVariant,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                 ),
@@ -69,14 +70,14 @@ private fun AddTransactionWidgetContent() {
                 Image(
                     provider = ImageProvider(R.drawable.ic_widget_heart),
                     contentDescription = null,
-                    colorFilter = ColorFilter.tint(ColorProvider(Color(0xFF9F3758))),
+                    colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
                     modifier = GlanceModifier.width(16.dp).height(16.dp),
                 )
                 Spacer(GlanceModifier.width(6.dp))
                 Text(
                     text = "+ Add Txn",
                     style = TextStyle(
-                        color = ColorProvider(Color(0xFF9F3758)),
+                        color = GlanceTheme.colors.primary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                     ),

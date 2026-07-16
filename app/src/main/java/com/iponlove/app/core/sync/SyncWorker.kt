@@ -9,6 +9,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
@@ -54,13 +55,22 @@ class SyncWorker @AssistedInject constructor(
         const val WORK_NAME = "ipon_background_sync"
         private const val MAX_ATTEMPTS = 3
 
-        fun buildRequest(): OneTimeWorkRequest = OneTimeWorkRequestBuilder<SyncWorker>()
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
-            )
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-            .build()
+        /**
+         * @param expedited run as expedited work — used by the widget's manual ⟳ (Item 36) so the
+         * sync isn't deferred by the ROM's background throttling. Falls back to a normal request if
+         * the app is out of its expedited quota. The background/login enqueues stay non-expedited.
+         */
+        fun buildRequest(expedited: Boolean = false): OneTimeWorkRequest =
+            OneTimeWorkRequestBuilder<SyncWorker>()
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                )
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+                .apply {
+                    if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                }
+                .build()
     }
 }
