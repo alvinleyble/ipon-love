@@ -41,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -189,6 +190,7 @@ fun RecurringScreen(
             onStartDateChange = viewModel::onStartDateChange,
             onEndDateChange = viewModel::onEndDateChange,
             onNoteChange = viewModel::onNoteChange,
+            onAutoPostChange = viewModel::onAutoPostChange,
             onSave = viewModel::save,
             onCancel = viewModel::cancelEdit,
         )
@@ -446,6 +448,7 @@ private fun RecurringEditorDialog(
     onStartDateChange: (LocalDate) -> Unit,
     onEndDateChange: (LocalDate?) -> Unit,
     onNoteChange: (String) -> Unit,
+    onAutoPostChange: (Boolean) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -536,6 +539,8 @@ private fun RecurringEditorDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Spacer(Modifier.height(12.dp))
+                AutoPostToggle(autoPost = editor.autoPost, onAutoPostChange = onAutoPostChange)
                 if (editor.errors.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     editor.errors.forEach { error ->
@@ -557,6 +562,31 @@ private fun RecurringEditorDialog(
 private fun PickerLabel(text: String) {
     Text(text, style = MaterialTheme.typography.labelLarge)
     Spacer(Modifier.height(6.dp))
+}
+
+/**
+ * Auto-post vs. confirm-on-arrival toggle (Item 37). OFF (the default) = the rule prompts you to
+ * confirm each occurrence in Records before it's recorded; ON = it posts automatically, like the
+ * legacy behaviour. Phrased around the OFF state since that's the default and the safer choice.
+ */
+@Composable
+private fun AutoPostToggle(autoPost: Boolean, onAutoPostChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text("Post automatically", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = if (autoPost) {
+                    "Records each occurrence for you on its date."
+                } else {
+                    "Asks you to confirm each occurrence in Records first."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = autoPost, onCheckedChange = onAutoPostChange)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

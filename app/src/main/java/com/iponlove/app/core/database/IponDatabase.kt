@@ -65,7 +65,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AppConfigEntity::class,
         AnalyticsEventEntity::class,
     ],
-    version = 25,
+    version = 26,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 10, to = 11),
@@ -86,6 +86,8 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AutoMigration(from = 23, to = 24),
         // v25: analytics_events buffer table (paywall telemetry, S6).
         AutoMigration(from = 24, to = 25),
+        // v26: recurring_rules.autoPost (confirm-on-arrival, Item 37); default 0 = confirm.
+        AutoMigration(from = 25, to = 26),
     ],
 )
 @TypeConverters(IponConverters::class)

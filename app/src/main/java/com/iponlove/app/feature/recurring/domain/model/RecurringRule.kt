@@ -21,6 +21,11 @@ import java.time.LocalDate
  *                nextDate forward to the next occurrence from today, never backfills.
  *                "Skip next" is not a stored flag — it just advances [nextDate] one
  *                interval forward, so the skipped occurrence's cursor is simply moved past.
+ *  - [autoPost]  false (the default) = confirm-on-arrival: the rule does NOT materialize;
+ *                its cursor parks and due occurrences surface as "To confirm" prompts the
+ *                user confirms (optionally tweaking the amount) or skips. true = legacy
+ *                silent auto-post (opt-in for truly-fixed charges) — the materialization
+ *                pass generates + advances it as before. (Item 37.)
  */
 data class RecurringRule(
     val id: String,
@@ -30,6 +35,7 @@ data class RecurringRule(
     val endDate: LocalDate?,
     val template: RecurringTemplate,
     val isPaused: Boolean = false,
+    val autoPost: Boolean = false,
 )
 
 /** The fixed details every generated occurrence copies. [categoryId] is required (V1). */

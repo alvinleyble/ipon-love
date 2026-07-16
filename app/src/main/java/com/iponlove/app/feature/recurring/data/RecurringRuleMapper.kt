@@ -22,6 +22,7 @@ fun RecurringRuleEntity.toDomain(): RecurringRule = RecurringRule(
         note = templateNote,
     ),
     isPaused = isPaused,
+    autoPost = autoPost,
 )
 
 /** Entity → DTO for push. Drops `pendingSync` (local-only, ADR-0002); nests the template. */
@@ -43,6 +44,7 @@ fun RecurringRuleEntity.toDto(): RecurringRuleDto = RecurringRuleDto(
     isDeleted = isDeleted,
     serverRev = serverRev,
     isPaused = isPaused,
+    autoPost = autoPost,
 )
 
 /**
@@ -66,4 +68,5 @@ fun RecurringRuleDto.toEntity(): RecurringRuleEntity = RecurringRuleEntity(
     serverRev = serverRev,
     pendingSync = false,
     isPaused = isPaused,
+    autoPost = autoPost,
 )

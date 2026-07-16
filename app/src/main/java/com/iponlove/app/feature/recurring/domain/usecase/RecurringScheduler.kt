@@ -65,6 +65,22 @@ object RecurringScheduler {
         return results
     }
 
+    /**
+     * The first scheduled occurrence on or after [floor], projected forward from
+     * [RecurringRule.nextDate]. If the cursor is already at/after [floor] it's returned
+     * unchanged; otherwise it's stepped forward until it reaches the window. Ignores
+     * [RecurringRule.endDate] (callers that care check it) — pure forward date math used both
+     * for the confirm-on-arrival pending window floor and the recurring list's "Next:" label
+     * (which should show the upcoming occurrence, not a parked past cursor).
+     */
+    fun firstOccurrenceOnOrAfter(rule: RecurringRule, floor: LocalDate): LocalDate {
+        var date = rule.nextDate
+        while (date.isBefore(floor)) {
+            date = advance(date, rule.frequency, rule.interval)
+        }
+        return date
+    }
+
     internal fun advance(date: LocalDate, frequency: RecurringFrequency, interval: Int): LocalDate {
         val step = interval.toLong().coerceAtLeast(1L)
         return when (frequency) {

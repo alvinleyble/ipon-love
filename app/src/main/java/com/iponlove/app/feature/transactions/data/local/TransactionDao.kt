@@ -87,6 +87,15 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getById(id: String): TransactionEntity?
 
+    /**
+     * Ids of every transaction ever materialized from a recurring rule — active OR tombstoned
+     * (no `isDeleted` filter). Drives confirm-on-arrival's derived "pending" set (Item 37): an
+     * occurrence whose deterministic id is already here has been resolved (confirmed, or
+     * confirmed-then-deleted) and must not resurface as pending, independent of the rule cursor.
+     */
+    @Query("SELECT id FROM transactions WHERE recurringRuleId IS NOT NULL")
+    fun observeRecurringOccurrenceIds(): Flow<List<String>>
+
     /** The user's own active rows, one-shot (Reset finances, ADR-0037) — every row here has
      *  [userId] set, so no couple-shared exclusion is needed beyond the equality filter. */
     @Query("SELECT * FROM transactions WHERE userId = :userId AND isDeleted = 0")

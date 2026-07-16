@@ -52,6 +52,11 @@ class TransactionRepositoryImpl @Inject constructor(
         else emitAll(dao.observeHasAnyTransaction(userId))
     }
 
+    // Not user-scoped: recurring rules are owner-only (ADR-0009), so the only occurrence ids
+    // that can ever match a rule's deterministic `ruleId:date` id are the current user's own.
+    override fun observeMaterializedRecurringIds(): Flow<Set<String>> =
+        dao.observeRecurringOccurrenceIds().map { it.toSet() }
+
     override fun observeCombinedTransactions(
         startInclusive: Instant,
         endExclusive: Instant,

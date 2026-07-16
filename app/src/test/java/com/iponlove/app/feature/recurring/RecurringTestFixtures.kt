@@ -1,5 +1,8 @@
 package com.iponlove.app.feature.recurring
 
+import com.iponlove.app.feature.categories.domain.model.Category
+import com.iponlove.app.feature.categories.domain.model.CategoryType
+import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleDao
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleEntity
 import com.iponlove.app.feature.recurring.data.remote.RecurringRuleDto
@@ -9,6 +12,7 @@ import com.iponlove.app.feature.recurring.domain.model.RecurringRule
 import com.iponlove.app.feature.recurring.domain.model.RecurringTemplate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import java.math.BigDecimal
 import java.time.Instant
@@ -56,6 +60,7 @@ fun rule(
     categoryId: String = "cat-1",
     note: String? = null,
     isPaused: Boolean = false,
+    autoPost: Boolean = false,
 ) = RecurringRule(
     id = id,
     frequency = frequency,
@@ -69,6 +74,7 @@ fun rule(
         note = note,
     ),
     isPaused = isPaused,
+    autoPost = autoPost,
 )
 
 fun ruleEntity(
@@ -87,6 +93,8 @@ fun ruleEntity(
     isDeleted: Boolean = false,
     serverRev: Long? = null,
     pendingSync: Boolean = false,
+    isPaused: Boolean = false,
+    autoPost: Boolean = false,
 ) = RecurringRuleEntity(
     id = id,
     userId = userId,
@@ -103,6 +111,8 @@ fun ruleEntity(
     isDeleted = isDeleted,
     serverRev = serverRev,
     pendingSync = pendingSync,
+    isPaused = isPaused,
+    autoPost = autoPost,
 )
 
 fun ruleDto(
@@ -115,6 +125,8 @@ fun ruleDto(
     serverRev: Long? = null,
     updatedAt: Instant = Instant.ofEpochMilli(1_000),
     isDeleted: Boolean = false,
+    isPaused: Boolean = false,
+    autoPost: Boolean = false,
 ) = RecurringRuleDto(
     id = id,
     userId = "user-1",
@@ -132,4 +144,27 @@ fun ruleDto(
     updatedAt = updatedAt,
     isDeleted = isDeleted,
     serverRev = serverRev,
+    isPaused = isPaused,
+    autoPost = autoPost,
 )
+
+fun category(id: String, type: CategoryType, name: String = id) =
+    Category(id = id, name = name, type = type)
+
+/** In-memory [CategoryRepository] supplying a fixed (or mutable via [supply]) category list. */
+class FakeCategoryRepository(
+    private val supply: () -> List<Category>,
+) : CategoryRepository {
+    override fun observeCategories(includeArchived: Boolean): Flow<List<Category>> = flowOf(supply())
+    override fun observeAllCategories(): Flow<List<Category>> = flowOf(supply())
+    override suspend fun getCategory(id: String): Category? = supply().firstOrNull { it.id == id }
+    override suspend fun countOwnedCategories(): Int = error("unused")
+    override suspend fun countSharedCategories(): Int = error("unused")
+    override suspend fun upsertCategory(category: Category) = error("unused")
+    override suspend fun reorderCategories(orderedIds: List<String>) = error("unused")
+    override suspend fun setArchived(id: String, archived: Boolean) = error("unused")
+    override suspend fun deleteCategory(id: String) = error("unused")
+    override suspend fun shareCategory(id: String, coupleId: String) = error("unused")
+    override suspend fun unshareCategory(id: String) = error("unused")
+    override suspend fun purgePartnerData() = error("unused")
+}

@@ -33,4 +33,5 @@ data class RecurringRuleEntity(
     override val serverRev: Long?,
     override val pendingSync: Boolean,
     @ColumnInfo(defaultValue = "0") val isPaused: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val autoPost: Boolean = false,
 ) : SyncMeta

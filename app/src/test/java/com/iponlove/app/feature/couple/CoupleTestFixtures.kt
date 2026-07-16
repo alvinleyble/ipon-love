@@ -70,6 +70,7 @@ internal class CountingTransactionRepo : TransactionRepository {
     override fun observeTransactions(startInclusive: Instant, endExclusive: Instant): Flow<List<Transaction>> =
         emptyFlow()
     override fun observeHasAnyTransaction(): Flow<Boolean> = emptyFlow()
+    override fun observeMaterializedRecurringIds(): Flow<Set<String>> = emptyFlow()
     override fun observeCombinedTransactions(
         startInclusive: Instant,
         endExclusive: Instant,

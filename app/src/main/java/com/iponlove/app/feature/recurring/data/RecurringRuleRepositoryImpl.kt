@@ -53,6 +53,7 @@ class RecurringRuleRepositoryImpl @Inject constructor(
                 serverRev = existing?.serverRev,
                 pendingSync = true,
                 isPaused = rule.isPaused,
+                autoPost = rule.autoPost,
             ),
         )
         syncTrigger.requestPush()

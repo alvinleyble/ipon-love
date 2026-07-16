@@ -32,6 +32,7 @@ class SettlementUseCaseTest {
         override fun observeTransactions(startInclusive: Instant, endExclusive: Instant): Flow<List<Transaction>> =
             flowOf(emptyList())
         override fun observeHasAnyTransaction(): Flow<Boolean> = flowOf(false)
+        override fun observeMaterializedRecurringIds(): Flow<Set<String>> = flowOf(emptySet())
         override fun observeCombinedTransactions(
             startInclusive: Instant,
             endExclusive: Instant,

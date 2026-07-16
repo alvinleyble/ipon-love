@@ -50,6 +50,7 @@ import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
+import com.iponlove.app.feature.recurring.presentation.components.PendingConfirmationsCard
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
@@ -126,6 +127,11 @@ private fun TransactionsContent(
                     onPreviousLocked = onDeepHistoryUpsell,
                 )
             }
+            // Confirm-on-arrival "To confirm" card (Item 37) — pinned above the month-scoped list
+            // (pending is relative to today, not the viewed month) and self-hides when empty.
+            PendingConfirmationsCard(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = onSync,

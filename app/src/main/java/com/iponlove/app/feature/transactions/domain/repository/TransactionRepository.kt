@@ -23,6 +23,14 @@ interface TransactionRepository {
     fun observeHasAnyTransaction(): Flow<Boolean>
 
     /**
+     * Deterministic ids of every occurrence already materialized from a recurring rule — active
+     * OR tombstoned. Confirm-on-arrival (Item 37) subtracts this from a rule's due occurrences so
+     * a confirmed (or confirmed-then-deleted) occurrence never resurfaces as "pending", even when
+     * the rule cursor hasn't advanced past it (e.g. an out-of-order confirm).
+     */
+    fun observeMaterializedRecurringIds(): Flow<Set<String>>
+
+    /**
      * The couple's shared ledger, month-windowed (ADR-0032): both members' active, non-private
      * transactions within [startInclusive, endExclusive), tagged with their owner, most recent
      * first. Drives the combined view (ADR-0011).

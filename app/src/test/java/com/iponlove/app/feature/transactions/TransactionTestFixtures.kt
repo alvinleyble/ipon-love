@@ -54,6 +54,9 @@ class FakeTransactionDao : TransactionDao {
                 .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
         }
 
+    override fun observeRecurringOccurrenceIds(): Flow<List<String>> =
+        changes.map { store.values.filter { it.recurringRuleId != null }.map { it.id } }
+
     override suspend fun getById(id: String): TransactionEntity? = store[id]
 
     override suspend fun activeOwnedBy(userId: String): List<TransactionEntity> =

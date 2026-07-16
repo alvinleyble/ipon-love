@@ -28,6 +28,7 @@ data class RecurringRuleDto(
     @SerialName("is_deleted") val isDeleted: Boolean,
     @SerialName("server_rev") val serverRev: Long?,
     @SerialName("is_paused") val isPaused: Boolean = false,
+    @SerialName("auto_post") val autoPost: Boolean = false,
 )
 
 /** Maps to the rule's `template` jsonb (amount, account_id, category_id, note). */

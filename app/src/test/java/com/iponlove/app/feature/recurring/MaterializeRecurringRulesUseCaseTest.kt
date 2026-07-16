@@ -4,9 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.core.session.CurrentUserProvider
 import com.iponlove.app.core.util.DeterministicUuid
 import com.iponlove.app.core.sync.SyncClock
-import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.model.CategoryType
-import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.recurring.data.RecurringRuleRepositoryImpl
 import com.iponlove.app.feature.recurring.domain.model.RecurringFrequency
@@ -15,8 +13,6 @@ import com.iponlove.app.feature.transactions.FakeTransactionDao
 import com.iponlove.app.feature.transactions.data.TransactionRepositoryImpl
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.transactionEntity
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.time.Instant
@@ -40,7 +36,7 @@ class MaterializeRecurringRulesUseCaseTest {
 
     @Test
     fun materializesDueOccurrences_withDeterministicId_resolvedType_andProvenance() = runTest {
-        ruleDao.store["r"] = ruleEntity("r", frequency = RecurringFrequency.MONTHLY, nextDate = jun(1))
+        ruleDao.store["r"] = ruleEntity("r", frequency = RecurringFrequency.MONTHLY, nextDate = jun(1), autoPost = true)
 
         materialize(asOf = jun(1))
 
@@ -56,7 +52,7 @@ class MaterializeRecurringRulesUseCaseTest {
     @Test
     fun incomeCategory_yieldsIncomeTransaction() = runTest {
         categories = listOf(category("cat-1", CategoryType.INCOME))
-        ruleDao.store["r"] = ruleEntity("r", nextDate = jun(1))
+        ruleDao.store["r"] = ruleEntity("r", nextDate = jun(1), autoPost = true)
 
         materialize(asOf = jun(1))
 
@@ -66,7 +62,7 @@ class MaterializeRecurringRulesUseCaseTest {
 
     @Test
     fun isIdempotent_acrossRepeatedPasses() = runTest {
-        ruleDao.store["r"] = ruleEntity("r", frequency = RecurringFrequency.WEEKLY, nextDate = jun(1))
+        ruleDao.store["r"] = ruleEntity("r", frequency = RecurringFrequency.WEEKLY, nextDate = jun(1), autoPost = true)
 
         materialize(asOf = jun(22))
         val afterFirst = txnDao.store.size
@@ -82,7 +78,7 @@ class MaterializeRecurringRulesUseCaseTest {
         // pulled from another device), and this device's rule cursor still points at that date.
         val id = DeterministicUuid.v5("r:2026-06-01").toString()
         txnDao.store[id] = transactionEntity(id = id, isDeleted = true)
-        ruleDao.store["r"] = ruleEntity("r", nextDate = jun(1))
+        ruleDao.store["r"] = ruleEntity("r", nextDate = jun(1), autoPost = true)
 
         materialize(asOf = jun(1))
 
@@ -95,7 +91,7 @@ class MaterializeRecurringRulesUseCaseTest {
     @Test
     fun skipsRule_whenTemplateCategoryMissing() = runTest {
         categories = emptyList() // category was deleted; type can't be resolved
-        ruleDao.store["r"] = ruleEntity("r", nextDate = jun(1))
+        ruleDao.store["r"] = ruleEntity("r", nextDate = jun(1), autoPost = true)
 
         materialize(asOf = jun(1))
 
@@ -105,8 +101,20 @@ class MaterializeRecurringRulesUseCaseTest {
     }
 
     @Test
+    fun confirmOnArrivalRule_isNotMaterialized_andCursorParks() = runTest {
+        // autoPost = false (the default) — a due confirm rule must NOT auto-post; it's surfaced
+        // as a "To confirm" prompt instead (Item 37). Nothing is written and the cursor parks.
+        ruleDao.store["r"] = ruleEntity("r", nextDate = jun(1), autoPost = false)
+
+        materialize(asOf = jun(15))
+
+        assertThat(txnDao.store).isEmpty()
+        assertThat(ruleDao.store.getValue("r").nextDate).isEqualTo(jun(1))
+    }
+
+    @Test
     fun notDue_createsNothing_andLeavesCursor() = runTest {
-        ruleDao.store["r"] = ruleEntity("r", nextDate = LocalDate.of(2026, 7, 1))
+        ruleDao.store["r"] = ruleEntity("r", nextDate = LocalDate.of(2026, 7, 1), autoPost = true)
 
         materialize(asOf = jun(15))
 
@@ -115,27 +123,4 @@ class MaterializeRecurringRulesUseCaseTest {
     }
 
     private fun jun(day: Int) = LocalDate.of(2026, 6, day)
-
-    private fun category(id: String, type: CategoryType) =
-        Category(id = id, name = id, type = type)
-
-    private class FakeCategoryRepository(
-        private val supply: () -> List<Category>,
-    ) : CategoryRepository {
-        override fun observeCategories(includeArchived: Boolean): Flow<List<Category>> =
-            flowOf(supply())
-
-        override fun observeAllCategories(): Flow<List<Category>> = flowOf(supply())
-
-        override suspend fun getCategory(id: String): Category? = supply().firstOrNull { it.id == id }
-        override suspend fun countOwnedCategories(): Int = error("unused")
-        override suspend fun countSharedCategories(): Int = error("unused")
-        override suspend fun upsertCategory(category: Category) = error("unused")
-        override suspend fun reorderCategories(orderedIds: List<String>) = error("unused")
-        override suspend fun setArchived(id: String, archived: Boolean) = error("unused")
-        override suspend fun deleteCategory(id: String) = error("unused")
-        override suspend fun shareCategory(id: String, coupleId: String) = error("unused")
-        override suspend fun unshareCategory(id: String) = error("unused")
-        override suspend fun purgePartnerData() = error("unused")
-    }
 }

@@ -60,6 +60,8 @@ data class RecurringEditorState(
     val startDate: LocalDate = LocalDate.now(),
     val endDate: LocalDate? = null,
     val note: String = "",
+    /** false = ask me to confirm on arrival (default); true = post automatically (Item 37). */
+    val autoPost: Boolean = false,
     val errors: Set<RecurringError> = emptySet(),
 ) {
     val isEditing: Boolean get() = id != null

@@ -54,4 +54,17 @@ class RecurringRuleMapperTest {
 
         assertThat(roundTripped).isEqualTo(original.copy(pendingSync = false))
     }
+
+    @Test
+    fun autoPost_and_isPaused_survive_theRoundTrip() {
+        // Both flags must ride Entity → Domain → Entity and Entity → DTO → Entity (Item 37).
+        val entity = ruleEntity(id = "r", serverRev = 9, isPaused = true, autoPost = true)
+
+        assertThat(entity.toDomain().autoPost).isTrue()
+        assertThat(entity.toDomain().isPaused).isTrue()
+
+        val roundTripped = entity.toDto().toEntity()
+        assertThat(roundTripped.autoPost).isTrue()
+        assertThat(roundTripped.isPaused).isTrue()
+    }
 }

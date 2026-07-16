@@ -145,7 +145,8 @@ create table recurring_rules (
     updated_at  timestamptz not null default now(),
     is_deleted  boolean not null default false,
     server_rev  bigint,
-    is_paused   boolean not null default false    -- paused indefinitely (ADR-0035; skip advances next_date)
+    is_paused   boolean not null default false,   -- paused indefinitely (ADR-0035; skip advances next_date)
+    auto_post   boolean not null default false    -- false = confirm-on-arrival (default, income + bills); true = legacy silent auto-post (opt-in). Item 37 v1.6.6.
 );
 
 -- ---------- transactions ----------------------------------------------------

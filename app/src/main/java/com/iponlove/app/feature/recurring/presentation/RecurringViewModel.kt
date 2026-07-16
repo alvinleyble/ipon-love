@@ -19,6 +19,7 @@ import com.iponlove.app.feature.recurring.domain.usecase.SkipNextRecurringOccurr
 import com.iponlove.app.feature.recurring.domain.usecase.RecurringScheduler
 import com.iponlove.app.feature.recurring.domain.usecase.RecurringValidator
 import com.iponlove.app.feature.recurring.domain.usecase.UpsertRecurringRuleUseCase
+import com.iponlove.app.feature.recurring.domain.usecase.toTransactionType
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -127,6 +129,7 @@ class RecurringViewModel @Inject constructor(
             startDate = rule.nextDate,
             endDate = rule.endDate,
             note = rule.template.note.orEmpty(),
+            autoPost = rule.autoPost,
         )
     }
 
@@ -153,6 +156,8 @@ class RecurringViewModel @Inject constructor(
 
     fun onNoteChange(value: String) = editor.update { it?.copy(note = value) }
 
+    fun onAutoPostChange(value: Boolean) = editor.update { it?.copy(autoPost = value) }
+
     fun save() {
         val s = editor.value ?: return
         val rule = RecurringRule(
@@ -167,6 +172,7 @@ class RecurringViewModel @Inject constructor(
                 categoryId = s.categoryId.orEmpty(),
                 note = s.note.trim().ifBlank { null },
             ),
+            autoPost = s.autoPost,
         )
 
         val errors = RecurringValidator.validate(rule)
@@ -246,7 +252,13 @@ class RecurringViewModel @Inject constructor(
         categoryNames: Map<String, String>,
         categoryTypes: Map<String, CategoryType>,
     ): RecurringRuleListItem {
-        val ended = endDate != null && nextDate.isAfter(endDate)
+        // Show the next *upcoming* occurrence, not the raw cursor: a confirm-on-arrival rule
+        // (Item 37) parks its cursor on the oldest unconfirmed date, which is in the past, so
+        // rendering nextDate directly would read "Next: <a past date>". firstOccurrenceOnOrAfter
+        // projects forward to today; for an auto-post rule the cursor is already current, so
+        // this is unchanged.
+        val upcoming = RecurringScheduler.firstOccurrenceOnOrAfter(this, LocalDate.now())
+        val ended = endDate != null && upcoming.isAfter(endDate)
         return RecurringRuleListItem(
             id = id,
             title = categoryNames[template.categoryId] ?: "Category",
@@ -254,7 +266,7 @@ class RecurringViewModel @Inject constructor(
             nextLabel = when {
                 isPaused -> "Paused"
                 ended -> "Ended"
-                else -> "Next: ${nextDate.format(DATE_FORMATTER)}"
+                else -> "Next: ${upcoming.format(DATE_FORMATTER)}"
             },
             amount = template.amount,
             type = categoryTypes[template.categoryId]?.toTransactionType() ?: TransactionType.EXPENSE,
@@ -267,11 +279,6 @@ class RecurringViewModel @Inject constructor(
         RecurringFrequency.WEEKLY -> if (interval == 1) "Weekly" else "Every $interval weeks"
         RecurringFrequency.MONTHLY -> if (interval == 1) "Monthly" else "Every $interval months"
         RecurringFrequency.YEARLY -> if (interval == 1) "Annually" else "Every $interval years"
-    }
-
-    private fun CategoryType.toTransactionType(): TransactionType = when (this) {
-        CategoryType.INCOME -> TransactionType.INCOME
-        CategoryType.EXPENSE -> TransactionType.EXPENSE
     }
 
     private companion object {
