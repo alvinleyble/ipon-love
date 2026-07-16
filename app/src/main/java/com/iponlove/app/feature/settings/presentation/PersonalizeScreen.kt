@@ -52,6 +52,7 @@ fun PersonalizeScreen(
     onOpenProfile: () -> Unit = {},
     onOpenPremium: (source: String) -> Unit = {},
     onOpenSecurity: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
     onOpenCouple: () -> Unit = {},
     onOpenNavbar: () -> Unit = {},
     onOpenHelp: () -> Unit = {},
@@ -151,6 +152,15 @@ fun PersonalizeScreen(
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
                 },
                 modifier = Modifier.clickable(onClick = onOpenSecurity),
+            )
+            HorizontalDivider()
+            ListItem(
+                headlineContent = { Text("Notifications") },
+                supportingContent = { Text("Budget alerts") },
+                trailingContent = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                },
+                modifier = Modifier.clickable(onClick = onOpenNotifications),
             )
             HorizontalDivider()
             ListItem(

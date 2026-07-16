@@ -14,6 +14,7 @@ import com.iponlove.app.feature.budgets.presentation.BudgetAlertNotifier
 import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetAlertsEnabledUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetStartDayUseCase
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import dagger.assisted.Assisted
@@ -31,6 +32,7 @@ class BudgetAlertWorker @AssistedInject constructor(
     private val observePairingState: ObservePairingStateUseCase,
     private val checkBudgetAlerts: CheckBudgetAlertsUseCase,
     private val observeBudgetStartDay: ObserveBudgetStartDayUseCase,
+    private val observeBudgetAlertsEnabled: ObserveBudgetAlertsEnabledUseCase,
     private val alertStore: BudgetAlertStore,
     private val notifier: BudgetAlertNotifier,
 ) : CoroutineWorker(appContext, params) {
@@ -70,9 +72,14 @@ class BudgetAlertWorker @AssistedInject constructor(
             startDay = 1,
         )
 
+        // Marking fired even when suppressed (Item 7) prevents a backlog of stale alerts from
+        // dumping all at once if the user re-enables the toggle after several crossings.
+        val alertsEnabled = observeBudgetAlertsEnabled.invoke().first()
         for (alert in alerts) {
-            val categoryName = alert.budget.categoryId?.let { categoryRepository.getCategory(it)?.name }
-            notifier.fire(alert, categoryName)
+            if (alertsEnabled) {
+                val categoryName = alert.budget.categoryId?.let { categoryRepository.getCategory(it)?.name }
+                notifier.fire(alert, categoryName)
+            }
             alertStore.markFired(alert.dedupeKey, currentCalendarMonth)
         }
 

@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.iponlove.app.feature.settings.data.AccountDeletionRepositoryImpl
 import com.iponlove.app.feature.settings.data.BudgetStartDayRepositoryImpl
 import com.iponlove.app.feature.settings.data.CurrencySymbolRepositoryImpl
+import com.iponlove.app.feature.settings.data.NotificationPreferencesRepositoryImpl
 import com.iponlove.app.feature.settings.data.PrivacyModeRepositoryImpl
 import com.iponlove.app.feature.settings.data.ResetFinancesRepositoryImpl
 import com.iponlove.app.feature.settings.data.ThemeRepositoryImpl
@@ -15,6 +16,7 @@ import com.iponlove.app.feature.settings.data.remote.SupabaseAccountDeletionRemo
 import com.iponlove.app.feature.settings.domain.repository.AccountDeletionRepository
 import com.iponlove.app.feature.settings.domain.repository.BudgetStartDayRepository
 import com.iponlove.app.feature.settings.domain.repository.CurrencySymbolRepository
+import com.iponlove.app.feature.settings.domain.repository.NotificationPreferencesRepository
 import com.iponlove.app.feature.settings.domain.repository.PrivacyModeRepository
 import com.iponlove.app.feature.settings.domain.repository.ResetFinancesRepository
 import com.iponlove.app.feature.settings.domain.repository.ThemeRepository
@@ -90,6 +92,12 @@ interface SettingsModule {
     @Binds
     @Singleton
     fun bindCurrencySymbolRepository(impl: CurrencySymbolRepositoryImpl): CurrencySymbolRepository
+
+    @Binds
+    @Singleton
+    fun bindNotificationPreferencesRepository(
+        impl: NotificationPreferencesRepositoryImpl,
+    ): NotificationPreferencesRepository
 
     @Binds
     @Singleton

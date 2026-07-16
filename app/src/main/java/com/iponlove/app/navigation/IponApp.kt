@@ -91,6 +91,7 @@ import com.iponlove.app.feature.savings.presentation.GoalEditorViewModel.Compani
 import com.iponlove.app.feature.savings.presentation.SavingsGoalsScreen
 import com.iponlove.app.feature.settings.presentation.AppearanceScreen
 import com.iponlove.app.feature.settings.presentation.FinanceScreen
+import com.iponlove.app.feature.settings.presentation.NotificationsScreen
 import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
 import com.iponlove.app.feature.settings.presentation.ProfileScreen
 import com.iponlove.app.feature.settings.presentation.SettingsCoupleScreen
@@ -108,6 +109,7 @@ private const val NOTE_EDITOR_ROUTE = "note_editor"
 private const val PROFILE_ROUTE = "profile"
 private const val APPEARANCE_ROUTE = "settings_appearance"
 private const val FINANCE_ROUTE = "settings_finance"
+private const val NOTIFICATIONS_ROUTE = "settings_notifications"
 private const val SUBSCRIPTION_ROUTE = "subscription"
 /** Paywall route carrying the entry surface as a nav arg (Item 21) — e.g. "subscription?source=budgets". */
 private fun subscriptionRoute(source: String) = "$SUBSCRIPTION_ROUTE?$SOURCE_KEY=$source"
@@ -433,6 +435,7 @@ private fun IponAppContent(
                         onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
                         onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                         onOpenSecurity = { navController.navigate(APP_LOCK_SETUP_ROUTE) },
+                        onOpenNotifications = { navController.navigate(NOTIFICATIONS_ROUTE) },
                         onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) },
                         onOpenNavbar = { navController.navigate(NAV_EDITOR_ROUTE) },
                         onOpenHelp = { navController.navigate(HELP_ROUTE) },
@@ -450,6 +453,9 @@ private fun IponAppContent(
                 }
                 composable(FINANCE_ROUTE) {
                     FinanceScreen(onBack = { navController.popBackStack() })
+                }
+                composable(NOTIFICATIONS_ROUTE) {
+                    NotificationsScreen(onBack = { navController.popBackStack() })
                 }
                 composable(PROFILE_ROUTE) {
                     ProfileScreen(onBack = { navController.popBackStack() })
