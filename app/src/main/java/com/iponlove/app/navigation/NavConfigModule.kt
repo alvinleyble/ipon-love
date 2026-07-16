@@ -19,6 +19,8 @@ annotation class NavConfigDataStore
 
 private val Context.navConfigDataStore: DataStore<Preferences> by preferencesDataStore(name = "nav_config_prefs")
 
+private val Context.navStateDataStore: DataStore<Preferences> by preferencesDataStore(name = "nav_state_prefs")
+
 @Module
 @InstallIn(SingletonComponent::class)
 object NavConfigDataStoreModule {
@@ -27,6 +29,15 @@ object NavConfigDataStoreModule {
     @NavConfigDataStore
     fun navConfigDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
         context.navConfigDataStore
+
+    /**
+     * Nav restore location (v1.6.6 Item 39) — its own store so the account-switch wipe can clear
+     * it independently of the pinned-layout config above.
+     */
+    @Provides
+    @Singleton
+    fun navStateStore(@ApplicationContext context: Context): NavStateStore =
+        DataStoreNavStateStore(context.navStateDataStore)
 }
 
 @Module

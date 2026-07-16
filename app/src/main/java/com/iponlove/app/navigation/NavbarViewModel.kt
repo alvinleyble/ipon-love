@@ -1,5 +1,6 @@
 package com.iponlove.app.navigation
 
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iponlove.app.feature.couple.domain.model.PairingState
@@ -32,6 +33,7 @@ data class NavUiState(
 @HiltViewModel
 class NavbarViewModel @Inject constructor(
     private val navConfigRepository: NavConfigRepository,
+    private val navStateStore: NavStateStore,
     observePairingState: ObservePairingStateUseCase,
 ) : ViewModel() {
 
@@ -58,5 +60,34 @@ class NavbarViewModel @Inject constructor(
      */
     fun applyConfig(config: NavConfig) {
         viewModelScope.launch { navConfigRepository.save(config) }
+    }
+
+    /**
+     * Record the module the user is in as they background the app (v1.6.6 Item 39) — the last
+     * reliable moment before the ROM may force-stop us. Null on a transient standalone screen
+     * (add/edit-transaction, nav editor): skip it so a restore never lands on a modal, keeping the
+     * previously recorded module instead.
+     */
+    fun rememberLocation(moduleId: String?) {
+        if (moduleId == null) return
+        viewModelScope.launch { navStateStore.save(moduleId, SystemClock.elapsedRealtime()) }
+    }
+
+    /**
+     * The module to switch to on a cold start, or null to stay on the home tab [homeModuleId].
+     * See [NavRestorePolicy] for the recency / known-module rules.
+     */
+    suspend fun moduleToRestore(homeModuleId: String): String? =
+        NavRestorePolicy.moduleToRestore(
+            saved = navStateStore.read(),
+            homeModuleId = homeModuleId,
+            now = SystemClock.elapsedRealtime(),
+            windowMs = RESTORE_WINDOW_MS,
+            isKnownModule = NavRegistry.byId::containsKey,
+        )
+
+    companion object {
+        /** How long after backgrounding a return still restores the last module (Item 39). */
+        private const val RESTORE_WINDOW_MS = 5 * 60 * 1000L
     }
 }

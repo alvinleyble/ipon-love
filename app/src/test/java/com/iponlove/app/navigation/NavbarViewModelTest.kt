@@ -60,8 +60,9 @@ class NavbarViewModelTest {
         val observePairingState = mockk<ObservePairingStateUseCase> {
             every { this@mockk() } returns pairing
         }
+        val navStateStore = mockk<NavStateStore>(relaxed = true)
 
-        val viewModel = NavbarViewModel(navConfigRepository, observePairingState)
+        val viewModel = NavbarViewModel(navConfigRepository, navStateStore, observePairingState)
 
         // Nothing is collecting uiState — mirrors IponApp being torn down during onboarding.
         assertThat(viewModel.uiState.value.loaded).isTrue()
@@ -82,8 +83,9 @@ class NavbarViewModelTest {
         val observePairingState = mockk<ObservePairingStateUseCase> {
             every { this@mockk() } returns pairing
         }
+        val navStateStore = mockk<NavStateStore>(relaxed = true)
 
-        val viewModel = NavbarViewModel(navConfigRepository, observePairingState)
+        val viewModel = NavbarViewModel(navConfigRepository, navStateStore, observePairingState)
         assertThat(viewModel.uiState.value.isPaired).isTrue()
 
         pairing.value = PairingState.NotPaired

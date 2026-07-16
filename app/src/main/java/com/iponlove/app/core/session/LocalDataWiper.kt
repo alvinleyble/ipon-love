@@ -7,6 +7,7 @@ import com.iponlove.app.feature.applock.domain.repository.AppLockRepository
 import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
 import com.iponlove.app.feature.widget.presentation.WidgetRefresher
 import com.iponlove.app.navigation.NavConfigRepository
+import com.iponlove.app.navigation.NavStateStore
 import javax.inject.Inject
 
 /**
@@ -25,6 +26,8 @@ import javax.inject.Inject
  *    matches) — the app then shows "not paired" while the server still has the couple.
  *  - Room (the financial/notes source of truth),
  *  - the nav layout (a per-device UI preference the next account should start fresh on),
+ *  - the saved nav-restore location (Item 39) — a per-device pointer to the last-open module, so
+ *    the next account never cold-starts into the previous user's tab,
  *  - the onboarding re-prompt flags (ADR-0024 addendum) — without this, a second real account
  *    signing in on a device that already onboarded once skips the graph entirely, including
  *    the starter-template seeding step, and lands in an empty app with no accounts/categories,
@@ -42,6 +45,7 @@ class LocalDataWiper @Inject constructor(
     private val database: IponDatabase,
     private val cursors: SyncCursorStore,
     private val navConfig: NavConfigRepository,
+    private val navState: NavStateStore,
     private val onboarding: OnboardingRepository,
     private val appLock: AppLockRepository,
     private val syncStatus: SyncStatusStore,
@@ -51,6 +55,7 @@ class LocalDataWiper @Inject constructor(
         cursors.reset()
         database.clearAll()
         navConfig.reset()
+        navState.clear()
         onboarding.reset()
         appLock.clearPin()
         syncStatus.clear()

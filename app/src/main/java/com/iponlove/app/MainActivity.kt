@@ -116,6 +116,10 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Null on a fresh launch or a force-stop respawn (Android drops the saved-instance-state
+        // bundle on force-stop) → the nav shell restores the user's last module (Item 39). Non-null
+        // on a config-change / low-memory recreation, where the NavHost restores its own back stack.
+        val coldStart = savedInstanceState == null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -249,6 +253,7 @@ class MainActivity : FragmentActivity() {
                                     onSignOut = authViewModel::signOut,
                                     deepLinkRoute = widgetRoute,
                                     onDeepLinkHandled = { pendingWidgetRoute.value = null },
+                                    isColdStart = coldStart,
                                 )
                                 if (form.signOutPendingConfirm) {
                                     SignOutPendingDialog(

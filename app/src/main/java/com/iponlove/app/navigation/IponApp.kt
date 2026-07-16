@@ -52,6 +52,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import com.iponlove.app.core.ui.CoachMarkOverlay
 import com.iponlove.app.core.ui.CoachMarkState
@@ -144,10 +146,27 @@ fun IponApp(
     navViewModel: NavbarViewModel = hiltViewModel(),
     deepLinkRoute: String? = null,
     onDeepLinkHandled: () -> Unit = {},
+    isColdStart: Boolean = false,
 ) {
     val state by navViewModel.uiState.collectAsState()
 
-    if (!state.loaded) {
+    // Resolve the cold-start restore target BEFORE the NavHost mounts, so the restored module can
+    // be its start destination and the home tab never flashes past first (Item 39). It's a single
+    // DataStore read, hidden inside the cold-start splash already on screen. rememberSaveable so a
+    // config change keeps the resolved value instead of re-gating with a spinner.
+    var startModule by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(state.loaded) {
+        if (state.loaded && startModule == null) {
+            startModule = if (isColdStart && deepLinkRoute == null) {
+                navViewModel.moduleToRestore(state.startRoute) ?: state.startRoute
+            } else {
+                state.startRoute
+            }
+        }
+    }
+
+    val resolvedStart = startModule
+    if (!state.loaded || resolvedStart == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
@@ -155,6 +174,7 @@ fun IponApp(
     }
     IponAppContent(
         state = state,
+        startModule = resolvedStart,
         onSignOut = onSignOut,
         navViewModel = navViewModel,
         deepLinkRoute = deepLinkRoute,
@@ -166,6 +186,7 @@ fun IponApp(
 @Composable
 private fun IponAppContent(
     state: NavUiState,
+    startModule: String,
     onSignOut: () -> Unit,
     navViewModel: NavbarViewModel,
     deepLinkRoute: String? = null,
@@ -174,6 +195,21 @@ private fun IponAppContent(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+
+    // Which top-level module (NavRegistry) the current destination sits inside — null on the
+    // standalone routes that live outside every module graph (add/edit-transaction, nav editor).
+    // Same graph-membership test the bottom bar uses for tab selection.
+    val currentModuleId: String? = NavRegistry.all.firstOrNull { module ->
+        currentDestination?.hierarchy?.any { it.route == module.graphRoute() } == true
+    }?.id
+
+    // Persist where we are as the app is backgrounded (v1.6.6 Item 39). onStop is the last reliable
+    // in-process moment before the ROM may force-stop us; the disk write survives the kill so a
+    // cold relaunch can restore the module below — rememberSaveable can't, since force-stop drops
+    // the saved-instance-state bundle.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        navViewModel.rememberLocation(currentModuleId)
+    }
 
     // A home-screen widget can request a module to open on launch (Item 33: balance widget →
     // Manage → Accounts). Fires once per requested route, after the NavHost graph is set; the
@@ -185,9 +221,11 @@ private fun IponAppContent(
     }
 
     // NavHost can't swap its start without rebuilding the graph (wiping the back stack), so the
-    // home destination is captured once. Reordering pins later updates the bar, not home. The
-    // start is a module *graph* route (ADR-0033), which resolves to that module's root screen.
-    val startGraphRoute = rememberSaveable { state.startRoute + GRAPH_SUFFIX }
+    // start is captured once. `startModule` is the resolved cold-start destination — the restored
+    // module when returning within the window, else home (Item 39) — so a restore opens directly
+    // here with no home-tab flash past first. It's a module *graph* route (ADR-0033), which
+    // resolves to that module's root screen.
+    val startGraphRoute = rememberSaveable { startModule + GRAPH_SUFFIX }
 
     var showMore by rememberSaveable { mutableStateOf(false) }
 
