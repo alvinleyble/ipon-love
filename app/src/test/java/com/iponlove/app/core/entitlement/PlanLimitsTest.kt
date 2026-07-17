@@ -24,7 +24,8 @@ class PlanLimitsTest {
                 maxSharedAccounts = 1,
                 maxPersonalCategories = 10,
                 maxSharedCategories = 1,
-                maxBudgets = 5,
+                maxPersonalBudgets = 5,
+                maxSharedBudgets = 1,
                 maxPersonalSavingsGoals = 5,
                 maxSharedSavingsGoals = 1,
                 maxCoupleDebtEntries = 10,
@@ -45,7 +46,8 @@ class PlanLimitsTest {
                 maxSharedAccounts = 50,
                 maxPersonalCategories = 150,
                 maxSharedCategories = 30,
-                maxBudgets = 100,
+                maxPersonalBudgets = 100,
+                maxSharedBudgets = 50,
                 maxPersonalSavingsGoals = 50,
                 maxSharedSavingsGoals = 20,
                 maxCoupleDebtEntries = 100,
@@ -71,11 +73,11 @@ class PlanLimitsTest {
 
     @Test
     fun resolve_freeOverride_onlyAffectsFreeTier() {
-        val json = """{"free":{"maxPersonalAccounts":20,"maxBudgets":8}}"""
+        val json = """{"free":{"maxPersonalAccounts":20,"maxPersonalBudgets":8}}"""
 
         val free = PlanLimits.resolve(hasAccess = false, overridesJson = json)
         assertThat(free.maxPersonalAccounts).isEqualTo(20)
-        assertThat(free.maxBudgets).isEqualTo(8)
+        assertThat(free.maxPersonalBudgets).isEqualTo(8)
         assertThat(free.maxSharedAccounts).isEqualTo(PlanLimits.FREE.maxSharedAccounts)
 
         // A free-branch-only override must never bleed onto premium users.
@@ -89,7 +91,7 @@ class PlanLimitsTest {
 
         val premium = PlanLimits.resolve(hasAccess = true, overridesJson = json)
         assertThat(premium.maxReceiptPhotos).isEqualTo(5)
-        assertThat(premium.maxBudgets).isEqualTo(PlanLimits.PREMIUM.maxBudgets)
+        assertThat(premium.maxPersonalBudgets).isEqualTo(PlanLimits.PREMIUM.maxPersonalBudgets)
 
         val free = PlanLimits.resolve(hasAccess = false, overridesJson = json)
         assertThat(free).isEqualTo(PlanLimits.FREE)
@@ -97,15 +99,22 @@ class PlanLimitsTest {
 
     @Test
     fun resolve_missingBranch_fallsBackToBaseTier() {
-        val json = """{"free":{"maxBudgets":8}}"""
+        val json = """{"free":{"maxPersonalBudgets":8}}"""
         // No "premium" key at all — premium resolution must fail open to the hardcoded default.
         assertThat(PlanLimits.resolve(hasAccess = true, overridesJson = json)).isEqualTo(PlanLimits.PREMIUM)
     }
 
     @Test
+    fun resolve_sharedBudgetsOverride_appliesToEachTierIndependently() {
+        val json = """{"free":{"maxSharedBudgets":3},"premium":{"maxSharedBudgets":80}}"""
+        assertThat(PlanLimits.resolve(hasAccess = false, overridesJson = json).maxSharedBudgets).isEqualTo(3)
+        assertThat(PlanLimits.resolve(hasAccess = true, overridesJson = json).maxSharedBudgets).isEqualTo(80)
+    }
+
+    @Test
     fun resolve_unknownKeys_areIgnored() {
-        val json = """{"free":{"someFutureField":99,"maxBudgets":8}}"""
-        assertThat(PlanLimits.resolve(hasAccess = false, overridesJson = json).maxBudgets).isEqualTo(8)
+        val json = """{"free":{"someFutureField":99,"maxPersonalBudgets":8}}"""
+        assertThat(PlanLimits.resolve(hasAccess = false, overridesJson = json).maxPersonalBudgets).isEqualTo(8)
     }
 
     @Test

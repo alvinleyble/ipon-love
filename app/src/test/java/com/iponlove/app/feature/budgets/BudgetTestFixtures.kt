@@ -29,6 +29,9 @@ class FakeBudgetDao : BudgetDao {
     override suspend fun countPersonal(yearMonth: String): Int =
         store.values.count { !it.isDeleted && it.coupleId == null && it.yearMonth == yearMonth }
 
+    override suspend fun countShared(yearMonth: String): Int =
+        store.values.count { !it.isDeleted && it.coupleId != null && it.yearMonth == yearMonth }
+
     override suspend fun upsert(budget: BudgetEntity) {
         store[budget.id] = budget
         changes.value++
@@ -60,12 +63,14 @@ fun budget(
     amount: String = "5000.00",
     yearMonth: String = "2026-06",
     rolloverEnabled: Boolean = false,
+    isShared: Boolean = false,
 ) = Budget(
     id = id,
     categoryId = categoryId,
     amount = BigDecimal(amount),
     yearMonth = yearMonth,
     rolloverEnabled = rolloverEnabled,
+    isShared = isShared,
 )
 
 fun budgetEntity(

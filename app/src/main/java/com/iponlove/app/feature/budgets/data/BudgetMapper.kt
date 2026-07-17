@@ -12,6 +12,9 @@ fun BudgetEntity.toDomain(): Budget = Budget(
     amount = amount,
     yearMonth = yearMonth,
     rolloverEnabled = rolloverEnabled,
+    // A budget is shared iff it's couple-owned (Item 35 / ADR-0047); locally, a couple_id row is
+    // always this couple's (partner replicas carry the same couple_id).
+    isShared = coupleId != null,
 )
 
 /** Entity → DTO for push. Drops `pendingSync` (local-only, ADR-0002). */

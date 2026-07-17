@@ -64,6 +64,9 @@ class TransactionRepositoryImpl @Inject constructor(
         dao.observeCombined(startInclusive, endExclusive)
             .map { rows -> rows.map { OwnedTransaction(ownerId = it.userId, transaction = it.toDomain()) } }
 
+    override fun observeCombinedTransactionsUnbounded(): Flow<List<Transaction>> =
+        dao.observeCombinedUnbounded().map { rows -> rows.map { it.toDomain() } }
+
     override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = dao.observeHasAnyCombinedTransaction()
 
     override fun observeBalanceLedger(): Flow<List<Transaction>> = flow {

@@ -19,18 +19,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,14 +39,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.iponlove.app.core.ui.FullScreenImagePager
 import com.iponlove.app.core.ui.MonthStepperRow
-import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.parseHexColor
@@ -63,7 +57,7 @@ private val IncomeColor = Color(0xFF2E7D32)
 /**
  * Chrome-less Combined body — no Scaffold/TopAppBar. The Couple tab host
  * ([CoupleScreen]) provides the single scaffold; this renders the month stepper, the
- * pull-to-refresh list, and the budget editor dialog only.
+ * pull-to-refresh list, and the read-only shared-budget summary (Item 35).
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -108,13 +102,13 @@ fun CombinedBody(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        item {
-                            CoupleBudgetCard(
-                                budget = state.coupleBudget,
-                                monthLabel = state.monthLabel,
-                                onSet = viewModel::startEditBudget,
-                                onClear = viewModel::clearBudget,
-                            )
+                        if (state.sharedBudgets.isNotEmpty()) {
+                            item {
+                                SharedBudgetsSummaryCard(
+                                    budgets = state.sharedBudgets,
+                                    monthLabel = state.monthLabel,
+                                )
+                            }
                         }
                         item { SpendingChips(state.monthLabel, state.members) }
                         if (state.dayGroups.isEmpty()) {
@@ -150,14 +144,6 @@ fun CombinedBody(
         }
     }
 
-    state.budgetEditor?.let { editor ->
-        BudgetEditorDialog(
-            editor = editor,
-            onAmountChange = viewModel::onBudgetAmountChange,
-            onSave = viewModel::saveBudget,
-            onCancel = viewModel::cancelBudgetEdit,
-        )
-    }
 }
 
 @Composable
@@ -172,95 +158,64 @@ private fun DayHeader(label: String) {
     }
 }
 
+/**
+ * Read-only summary of the couple's shared budgets for the month (Item 35 / ADR-0047). A glance at
+ * joint-budget progress; creating/editing lives in the Budgets tab (the caption points there). Only
+ * shown when the couple has at least one shared budget this month.
+ */
 @Composable
-private fun CoupleBudgetCard(
-    budget: CoupleBudgetUi?,
+private fun SharedBudgetsSummaryCard(
+    budgets: List<SharedBudgetSummaryUi>,
     monthLabel: String,
-    onSet: () -> Unit,
-    onClear: () -> Unit,
 ) {
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Couple budget · $monthLabel",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = onSet) { Text(if (budget == null) "Set" else "Edit") }
-            }
-            if (budget == null) {
-                Text(
-                    text = "Set a joint monthly limit. Both of your expenses count toward it.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                LinearProgressIndicator(
-                    progress = { budget.fraction },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = if (budget.isOverBudget) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "${money(budget.spent)} of ${money(budget.limit)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        text = if (budget.isOverBudget) {
-                            "Over by ${money(budget.spent - budget.limit)}"
-                        } else {
-                            "${money(budget.remaining)} left"
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = "Shared budgets · $monthLabel",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            budgets.forEach { budget ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(budget.title, style = MaterialTheme.typography.titleSmall)
+                    LinearProgressIndicator(
+                        progress = { budget.fraction },
+                        modifier = Modifier.fillMaxWidth(),
                         color = if (budget.isOverBudget) {
                             MaterialTheme.colorScheme.error
                         } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                            MaterialTheme.colorScheme.primary
                         },
                     )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${money(budget.spent)} of ${money(budget.limit)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = if (budget.isOverBudget) {
+                                "Over by ${money(budget.spent - budget.limit)}"
+                            } else {
+                                "${money(budget.remaining)} left"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (budget.isOverBudget) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
                 }
-                TextButton(onClick = onClear) { Text("Remove budget") }
             }
+            Text(
+                text = "Manage shared budgets in the Budgets tab.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
-}
-
-@Composable
-private fun BudgetEditorDialog(
-    editor: BudgetEditorState,
-    onAmountChange: (String) -> Unit,
-    onSave: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        title = { Text(if (editor.isEditing) "Edit couple budget" else "Set couple budget") },
-        text = {
-            OutlinedTextField(
-                value = editor.amountText,
-                onValueChange = onAmountChange,
-                label = { Text("Monthly limit (${currencyGlyph()})") },
-                singleLine = true,
-                isError = editor.amountError,
-                supportingText = if (editor.amountError) {
-                    { Text("Enter an amount greater than zero") }
-                } else {
-                    null
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth(),
-            )
-        },
-        confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
-    )
 }
 
 @Composable

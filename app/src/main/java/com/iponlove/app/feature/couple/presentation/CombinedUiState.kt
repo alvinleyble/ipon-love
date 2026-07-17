@@ -27,26 +27,24 @@ data class CombinedUiState(
      * "unlock older history" affordance routing to the paywall. Always true while dormant.
      */
     val canGoToPreviousMonth: Boolean = true,
-    /** The couple's joint budget for the displayed month, or null if none is set yet. */
-    val coupleBudget: CoupleBudgetUi? = null,
-    /** Non-null while the set/edit budget dialog is open. */
-    val budgetEditor: BudgetEditorState? = null,
+    /**
+     * The couple's shared budgets for the displayed month, **read-only** (Item 35 / ADR-0047):
+     * a glanceable summary of joint-budget progress. Creating/editing shared budgets lives in the
+     * Budgets tab; this list self-hides (empty) when the couple has no shared budgets this month.
+     */
+    val sharedBudgets: List<SharedBudgetSummaryUi> = emptyList(),
 )
 
-/** The joint budget with its progress against the couple's combined spend this month. */
-data class CoupleBudgetUi(
+/** A read-only shared-budget summary line — its progress against the couple's combined spend. */
+data class SharedBudgetSummaryUi(
     val id: String,
-    val limit: BigDecimal,
+    /** Category name, or "Overall" for a no-category budget. */
+    val title: String,
     val spent: BigDecimal,
+    /** Rollover-adjusted limit (ADR-0036). */
+    val limit: BigDecimal,
     val remaining: BigDecimal,
     /** 0f..1f, clamped, for the progress bar. */
     val fraction: Float,
     val isOverBudget: Boolean,
-)
-
-/** Editor form state for the joint monthly budget (overall — no category in V1). */
-data class BudgetEditorState(
-    val amountText: String = "",
-    val amountError: Boolean = false,
-    val isEditing: Boolean = false,
 )

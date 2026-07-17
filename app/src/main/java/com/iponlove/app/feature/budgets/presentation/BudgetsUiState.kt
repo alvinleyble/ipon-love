@@ -22,6 +22,11 @@ data class BudgetsUiState(
      * instead of toggling. False while dormant, so the toggle works exactly as before pre-flip.
      */
     val rolloverLocked: Boolean = false,
+    /**
+     * Whether the user is paired (Item 35) — gates the editor's Personal/Shared scope selector.
+     * When false, every budget is personal and the selector is hidden.
+     */
+    val isPaired: Boolean = false,
 )
 
 /** One budget with its derived progress for the displayed month. */
@@ -41,15 +46,22 @@ data class BudgetRow(
     val rolloverEnabled: Boolean,
     /** [limit] minus [baseAmount] — positive if carried leftover, negative if carried deficit. */
     val carriedAmount: BigDecimal,
+    /** Couple-owned (Item 35): renders a "Shared" badge; its spend counts both partners. */
+    val isShared: Boolean = false,
 )
 
-/** Editor form state. [categoryId] null means an overall budget. */
+/**
+ * Editor form state. [categoryId] null means an overall budget. [shared] chooses Personal vs
+ * Shared scope — set only at **creation** (immutable when editing, Item 35 / ADR-0047): a shared
+ * budget is created shared and never toggled from a personal row.
+ */
 data class BudgetEditorState(
     val id: String? = null,
     val categoryId: String? = null,
     val amountText: String = "",
     val amountError: Boolean = false,
     val rolloverEnabled: Boolean = false,
+    val shared: Boolean = false,
 ) {
     val isEditing: Boolean get() = id != null
 }

@@ -52,6 +52,7 @@ class ObserveAccountBalancesUseCaseTest {
             startInclusive: Instant,
             endExclusive: Instant,
         ): Flow<List<OwnedTransaction>> = TODO("not needed")
+        override fun observeCombinedTransactionsUnbounded(): Flow<List<Transaction>> = TODO("not needed")
         override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = TODO("not needed")
         override suspend fun getTransaction(id: String): Transaction? = TODO("not needed")
         override suspend fun upsertTransaction(transaction: Transaction): Unit = TODO("not needed")

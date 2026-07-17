@@ -150,7 +150,7 @@ Full rationale in `docs/adr/`. These are the rules most likely to be violated by
 - Budget tracker (transactions, accounts, categories, budgets, analysis, recurring)
 - Notes (rich text, checklists, images, optional partner sharing)
 - Couples pairing via invite code, combined view with color-coded attribution
-- Shared couple budget (joint monthly budget)
+- Shared couple budgets (per-category, in the Budgets tab; created via a Personal/Shared selector, count both partners' combined spending — ADR-0047)
 - Partner Debt Tracker (couples-only IOU tracking; hidden until paired)
 - App lock (PIN + biometric; local only; 30-second grace period)
 - Multiple themes (light + dark + more)

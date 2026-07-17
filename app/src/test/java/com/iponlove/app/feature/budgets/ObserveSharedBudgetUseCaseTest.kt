@@ -74,6 +74,7 @@ class ObserveSharedBudgetUseCaseTest {
             flowOf(shared[coupleId].orEmpty())
         override suspend fun getBudget(id: String): Budget? = null
         override suspend fun countPersonalBudgets(yearMonth: String): Int = 0
+        override suspend fun countSharedBudgets(yearMonth: String): Int = 0
         override suspend fun upsertBudget(budget: Budget) = Unit
         override suspend fun upsertSharedBudget(budget: Budget, coupleId: String) = Unit
         override suspend fun deleteBudget(id: String) = Unit

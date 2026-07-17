@@ -56,6 +56,14 @@ class BudgetAlertWorker @AssistedInject constructor(
         } else {
             emptyList()
         }
+        // Shared budgets count BOTH partners' non-private spending (Item 35), so their alerts must
+        // be checked against the combined ledger — not the user's own transactions like personal
+        // budgets. Only fetched when there are shared budgets to check.
+        val combinedTransactions = if (sharedBudgets.isNotEmpty()) {
+            transactionRepository.observeCombinedTransactionsUnbounded().first()
+        } else {
+            emptyList()
+        }
 
         val alreadyFired = alertStore.loadFired(currentCalendarMonth)
         val alerts = checkBudgetAlerts(
@@ -66,7 +74,7 @@ class BudgetAlertWorker @AssistedInject constructor(
             startDay = startDay,
         ) + checkBudgetAlerts(
             budgets = sharedBudgets,
-            transactions = transactions,
+            transactions = combinedTransactions,
             alreadyFiredKeys = alreadyFired,
             currentMonth = currentCalendarMonth,
             startDay = 1,

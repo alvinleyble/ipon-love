@@ -22,9 +22,18 @@ interface BudgetRepository {
 
     suspend fun getBudget(id: String): Budget?
 
-    /** Count of active personal budgets for [yearMonth] — the per-month `maxBudgets` cap (§10.1). */
+    /** Count of active personal budgets for [yearMonth] — the per-month `maxPersonalBudgets` cap (§10.1). */
     suspend fun countPersonalBudgets(yearMonth: String): Int
 
+    /** Count of active shared (couple-owned) budgets for [yearMonth] — the per-month `maxSharedBudgets` cap (Item 35). */
+    suspend fun countSharedBudgets(yearMonth: String): Int
+
+    /**
+     * Create or edit a budget. **Ownership-preserving:** a new row is personal (owner set,
+     * couple null); an edit keeps whatever the row already is — a couple-owned (shared) row stays
+     * shared (owner stays null, couple_id kept), never re-stamped personal (Item 35). Create a
+     * *new* shared budget via [upsertSharedBudget], not here.
+     */
     suspend fun upsertBudget(budget: Budget)
 
     /**

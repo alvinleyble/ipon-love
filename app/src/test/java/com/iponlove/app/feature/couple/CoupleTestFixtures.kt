@@ -75,6 +75,7 @@ internal class CountingTransactionRepo : TransactionRepository {
         startInclusive: Instant,
         endExclusive: Instant,
     ): Flow<List<OwnedTransaction>> = emptyFlow()
+    override fun observeCombinedTransactionsUnbounded(): Flow<List<Transaction>> = emptyFlow()
     override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = emptyFlow()
     override fun observeBalanceLedger(): Flow<List<Transaction>> = emptyFlow()
     override suspend fun getTransaction(id: String): Transaction? = null
@@ -121,6 +122,7 @@ internal class CountingBudgetRepo : BudgetRepository {
     override fun observeSharedBudgets(coupleId: String): Flow<List<Budget>> = emptyFlow()
     override suspend fun getBudget(id: String): Budget? = null
     override suspend fun countPersonalBudgets(yearMonth: String): Int = 0
+    override suspend fun countSharedBudgets(yearMonth: String): Int = 0
     override suspend fun upsertBudget(budget: Budget) = Unit
     override suspend fun upsertSharedBudget(budget: Budget, coupleId: String) = Unit
     override suspend fun deleteBudget(id: String) = Unit

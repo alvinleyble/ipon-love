@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CapReachedSheet
+import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import java.math.BigDecimal
@@ -113,6 +114,7 @@ fun BudgetsBody(
             state = state,
             onCategoryChange = viewModel::onCategoryChange,
             onAmountChange = viewModel::onAmountChange,
+            onScopeChange = viewModel::onScopeChange,
             onRolloverChange = viewModel::onRolloverToggle,
             onRolloverLockedTap = { onOpenPremium(viewModel.onRolloverLockedTap()) },
             onSave = viewModel::save,
@@ -167,8 +169,12 @@ private fun BudgetCard(
                 Text(
                     text = row.title,
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
                 )
+                if (row.isShared) {
+                    Spacer(Modifier.width(8.dp))
+                    SharedBadge()
+                }
+                Spacer(Modifier.weight(1f))
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(Icons.Filled.MoreVert, contentDescription = "More options")
@@ -276,6 +282,7 @@ private fun BudgetEditorDialog(
     state: BudgetsUiState,
     onCategoryChange: (String?) -> Unit,
     onAmountChange: (String) -> Unit,
+    onScopeChange: (Boolean) -> Unit,
     onRolloverChange: (Boolean) -> Unit,
     onRolloverLockedTap: () -> Unit,
     onSave: () -> Unit,
@@ -287,6 +294,31 @@ private fun BudgetEditorDialog(
         title = { Text(if (editor.isEditing) "Edit budget" else "New budget") },
         text = {
             Column {
+                // Personal vs Shared scope — only offered when paired, and only at creation
+                // (scope is immutable once a budget exists, ADR-0047). A shared budget's spend
+                // counts both partners' non-private transactions.
+                if (state.isPaired && !editor.isEditing) {
+                    Text("Budget type", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(4.dp))
+                    Row {
+                        BudgetChip(
+                            label = "Personal",
+                            selected = !editor.shared,
+                            onClick = { onScopeChange(false) },
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        BudgetChip(
+                            label = "Shared",
+                            selected = editor.shared,
+                            onClick = { onScopeChange(true) },
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                } else if (editor.shared) {
+                    // Editing an existing shared budget: show it's shared (scope can't change here).
+                    SharedBadge()
+                    Spacer(Modifier.height(12.dp))
+                }
                 Text("Applies to", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(4.dp))
                 Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {

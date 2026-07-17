@@ -64,6 +64,15 @@ interface TransactionDao {
     )
     fun observeCombined(startInclusive: Instant, endExclusive: Instant): Flow<List<TransactionEntity>>
 
+    /**
+     * The couple's shared ledger **unbounded** — both members' active, non-private transactions
+     * across all time. Feeds shared-budget spend/rollover in the Budgets tab (Item 35), which
+     * needs prior months' spend for the rollover chain, unlike the month-windowed [observeCombined]
+     * the combined view uses. Same `isPrivate = 0` isolation (ADR-0011).
+     */
+    @Query("SELECT * FROM transactions WHERE isDeleted = 0 AND isPrivate = 0 ORDER BY date DESC, createdAt DESC")
+    fun observeCombinedUnbounded(): Flow<List<TransactionEntity>>
+
     /** Whether the couple has ever shared an active transaction (ADR-0032 empty-state signal). */
     @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE isDeleted = 0 AND isPrivate = 0)")
     fun observeHasAnyCombinedTransaction(): Flow<Boolean>

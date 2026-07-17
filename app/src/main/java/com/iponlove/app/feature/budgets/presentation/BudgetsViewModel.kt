@@ -8,18 +8,23 @@ import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.budgets.domain.model.Budget
 import com.iponlove.app.feature.budgets.domain.usecase.BudgetCycle
-import com.iponlove.app.feature.budgets.domain.usecase.BudgetProgressCalculator
+import com.iponlove.app.feature.budgets.domain.usecase.BudgetRowsCalculator
 import com.iponlove.app.feature.budgets.domain.usecase.CheckBudgetCapUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.DeleteBudgetUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.DuplicateBudgetToNextMonthUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveBudgetsUseCase
+import com.iponlove.app.feature.budgets.domain.usecase.ObserveSharedBudgetUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.ResetBudgetRolloverUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.UpsertBudgetUseCase
+import com.iponlove.app.feature.budgets.domain.usecase.UpsertSharedBudgetUseCase
 import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
+import com.iponlove.app.feature.couple.domain.model.PairingState
+import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetStartDayUseCase
 import com.iponlove.app.feature.transactions.domain.model.Transaction
+import com.iponlove.app.feature.transactions.domain.usecase.ObserveCombinedTransactionsForBudgetsUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +32,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -39,9 +45,13 @@ import javax.inject.Inject
 @HiltViewModel
 class BudgetsViewModel @Inject constructor(
     observeBudgets: ObserveBudgetsUseCase,
+    observeSharedBudget: ObserveSharedBudgetUseCase,
     observeTransactions: ObserveTransactionsUseCase,
+    observeCombinedTransactions: ObserveCombinedTransactionsForBudgetsUseCase,
     observeCategories: ObserveCategoriesUseCase,
+    observePairingState: ObservePairingStateUseCase,
     private val upsertBudget: UpsertBudgetUseCase,
+    private val upsertSharedBudget: UpsertSharedBudgetUseCase,
     private val deleteBudget: DeleteBudgetUseCase,
     private val resetBudgetRollover: ResetBudgetRolloverUseCase,
     private val duplicateBudget: DuplicateBudgetToNextMonthUseCase,
@@ -54,6 +64,10 @@ class BudgetsViewModel @Inject constructor(
     private val month = MutableStateFlow(YearMonth.now())
     private val editor = MutableStateFlow<BudgetEditorState?>(null)
     private val upsell = MutableStateFlow<UpsellPrompt?>(null)
+
+    // The analytics source (§10.10) of the currently-shown upsell, so the "Get Premium" tap logs
+    // the same key it was raised under — "budgets" (personal) or "shared_budgets".
+    private var upsellSource = "budgets"
 
     init {
         // With a non-calendar start day, "today" often belongs to the cycle keyed to the *previous*
@@ -68,33 +82,46 @@ class BudgetsViewModel @Inject constructor(
         }
     }
 
-    // Budgets for the displayed month, captured so a new budget can update the existing
-    // one for the same category instead of creating a duplicate.
-    private var monthBudgets: List<Budget> = emptyList()
+    // Budgets for the displayed month, split by scope, captured so save() can reuse the existing
+    // row for the same category+month+scope instead of creating a duplicate.
+    private var monthPersonal: List<Budget> = emptyList()
+    private var monthShared: List<Budget> = emptyList()
 
-    // Every personal budget across all months, captured so effectiveLimit/reset-rollover/
-    // duplicate can look up a category's history without a fresh query.
-    private var allBudgets: List<Budget> = emptyList()
+    // Every budget across all months, split by scope, captured so duplicate/reset can look up a
+    // category's history within its own scope without a fresh query.
+    private var allPersonal: List<Budget> = emptyList()
+    private var allShared: List<Budget> = emptyList()
+
+    // The current couple id (null when unpaired) — needed to stamp ownership on a shared budget.
+    private var coupleId: String? = null
 
     val uiState: StateFlow<BudgetsUiState> =
         combine(
             observeBudgets(),
+            observeSharedBudget(),
             observeTransactions(),
+            observeCombinedTransactions(),
             observeCategories(),
-            month,
-            editor,
-        ) { budgets, transactions, categories, displayedMonth, editorState ->
-            RawBudgets(budgets, transactions, categories, displayedMonth, editorState)
-            // The first combine is at its 5-flow maximum; the budget-cycle start day (which the row
-            // math + header range both need) folds in via a second combine alongside upsell + lock.
-        }.let { rawFlow ->
-            combine(
-                rawFlow,
+        ) { personal, shared, ownTxns, combinedTxns, categories ->
+            BudgetData(personal, shared, ownTxns, combinedTxns, categories)
+        }.let { dataFlow ->
+            val controlsFlow = combine(
+                month,
+                editor,
                 upsell,
                 premiumGate.observeLocked(),
                 observeBudgetStartDay(),
-            ) { raw, upsellState, rolloverLocked, startDay ->
-                buildUiState(raw, upsellState, rolloverLocked, startDay)
+            ) { displayedMonth, editorState, upsellState, rolloverLocked, startDay ->
+                BudgetControls(displayedMonth, editorState, upsellState, rolloverLocked, startDay)
+            }
+            val pairingFlow = observePairingState().map { state ->
+                when (state) {
+                    is PairingState.Paired -> PairInfo(isPaired = true, coupleId = state.couple.id)
+                    else -> PairInfo(isPaired = false, coupleId = null)
+                }
+            }
+            combine(dataFlow, controlsFlow, pairingFlow) { data, controls, pairing ->
+                buildUiState(data, controls, pairing)
             }
         }.stateIn(
             scope = viewModelScope,
@@ -103,54 +130,55 @@ class BudgetsViewModel @Inject constructor(
         )
 
     private fun buildUiState(
-        raw: RawBudgets,
-        upsellState: UpsellPrompt?,
-        rolloverLocked: Boolean,
-        startDay: Int,
+        data: BudgetData,
+        controls: BudgetControls,
+        pairing: PairInfo,
     ): BudgetsUiState {
-        val monthKey = raw.displayedMonth.toString()
-        val categoryNames = raw.categories.associate { it.id to it.name }
-        val current = raw.budgets.filter { it.yearMonth == monthKey }
-        monthBudgets = current
-        allBudgets = raw.budgets
+        val monthKey = controls.month.toString()
+        val categoryNames = data.categories.associate { it.id to it.name }
+        monthPersonal = data.personal.filter { it.yearMonth == monthKey }
+        monthShared = data.shared.filter { it.yearMonth == monthKey }
+        allPersonal = data.personal
+        allShared = data.shared
+        coupleId = pairing.coupleId
 
-        val rows = current.map { budget ->
-            val spent = BudgetProgressCalculator.spent(budget, raw.transactions, startDay = startDay)
-            val sameCategoryBudgets = raw.budgets.filter { it.categoryId == budget.categoryId }
-            val limit = BudgetProgressCalculator.effectiveLimit(
-                budget, sameCategoryBudgets, raw.transactions, startDay = startDay,
-            )
-            val fraction = if (limit.signum() > 0) {
-                (spent.toFloat() / limit.toFloat()).coerceIn(0f, 1f)
-            } else {
-                0f
-            }
-            BudgetRow(
-                id = budget.id,
-                categoryId = budget.categoryId,
-                title = budget.categoryId?.let { categoryNames[it] ?: "Category" } ?: "Overall",
-                spent = spent,
-                baseAmount = budget.amount,
-                limit = limit,
-                remaining = limit - spent,
-                fraction = fraction,
-                isOverBudget = spent > limit,
-                rolloverEnabled = budget.rolloverEnabled,
-                carriedAmount = limit - budget.amount,
-            )
-        }
+        val rows = BudgetRowsCalculator.build(
+            personalBudgets = data.personal,
+            sharedBudgets = data.shared,
+            ownTransactions = data.ownTransactions,
+            combinedTransactions = data.combinedTransactions,
+            categoryNames = categoryNames,
+            monthKey = monthKey,
+            startDay = controls.startDay,
+        ).map { it.toRow() }
 
         return BudgetsUiState(
             isLoading = false,
-            monthLabel = cycleLabel(raw.displayedMonth, startDay),
-            nextMonthShortLabel = raw.displayedMonth.plusMonths(1).format(SHORT_MONTH_FORMATTER),
+            monthLabel = cycleLabel(controls.month, controls.startDay),
+            nextMonthShortLabel = controls.month.plusMonths(1).format(SHORT_MONTH_FORMATTER),
             rows = rows,
-            expenseCategories = raw.categories.filter { it.type == CategoryType.EXPENSE },
-            editor = raw.editor,
-            upsell = upsellState,
-            rolloverLocked = rolloverLocked,
+            expenseCategories = data.categories.filter { it.type == CategoryType.EXPENSE },
+            editor = controls.editor,
+            upsell = controls.upsell,
+            rolloverLocked = controls.rolloverLocked,
+            isPaired = pairing.isPaired,
         )
     }
+
+    private fun BudgetRowsCalculator.Row.toRow(): BudgetRow = BudgetRow(
+        id = id,
+        categoryId = categoryId,
+        title = title,
+        spent = spent,
+        baseAmount = baseAmount,
+        limit = limit,
+        remaining = remaining,
+        fraction = fraction,
+        isOverBudget = isOverBudget,
+        rolloverEnabled = rolloverEnabled,
+        carriedAmount = carriedAmount,
+        isShared = isShared,
+    )
 
     /** "July 2026" for calendar months (start-day 1), else the cycle's date range ("Jul 15 – Aug 14"). */
     private fun cycleLabel(displayedMonth: YearMonth, startDay: Int): String =
@@ -169,17 +197,13 @@ class BudgetsViewModel @Inject constructor(
         month.value = month.value.plusMonths(1)
     }
 
+    /**
+     * Open the create-budget editor. The per-month cap (S7) is enforced at [save] now — the scope
+     * (personal vs shared) is only known once the editor picks it, so the tier the cap reads can't
+     * be decided here. Defaults to personal scope.
+     */
     fun startCreate() {
-        // Gate the per-month budgets cap at create-intent (S7) for the displayed month; Allowed
-        // with enforcement off or under the cap.
-        viewModelScope.launch {
-            when (val check = checkBudgetCap(month.value.toString())) {
-                CapCheck.Allowed -> editor.value = BudgetEditorState()
-                is CapCheck.Blocked -> {
-                    upsell.value = UpsellPrompt("budgets", check.freeLimit, check.premiumMax)
-                }
-            }
-        }
+        editor.value = BudgetEditorState()
     }
 
     fun dismissUpsell() {
@@ -188,7 +212,7 @@ class BudgetsViewModel @Inject constructor(
 
     /** The upsell "Get Premium" tap — logs the funnel touchpoint (§10.10) before routing to paywall. */
     fun onUpsellUpgrade(): String {
-        val source = "budgets"
+        val source = upsellSource
         analytics.log("upsell_tap", source = source)
         upsell.value = null
         return source
@@ -200,6 +224,7 @@ class BudgetsViewModel @Inject constructor(
             categoryId = row.categoryId,
             amountText = row.baseAmount.toPlainString(),
             rolloverEnabled = row.rolloverEnabled,
+            shared = row.isShared,
         )
     }
 
@@ -210,6 +235,11 @@ class BudgetsViewModel @Inject constructor(
     fun onCategoryChange(categoryId: String?) = editor.update { it?.copy(categoryId = categoryId) }
 
     fun onAmountChange(value: String) = editor.update { it?.copy(amountText = value, amountError = false) }
+
+    /** Choose Personal vs Shared scope — creation only (a no-op while editing, ADR-0047). */
+    fun onScopeChange(shared: Boolean) = editor.update { current ->
+        if (current == null || current.isEditing) current else current.copy(shared = shared)
+    }
 
     fun onRolloverToggle(enabled: Boolean) {
         // Defensive: a locked toggle can't be flipped (the screen shows a locked switch that routes
@@ -234,17 +264,39 @@ class BudgetsViewModel @Inject constructor(
             editor.value = s.copy(amountError = true)
             return
         }
-        // Reuse an existing budget for the same category+month instead of duplicating.
-        val existingId = s.id ?: monthBudgets.firstOrNull { it.categoryId == s.categoryId }?.id
-        val budget = Budget(
-            id = existingId ?: UUID.randomUUID().toString(),
-            categoryId = s.categoryId,
-            amount = amount,
-            yearMonth = month.value.toString(),
-            rolloverEnabled = s.rolloverEnabled,
-        )
+        // Shared budgets need a couple; if somehow chosen while unpaired, fall back to personal.
+        val couple = coupleId
+        val shared = s.shared && couple != null
+        // Reuse an existing budget for the same category+month **within the same scope** instead of
+        // duplicating (a personal and a shared budget for the same category are distinct rows).
+        val monthInScope = if (shared) monthShared else monthPersonal
+        val existingId = s.id ?: monthInScope.firstOrNull { it.categoryId == s.categoryId }?.id
         viewModelScope.launch {
-            upsertBudget(budget)
+            // Only a *new* budget hits the cap (an edit of an existing row never does).
+            if (existingId == null) {
+                when (val check = checkBudgetCap(month.value.toString(), shared = shared)) {
+                    is CapCheck.Blocked -> {
+                        upsellSource = if (shared) "shared_budgets" else "budgets"
+                        upsell.value = UpsellPrompt(
+                            entityLabel = if (shared) "shared budgets" else "budgets",
+                            freeLimit = check.freeLimit,
+                            premiumMax = check.premiumMax,
+                        )
+                        editor.value = null
+                        return@launch
+                    }
+                    CapCheck.Allowed -> {}
+                }
+            }
+            val budget = Budget(
+                id = existingId ?: UUID.randomUUID().toString(),
+                categoryId = s.categoryId,
+                amount = amount,
+                yearMonth = month.value.toString(),
+                rolloverEnabled = s.rolloverEnabled,
+                isShared = shared,
+            )
+            if (shared) upsertSharedBudget(budget, couple!!) else upsertBudget(budget)
             editor.value = null
         }
     }
@@ -255,14 +307,15 @@ class BudgetsViewModel @Inject constructor(
 
     /** Resets this month's carried-in balance for this row's category (see use case doc). */
     fun resetRollover(row: BudgetRow) {
-        val budget = monthBudgets.firstOrNull { it.id == row.id } ?: return
+        val budget = (monthPersonal + monthShared).firstOrNull { it.id == row.id } ?: return
         viewModelScope.launch { resetBudgetRollover(budget) }
     }
 
-    /** Copies this row's amount/rollover setting into next month so it isn't retyped by hand. */
+    /** Copies this row's amount/rollover setting (and scope) into next month so it isn't retyped. */
     fun duplicateToNextMonth(row: BudgetRow) {
-        val budget = monthBudgets.firstOrNull { it.id == row.id } ?: return
-        val sameCategoryBudgets = allBudgets.filter { it.categoryId == budget.categoryId }
+        val budget = (monthPersonal + monthShared).firstOrNull { it.id == row.id } ?: return
+        val sameScopeAll = if (budget.isShared) allShared else allPersonal
+        val sameCategoryBudgets = sameScopeAll.filter { it.categoryId == budget.categoryId }
         // Duplicating creates next month's row unless it already exists (then it's an in-place
         // update, no new row). Gate the cap only when it would actually create — otherwise the
         // "Duplicate for next month" action would silently bypass the budget cap (S7).
@@ -270,27 +323,42 @@ class BudgetsViewModel @Inject constructor(
         val wouldCreate = sameCategoryBudgets.none { it.yearMonth == nextMonth }
         viewModelScope.launch {
             if (wouldCreate) {
-                when (val check = checkBudgetCap(nextMonth)) {
+                when (val check = checkBudgetCap(nextMonth, shared = budget.isShared)) {
                     is CapCheck.Blocked -> {
-                        upsell.value = UpsellPrompt("budgets", check.freeLimit, check.premiumMax)
+                        upsellSource = if (budget.isShared) "shared_budgets" else "budgets"
+                        upsell.value = UpsellPrompt(
+                            entityLabel = if (budget.isShared) "shared budgets" else "budgets",
+                            freeLimit = check.freeLimit,
+                            premiumMax = check.premiumMax,
+                        )
                         return@launch
                     }
                     CapCheck.Allowed -> {}
                 }
             }
-            duplicateBudget(budget, sameCategoryBudgets)
+            duplicateBudget(budget, sameCategoryBudgets, coupleId)
         }
     }
 
-    /** The five reactive inputs of the first combine, bundled so the cycle start day can fold in via
-     *  a second combine (Kotlin's typed `combine` tops out at 5 flows). */
-    private data class RawBudgets(
-        val budgets: List<Budget>,
-        val transactions: List<Transaction>,
+    /** The five reactive data inputs, bundled so the controls + pairing fold in via nested combines. */
+    private data class BudgetData(
+        val personal: List<Budget>,
+        val shared: List<Budget>,
+        val ownTransactions: List<Transaction>,
+        val combinedTransactions: List<Transaction>,
         val categories: List<Category>,
-        val displayedMonth: YearMonth,
-        val editor: BudgetEditorState?,
     )
+
+    /** The transient UI controls, bundled to keep each `combine` within its typed 5-flow arity. */
+    private data class BudgetControls(
+        val month: YearMonth,
+        val editor: BudgetEditorState?,
+        val upsell: UpsellPrompt?,
+        val rolloverLocked: Boolean,
+        val startDay: Int,
+    )
+
+    private data class PairInfo(val isPaired: Boolean, val coupleId: String?)
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L

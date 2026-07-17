@@ -34,6 +34,14 @@ interface BudgetDao {
     @Query("SELECT COUNT(*) FROM budgets WHERE isDeleted = 0 AND coupleId IS NULL AND yearMonth = :yearMonth")
     suspend fun countPersonal(yearMonth: String): Int
 
+    /**
+     * Shared (couple-owned) budget count **for one month** — the `maxSharedBudgets` cap (§10.1,
+     * Item 35), gated at the moment a new shared budget is created (Scope.SHARED). Per-month like
+     * [countPersonal]. No `coupleId` filter needed: a couple_id row locally is always this couple's.
+     */
+    @Query("SELECT COUNT(*) FROM budgets WHERE isDeleted = 0 AND coupleId IS NOT NULL AND yearMonth = :yearMonth")
+    suspend fun countShared(yearMonth: String): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(budget: BudgetEntity)
 

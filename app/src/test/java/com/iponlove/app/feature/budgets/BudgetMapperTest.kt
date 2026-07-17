@@ -27,6 +27,17 @@ class BudgetMapperTest {
     }
 
     @Test
+    fun entityToDomain_isSharedProjectsFromCoupleId() {
+        // Couple-owned row (Item 35): user_id null, couple_id set ⇒ shared.
+        val shared = budgetEntity(id = "s", userId = null, coupleId = "couple-1").toDomain()
+        assertThat(shared.isShared).isTrue()
+
+        // Personal row: couple_id null ⇒ not shared.
+        val personal = budgetEntity(id = "p", userId = "user-1", coupleId = null).toDomain()
+        assertThat(personal.isShared).isFalse()
+    }
+
+    @Test
     fun entityToDto_carriesOwnershipAndServerRev_andOmitsPendingSync() {
         val dto = budgetEntity(id = "b", userId = "user-1", serverRev = 42, pendingSync = true).toDto()
 

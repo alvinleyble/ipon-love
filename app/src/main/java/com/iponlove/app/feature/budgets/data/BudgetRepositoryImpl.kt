@@ -34,13 +34,19 @@ class BudgetRepositoryImpl @Inject constructor(
 
     override suspend fun countPersonalBudgets(yearMonth: String): Int = dao.countPersonal(yearMonth)
 
+    override suspend fun countSharedBudgets(yearMonth: String): Int = dao.countShared(yearMonth)
+
     override suspend fun upsertBudget(budget: Budget) {
         val existing = dao.getById(budget.id)
         val updatedAt = clock.stamp(existing?.updatedAt)
+        // Ownership-preserving: editing an existing couple-owned (shared) row keeps it shared
+        // (owner null, couple_id kept) — never re-stamp userId onto it, which would set both
+        // owner columns and violate the schema owner check (Item 35). A brand-new row is personal.
+        val isSharedExisting = existing?.coupleId != null
         dao.upsert(
             BudgetEntity(
                 id = budget.id,
-                userId = existing?.userId ?: currentUser.userId(),
+                userId = if (isSharedExisting) null else (existing?.userId ?: currentUser.userId()),
                 coupleId = existing?.coupleId,
                 categoryId = budget.categoryId,
                 amount = budget.amount,

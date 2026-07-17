@@ -37,6 +37,14 @@ interface TransactionRepository {
      */
     fun observeCombinedTransactions(startInclusive: Instant, endExclusive: Instant): Flow<List<OwnedTransaction>>
 
+    /**
+     * The couple's shared ledger, **unbounded** and ownerless — both members' active, non-private
+     * transactions across all time as plain [Transaction]s. Feeds shared-budget spend + rollover in
+     * the Budgets tab (Item 35): the rollover chain needs prior months' spend, so it can't use the
+     * month-windowed [observeCombinedTransactions]; owner attribution isn't needed for a spend total.
+     */
+    fun observeCombinedTransactionsUnbounded(): Flow<List<Transaction>>
+
     /** Whether the couple has ever shared an active transaction (ADR-0032 empty-state signal). */
     fun observeHasAnyCombinedTransaction(): Flow<Boolean>
 

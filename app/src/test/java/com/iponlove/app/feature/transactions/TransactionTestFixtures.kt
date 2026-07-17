@@ -44,6 +44,13 @@ class FakeTransactionDao : TransactionDao {
                 .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
         }
 
+    override fun observeCombinedUnbounded(): Flow<List<TransactionEntity>> =
+        changes.map {
+            store.values
+                .filter { !it.isDeleted && !it.isPrivate }
+                .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
+        }
+
     override fun observeHasAnyCombinedTransaction(): Flow<Boolean> =
         changes.map { store.values.any { !it.isDeleted && !it.isPrivate } }
 

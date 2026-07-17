@@ -37,6 +37,7 @@ class SettlementUseCaseTest {
             startInclusive: Instant,
             endExclusive: Instant,
         ): Flow<List<OwnedTransaction>> = flowOf(emptyList())
+        override fun observeCombinedTransactionsUnbounded(): Flow<List<Transaction>> = flowOf(emptyList())
         override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = flowOf(false)
         override fun observeBalanceLedger(): Flow<List<Transaction>> = flowOf(emptyList())
         override suspend fun getTransaction(id: String): Transaction? = upserted.lastOrNull { it.id == id }

@@ -16,11 +16,16 @@ import javax.inject.Inject
  * [BudgetsViewModel.save]'s "reuse the existing budget for this category+month" convention) —
  * this is a deliberate, user-initiated action, so overwriting it to match is the expected
  * result, not a silent background write.
+ *
+ * **Scope-preserving (Item 35):** a shared source budget duplicates into a shared next-month
+ * budget (via [BudgetRepository.upsertSharedBudget] with [coupleId]) — the whole rollover chain
+ * stays one scope. Personal sources duplicate personal. [coupleId] must be non-null when
+ * [budget] is shared (the caller supplies the captured couple id).
  */
 class DuplicateBudgetToNextMonthUseCase @Inject constructor(
     private val repository: BudgetRepository,
 ) {
-    suspend operator fun invoke(budget: Budget, sameCategoryBudgets: List<Budget>) {
+    suspend operator fun invoke(budget: Budget, sameCategoryBudgets: List<Budget>, coupleId: String? = null) {
         val nextMonth = YearMonth.parse(budget.yearMonth).plusMonths(1).toString()
         val existing = sameCategoryBudgets.firstOrNull { it.yearMonth == nextMonth }
         val target = Budget(
@@ -29,7 +34,12 @@ class DuplicateBudgetToNextMonthUseCase @Inject constructor(
             amount = budget.amount,
             yearMonth = nextMonth,
             rolloverEnabled = budget.rolloverEnabled,
+            isShared = budget.isShared,
         )
-        repository.upsertBudget(target)
+        if (budget.isShared && coupleId != null) {
+            repository.upsertSharedBudget(target, coupleId)
+        } else {
+            repository.upsertBudget(target)
+        }
     }
 }
