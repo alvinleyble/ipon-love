@@ -68,23 +68,8 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(
-                title = "Password vault (Not yet scheduled)",
-                description = "Store your passwords securely alongside your finances.",
-            )
-            Spacer(Modifier.height(8.dp))
-            RoadmapCard(
-                title = "Voice recording storage (Q3 2026)",
-                description = "Attach voice notes to your notes and transactions.",
-            )
-            Spacer(Modifier.height(8.dp))
-            RoadmapCard(
                 title = "Website / web app (Q4 2026)",
                 description = "Access Love, Ipon from a browser, not just Android.",
-            )
-            Spacer(Modifier.height(8.dp))
-            RoadmapCard(
-                title = "CSV / PDF export (Q3 2026)",
-                description = "Export your transactions and reports for backup or sharing.",
             )
             Spacer(Modifier.height(8.dp))
             RoadmapCard(

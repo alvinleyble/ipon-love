@@ -87,7 +87,11 @@
       "Bash(sqlite3 \"$DB\" *)",
       "Bash(javap -p *)",
       "Bash(adb shell settings get *)",
-      "Bash(adb -s * shell settings get *)"
+      "Bash(adb -s * shell settings get *)",
+      "Bash(./gradlew tasks*)",
+      "Bash(adb shell cmd statusbar expand-notifications)",
+      "Bash($ADB shell cmd statusbar expand-notifications)",
+      "mcp__supabase__get_logs"
     ]
   }
 }

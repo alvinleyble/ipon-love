@@ -99,25 +99,9 @@ fun PersonalizeScreen(
                 onSyncNow = viewModel::syncNow,
             )
 
-            Spacer(Modifier.height(28.dp))
-            HorizontalDivider()
-            ListItem(
-                headlineContent = { Text("Appearance") },
-                supportingContent = { Text("Theme, colors & dark mode") },
-                trailingContent = {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-                },
-                modifier = Modifier.clickable(onClick = onOpenAppearance),
-            )
-            HorizontalDivider()
-            ListItem(
-                headlineContent = { Text("Finance") },
-                supportingContent = { Text("Currency, privacy & budget cycle") },
-                trailingContent = {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-                },
-                modifier = Modifier.clickable(onClick = onOpenFinance),
-            )
+            Spacer(Modifier.height(24.dp))
+            Text("Account", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
             HorizontalDivider()
             ListItem(
                 headlineContent = { Text("Profile") },
@@ -164,15 +148,18 @@ fun PersonalizeScreen(
                 modifier = Modifier.clickable(onClick = onOpenNotifications),
             )
             HorizontalDivider()
+
+            Spacer(Modifier.height(24.dp))
+            Text("Personalize", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            HorizontalDivider()
             ListItem(
-                headlineContent = { Text("Couple") },
-                supportingContent = { Text("Pairing, invite code & unpair") },
+                headlineContent = { Text("Appearance") },
+                supportingContent = { Text("Theme, colors & dark mode") },
                 trailingContent = {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
                 },
-                modifier = Modifier
-                    .coachMarkTarget(TutorialTargets.SETTINGS_COUPLE)
-                    .clickable(onClick = onOpenCouple),
+                modifier = Modifier.clickable(onClick = onOpenAppearance),
             )
             HorizontalDivider()
             ListItem(
@@ -182,6 +169,36 @@ fun PersonalizeScreen(
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
                 },
                 modifier = Modifier.clickable(onClick = onOpenNavbar),
+            )
+            HorizontalDivider()
+
+            Spacer(Modifier.height(24.dp))
+            Text("Finance", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            HorizontalDivider()
+            ListItem(
+                headlineContent = { Text("Finance") },
+                supportingContent = { Text("Currency, privacy & budget cycle") },
+                trailingContent = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                },
+                modifier = Modifier.clickable(onClick = onOpenFinance),
+            )
+            HorizontalDivider()
+
+            Spacer(Modifier.height(24.dp))
+            Text("Couple", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            HorizontalDivider()
+            ListItem(
+                headlineContent = { Text("Couple") },
+                supportingContent = { Text("Pairing, invite code & unpair") },
+                trailingContent = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                },
+                modifier = Modifier
+                    .coachMarkTarget(TutorialTargets.SETTINGS_COUPLE)
+                    .clickable(onClick = onOpenCouple),
             )
             HorizontalDivider()
 
