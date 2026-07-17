@@ -23,6 +23,7 @@ Each item below keeps the version doc it was originally booked under, for tracea
 
 - **Status:** ⏸️ **DEFERRED** — booked but intentionally **not scheduled**; Alvin wants **tester feedback first** before deciding whether it's a bug to fix or the intended signal. Split out of [v1.6.5.md Item 19](v1.6.5.md#item-19--manage-surface-archived-accountscategories-so-they-can-be-unarchived-) to keep that slice tightly scoped. **Model (if built): Sonnet, low effort.** Non-paywall.
 - **Independent** — pure display-time label resolution, no schema/sync/data change.
+- **Related item booked 2026-07-18:** [v1.6.7.md Item 5](v1.6.7.md#item-5--archived-category-confirm-on-archive-warning-related-to-deferred-item-23) tackles the *archive-time* warning UX for the same root problem — this item stays deferred/unscheduled regardless (still waiting on tester feedback for the display-time question), but the two are related and the Item 5 grill may end up resolving this one too.
 
 **Surfaced 2026-07-11** while confirming Item 19's archive semantics. Records and Budgets resolve a category/account **name from its id** via a lookup map built from `observeCategories()` / `observeAccounts()` at the default `includeArchived = false`. So a **historical row pointing at a now-archived entity** drops out of the map and falls back to a generic label:
 - **Records list** ([TransactionsViewModel.toListItem](../../app/src/main/java/com/iponlove/app/feature/transactions/presentation/TransactionsViewModel.kt#L161)) — a transaction whose **category** was archived reads **"Uncategorized"** (`categoryNames[categoryId] ?: "Uncategorized"`); whose **account** was archived reads **"Account"** (`accountNames[accountId] ?: "Account"`).
@@ -35,3 +36,23 @@ Each item below keeps the version doc it was originally booked under, for tracea
 **If built (the shape):** Records is a one-line switch to `observeCategories(includeArchived = true)` / `observeAccounts(includeArchived = true)` (it uses the list only for label lookup, not a picker). Budgets is a **two-line split** — build the label map from an archived-inclusive observe, but keep the **new-budget picker** (`expenseCategories = categories.filter { it.type == EXPENSE }`) filtered to **active** categories so archived ones don't reappear as budgetable options. (The Add-Transaction / Quick-add / Recurring-editor pickers stay `false` — archived items must not be offered for *new* activity.)
 
 **Verify (if built):** archive a category with existing transactions + a budget → Records rows keep the real name (not "Uncategorized"), the budget row keeps its name (not "Category"), Analysis unchanged; the archived category does **not** appear in the Add-Transaction picker or the new-budget picker; unarchive → everything unchanged.
+
+---
+
+## Shelved — no active interest (indefinite)
+
+Distinct from the deferred items above: these aren't blocked on a decision or waiting on feedback — Alvin has explicitly said there's no active interest in building them right now. Kept here (not deleted) so the reasoning isn't lost if a concrete need ever surfaces. Not on the tester-facing Upcoming-features screen.
+
+### Password vault
+
+*(originally [Post-V1 Horizon #4](project-build-progress.md), moved here 2026-07-18)*
+
+- **Status:** 🗄️ **SHELVED — no active interest, moved 2026-07-18** (previously "not yet determined — no active design or demand signal yet" on the Horizon list; Alvin's call during a 2026-07-18 backlog triage was to move it here explicitly rather than leave it lingering on the Horizon list).
+- **Shape (if ever revisited):** new `feature/vault` module, SQLCipher/EncryptedDataStore, per the CLAUDE.md scalability principle ("Encryption utilities in `core/`, not buried inside `feature/vault/`"). Never designed past that one-line sketch.
+
+### CSV / PDF export
+
+*(originally [Post-V1 Horizon #7](project-build-progress.md), shelved 2026-07-07, write-up moved here from [v1.6.5.md](v1.6.5.md) 2026-07-18)*
+
+- **Status:** 🗄️ **SHELVED — deferred indefinitely 2026-07-07** at Alvin's call ("I don't think I need it, put it on the shelf for now"). Already out of V1 scope (CLAUDE.md). Not on the Upcoming-features teaser. Revisit only if a concrete need surfaces.
+- **Shape (if ever revisited):** data is already structured for it — transactions/budgets/analysis are all queryable Room tables; would be a straight export UseCase over existing repositories, per the CLAUDE.md scalability principle ("UseCases own data access... a future export UseCase must be able to reuse them").
