@@ -16,10 +16,12 @@ import com.iponlove.app.feature.analysis.domain.usecase.DailyNetCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.ExpenseFlowCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.FlowComparisonCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.FlowMetricsCalculator
+import com.iponlove.app.feature.analysis.domain.usecase.ProjectedNetCalculator
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
+import com.iponlove.app.feature.recurring.domain.usecase.ObserveUpcomingUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
@@ -54,6 +56,7 @@ class AnalysisViewModel @Inject constructor(
     observePairingState: ObservePairingStateUseCase,
     observeNetAssets: ObserveNetAssetsUseCase,
     observePrivacyMode: ObservePrivacyModeUseCase,
+    observeUpcoming: ObserveUpcomingUseCase,
     private val setPrivacyMode: SetPrivacyModeUseCase,
     private val onboardingRepository: OnboardingRepository,
     private val premiumGate: PremiumGate,
@@ -227,6 +230,29 @@ class AnalysisViewModel @Inject constructor(
             // Net assets (Item 14) — period-independent, so it rides its own outer combine
             // rather than growing the per-period combine above.
             .combine(observeNetAssets()) { state, netAssets -> state.copy(netAssets = netAssets) }
+            // Schedule-based month-end forecast (Item 37 Slice 2, premium). The upcoming window is
+            // the rest of the *current* calendar month; the projection is only meaningful for the
+            // in-progress current month, so any other view drops it. `RECURRING_FORECAST` shares the
+            // same individual-scope lock as the S10 Analysis gates — always false while dormant.
+            .combine(observeUpcoming(windowEnd = { today -> YearMonth.from(today).atEndOfMonth() })) { state, upcoming ->
+                val today = LocalDate.now(ZoneId.systemDefault())
+                val isCurrentMonth = state.period == AnalysisPeriod.MONTH &&
+                    YearMonth.from(anchor.value) == YearMonth.from(today)
+                if (!isCurrentMonth) {
+                    state.copy(projectedNet = null, showForecastUpsell = false)
+                } else {
+                    val projection = ProjectedNetCalculator.project(
+                        actualNet = state.net,
+                        upcoming = upcoming,
+                        monthEndInclusive = YearMonth.from(today).atEndOfMonth(),
+                    )
+                    val locked = individualLocked.value
+                    state.copy(
+                        projectedNet = if (projection.hasSchedule && !locked) projection.projectedNet else null,
+                        showForecastUpsell = projection.hasSchedule && locked,
+                    )
+                }
+            }
             .combine(observePrivacyMode()) { state, privacyModeOn ->
                 state.copy(privacyModeEnabled = privacyModeOn)
             }
@@ -263,6 +289,14 @@ class AnalysisViewModel @Inject constructor(
      *  the screen routes to the paywall; the anchor does not move. Returns the paywall entry source. */
     fun onDeepHistoryUpsell(): String {
         val source = "deep_history"
+        analytics.log("upsell_tap", source = source)
+        return source
+    }
+
+    /** A tap on the locked month-end forecast teaser (Item 37 Slice 2, `RECURRING_FORECAST`) —
+     *  logs the §10.10 touchpoint before the screen routes to the paywall. Returns the entry source. */
+    fun onForecastUpsell(): String {
+        val source = "recurring_forecast"
         analytics.log("upsell_tap", source = source)
         return source
     }

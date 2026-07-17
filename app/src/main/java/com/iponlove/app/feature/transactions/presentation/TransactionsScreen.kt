@@ -50,6 +50,7 @@ import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
+import com.iponlove.app.feature.recurring.presentation.components.ComingUpCard
 import com.iponlove.app.feature.recurring.presentation.components.PendingConfirmationsCard
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
@@ -77,6 +78,7 @@ fun TransactionsScreen(
         onNextMonth = viewModel::nextMonth,
         // Locked ← at the DEEP_HISTORY −12mo wall: log the touchpoint, then route to the paywall.
         onDeepHistoryUpsell = { onOpenPremium(viewModel.onDeepHistoryUpsell()) },
+        onOpenPremium = onOpenPremium,
     )
 }
 
@@ -92,6 +94,7 @@ private fun TransactionsContent(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onDeepHistoryUpsell: () -> Unit = {},
+    onOpenPremium: (source: String) -> Unit = {},
 ) {
     StartTourOnFirstVisit(TutorialTours.RECORDS)
     Scaffold(
@@ -130,6 +133,13 @@ private fun TransactionsContent(
             // Confirm-on-arrival "To confirm" card (Item 37) — pinned above the month-scoped list
             // (pending is relative to today, not the viewed month) and self-hides when empty.
             PendingConfirmationsCard(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            // "Coming up" forecast preview (Item 37 Slice 2, premium) — next scheduled income +
+            // bills; self-hides when empty, degrades to an upsell teaser when RECURRING_FORECAST
+            // is enforced without access. Pinned below "To confirm", above the ledger list.
+            ComingUpCard(
+                onOpenPremium = onOpenPremium,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             PullToRefreshBox(

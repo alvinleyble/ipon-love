@@ -54,6 +54,19 @@ data class AnalysisUiState(
      * lock badge on those tabs and routes a locked tap to the paywall. Always false while dormant.
      */
     val extendedRangesLocked: Boolean = false,
+    /**
+     * Schedule-based month-end forecast (Item 37 Slice 2, premium `RECURRING_FORECAST`). Non-null
+     * only for the **current in-progress month** when a schedule exists **and** the forecast is
+     * unlocked (dormant/premium) — the Summary then shows it labeled as a forecast, in place of
+     * [lastMonthIncome]. Null in every other case (past months, no schedule, or locked).
+     */
+    val projectedNet: BigDecimal? = null,
+    /**
+     * True when a month-end forecast *is* available for the current month but the user is
+     * `RECURRING_FORECAST`-locked (enforcement ON + no access) — drives the Summary's locked
+     * forecast teaser (routes to the paywall). Always false while dormant.
+     */
+    val showForecastUpsell: Boolean = false,
 ) {
     val hasExpenses: Boolean get() = totalExpense.signum() > 0
 }

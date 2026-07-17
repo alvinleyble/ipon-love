@@ -11,6 +11,7 @@ package com.iponlove.app.core.entitlement
 enum class Feature {
     NO_ADS,
     RECURRING_CALENDAR,
+    RECURRING_FORECAST,
     BUDGET_ROLLOVER,
     CALCULATOR,
     ANALYSIS_EXTENDED_RANGES,

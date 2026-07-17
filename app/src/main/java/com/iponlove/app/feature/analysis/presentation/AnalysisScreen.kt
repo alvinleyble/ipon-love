@@ -88,6 +88,8 @@ fun AnalysisScreen(
         onExtendedRangeUpsell = { onOpenPremium(viewModel.onExtendedRangeUpsell()) },
         // Locked ← at the DEEP_HISTORY −12mo wall: same treatment, its own analytics source.
         onDeepHistoryUpsell = { onOpenPremium(viewModel.onDeepHistoryUpsell()) },
+        // Locked month-end forecast teaser (Item 37 Slice 2): same treatment, its own source.
+        onForecastUpsell = { onOpenPremium(viewModel.onForecastUpsell()) },
     )
 }
 
@@ -103,6 +105,7 @@ private fun AnalysisContent(
     onTogglePrivacyMode: () -> Unit = {},
     onExtendedRangeUpsell: () -> Unit = {},
     onDeepHistoryUpsell: () -> Unit = {},
+    onForecastUpsell: () -> Unit = {},
 ) {
     StartTourOnFirstVisit(TutorialTours.ANALYSIS)
     val pagerState = rememberPagerState(pageCount = { 3 })
@@ -185,6 +188,9 @@ private fun AnalysisContent(
                 expense = state.totalExpense,
                 net = state.net,
                 lastMonthIncome = state.lastMonthIncome,
+                projectedNet = state.projectedNet,
+                showForecastUpsell = state.showForecastUpsell,
+                onForecastUpsell = onForecastUpsell,
             )
 
             AnalysisTabLayout(
@@ -441,6 +447,9 @@ private fun SummaryCard(
     expense: BigDecimal,
     net: BigDecimal,
     lastMonthIncome: BigDecimal? = null,
+    projectedNet: BigDecimal? = null,
+    showForecastUpsell: Boolean = false,
+    onForecastUpsell: () -> Unit = {},
 ) {
     Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -454,15 +463,57 @@ private fun SummaryCard(
                     modifier = Modifier.weight(1f),
                 )
             }
-            if (lastMonthIncome != null) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "Last month income: ${money(lastMonthIncome)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            // Forecast (Item 37 Slice 2, premium) takes the footer when a schedule exists for the
+            // current month; otherwise the "Last month income" context stat keeps it. At most one.
+            when {
+                projectedNet != null -> {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Projected month-end net: ${money(projectedNet)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        text = "Forecast — assumes no other spending",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                showForecastUpsell -> {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable(onClick = onForecastUpsell),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = null,
+                            modifier = Modifier.height(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "See your projected month-end net — Premium",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                lastMonthIncome != null -> {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Last month income: ${money(lastMonthIncome)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
     }
@@ -610,7 +661,10 @@ private fun FlowMetricsSection(metrics: FlowMetricsUi) {
                 modifier = Modifier.weight(1f),
             )
             metrics.projected?.let {
-                MetricItem(label = "Projected", amount = it, modifier = Modifier.weight(1f))
+                // "At this pace" (not just "Projected") to disambiguate from the schedule-based
+                // month-end forecast in the Summary (Item 37 Slice 2) — this one extrapolates the
+                // current spend rate, that one sums upcoming recurring income/bills.
+                MetricItem(label = "At this pace", amount = it, modifier = Modifier.weight(1f))
             }
             metrics.comparison?.let {
                 ComparisonMetricItem(comparison = it, modifier = Modifier.weight(1f))
