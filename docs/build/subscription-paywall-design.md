@@ -318,6 +318,7 @@ Two kinds of gate, two data shapes (per §1.2, §1.5).
 |---|---|---|---|
 | `NO_ADS` | soft (toggles ad visibility) | ad banner (§7) | individual |
 | `RECURRING_CALENDAR` | soft (blurred preview) | Records | individual |
+| `RECURRING_FORECAST` | soft — Records "Coming up" preview degrades to an upsell teaser; Analysis month-end projected Net hidden behind a lock teaser (free = confirm-on-arrival, which is **free**) | Records + Analysis | individual |
 | `BUDGET_ROLLOVER` | soft (hide toggle) | Budgets | individual |
 | `CALCULATOR` | soft (module lock) | Calculator | individual |
 | `ANALYSIS_EXTENDED_RANGES` | soft — tap a locked **3M/6M/12M/ALL** tab → paywall (free = 1D/1W/1M) | Analysis | individual |
