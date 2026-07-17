@@ -56,6 +56,7 @@ fun PersonalizeScreen(
     onOpenCouple: () -> Unit = {},
     onOpenNavbar: () -> Unit = {},
     onOpenHelp: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
     onOpenBetaFeedback: () -> Unit = {},
     onOpenUpcomingFeatures: () -> Unit = {},
     onReplayTutorial: () -> Unit = {},
@@ -216,6 +217,15 @@ fun PersonalizeScreen(
                         Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)),
                     )
                 }),
+            )
+            HorizontalDivider()
+            ListItem(
+                headlineContent = { Text("About") },
+                supportingContent = { Text("Version, licenses, rate & share") },
+                trailingContent = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                },
+                modifier = Modifier.clickable(onClick = onOpenAbout),
             )
             HorizontalDivider()
 

@@ -92,6 +92,8 @@ import com.iponlove.app.feature.savings.presentation.SavingsGoalsScreen
 import com.iponlove.app.feature.settings.presentation.AppearanceScreen
 import com.iponlove.app.feature.settings.presentation.FinanceScreen
 import com.iponlove.app.feature.settings.presentation.NotificationsScreen
+import com.iponlove.app.feature.settings.presentation.AboutScreen
+import com.iponlove.app.feature.settings.presentation.LicensesScreen
 import com.iponlove.app.feature.settings.presentation.PersonalizeScreen
 import com.iponlove.app.feature.settings.presentation.ProfileScreen
 import com.iponlove.app.feature.settings.presentation.SettingsCoupleScreen
@@ -116,6 +118,8 @@ private fun subscriptionRoute(source: String) = "$SUBSCRIPTION_ROUTE?$SOURCE_KEY
 private const val SETTINGS_COUPLE_ROUTE = "settings_couple"
 private const val NAV_EDITOR_ROUTE = "nav_editor"
 private const val HELP_ROUTE = "help"
+private const val ABOUT_ROUTE = "settings_about"
+private const val LICENSES_ROUTE = "settings_licenses"
 private const val BETA_FEEDBACK_ROUTE = "beta_feedback"
 private const val UPCOMING_FEATURES_ROUTE = "upcoming_features"
 private const val ADD_TRANSACTION_ROUTE = "add_transaction"
@@ -439,6 +443,7 @@ private fun IponAppContent(
                         onOpenCouple = { navController.navigate(SETTINGS_COUPLE_ROUTE) },
                         onOpenNavbar = { navController.navigate(NAV_EDITOR_ROUTE) },
                         onOpenHelp = { navController.navigate(HELP_ROUTE) },
+                        onOpenAbout = { navController.navigate(ABOUT_ROUTE) },
                         onOpenBetaFeedback = { navController.navigate(BETA_FEEDBACK_ROUTE) },
                         onOpenUpcomingFeatures = { navController.navigate(UPCOMING_FEATURES_ROUTE) },
                         onReplayTutorial = { tutorialViewModel.replay() },
@@ -456,6 +461,15 @@ private fun IponAppContent(
                 }
                 composable(NOTIFICATIONS_ROUTE) {
                     NotificationsScreen(onBack = { navController.popBackStack() })
+                }
+                composable(ABOUT_ROUTE) {
+                    AboutScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenLicenses = { navController.navigate(LICENSES_ROUTE) },
+                    )
+                }
+                composable(LICENSES_ROUTE) {
+                    LicensesScreen(onBack = { navController.popBackStack() })
                 }
                 composable(PROFILE_ROUTE) {
                     ProfileScreen(onBack = { navController.popBackStack() })
