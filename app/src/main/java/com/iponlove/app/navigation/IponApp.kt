@@ -47,8 +47,14 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -267,57 +273,32 @@ private fun IponAppContent(
     fun isInGraph(dest: NavDestination): Boolean =
         currentDestination?.hierarchy?.any { it.route == dest.graphRoute() } == true
 
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().playfulBackground()) {
     CompositionLocalProvider(
         LocalCoachMarkState provides coachState,
         LocalTutorialController provides tutorialViewModel,
     ) {
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = Color.Transparent,
         bottomBar = {
-            NavigationBar(modifier = Modifier.coachMarkTarget(TutorialTargets.PINS, coachState)) {
-                // The fixed center ⊕ Add sits in the middle of the bar (ADR-0026): render the
-                // first half of the pins, the accented Add slot, then the rest, then More.
-                val splitIndex = ((visiblePins.size + 1) / 2).coerceAtMost(visiblePins.size)
-                visiblePins.take(splitIndex).forEach { dest ->
-                    PinBarItem(dest, isInGraph(dest)) { navController.switchTab(dest) }
-                }
-                NavigationBarItem(
-                    modifier = Modifier.coachMarkTarget(TutorialTargets.ADD, coachState),
-                    selected = false,
-                    onClick = { navController.navigate(ADD_TRANSACTION_ROUTE) },
-                    icon = {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(MaterialTheme.colorScheme.primary, CircleShape),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                Icons.Filled.Add,
-                                contentDescription = "Add transaction",
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                            )
-                        }
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = Color.Transparent,
-                    ),
-                )
-                visiblePins.drop(splitIndex).forEach { dest ->
-                    PinBarItem(dest, isInGraph(dest)) { navController.switchTab(dest) }
-                }
-                // More is selected when we're inside a module graph that isn't a visible pin
-                // (e.g. Settings and its sub-screens while Settings is unpinned).
-                val inSomeModuleGraph = NavRegistry.all.any { isInGraph(it) }
-                NavigationBarItem(
-                    modifier = Modifier.coachMarkTarget(TutorialTargets.MORE, coachState),
-                    selected = inSomeModuleGraph && visiblePins.none { isInGraph(it) },
-                    onClick = { showMore = true },
-                    icon = { Icon(Icons.Filled.MoreHoriz, contentDescription = "More") },
-                    label = { Text("More") },
-                )
-            }
+            // Playful Pop bottom bar (v1.6.7 Item 8) — visuals only; every handler (switchTab,
+            // ADD route, More sheet) and coach-mark target is preserved from the M3 NavigationBar.
+            val splitIndex = ((visiblePins.size + 1) / 2).coerceAtMost(visiblePins.size)
+            val inSomeModuleGraph = NavRegistry.all.any { isInGraph(it) }
+            val moreSelected = inSomeModuleGraph && visiblePins.none { isInGraph(it) }
+            PlayfulBottomBar(
+                modifier = Modifier.coachMarkTarget(TutorialTargets.PINS, coachState),
+                addModifier = Modifier.coachMarkTarget(TutorialTargets.ADD, coachState),
+                moreModifier = Modifier.coachMarkTarget(TutorialTargets.MORE, coachState),
+                firstPins = visiblePins.take(splitIndex),
+                lastPins = visiblePins.drop(splitIndex),
+                isSelected = { isInGraph(it) },
+                onPinClick = { navController.switchTab(it) },
+                onAddClick = { navController.navigate(ADD_TRANSACTION_ROUTE) },
+                onMoreClick = { showMore = true },
+                moreSelected = moreSelected,
+            )
         },
     ) { padding ->
         NavHost(
@@ -559,19 +540,129 @@ private fun IponAppContent(
     }
 }
 
-/** One pinned bottom-bar destination — extracted so the center ⊕ can split the pin list. */
+/**
+ * The Playful Pop bottom bar (v1.6.7 Item 8): an opaque plum surface with a hairline top edge, a
+ * pink-pill active slot, and a −4° rotated squircle FAB that rides raised at the bar's top edge.
+ * Pure re-skin — the pin/add/more click handlers and coach-mark targets are passed in unchanged.
+ */
 @Composable
-private fun RowScope.PinBarItem(
-    dest: NavDestination,
+private fun PlayfulBottomBar(
+    firstPins: List<NavDestination>,
+    lastPins: List<NavDestination>,
+    isSelected: (NavDestination) -> Boolean,
+    onPinClick: (NavDestination) -> Unit,
+    onAddClick: () -> Unit,
+    onMoreClick: () -> Unit,
+    moreSelected: Boolean,
+    modifier: Modifier = Modifier,
+    addModifier: Modifier = Modifier,
+    moreModifier: Modifier = Modifier,
+) {
+    val colors = LocalPlayfulColors.current
+    Box(modifier = modifier.fillMaxWidth().height(74.dp)) {
+        // Opaque nav surface anchored to the bottom, leaving a transparent strip up top for the
+        // raised FAB to poke into (kept within the bar's own bounds so nothing gets clipped).
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(62.dp)
+                .background(colors.navSurface)
+                .drawBehind {
+                    drawRect(
+                        color = colors.hairline,
+                        size = Size(size.width, 1.dp.toPx()),
+                    )
+                }
+                .padding(bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            firstPins.forEach { dest ->
+                PlayfulNavSlot(dest.icon, dest.label, isSelected(dest), Modifier.weight(1f)) { onPinClick(dest) }
+            }
+            Spacer(Modifier.weight(1f)) // reserved center slot for the FAB overlay
+            lastPins.forEach { dest ->
+                PlayfulNavSlot(dest.icon, dest.label, isSelected(dest), Modifier.weight(1f)) { onPinClick(dest) }
+            }
+            PlayfulNavSlot(Icons.Filled.MoreHoriz, "More", moreSelected, moreModifier.weight(1f), onClick = onMoreClick)
+        }
+        // The raised FAB, horizontally centered over its reserved slot.
+        PlayfulFab(
+            modifier = addModifier.align(Alignment.TopCenter).padding(top = 4.dp),
+            onClick = onAddClick,
+        )
+    }
+}
+
+/** One bottom-bar slot: a pink-pill icon holder (when [selected]) above a label. */
+@Composable
+private fun PlayfulNavSlot(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
     selected: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    NavigationBarItem(
-        selected = selected,
-        onClick = onClick,
-        icon = { Icon(dest.icon, contentDescription = dest.label) },
-        label = { Text(dest.label) },
-    )
+    val colors = LocalPlayfulColors.current
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Column(
+        modifier = modifier
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(vertical = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .then(
+                    if (selected) Modifier
+                        .rotate(-4f)
+                        .size(width = 52.dp, height = 30.dp)
+                        .clip(LeafShapes.leaf(14.dp, 5.dp))
+                        .background(colors.accent)
+                    else Modifier.height(30.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (selected) colors.onAccent else colors.navInactive,
+                modifier = Modifier
+                    .size(22.dp)
+                    .then(if (selected) Modifier.rotate(4f) else Modifier),
+            )
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) colors.textPrimary else colors.navInactive,
+            maxLines = 1,
+        )
+    }
+}
+
+/** The center −4° squircle FAB → add-transaction. */
+@Composable
+private fun PlayfulFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalPlayfulColors.current
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Box(
+        modifier = modifier
+            .rotate(-4f)
+            .size(56.dp)
+            .clip(LeafShapes.leaf(20.dp, 8.dp))
+            .background(colors.accent)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Filled.Add,
+            contentDescription = "Add transaction",
+            tint = colors.onAccent,
+            modifier = Modifier.size(27.dp).rotate(4f),
+        )
+    }
 }
 
 /**

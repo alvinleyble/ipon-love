@@ -1,6 +1,8 @@
 package com.iponlove.app.feature.analysis.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -48,14 +51,24 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.HeartBullet
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulChip
+import com.iponlove.app.core.ui.PlayfulScreenTitle
+import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.money
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.analysis.domain.model.AnalysisPeriod
@@ -133,17 +146,38 @@ private fun AnalysisContent(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text("Analysis") },
-                actions = {
-                    NetAssetsLabel(
-                        netAssets = state.netAssets,
-                        isPrivacyModeOn = state.privacyModeEnabled,
-                        onTogglePrivacyMode = onTogglePrivacyMode,
-                    )
-                },
-            )
+            Box(Modifier.statusBarsPadding().padding(top = 10.dp, bottom = 2.dp)) {
+                PlayfulScreenTitle(
+                    title = "Analysis",
+                    actions = {
+                        val colors = LocalPlayfulColors.current
+                        // Net-assets figure retained (Item 14 parity) — recreated in the Playful
+                        // style per the pure-reskin hard rule; masks under the global privacy eye.
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "Net assets",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary,
+                            )
+                            Text(
+                                text = money(state.netAssets),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary,
+                            )
+                        }
+                        IconButton(onClick = onTogglePrivacyMode) {
+                            Icon(
+                                imageVector = if (state.privacyModeEnabled) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = if (state.privacyModeEnabled) "Show amounts" else "Hide amounts",
+                                tint = colors.textSecondary,
+                            )
+                        }
+                    },
+                )
+            }
         },
     ) { padding ->
         Column(
@@ -184,6 +218,7 @@ private fun AnalysisContent(
             }
 
             SummaryCard(
+                label = state.periodLabel,
                 income = state.totalIncome,
                 expense = state.totalExpense,
                 net = state.net,
@@ -218,16 +253,19 @@ private fun AnalysisTabLayout(
     val tabLabels = listOf("Donut", "Flow", "Calendar")
 
     Column(modifier = modifier) {
-        PrimaryTabRow(
-            selectedTabIndex = pagerState.currentPage,
-            modifier = Modifier.coachMarkTarget(TutorialTargets.ANALYSIS_TABS),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp, vertical = 4.dp)
+                .coachMarkTarget(TutorialTargets.ANALYSIS_TABS),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             tabLabels.forEachIndexed { index, label ->
-                Tab(
+                PlayfulChip(
+                    label = label,
                     selected = pagerState.currentPage == index,
                     // Tapping Calendar snaps to it; the LaunchedEffect above forces 1M.
                     onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                    text = { Text(label) },
                 )
             }
         }
@@ -299,70 +337,39 @@ private fun CalendarTab(state: AnalysisUiState) {
 
 // ─── Persistent header composables ──────────────────────────────────────────
 
-/** Compact, read-only "Net assets" figure in the TopAppBar (Item 14) — mirrors the Accounts
- *  headline so both screens always agree; masks under Privacy mode via [money]. The eye icon
- *  flips the same global Privacy-mode flag as every other entry point (Item 15). */
-@Composable
-private fun NetAssetsLabel(
-    netAssets: BigDecimal,
-    isPrivacyModeOn: Boolean,
-    onTogglePrivacyMode: () -> Unit,
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = "Net assets",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = money(netAssets),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        IconButton(onClick = onTogglePrivacyMode) {
-            Icon(
-                imageVector = if (isPrivacyModeOn) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                contentDescription = if (isPrivacyModeOn) "Show amounts" else "Hide amounts",
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PeriodSelector(
     selected: AnalysisPeriod,
     onSelect: (AnalysisPeriod) -> Unit,
     lockedExtended: Boolean = false,
 ) {
-    val periods = AnalysisPeriod.entries
-    ScrollableTabRow(
-        selectedTabIndex = periods.indexOf(selected),
-        edgePadding = 16.dp,
-        divider = {},
-        modifier = Modifier.coachMarkTarget(TutorialTargets.ANALYSIS_PERIOD),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 22.dp, vertical = 6.dp)
+            .coachMarkTarget(TutorialTargets.ANALYSIS_PERIOD),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        periods.forEach { period ->
+        AnalysisPeriod.entries.forEach { period ->
             val locked = lockedExtended && period.isExtendedRange
-            Tab(
+            PlayfulChip(
+                label = period.shortLabel(),
                 selected = selected == period,
                 onClick = { onSelect(period) },
-                text = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(period.shortLabel(), style = MaterialTheme.typography.labelLarge)
-                        if (locked) {
-                            Spacer(Modifier.width(2.dp))
-                            Icon(
-                                imageVector = Icons.Filled.Lock,
-                                contentDescription = "Premium",
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                bigCorner = 14.dp,
+                smallCorner = 5.dp,
+                trailing = if (locked) {
+                    {
+                        Spacer(Modifier.width(3.dp))
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = "Premium",
+                            modifier = Modifier.size(12.dp),
+                            tint = LocalPlayfulColors.current.textSecondary,
+                        )
                     }
-                },
+                } else null,
             )
         }
     }
@@ -385,22 +392,33 @@ private fun PeriodStepper(
     ) {
         // At the DEEP_HISTORY back-wall the ← becomes a lock → paywall (§10.3), taking precedence
         // over the plain disabled state (which only applies to ALL_TIME). Free ranges only.
+        val colors = LocalPlayfulColors.current
         if (previousLocked) {
             IconButton(onClick = onPreviousLocked) {
-                Icon(Icons.Filled.Lock, contentDescription = "Unlock older history")
+                Icon(Icons.Filled.Lock, contentDescription = "Unlock older history", tint = colors.textSecondary)
             }
         } else {
             IconButton(onClick = onPrevious, enabled = canPrevious) {
-                Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous period")
+                Icon(
+                    Icons.Filled.KeyboardArrowLeft,
+                    contentDescription = "Previous period",
+                    tint = colors.textSecondary.copy(alpha = if (canPrevious) 0.55f else 0.2f),
+                )
             }
         }
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = colors.textPrimary,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
         IconButton(onClick = onNext, enabled = canNext) {
-            Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next period")
+            Icon(
+                Icons.Filled.KeyboardArrowRight,
+                contentDescription = "Next period",
+                tint = colors.textSecondary.copy(alpha = if (canNext) 0.55f else 0.2f),
+            )
         }
     }
 }
@@ -443,6 +461,7 @@ private fun PairingNudgeCard(onOpen: () -> Unit, onDismiss: () -> Unit) {
 
 @Composable
 private fun SummaryCard(
+    label: String,
     income: BigDecimal,
     expense: BigDecimal,
     net: BigDecimal,
@@ -451,69 +470,101 @@ private fun SummaryCard(
     showForecastUpsell: Boolean = false,
     onForecastUpsell: () -> Unit = {},
 ) {
-    Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                SummaryItem("Income", income, IncomeColor, Modifier.weight(1f))
-                SummaryItem("Expense", expense, MaterialTheme.colorScheme.error, Modifier.weight(1f))
-                SummaryItem(
-                    label = "Net",
-                    amount = net,
-                    color = if (net.signum() < 0) MaterialTheme.colorScheme.error else IncomeColor,
-                    modifier = Modifier.weight(1f),
+    val colors = LocalPlayfulColors.current
+    val netPositive = net.signum() >= 0
+    Column(Modifier.fillMaxWidth()) {
+        // Blush hero — "Spent" is the headline figure (design 1e); Income + Net ride below.
+        PlayfulCard(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            surface = PlayfulSurface.Blush,
+            shape = LeafShapes.Hero,
+            tiltDegrees = -0.6f,
+            contentPadding = 18.dp,
+        ) {
+            Column {
+                Text(
+                    text = "Spent · $label",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.onBlushSecondary,
                 )
+                Text(
+                    text = money(expense),
+                    style = TextStyle(
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-1).sp,
+                        color = colors.onBlush,
+                    ),
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                Row(
+                    modifier = Modifier.padding(top = 7.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Text(
+                        text = "Income ${money(income)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.onBlushSecondary,
+                    )
+                    Text(
+                        text = "Net " + (if (netPositive) "+" else "") + money(net),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (netPositive) colors.semantic.positiveOnBlush else colors.semantic.negativeOnBlush,
+                    )
+                }
             }
-            // Forecast (Item 37 Slice 2, premium) takes the footer when a schedule exists for the
-            // current month; otherwise the "Last month income" context stat keeps it. At most one.
-            when {
-                projectedNet != null -> {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "Projected month-end net: ${money(projectedNet)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
+        }
+        // Forecast / last-month footer (unchanged behavior) — kept below the hero, restyled.
+        when {
+            projectedNet != null -> {
+                Text(
+                    text = "Projected month-end net: ${money(projectedNet)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                )
+                Text(
+                    text = "Forecast — assumes no other spending",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textTertiary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 0.dp),
+                )
+                Spacer(Modifier.height(6.dp))
+            }
+            showForecastUpsell -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = onForecastUpsell).padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Lock,
+                        contentDescription = null,
+                        modifier = Modifier.height(16.dp),
+                        tint = colors.textSecondary,
                     )
+                    Spacer(Modifier.width(6.dp))
                     Text(
-                        text = "Forecast — assumes no other spending",
+                        text = "See your projected month-end net — Premium",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                showForecastUpsell -> {
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clickable(onClick = onForecastUpsell),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Lock,
-                            contentDescription = null,
-                            modifier = Modifier.height(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = "See your projected month-end net — Premium",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                lastMonthIncome != null -> {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "Last month income: ${money(lastMonthIncome)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
+                        color = colors.textSecondary,
                     )
                 }
+            }
+            lastMonthIncome != null -> {
+                Text(
+                    text = "Last month income: ${money(lastMonthIncome)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                )
+                Spacer(Modifier.height(6.dp))
             }
         }
     }
@@ -542,61 +593,182 @@ private fun SummaryItem(label: String, amount: BigDecimal, color: Color, modifie
 
 @Composable
 private fun BreakdownSection(state: AnalysisUiState) {
+    val colors = LocalPlayfulColors.current
     val donutSlices = state.slices.mapIndexed { index, slice ->
         DonutSlice(fraction = slice.fraction, color = sliceColor(slice.colorHex, index))
     }
+    var expanded by rememberSaveable { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        DonutChart(slices = donutSlices) {
+        // Donut: 57% hole, gaps show the gradient behind (transparent track).
+        DonutChart(
+            slices = donutSlices,
+            diameter = 188.dp,
+            thickness = 40.dp,
+            trackColor = Color.Transparent,
+        ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Spent",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                HeartBullet(colors.accent, sizeDp = 15)
                 Text(
                     text = money(state.totalExpense),
-                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = colors.textPrimary,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                Text(
+                    text = "spent this month",
+                    fontSize = 10.5.sp,
                     fontWeight = FontWeight.Bold,
+                    color = colors.textSecondary,
                 )
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(18.dp))
 
-        state.slices.forEachIndexed { index, slice ->
-            LegendRow(
-                color = sliceColor(slice.colorHex, index),
-                name = slice.name,
-                amount = slice.amount,
-                percentLabel = slice.percentLabel,
-            )
+        // Top-4 categories as a 2×2 glass grid with alternating leaf corners.
+        val top = state.slices.take(4)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            top.chunked(2).forEachIndexed { rowIdx, pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    pair.forEachIndexed { colIdx, slice ->
+                        val index = rowIdx * 2 + colIdx
+                        CategoryGridCard(
+                            name = slice.name,
+                            amount = slice.amount,
+                            percentLabel = slice.percentLabel,
+                            color = sliceColor(slice.colorHex, index),
+                            index = index,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+
+        if (state.slices.size > 4) {
+            Spacer(Modifier.height(12.dp))
+            AllCategoriesPill(count = state.slices.size, expanded = expanded) { expanded = !expanded }
+        }
+        if (expanded) {
+            Spacer(Modifier.height(8.dp))
+            Column(Modifier.fillMaxWidth()) {
+                state.slices.forEachIndexed { index, slice ->
+                    LegendRow(
+                        color = sliceColor(slice.colorHex, index),
+                        name = slice.name,
+                        amount = slice.amount,
+                        percentLabel = slice.percentLabel,
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
+private fun CategoryGridCard(
+    name: String,
+    amount: BigDecimal,
+    percentLabel: String,
+    color: Color,
+    index: Int,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalPlayfulColors.current
+    PlayfulCard(
+        modifier = modifier,
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.leafFor(index, 20.dp, 8.dp),
+        contentPadding = 13.dp,
+    ) {
+        Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                HeartBullet(color, sizeDp = 11)
+                Text(
+                    text = name,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+            Row(modifier = Modifier.padding(top = 5.dp), verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = money(amount),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = colors.textPrimary,
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = percentLabel,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = colors.accent,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AllCategoriesPill(count: Int, expanded: Boolean, onClick: () -> Unit) {
+    val colors = LocalPlayfulColors.current
+    Box(
+        modifier = Modifier
+            .clip(LeafShapes.Chip)
+            .background(colors.accent.copy(alpha = 0.14f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+    ) {
+        Text(
+            text = if (expanded) "Show top 4" else "All $count categories",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.accent,
+        )
+    }
+}
+
+@Composable
 private fun LegendRow(color: Color, name: String, amount: BigDecimal, percentLabel: String) {
+    val colors = LocalPlayfulColors.current
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(color = color, shape = CircleShape, modifier = Modifier.size(14.dp)) {}
+        HeartBullet(color, sizeDp = 12)
         Spacer(Modifier.width(12.dp))
-        Text(text = name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyLarge,
+            color = colors.textPrimary,
+            modifier = Modifier.weight(1f),
+        )
         Text(
             text = percentLabel,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
             modifier = Modifier.padding(end = 12.dp),
         )
         Text(
             text = money(amount),
             style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Bold,
+            color = colors.textPrimary,
         )
     }
 }
