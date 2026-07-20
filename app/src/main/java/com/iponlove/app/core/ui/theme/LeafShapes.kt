@@ -37,4 +37,7 @@ object LeafShapes {
     val Badge = leaf(10.dp, 4.dp)
     val IconSquircle = leaf(15.dp, 6.dp)
     val Fab = leaf(20.dp, 8.dp)
+
+    /** Editor dialogs (v1.6.7 Item 8 Slice 6-PD): gentle asymmetry, softer than [Card]. */
+    val Dialog = leaf(18.dp, 8.dp)
 }

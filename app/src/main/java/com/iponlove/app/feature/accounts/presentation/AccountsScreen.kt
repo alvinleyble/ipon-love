@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -69,6 +68,7 @@ import com.iponlove.app.core.ui.EntityColorPicker
 import com.iponlove.app.core.ui.HeartBullet
 import com.iponlove.app.core.ui.PlayfulCard
 import com.iponlove.app.core.ui.PlayfulChip
+import com.iponlove.app.core.ui.PlayfulDialog
 import com.iponlove.app.core.ui.PlayfulGradientCard
 import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.SharedBadge
@@ -435,7 +435,7 @@ private fun AccountEditorDialog(
     onCancel: () -> Unit,
 ) {
     val tintColor = parseHexColor(editor.color) ?: MaterialTheme.colorScheme.primary
-    AlertDialog(
+    PlayfulDialog(
         onDismissRequest = onCancel,
         title = { Text(if (editor.isEditing) "Edit account" else "New account") },
         text = {
