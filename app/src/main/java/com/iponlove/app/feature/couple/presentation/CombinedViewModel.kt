@@ -14,6 +14,8 @@ import com.iponlove.app.feature.categories.domain.usecase.ObserveAllCategoriesUs
 import com.iponlove.app.feature.couple.domain.model.CombinedLedger
 import com.iponlove.app.feature.couple.domain.usecase.CombinedLedgerCalculator
 import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.model.OwnedTransaction
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveCombinedTransactionsForBudgetsUseCase
@@ -54,6 +56,8 @@ class CombinedViewModel @Inject constructor(
     observeCoupleMembers: ObserveCoupleMembersUseCase,
     observeSharedBudget: ObserveSharedBudgetUseCase,
     observeHasAnyCombinedTransaction: ObserveHasAnyCombinedTransactionUseCase,
+    observePrivacyMode: ObservePrivacyModeUseCase,
+    private val setPrivacyMode: SetPrivacyModeUseCase,
     private val syncEngine: SyncEngine,
     private val premiumGate: PremiumGate,
     private val analytics: Analytics,
@@ -156,6 +160,9 @@ class CombinedViewModel @Inject constructor(
                 state.copy(hasAnySharedActivityEver = hasAnyEver)
             }
             .combine(isRefreshing) { state, refreshing -> state.copy(isRefreshing = refreshing) }
+            .combine(observePrivacyMode()) { state, privacyModeOn ->
+                state.copy(privacyModeEnabled = privacyModeOn)
+            }
             // DEEP_HISTORY back-wall (S10). viewedMonth.value is read fresh — the same anchor that
             // produced `state`. Always allowed while dormant (locked = false).
             .combine(deepHistoryLocked) { state, locked ->
@@ -189,6 +196,10 @@ class CombinedViewModel @Inject constructor(
         if (MonthWindow.canStepForward(current, LocalDate.now(ZONE))) {
             viewedMonth.value = MonthWindow.step(current, forward = true)
         }
+    }
+
+    fun togglePrivacyMode() {
+        viewModelScope.launch { setPrivacyMode(!uiState.value.privacyModeEnabled) }
     }
 
     fun sync() {

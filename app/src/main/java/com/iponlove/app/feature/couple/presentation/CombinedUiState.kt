@@ -33,6 +33,8 @@ data class CombinedUiState(
      * Budgets tab; this list self-hides (empty) when the couple has no shared budgets this month.
      */
     val sharedBudgets: List<SharedBudgetSummaryUi> = emptyList(),
+    /** Global "Hide amounts" flag (Item 15/Item 7) — the Spending header's eye reads/writes this. */
+    val privacyModeEnabled: Boolean = false,
 )
 
 /** A read-only shared-budget summary line — its progress against the couple's combined spend. */
