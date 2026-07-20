@@ -13,11 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +30,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import kotlin.math.roundToInt
 
 /**
@@ -158,6 +157,7 @@ fun CoachMarkOverlay(
     // a step whose target isn't on-screen yet — or at all, given a screen's conditional chrome —
     // never leaves the user trapped with no card to advance or skip.
     val target = state.boundsOf(step.targetKey)
+    val colors = LocalPlayfulColors.current
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val rootW = constraints.maxWidth.toFloat()
@@ -190,7 +190,7 @@ fun CoachMarkOverlay(
                         width = with(density) { ring.width.toDp() },
                         height = with(density) { ring.height.toDp() },
                     )
-                    .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp)),
+                    .border(2.dp, colors.accent, RoundedCornerShape(14.dp)),
             )
         }
 
@@ -230,25 +230,24 @@ private fun CoachMarkTooltip(
     onPrimary: () -> Unit,
     onSkip: () -> Unit,
 ) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 3.dp,
-        shadowElevation = 8.dp,
+    val colors = LocalPlayfulColors.current
+    PlayfulCard(
+        surface = PlayfulSurface.Blush,
+        shape = LeafShapes.Card,
     ) {
-        Column(Modifier.widthIn(max = 300.dp).padding(16.dp)) {
+        Column(Modifier.widthIn(max = 300.dp)) {
             step.stepLabel?.let {
-                Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Text(it, style = MaterialTheme.typography.labelSmall, color = colors.onBlushSecondary)
                 Spacer(Modifier.height(6.dp))
             }
             step.title?.let {
-                Text(it, style = MaterialTheme.typography.titleSmall)
+                Text(it, style = MaterialTheme.typography.titleSmall, color = colors.onBlush)
                 Spacer(Modifier.height(4.dp))
             }
             Text(
                 step.text,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.onBlush,
             )
             Spacer(Modifier.height(14.dp))
             Row(
@@ -256,9 +255,9 @@ private fun CoachMarkTooltip(
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onSkip) { Text("Skip") }
+                PlayfulChip(label = "Skip", selected = false, onClick = onSkip)
                 step.primaryLabel?.let {
-                    Button(onClick = onPrimary) { Text(it) }
+                    PlayfulChip(label = it, selected = true, onClick = onPrimary)
                 }
             }
         }
