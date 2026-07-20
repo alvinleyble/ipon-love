@@ -13,6 +13,8 @@ import com.iponlove.app.core.sync.SyncEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.DeleteTransactionUseCase
@@ -45,6 +47,8 @@ class TransactionsViewModel @Inject constructor(
     private val syncEngine: SyncEngine,
     private val premiumGate: PremiumGate,
     private val analytics: Analytics,
+    observePrivacyMode: ObservePrivacyModeUseCase,
+    private val setPrivacyMode: SetPrivacyModeUseCase,
 ) : ViewModel() {
 
     private val isRefreshing = MutableStateFlow(false)
@@ -74,6 +78,11 @@ class TransactionsViewModel @Inject constructor(
         ) { transactions, accounts, categories, hasAnyEver, month ->
             val accountNames = accounts.associate { it.id to it.name }
             val categoryNames = categories.associate { it.id to it.name }
+            // Icon/color keys for the Records row's tinted icon squircle (v1.6.7 Item 8 Slice 6a) —
+            // only categories that set one contribute a map entry; toListItem's lookup is then a
+            // plain miss (null) for icon-less categories, transfers, and settlements alike.
+            val categoryIcons = categories.mapNotNull { c -> c.icon?.let { c.id to it } }.toMap()
+            val categoryColors = categories.mapNotNull { c -> c.color?.let { c.id to it } }.toMap()
             val today = LocalDate.now(ZONE)
             val isCurrentMonth = YearMonth.from(month) == YearMonth.from(today)
 
@@ -81,7 +90,9 @@ class TransactionsViewModel @Inject constructor(
                 isLoading = false,
                 monthLabel = month.format(MONTH_FORMAT),
                 dayGroups = DayGrouping.groupByDay(
-                    items = transactions.map { it.toListItem(accountNames, categoryNames) },
+                    items = transactions.map {
+                        it.toListItem(accountNames, categoryNames, categoryIcons, categoryColors)
+                    },
                     dateOf = { it.date },
                     zone = ZONE,
                     today = today,
@@ -99,6 +110,12 @@ class TransactionsViewModel @Inject constructor(
                     canGoToPreviousMonth =
                         MonthWindow.canStepBack(viewedMonth.value, LocalDate.now(ZONE), locked),
                 )
+            }
+            // Records' privacy eye (v1.6.7 Item 8 Slice 6a) — the top-level combine above is
+            // already at its 5-flow ceiling (matching the Item 9/25/Combined precedent), so this
+            // rides a trailing .combine like deepHistoryLocked just above.
+            .combine(observePrivacyMode()) { state, privacyModeOn ->
+                state.copy(privacyModeEnabled = privacyModeOn)
             }
             .stateIn(
                 scope = viewModelScope,
@@ -148,6 +165,12 @@ class TransactionsViewModel @Inject constructor(
         }
     }
 
+    /** Flips the *global* Privacy mode (Item 15) — not a local reveal. Matches the
+     *  Accounts/Combined eye wiring (see the `feedback-privacy-eye-is-global` convention). */
+    fun togglePrivacyMode() {
+        viewModelScope.launch { setPrivacyMode(!uiState.value.privacyModeEnabled) }
+    }
+
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
         val ZONE: ZoneId = ZoneId.systemDefault()
@@ -158,10 +181,15 @@ class TransactionsViewModel @Inject constructor(
 /**
  * Maps a [Transaction] to its Records row. Extracted from the ViewModel so the display
  * logic (in particular the category-less label branches) is unit-testable without Hilt.
+ * [categoryIcons]/[categoryColors] (v1.6.7 Item 8 Slice 6a) default to empty so existing callers
+ * (and [TransactionsListItemMapperTest]) keep compiling unchanged — transfers/settlements never
+ * carry a category, so they fall back to the row's letter-avatar treatment regardless.
  */
 internal fun Transaction.toListItem(
     accountNames: Map<String, String>,
     categoryNames: Map<String, String>,
+    categoryIcons: Map<String, String> = emptyMap(),
+    categoryColors: Map<String, String> = emptyMap(),
 ): TransactionListItem {
     val accountName = accountNames[accountId] ?: "Account"
     val noteSuffix = note?.takeIf { it.isNotBlank() }?.let { "  •  $it" }.orEmpty()
@@ -192,6 +220,8 @@ internal fun Transaction.toListItem(
             title = categoryNames[categoryId] ?: "Uncategorized",
             subtitle = "$accountName$noteSuffix",
             date = date,
+            categoryIcon = categoryId?.let { categoryIcons[it] },
+            categoryColor = categoryId?.let { categoryColors[it] },
         )
     }
 }

@@ -1,7 +1,9 @@
 package com.iponlove.app.feature.transactions.presentation
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,25 +14,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Card
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -40,24 +43,45 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.HeartBullet
 import com.iponlove.app.core.ui.MonthStepperRow
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulScreenTitle
+import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
-import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
+import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
+import com.iponlove.app.core.ui.money
+import com.iponlove.app.core.ui.parseHexColor
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.recurring.presentation.components.ComingUpCard
 import com.iponlove.app.feature.recurring.presentation.components.PendingConfirmationsCard
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 
-private val IncomeColor = Color(0xFF2E7D32)
-
+/**
+ * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 6a): a transparent-container [Scaffold] with a
+ * [PlayfulScreenTitle] (matching the Analysis/Savings standalone-screen pattern, since Records —
+ * like those — owns its own top-level Scaffold rather than being hosted) carrying the Recurring
+ * shortcut + the Item 15/25 privacy eye as trailing actions; a −4° accent squircle FAB replaces
+ * the plain M3 one (matching Savings' `SavingsFab`). Rows are glass [PlayfulCard]s with alternating
+ * leaf shapes and a category-tinted icon squircle (falling back to a letter avatar for transfers/
+ * settlements/uncategorized rows, same fallback [com.iponlove.app.feature.accounts.presentation]'s
+ * `AccountCard` uses); day groups get a heart date-header (the Combined/Slice-4 recipe). Amounts
+ * use the derived `PlayfulColors.semantic` ramp, replacing the old hardcoded `IncomeColor`/
+ * `colorScheme.error`.
+ */
 @Composable
 fun TransactionsScreen(
     onOpenRecurring: () -> Unit,
@@ -79,6 +103,7 @@ fun TransactionsScreen(
         // Locked ← at the DEEP_HISTORY −12mo wall: log the touchpoint, then route to the paywall.
         onDeepHistoryUpsell = { onOpenPremium(viewModel.onDeepHistoryUpsell()) },
         onOpenPremium = onOpenPremium,
+        onTogglePrivacyMode = viewModel::togglePrivacyMode,
     )
 }
 
@@ -95,27 +120,41 @@ private fun TransactionsContent(
     onNextMonth: () -> Unit,
     onDeepHistoryUpsell: () -> Unit = {},
     onOpenPremium: (source: String) -> Unit = {},
+    onTogglePrivacyMode: () -> Unit = {},
 ) {
     StartTourOnFirstVisit(TutorialTours.RECORDS)
+    val colors = LocalPlayfulColors.current
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text("Records") },
-                actions = {
-                    IconButton(
-                        onClick = onOpenRecurring,
-                        modifier = Modifier.coachMarkTarget(TutorialTargets.RECORDS_RECURRING),
-                    ) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Recurring rules")
-                    }
-                },
-            )
+            Box(Modifier.statusBarsPadding().padding(top = 10.dp, bottom = 2.dp)) {
+                PlayfulScreenTitle(
+                    title = "Records",
+                    actions = {
+                        IconButton(
+                            onClick = onOpenRecurring,
+                            modifier = Modifier.coachMarkTarget(TutorialTargets.RECORDS_RECURRING),
+                        ) {
+                            Icon(
+                                Icons.Filled.Refresh,
+                                contentDescription = "Recurring rules",
+                                tint = colors.textSecondary,
+                            )
+                        }
+                        IconButton(onClick = onTogglePrivacyMode) {
+                            Icon(
+                                imageVector = if (state.privacyModeEnabled) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = if (state.privacyModeEnabled) "Show amounts" else "Hide amounts",
+                                tint = colors.textSecondary,
+                            )
+                        }
+                    },
+                )
+            }
         },
         floatingActionButton = {
             if (state.canAdd) {
-                FloatingActionButton(onClick = onAdd) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add transaction")
-                }
+                RecordsFab(onClick = onAdd)
             }
         },
     ) { padding ->
@@ -133,14 +172,14 @@ private fun TransactionsContent(
             // Confirm-on-arrival "To confirm" card (Item 37) — pinned above the month-scoped list
             // (pending is relative to today, not the viewed month) and self-hides when empty.
             PendingConfirmationsCard(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             // "Coming up" forecast preview (Item 37 Slice 2, premium) — next scheduled income +
             // bills; self-hides when empty, degrades to an upsell teaser when RECURRING_FORECAST
             // is enforced without access. Pinned below "To confirm", above the ledger list.
             ComingUpCard(
                 onOpenPremium = onOpenPremium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
@@ -174,14 +213,15 @@ private fun TransactionsContent(
 
                     else -> LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         state.dayGroups.forEach { group ->
                             stickyHeader(key = group.label) { DayHeader(group.label) }
-                            items(group.items, key = { it.id }) { item ->
+                            itemsIndexed(group.items, key = { _, item -> item.id }) { index, item ->
                                 TransactionRow(
                                     item = item,
+                                    index = index,
                                     onClick = { onEdit(item.id) },
                                     onDelete = { onDelete(item.id) },
                                 )
@@ -194,14 +234,46 @@ private fun TransactionsContent(
     }
 }
 
+/** The center −4° squircle FAB, matching the global add-transaction FAB's identity language
+ *  (Savings' `SavingsFab` recipe). */
+@Composable
+private fun RecordsFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalPlayfulColors.current
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = modifier
+            .rotate(-4f)
+            .size(56.dp)
+            .clip(LeafShapes.Fab)
+            .background(colors.accent)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Filled.Add,
+            contentDescription = "Add transaction",
+            tint = colors.onAccent,
+            modifier = Modifier.size(27.dp).rotate(4f),
+        )
+    }
+}
+
+/** A heart date-header (matching Combined's `DayHeader`, Slice 4) — opaque-filled so the sticky
+ *  header cleanly covers rows scrolling underneath it. */
 @Composable
 private fun DayHeader(label: String) {
-    Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+    val colors = LocalPlayfulColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth().background(colors.backgroundBottom).padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HeartBullet(colors.accent, sizeDp = 12)
+        Spacer(Modifier.width(6.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(vertical = 8.dp),
+            fontWeight = FontWeight.Bold,
+            color = colors.textSecondary,
         )
     }
 }
@@ -209,37 +281,82 @@ private fun DayHeader(label: String) {
 @Composable
 private fun TransactionRow(
     item: TransactionListItem,
+    index: Int,
     onClick: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    val colors = LocalPlayfulColors.current
+    val squircleColor = parseHexColor(item.categoryColor) ?: colors.accent
+    val squircleInk = if (item.categoryColor != null) Color.White else colors.onAccent
+    val imageVector = item.categoryIcon?.let { CATEGORY_ICONS[it] }
+
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.leafFor(index, 22.dp, 9.dp),
+        contentPadding = 14.dp,
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Box(
+                modifier = Modifier.size(42.dp).clip(LeafShapes.IconSquircle).background(squircleColor),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (imageVector != null) {
+                    Icon(
+                        imageVector = imageVector,
+                        contentDescription = null,
+                        tint = squircleInk,
+                        modifier = Modifier.size(22.dp),
+                    )
+                } else {
+                    Text(
+                        text = item.title.take(1).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = squircleInk,
+                    )
+                }
+            }
+            Spacer(Modifier.size(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(item.title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    item.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(
                     text = item.subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = formatShortDate(item.date),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textTertiary,
                 )
             }
             Text(
                 text = item.signedAmount(),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.ExtraBold,
                 color = item.amountColor(),
             )
             Box {
                 IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = "More options",
+                        tint = colors.textSecondary,
+                    )
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
@@ -254,16 +371,17 @@ private fun TransactionRow(
 
 @Composable
 private fun EmptyState(title: String, body: String, modifier: Modifier = Modifier) {
+    val colors = LocalPlayfulColors.current
     Column(
         modifier = modifier.padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(title, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
         Spacer(Modifier.height(4.dp))
         Text(
             text = body,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
         )
     }
@@ -280,8 +398,11 @@ private fun TransactionListItem.signedAmount(): String {
 }
 
 @Composable
-private fun TransactionListItem.amountColor(): Color = when (type) {
-    TransactionType.INCOME -> IncomeColor
-    TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
-    TransactionType.TRANSFER -> MaterialTheme.colorScheme.onSurfaceVariant
+private fun TransactionListItem.amountColor(): Color {
+    val colors = LocalPlayfulColors.current
+    return when (type) {
+        TransactionType.INCOME -> colors.semantic.income
+        TransactionType.EXPENSE -> colors.semantic.negative
+        TransactionType.TRANSFER -> colors.textSecondary
+    }
 }

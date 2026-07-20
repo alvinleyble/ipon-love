@@ -12,8 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,13 +28,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.LocalPrivacyMode
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.recurring.domain.model.PendingConfirmation
 import com.iponlove.app.feature.recurring.presentation.PendingConfirmationsViewModel
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
@@ -49,6 +52,12 @@ import java.time.format.DateTimeFormatter
  * Each row pre-fills the rule's amount in an editable field (the per-occurrence tweak), then
  * Confirm records it / Skip dismisses it; a header offers Confirm all / Skip all when there's
  * more than one.
+ *
+ * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 6a): the container is now a glass [PlayfulCard]
+ * (not Blush/DeepPlum — this card holds an [OutlinedTextField] per row, and the 6-PD grill already
+ * found those clash against a tinted fill; Glass is the same subtle-tint-over-background treatment
+ * `AccountCard`/`CombinedRow` use for text-bearing rows). The amount field/buttons stay plain M3,
+ * matching the "functional controls stay conservative" convention from `PlayfulDialog`.
  */
 @Composable
 fun PendingConfirmationsCard(
@@ -67,19 +76,21 @@ fun PendingConfirmationsCard(
     // reveal. All rows read the same LocalPrivacyMode, so tapping any one of them masks/reveals
     // every amount app-wide together (the row is just where the tap happens, not its own state).
     val privacyOn = LocalPrivacyMode.current
+    val colors = LocalPlayfulColors.current
 
-    Card(
+    PlayfulCard(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
+        contentPadding = 16.dp,
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "To confirm (${state.items.size})",
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary,
                     modifier = Modifier.weight(1f),
                 )
                 if (state.items.size > 1) {
@@ -90,10 +101,10 @@ fun PendingConfirmationsCard(
             Text(
                 text = "Recurring items that came due — record or skip each.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             state.items.forEach { item ->
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = colors.hairline)
                 PendingRow(
                     item = item,
                     showSkip = item.occurrenceId in skippableIds,
@@ -125,18 +136,21 @@ private fun PendingRow(
     val privacyOn = LocalPrivacyMode.current
     val editable = !privacyOn
     val kindLabel = if (item.type == TransactionType.INCOME) "Income" else "Bill"
+    val colors = LocalPlayfulColors.current
 
     Column {
         Text(
             text = item.categoryName,
             style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = colors.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             text = "$kindLabel due ${item.date.format(DATE_FORMAT)}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
         )
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
