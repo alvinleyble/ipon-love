@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.accounts.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
@@ -13,19 +14,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -34,7 +36,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,24 +50,36 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.EntityColorPicker
+import com.iponlove.app.core.ui.HeartBullet
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulChip
+import com.iponlove.app.core.ui.PlayfulGradientCard
+import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.SharedBadge
-import com.iponlove.app.core.ui.SummaryHeader
 import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.IconPicker
 import com.iponlove.app.core.ui.parseHexColor
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.core.util.movedTo
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.model.AccountType
@@ -98,13 +111,14 @@ fun AccountsBody(
         if (draggingId == null) localOrder = state.accounts
     }
 
-    Column(modifier = modifier) {
+    Column(modifier = modifier.playfulBackground()) {
         // Personal accounts only (own accounts, own or shared-by-me) — never wire this into
         // the Combined view (ADR-0011). Net assets covers active accounts only (see ViewModel).
         if (!state.isLoading && state.accounts.isNotEmpty()) {
-            SummaryHeader(
-                label = "Net assets",
-                amount = state.netAssets,
+            AccountsHero(
+                netAssets = state.netAssets,
+                accountCount = state.accounts.count { !it.isArchived },
+                sharedCount = state.accounts.count { it.isShared && !it.isArchived },
                 isPrivacyModeOn = state.privacyModeEnabled,
                 onTogglePrivacyMode = viewModel::togglePrivacyMode,
             )
@@ -127,10 +141,10 @@ fun AccountsBody(
 
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    itemsIndexed(localOrder, key = { _, account -> account.id }) { _, account ->
+                    itemsIndexed(localOrder, key = { _, account -> account.id }) { index, account ->
                         val dragging = draggingId == account.id
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -142,7 +156,7 @@ fun AccountsBody(
                             Icon(
                                 Icons.Filled.DragHandle,
                                 contentDescription = "Reorder ${account.name}",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = LocalPlayfulColors.current.textTertiary,
                                 modifier = Modifier
                                     .padding(end = 4.dp)
                                     .pointerInput(account.id) {
@@ -176,6 +190,7 @@ fun AccountsBody(
                             Box(modifier = Modifier.weight(1f)) {
                                 AccountCard(
                                     account = account,
+                                    index = index,
                                     balance = state.balances[account.id] ?: account.openingBalance,
                                     isPaired = state.isPaired,
                                     onClick = { viewModel.startEdit(account) },
@@ -217,20 +232,84 @@ fun AccountsBody(
 @Composable
 private fun ArchivedToggleRow(showArchived: Boolean, onToggle: (Boolean) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.End,
     ) {
-        IponFilterChip(
+        PlayfulChip(
+            label = "Show archived",
             selected = showArchived,
             onClick = { onToggle(!showArchived) },
-            label = { Text("Show archived") },
         )
+    }
+}
+
+@Composable
+private fun AccountsHero(
+    netAssets: BigDecimal,
+    accountCount: Int,
+    sharedCount: Int,
+    isPrivacyModeOn: Boolean,
+    onTogglePrivacyMode: () -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
+    PlayfulGradientCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+        shape = LeafShapes.leaf(34.dp, 14.dp),
+        tiltDegrees = -0.6f,
+        contentPadding = 18.dp,
+    ) {
+        // Oversized translucent heart accent, clipped by the card's own leaf-squircle shape.
+        HeartBullet(
+            color = colors.onAccent.copy(alpha = 0.14f),
+            sizeDp = 96,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 20.dp, y = 20.dp)
+                .rotate(-10f),
+        )
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Net assets",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.onAccent.copy(alpha = 0.85f),
+                    )
+                    Text(
+                        text = money(netAssets),
+                        style = TextStyle(
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-1).sp,
+                            color = colors.onAccent,
+                        ),
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+                IconButton(onClick = onTogglePrivacyMode) {
+                    Icon(
+                        imageVector = if (isPrivacyModeOn) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        contentDescription = if (isPrivacyModeOn) "Show amounts" else "Hide amounts",
+                        tint = colors.onAccent,
+                    )
+                }
+            }
+            Text(
+                text = "$accountCount accounts · $sharedCount shared",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = colors.onAccent.copy(alpha = 0.85f),
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
     }
 }
 
 @Composable
 private fun AccountCard(
     account: Account,
+    index: Int,
     balance: BigDecimal,
     isPaired: Boolean,
     onClick: () -> Unit,
@@ -240,42 +319,42 @@ private fun AccountCard(
     onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    val iconColor = parseHexColor(account.color) ?: MaterialTheme.colorScheme.primary
-    val containerColor = if (account.color != null) iconColor.copy(alpha = 0.15f)
-    else MaterialTheme.colorScheme.primaryContainer
-    val contentColor = if (account.color != null) iconColor
-    else MaterialTheme.colorScheme.onPrimaryContainer
+    val colors = LocalPlayfulColors.current
+    val squircleColor = parseHexColor(account.color) ?: colors.accent
+    val squircleInk = if (account.color != null) Color.White else colors.onAccent
     val imageVector = account.icon?.let { ACCOUNT_ICONS[it] }
 
-    Card(
+    PlayfulCard(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(if (account.isArchived) 0.5f else 1f)
             .clickable(onClick = onClick),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.leafFor(index, 22.dp, 9.dp),
+        contentPadding = 14.dp,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                modifier = Modifier.size(44.dp).clip(CircleShape),
-                color = containerColor,
+            Box(
+                modifier = Modifier.size(42.dp).clip(LeafShapes.IconSquircle).background(squircleColor),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (imageVector != null) {
-                        Icon(
-                            imageVector = imageVector,
-                            contentDescription = null,
-                            tint = contentColor,
-                            modifier = Modifier.size(24.dp),
-                        )
-                    } else {
-                        Text(
-                            text = account.name.take(1).uppercase(),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = contentColor,
-                        )
-                    }
+                if (imageVector != null) {
+                    Icon(
+                        imageVector = imageVector,
+                        contentDescription = null,
+                        tint = squircleInk,
+                        modifier = Modifier.size(22.dp),
+                    )
+                } else {
+                    Text(
+                        text = account.name.take(1).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = squircleInk,
+                    )
                 }
             }
             Spacer(Modifier.size(12.dp))
@@ -284,6 +363,8 @@ private fun AccountCard(
                     Text(
                         account.name,
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
@@ -297,12 +378,14 @@ private fun AccountCard(
                     text = if (account.isArchived) "${account.type.label()} · Archived"
                     else account.type.label(),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                 )
             }
             Text(
                 text = money(balance),
                 style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = if (balance.signum() < 0) colors.semantic.negative else colors.textPrimary,
             )
             Box {
                 IconButton(onClick = { menuOpen = true }) {

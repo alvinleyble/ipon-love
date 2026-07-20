@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -42,6 +43,31 @@ fun PlayfulCard(
             .then(if (tiltDegrees != 0f) Modifier.rotate(tiltDegrees) else Modifier)
             .clip(shape)
             .background(bg)
+            .padding(contentPadding),
+        content = content,
+    )
+}
+
+/**
+ * A Playful Pop gradient hero card (v1.6.7 Item 8 Slice 3): a leaf-squircle [shape] filled with a
+ * diagonal [PlayfulColors.accent]→[PlayfulColors.deepPlum] gradient, for header/hero surfaces that
+ * need more presence than a flat [PlayfulSurface.Blush]/[PlayfulSurface.DeepPlum] card (e.g. the
+ * Accounts net-assets hero). Ink defaults to `onAccent`, which reads cleanly across the gradient.
+ */
+@Composable
+fun PlayfulGradientCard(
+    modifier: Modifier = Modifier,
+    shape: RoundedCornerShape,
+    tiltDegrees: Float = 0f,
+    contentPadding: Dp = 16.dp,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
+    Box(
+        modifier = modifier
+            .then(if (tiltDegrees != 0f) Modifier.rotate(tiltDegrees) else Modifier)
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(colors.accent, colors.deepPlum)))
             .padding(contentPadding),
         content = content,
     )
