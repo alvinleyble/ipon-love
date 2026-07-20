@@ -1,5 +1,7 @@
 package com.iponlove.app.feature.savings.presentation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,9 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -21,8 +23,6 @@ import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -33,7 +33,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -46,19 +45,38 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.HeartBullet
+import com.iponlove.app.core.ui.HeartTippedProgress
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulSurface
+import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.parseHexColor
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.ZoneId
 
+/**
+ * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 5). The [TopAppBar] (back arrow, title, overflow
+ * menu) is deliberately left as standard M3 chrome — no established Playful pattern yet covers a
+ * back+overflow-menu bar, matching the "dialogs/host chrome stay conservative" precedent from
+ * Slices 3–4. The content area repaints with [playfulBackground] (same local-override pattern
+ * [AccountsBody]/[CombinedBody] use under their own untouched hosts) and the goal header +
+ * contribution rows move onto [PlayfulCard]/[HeartTippedProgress]. The add/edit-contribution
+ * [AlertDialog]s and the delete-confirmation dialog stay untouched.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoalDetailScreen(
@@ -70,7 +88,6 @@ fun GoalDetailScreen(
     var menuOpen by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
     var contributionEditor by remember { mutableStateOf<ContributionEditorTarget?>(null) }
-    val accent = parseHexColor(state.color) ?: MaterialTheme.colorScheme.primary
 
     Scaffold(
         topBar = {
@@ -108,15 +125,11 @@ fun GoalDetailScreen(
         },
         floatingActionButton = {
             if (state.loaded && !state.missing) {
-                Button(onClick = { contributionEditor = ContributionEditorTarget.New }) {
-                    Icon(Icons.Filled.Add, contentDescription = null)
-                    Spacer(Modifier.size(8.dp))
-                    Text("Add contribution")
-                }
+                AddContributionFab(onClick = { contributionEditor = ContributionEditorTarget.New })
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        Box(Modifier.fillMaxSize().playfulBackground().padding(padding)) {
             when {
                 !state.loaded -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 state.missing -> Text(
@@ -125,16 +138,16 @@ fun GoalDetailScreen(
                 )
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    item { GoalHeader(state, accent) }
+                    item { GoalHeader(state) }
                     if (state.contributions.isEmpty()) {
                         item {
                             Text(
                                 "No contributions yet. Add your first one below.",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = LocalPlayfulColors.current.textSecondary,
                                 modifier = Modifier.padding(vertical = 8.dp),
                             )
                         }
@@ -143,6 +156,8 @@ fun GoalDetailScreen(
                             Text(
                                 "Contributions",
                                 style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = LocalPlayfulColors.current.textSecondary,
                                 modifier = Modifier.padding(top = 8.dp),
                             )
                         }
@@ -188,57 +203,94 @@ fun GoalDetailScreen(
     }
 }
 
+/** A wide accent pill FAB — the extended-FAB flavor of the app's leaf-squircle FAB identity. */
 @Composable
-private fun GoalHeader(state: GoalDetailUiState, accent: androidx.compose.ui.graphics.Color) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
+private fun AddContributionFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalPlayfulColors.current
+    Row(
+        modifier = modifier
+            .clip(LeafShapes.Chip)
+            .background(colors.accent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Filled.Add, contentDescription = null, tint = colors.onAccent, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "Add contribution",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = colors.onAccent,
+        )
+    }
+}
+
+@Composable
+private fun GoalHeader(state: GoalDetailUiState) {
+    val colors = LocalPlayfulColors.current
+    val squircleColor = parseHexColor(state.color) ?: colors.deepPlum
+    val squircleInk = if (state.color != null) Color.White else colors.onDeepPlum
+    val progressColor = parseHexColor(state.color) ?: colors.accent
+
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Hero,
+        contentPadding = 18.dp,
+    ) {
+        Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    modifier = Modifier.size(48.dp).clip(CircleShape),
-                    color = accent.copy(alpha = 0.15f),
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .rotate(-4f)
+                        .clip(LeafShapes.IconSquircle)
+                        .background(squircleColor),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            goalIcon(state.icon) ?: Icons.Filled.Savings,
-                            contentDescription = null,
-                            tint = accent,
-                            modifier = Modifier.size(26.dp),
-                        )
-                    }
+                    Icon(
+                        goalIcon(state.icon) ?: Icons.Filled.Savings,
+                        contentDescription = null,
+                        tint = squircleInk,
+                        modifier = Modifier.size(28.dp).rotate(4f),
+                    )
                 }
-                Spacer(Modifier.size(12.dp))
+                Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
                         money(state.savedAmount),
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = colors.textPrimary,
                     )
                     Text(
                         "of ${money(state.targetAmount)} goal",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = colors.textSecondary,
                     )
                 }
+                if (state.isShared) SharedBadge()
             }
-            Spacer(Modifier.height(12.dp))
-            GoalProgressBar(progress = state.progress, color = accent)
+            Spacer(Modifier.height(14.dp))
+            HeartTippedProgress(progress = state.progress, fillColor = progressColor)
             state.targetDate?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "Target date: $it",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textTertiary,
                 )
             }
             if (state.reached) {
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Celebration, contentDescription = null, tint = accent)
-                    Spacer(Modifier.size(8.dp))
+                    Icon(Icons.Filled.Celebration, contentDescription = null, tint = progressColor)
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         "Goal reached! 🎉",
                         style = MaterialTheme.typography.titleMedium,
-                        color = accent,
+                        color = progressColor,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
@@ -250,23 +302,33 @@ private fun GoalHeader(state: GoalDetailUiState, accent: androidx.compose.ui.gra
 @Composable
 private fun ContributionCard(row: ContributionRow, onEdit: () -> Unit, onDelete: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth()) {
+    val colors = LocalPlayfulColors.current
+    val ownerColor = if (row.isMine) colors.accent else colors.deepPlum
+
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
+        contentPadding = 14.dp,
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            HeartBullet(ownerColor, sizeDp = 16)
+            Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(money(row.amount), style = MaterialTheme.typography.titleMedium)
+                Text(money(row.amount), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = colors.textPrimary)
                 Text(
                     "${row.byLabel} · ${formatShortDate(row.date)}" + (row.note?.let { " · $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                 )
             }
             if (row.isMine) {
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "Edit or delete")
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Edit or delete", tint = colors.textSecondary)
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; onEdit() })
