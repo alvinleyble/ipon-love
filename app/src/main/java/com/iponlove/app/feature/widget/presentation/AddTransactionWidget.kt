@@ -15,6 +15,7 @@ import androidx.glance.LocalContext
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -48,10 +49,14 @@ class AddTransactionWidget : GlanceAppWidget() {
 @Composable
 private fun AddTransactionWidgetContent() {
     val context = LocalContext.current
+    // Playful Pop (Slice 6j): an accent-filled rounded "FAB" card — the RemoteViews approximation of
+    // the app's in-app accent-squircle FAB — with white (onAccent) ink, so it reads as a bold add
+    // button and stays visually distinct from the balance widget's soft card.
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(GlanceTheme.colors.widgetBackground)
+            .cornerRadius(28.dp)
+            .background(PlayfulWidgetColors.accentFill)
             .clickable(actionStartActivity(Intent(context, QuickAddActivity::class.java)))
             .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
@@ -60,7 +65,7 @@ private fun AddTransactionWidgetContent() {
             Text(
                 text = "Love, Ipon",
                 style = TextStyle(
-                    color = GlanceTheme.colors.onSurfaceVariant,
+                    color = PlayfulWidgetColors.onAccent,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                 ),
@@ -70,14 +75,14 @@ private fun AddTransactionWidgetContent() {
                 Image(
                     provider = ImageProvider(R.drawable.ic_widget_heart),
                     contentDescription = null,
-                    colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+                    colorFilter = ColorFilter.tint(PlayfulWidgetColors.onAccent),
                     modifier = GlanceModifier.width(16.dp).height(16.dp),
                 )
                 Spacer(GlanceModifier.width(6.dp))
                 Text(
                     text = "+ Add Txn",
                     style = TextStyle(
-                        color = GlanceTheme.colors.primary,
+                        color = PlayfulWidgetColors.onAccent,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                     ),

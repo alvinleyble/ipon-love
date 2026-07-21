@@ -181,7 +181,8 @@ private fun CompactWidget(display: WidgetDisplay) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(GlanceTheme.colors.widgetBackground)
+            .cornerRadius(28.dp)
+            .background(PlayfulWidgetColors.card)
             .clickable(actionStartActivity(manageAccountsIntent(context)))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -199,7 +200,8 @@ private fun TallWidget(display: WidgetDisplay, rows: List<AccountRowDisplay>?) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(GlanceTheme.colors.widgetBackground)
+            .cornerRadius(28.dp)
+            .background(PlayfulWidgetColors.card)
             .padding(14.dp),
     ) {
         // Header + amount tap opens Manage → Accounts. A LazyColumn's items each need their own
@@ -230,14 +232,14 @@ private fun HeaderLabelRow() {
         Image(
             provider = ImageProvider(R.drawable.ic_widget_heart),
             contentDescription = null,
-            colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+            colorFilter = ColorFilter.tint(PlayfulWidgetColors.accent),
             modifier = GlanceModifier.size(14.dp),
         )
         Spacer(GlanceModifier.width(6.dp))
         Text(
             text = "Net assets",
             style = TextStyle(
-                color = GlanceTheme.colors.onSurfaceVariant,
+                color = PlayfulWidgetColors.onCardSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
             ),
@@ -246,7 +248,7 @@ private fun HeaderLabelRow() {
         Image(
             provider = ImageProvider(R.drawable.ic_widget_refresh),
             contentDescription = "Refresh",
-            colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
+            colorFilter = ColorFilter.tint(PlayfulWidgetColors.onCardSecondary),
             modifier = GlanceModifier
                 .size(18.dp)
                 .clickable(actionRunCallback<RefreshBalanceWidgetAction>()),
@@ -268,7 +270,7 @@ private fun AmountRow(display: WidgetDisplay) {
         Text(
             text = amountText,
             style = TextStyle(
-                color = GlanceTheme.colors.onSurface,
+                color = PlayfulWidgetColors.onCardPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
             ),
@@ -291,7 +293,7 @@ private fun AmountRow(display: WidgetDisplay) {
                         else R.drawable.ic_widget_eye,
                     ),
                     contentDescription = if (display.revealed) "Hide amount" else "Show amount",
-                    colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
+                    colorFilter = ColorFilter.tint(PlayfulWidgetColors.onCardSecondary),
                     modifier = GlanceModifier.size(24.dp),
                 )
             }
@@ -304,7 +306,7 @@ private fun AmountRow(display: WidgetDisplay) {
 private fun AccountRow(row: AccountRowDisplay) {
     val context = LocalContext.current
     val dotColor: ColorProvider =
-        parseHexColor(row.colorHex)?.let { ColorProvider(it) } ?: GlanceTheme.colors.primary
+        parseHexColor(row.colorHex)?.let { ColorProvider(it) } ?: PlayfulWidgetColors.accent
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
@@ -317,7 +319,7 @@ private fun AccountRow(row: AccountRowDisplay) {
         Text(
             text = row.name,
             maxLines = 1,
-            style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp),
+            style = TextStyle(color = PlayfulWidgetColors.onCardPrimary, fontSize = 13.sp),
         )
         Spacer(GlanceModifier.defaultWeight())
         Spacer(GlanceModifier.width(8.dp))
@@ -325,7 +327,7 @@ private fun AccountRow(row: AccountRowDisplay) {
             text = row.amountText ?: MASKED,
             maxLines = 1,
             style = TextStyle(
-                color = GlanceTheme.colors.onSurfaceVariant,
+                color = PlayfulWidgetColors.onCardSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
             ),
@@ -338,6 +340,6 @@ private fun AccountRow(row: AccountRowDisplay) {
 private fun Hint(text: String) {
     Text(
         text = text,
-        style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp),
+        style = TextStyle(color = PlayfulWidgetColors.onCardSecondary, fontSize = 13.sp),
     )
 }
