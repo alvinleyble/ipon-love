@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -559,14 +561,19 @@ private fun PlayfulBottomBar(
     moreModifier: Modifier = Modifier,
 ) {
     val colors = LocalPlayfulColors.current
-    Box(modifier = modifier.fillMaxWidth().height(74.dp)) {
+    // Navigation-bar inset: the M3 NavigationBar this reskin replaced consumed it automatically,
+    // so without it the plum bar draws under the system nav (3-button devices) — restored here.
+    // The plum surface extends down behind the system bar (edge-to-edge) while its content padding
+    // lifts the icons/labels above it. Zero on gesture-nav devices, so visuals are unchanged there.
+    val navBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    Box(modifier = modifier.fillMaxWidth().height(74.dp + navBarInset)) {
         // Opaque nav surface anchored to the bottom, leaving a transparent strip up top for the
         // raised FAB to poke into (kept within the bar's own bounds so nothing gets clipped).
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(62.dp)
+                .height(62.dp + navBarInset)
                 .background(colors.navSurface)
                 .drawBehind {
                     drawRect(
@@ -574,7 +581,7 @@ private fun PlayfulBottomBar(
                         size = Size(size.width, 1.dp.toPx()),
                     )
                 }
-                .padding(bottom = 6.dp),
+                .padding(bottom = 6.dp + navBarInset),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             firstPins.forEach { dest ->
