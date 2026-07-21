@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.categories.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
@@ -16,13 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -31,7 +29,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,9 +43,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,10 +55,17 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.EntityColorPicker
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulChip
+import com.iponlove.app.core.ui.PlayfulDialog
+import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
 import com.iponlove.app.core.ui.icons.IconPicker
 import com.iponlove.app.core.ui.parseHexColor
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.core.util.movedTo
 import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.model.CategoryType
@@ -68,6 +74,13 @@ import com.iponlove.app.feature.categories.domain.model.CategoryType
  * Chrome-less Categories body — no Scaffold/TopAppBar/FAB. The Manage host provides the single
  * scaffold + page-aware FAB (which calls [CategoriesViewModel.startCreate]); this renders only the
  * filter row + list + editor dialog.
+ *
+ * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 6c): rows are glass [PlayfulCard]s with
+ * alternating leaf shapes and an icon squircle (icons are already Material Symbols per Slice 2);
+ * the filter row uses [PlayfulChip]; [CategoryEditorDialog] swaps its `AlertDialog` for
+ * [PlayfulDialog] (content unchanged, matching Slice 6-PD's Account retrofit — the embedded
+ * icon-picker grid is plain content inside the dialog, not a separate dialog, so it inherits the
+ * new shape/tint automatically).
  *
  * The list supports drag-handle reordering (item 9b): [localOrder] is a composable-owned working
  * copy of [CategoriesUiState.categories] that mutates live during a drag (same "composable-owned
@@ -83,6 +96,7 @@ fun CategoriesBody(
     viewModel: CategoriesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val colors = LocalPlayfulColors.current
     var localOrder by remember { mutableStateOf(state.categories) }
     var draggingId by remember { mutableStateOf<String?>(null) }
     var dragAccum by remember { mutableFloatStateOf(0f) }
@@ -91,7 +105,7 @@ fun CategoriesBody(
         if (draggingId == null) localOrder = state.categories
     }
 
-    Column(modifier = modifier) {
+    Column(modifier = modifier.playfulBackground()) {
         FilterRow(
             selected = state.filter,
             onSelect = viewModel::setFilter,
@@ -112,7 +126,7 @@ fun CategoriesBody(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    itemsIndexed(localOrder, key = { _, category -> category.id }) { _, category ->
+                    itemsIndexed(localOrder, key = { _, category -> category.id }) { index, category ->
                         val dragging = draggingId == category.id
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -124,7 +138,7 @@ fun CategoriesBody(
                             Icon(
                                 Icons.Filled.DragHandle,
                                 contentDescription = "Reorder ${category.name}",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = colors.textTertiary,
                                 modifier = Modifier
                                     .padding(end = 4.dp)
                                     .pointerInput(category.id) {
@@ -158,6 +172,7 @@ fun CategoriesBody(
                             Box(modifier = Modifier.weight(1f)) {
                                 CategoryCard(
                                     category = category,
+                                    index = index,
                                     isPaired = state.isPaired,
                                     onClick = { viewModel.startEdit(category) },
                                     onToggleArchive = { viewModel.archive(category.id, !category.isArchived) },
@@ -208,18 +223,18 @@ private fun FilterRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CategoryFilter.entries.forEach { filter ->
-            IponFilterChip(
+            PlayfulChip(
+                label = filter.label(),
                 selected = filter == selected,
                 onClick = { onSelect(filter) },
-                label = { Text(filter.label()) },
             )
         }
         if (canShowArchivedToggle) {
             Spacer(Modifier.weight(1f))
-            IponFilterChip(
+            PlayfulChip(
+                label = "Archived",
                 selected = showArchived,
                 onClick = { onToggleArchived(!showArchived) },
-                label = { Text("Archived") },
             )
         }
     }
@@ -228,6 +243,7 @@ private fun FilterRow(
 @Composable
 private fun CategoryCard(
     category: Category,
+    index: Int,
     isPaired: Boolean,
     onClick: () -> Unit,
     onToggleArchive: () -> Unit,
@@ -236,42 +252,42 @@ private fun CategoryCard(
     onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    val iconColor = parseHexColor(category.color) ?: MaterialTheme.colorScheme.primary
-    val containerColor = if (category.color != null) iconColor.copy(alpha = 0.15f)
-    else MaterialTheme.colorScheme.secondaryContainer
-    val contentColor = if (category.color != null) iconColor
-    else MaterialTheme.colorScheme.onSecondaryContainer
+    val colors = LocalPlayfulColors.current
+    val squircleColor = parseHexColor(category.color) ?: colors.accent
+    val squircleInk = if (category.color != null) Color.White else colors.onAccent
     val imageVector = category.icon?.let { CATEGORY_ICONS[it] }
 
-    Card(
+    PlayfulCard(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(if (category.isArchived) 0.5f else 1f)
             .clickable(onClick = onClick),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.leafFor(index, 22.dp, 9.dp),
+        contentPadding = 14.dp,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                modifier = Modifier.size(44.dp).clip(CircleShape),
-                color = containerColor,
+            Box(
+                modifier = Modifier.size(42.dp).clip(LeafShapes.IconSquircle).background(squircleColor),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (imageVector != null) {
-                        Icon(
-                            imageVector = imageVector,
-                            contentDescription = null,
-                            tint = contentColor,
-                            modifier = Modifier.size(24.dp),
-                        )
-                    } else {
-                        Text(
-                            text = category.name.take(1).uppercase(),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = contentColor,
-                        )
-                    }
+                if (imageVector != null) {
+                    Icon(
+                        imageVector = imageVector,
+                        contentDescription = null,
+                        tint = squircleInk,
+                        modifier = Modifier.size(22.dp),
+                    )
+                } else {
+                    Text(
+                        text = category.name.take(1).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = squircleInk,
+                    )
                 }
             }
             Spacer(Modifier.size(12.dp))
@@ -280,6 +296,8 @@ private fun CategoryCard(
                     Text(
                         category.name,
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
@@ -293,7 +311,7 @@ private fun CategoryCard(
                     text = if (category.isArchived) "${category.type.label()} · Archived"
                     else category.type.label(),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                 )
             }
             Box {
@@ -342,7 +360,7 @@ private fun CategoryEditorDialog(
     onCancel: () -> Unit,
 ) {
     val tintColor = parseHexColor(editor.color) ?: MaterialTheme.colorScheme.primary
-    AlertDialog(
+    PlayfulDialog(
         onDismissRequest = onCancel,
         title = { Text(if (editor.isEditing) "Edit category" else "New category") },
         text = {
