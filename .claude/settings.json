@@ -106,7 +106,23 @@
       "Bash(adb shell wm size)",
       "Bash(adb -s * shell wm size)",
       "Bash(git -C /Users/lovzay/ipon-love diff*)",
+      "Bash(touch /tmp/ipon-love-wrap-force.lock)",
+      "Bash(rm -f /tmp/ipon-love-wrap-force.lock)",
       "mcp__supabase__get_logs"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/lovzay/ipon-love/.claude/hooks/wrap-force-gate.sh",
+            "if": "Bash(git *)"
+          }
+        ]
+      }
     ]
   }
 }
