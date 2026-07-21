@@ -21,10 +21,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iponlove.app.core.ui.LocalCurrencySymbol
 import com.iponlove.app.core.ui.LocalPrivacyMode
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.analysis.presentation.CalendarNetUi
 import kotlin.math.ceil
-
-private val IncomeGreen = Color(0xFF2E7D32)
 
 /**
  * Monthly calendar grid showing daily income and expense in two rows per cell (V1.2 item 2).
@@ -47,7 +46,12 @@ fun DailyNetCalendarChart(
     val textMeasurer = rememberTextMeasurer()
     val primaryContainerColor = MaterialTheme.colorScheme.primaryContainer
     val secondaryContainerColor = MaterialTheme.colorScheme.secondaryContainer
-    val errorColor = MaterialTheme.colorScheme.error
+    // Item 8 Slice 6d (grill note #4): income/expense cell numbers use the fixed money-semantic
+    // colors so they match the rest of Analysis and stay legible in dark mode (the old hardcoded
+    // 0xFF2E7D32 green was too dark on a dark cell; semantic.income is mode-aware).
+    val semantic = LocalPlayfulColors.current.semantic
+    val incomeColor = semantic.income
+    val expenseColor = semantic.negative
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     // Captured in composable scope so the non-composable draw code + compactAmount can use them.
     val glyph = LocalCurrencySymbol.current.glyph
@@ -165,7 +169,7 @@ fun DailyNetCalendarChart(
                 hasIncome && hasExpense -> {
                     // Income row: centered in upper half of content zone.
                     val incomeLabel = compactAmount(day.incomeFloat, "+", glyph, privacyOn)
-                    val incomeMeasured = textMeasurer.measure(incomeLabel, amountStyle.copy(color = IncomeGreen))
+                    val incomeMeasured = textMeasurer.measure(incomeLabel, amountStyle.copy(color = incomeColor))
                     val incomeRowCenterPx = cellY + (contentStartDp + halfSlotDp * 0.5f).dp.toPx()
                     drawText(
                         textLayoutResult = incomeMeasured,
@@ -177,7 +181,7 @@ fun DailyNetCalendarChart(
                     )
                     // Expense row: centered in lower half.
                     val expenseLabel = compactAmount(day.expenseFloat, "-", glyph, privacyOn)
-                    val expenseMeasured = textMeasurer.measure(expenseLabel, amountStyle.copy(color = errorColor))
+                    val expenseMeasured = textMeasurer.measure(expenseLabel, amountStyle.copy(color = expenseColor))
                     val expenseRowCenterPx = cellY + (contentStartDp + halfSlotDp * 1.5f).dp.toPx()
                     drawText(
                         textLayoutResult = expenseMeasured,
@@ -191,7 +195,7 @@ fun DailyNetCalendarChart(
                 hasIncome -> {
                     // Single income row, vertically centered in the full content zone.
                     val incomeLabel = compactAmount(day.incomeFloat, "+", glyph, privacyOn)
-                    val incomeMeasured = textMeasurer.measure(incomeLabel, amountStyle.copy(color = IncomeGreen))
+                    val incomeMeasured = textMeasurer.measure(incomeLabel, amountStyle.copy(color = incomeColor))
                     val centerPx = cellY + (contentStartDp + halfSlotDp).dp.toPx()
                     drawText(
                         textLayoutResult = incomeMeasured,
@@ -205,7 +209,7 @@ fun DailyNetCalendarChart(
                 hasExpense -> {
                     // Single expense row, vertically centered in the full content zone.
                     val expenseLabel = compactAmount(day.expenseFloat, "-", glyph, privacyOn)
-                    val expenseMeasured = textMeasurer.measure(expenseLabel, amountStyle.copy(color = errorColor))
+                    val expenseMeasured = textMeasurer.measure(expenseLabel, amountStyle.copy(color = expenseColor))
                     val centerPx = cellY + (contentStartDp + halfSlotDp).dp.toPx()
                     drawText(
                         textLayoutResult = expenseMeasured,

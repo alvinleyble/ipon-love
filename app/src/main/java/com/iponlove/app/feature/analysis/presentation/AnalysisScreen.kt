@@ -27,8 +27,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -79,8 +77,6 @@ import com.iponlove.app.feature.analysis.presentation.components.ExpenseFlowChar
 import com.iponlove.app.feature.analysis.presentation.components.sliceColor
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
-
-private val IncomeColor = Color(0xFF2E7D32)
 
 @Composable
 fun AnalysisScreen(
@@ -425,34 +421,38 @@ private fun PeriodStepper(
 
 @Composable
 private fun PairingNudgeCard(onOpen: () -> Unit, onDismiss: () -> Unit) {
-    Card(
+    val colors = LocalPlayfulColors.current
+    PlayfulCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 20.dp, vertical = 8.dp)
             .clickable(onClick = onOpen),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        surface = PlayfulSurface.Blush,
+        shape = LeafShapes.Card,
+        contentPadding = 4.dp,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp)) {
                 Text(
                     "Track money together",
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.onBlush,
                 )
                 Text(
                     "Pair with your partner for a combined view, shared budgets & IOUs.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = colors.onBlushSecondary,
                 )
             }
             IconButton(onClick = onDismiss) {
                 Icon(
                     Icons.Filled.Close,
                     contentDescription = "Dismiss",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = colors.onBlush,
                 )
             }
         }
@@ -576,7 +576,7 @@ private fun SummaryItem(label: String, amount: BigDecimal, color: Color, modifie
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = LocalPlayfulColors.current.textSecondary,
         )
         Spacer(Modifier.height(4.dp))
         Text(
@@ -775,16 +775,21 @@ private fun LegendRow(color: Color, name: String, amount: BigDecimal, percentLab
 
 @Composable
 private fun EmptyState() {
+    val colors = LocalPlayfulColors.current
     Column(
         modifier = Modifier.fillMaxWidth().padding(48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("No spending to analyze", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "No spending to analyze",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
         Spacer(Modifier.height(4.dp))
         Text(
             text = "Add some expenses for this period to see the breakdown.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
         )
     }
@@ -792,9 +797,19 @@ private fun EmptyState() {
 
 @Composable
 private fun ExpenseFlowSection(flow: ExpenseFlowUi) {
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Expense Flow", style = MaterialTheme.typography.titleSmall)
+    val colors = LocalPlayfulColors.current
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
+    ) {
+        Column {
+            Text(
+                "Expense Flow",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = colors.textPrimary,
+            )
             Spacer(Modifier.height(12.dp))
             ExpenseFlowChart(flow = flow)
         }
@@ -803,17 +818,28 @@ private fun ExpenseFlowSection(flow: ExpenseFlowUi) {
 
 @Composable
 private fun ShortRangeFlowCard() {
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    val colors = LocalPlayfulColors.current
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
+        contentPadding = 24.dp,
+    ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(24.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Range too short to chart", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "Range too short to chart",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = colors.textPrimary,
+            )
             Spacer(Modifier.height(4.dp))
             Text(
                 text = "A single day can't show a spending curve. See the daily average below.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
             )
         }
@@ -822,9 +848,13 @@ private fun ShortRangeFlowCard() {
 
 @Composable
 private fun FlowMetricsSection(metrics: FlowMetricsUi) {
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.leafMirrored(22.dp, 9.dp),
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             MetricItem(
@@ -847,11 +877,12 @@ private fun FlowMetricsSection(metrics: FlowMetricsUi) {
 
 @Composable
 private fun ComparisonMetricItem(comparison: FlowComparisonUi, modifier: Modifier = Modifier) {
-    // More spend than last period reads red (error); less reads green; flat is neutral.
+    val colors = LocalPlayfulColors.current
+    // More spend than last period reads red (negative); less reads green (income); flat is neutral.
     val color = when {
-        comparison.deltaSign > 0 -> MaterialTheme.colorScheme.error
-        comparison.deltaSign < 0 -> IncomeColor
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+        comparison.deltaSign > 0 -> colors.semantic.negative
+        comparison.deltaSign < 0 -> colors.semantic.income
+        else -> colors.textSecondary
     }
     val value = when {
         comparison.percentChange == null -> "New" // no prior spending to compare against
@@ -865,7 +896,7 @@ private fun ComparisonMetricItem(comparison: FlowComparisonUi, modifier: Modifie
         Text(
             text = comparison.label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(4.dp))
@@ -884,13 +915,13 @@ private fun MetricItem(
     label: String,
     amount: BigDecimal,
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.onSurface,
+    color: Color = LocalPlayfulColors.current.textPrimary,
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = LocalPlayfulColors.current.textSecondary,
         )
         Spacer(Modifier.height(4.dp))
         Text(
@@ -905,9 +936,14 @@ private fun MetricItem(
 
 @Composable
 private fun CalendarInsightsCard(biggestSpendDay: Int?, noSpendDayCount: Int) {
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    val colors = LocalPlayfulColors.current
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             Column(
@@ -917,13 +953,14 @@ private fun CalendarInsightsCard(biggestSpendDay: Int?, noSpendDayCount: Int) {
                 Text(
                     text = "No-spend days",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = "$noSpendDayCount",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary,
                 )
             }
             if (biggestSpendDay != null) {
@@ -934,13 +971,14 @@ private fun CalendarInsightsCard(biggestSpendDay: Int?, noSpendDayCount: Int) {
                     Text(
                         text = "Biggest spend",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = colors.textSecondary,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = "Day $biggestSpendDay",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
+                        color = colors.textPrimary,
                     )
                 }
             }
@@ -954,9 +992,19 @@ private fun CalendarNetSection(
     selectedDay: Int?,
     onDayClick: (Int) -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Daily Net", style = MaterialTheme.typography.titleSmall)
+    val colors = LocalPlayfulColors.current
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.leafMirrored(22.dp, 9.dp),
+    ) {
+        Column {
+            Text(
+                "Daily Net",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = colors.textPrimary,
+            )
             Spacer(Modifier.height(12.dp))
             DailyNetCalendarChart(
                 calendarNet = calendarNet,
@@ -969,24 +1017,30 @@ private fun CalendarNetSection(
 
 @Composable
 private fun DayDetailCard(day: Int, dayUi: CalendarDayUi) {
+    val colors = LocalPlayfulColors.current
     val income = BigDecimal.valueOf(dayUi.incomeFloat.toDouble())
     val expense = BigDecimal.valueOf(dayUi.expenseFloat.toDouble())
     val net = income - expense
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
+    ) {
+        Column {
             Text(
                 text = "Day $day",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
             )
             Spacer(Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
-                SummaryItem("Income", income, IncomeColor, Modifier.weight(1f))
-                SummaryItem("Expense", expense, MaterialTheme.colorScheme.error, Modifier.weight(1f))
+                SummaryItem("Income", income, colors.semantic.income, Modifier.weight(1f))
+                SummaryItem("Expense", expense, colors.semantic.negative, Modifier.weight(1f))
                 SummaryItem(
                     label = "Net",
                     amount = net,
-                    color = if (net.signum() < 0) MaterialTheme.colorScheme.error else IncomeColor,
+                    color = if (net.signum() < 0) colors.semantic.negative else colors.semantic.income,
                     modifier = Modifier.weight(1f),
                 )
             }
