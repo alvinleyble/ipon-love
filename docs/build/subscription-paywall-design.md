@@ -217,7 +217,7 @@ Throughout, "**(max count is implicit)**" is Alvin's phrasing for *a ceiling hig
 | **Records — recurring calendar** | Locked (blurred preview?) | Full recurring calendar | Soft gate w/ blurred upsell | "Maybe just blur it?" — presentation Q, see §8.2. |
 | **Records — month stepper depth** | back to **−12 months** | back to **−12 − n** (deep history) | Hard gate on depth | **DECIDED (2026-07-07):** no future beyond the current month; free = last 12mo; premium extends the past. Was uncapped both ways — net-new logic. See §8.2. |
 | **Add txn — paid for partner** | ? | ? | Hard gate (couples surface → §2.2) | Is the *feature* premium, or just its cap (couple debt entries, below)? Governance Q. |
-| **Add txn — receipts** | **1** photo | **2–3** photos | Plan limit (hard) | Existing `TransactionImage.MAX = 3`. Free cap = 1. Lapse Q on already-attached 2nd/3rd photo (§2.1). |
+| **Add txn — receipts** | **0** photos | **3** photos | Plan limit (hard) | Existing `TransactionImage.MAX = 3`. Free cap = **0** (revised 2026-07-21 from 1, matching notes' free-0 shape — v1.6.7 Item 9). Lapse Q on already-attached photos still applies (§2.1). |
 | **Accounts (personal)** | **10** | **100** *(implicit max)* | Plan limit (hard) | — |
 | **Accounts (shared)** | **1** | **50** *(implicit max)* | Plan limit (hard) | Shared surface → whose entitlement unlocks? (§2.2) |
 | **Categories (personal)** | **10** | **150** *(implicit max)* | Plan limit (hard) | — |
@@ -338,7 +338,7 @@ Two kinds of gate, two data shapes (per §1.2, §1.5).
 | `maxPersonalSavingsGoals` | 5 | 50 | individual |
 | `maxSharedSavingsGoals` | 1 | 20 | **shared** |
 | `maxCoupleDebtEntries` (active/un-settled) | 10 | 100 | **shared** |
-| `maxReceiptPhotos` | 1 | 3 | individual |
+| `maxReceiptPhotos` | 0 *(was 1, revised 2026-07-21 — v1.6.7 Item 9)* | 3 | individual |
 | `maxNoteAttachments` | 0 | 3 | individual |
 | `maxNoteChars` | 5,000 | 50,000 | individual |
 | `maxNotes` (both tiers) | 10,000 | 10,000 | individual, unadvertised |
