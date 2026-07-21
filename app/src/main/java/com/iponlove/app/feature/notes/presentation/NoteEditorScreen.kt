@@ -39,6 +39,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -52,6 +53,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
@@ -61,6 +63,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.notes.domain.model.NoteAttachment
 import com.iponlove.app.feature.notes.domain.usecase.NoteCharLimit
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
@@ -75,6 +78,7 @@ fun NoteEditorScreen(
     viewModel: NoteEditorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val colors = LocalPlayfulColors.current
     val richTextState = rememberRichTextState()
     // Draft lives in rememberSaveable so the in-progress edit survives rotation AND process death
     // (Slice 1B). null = not yet seeded; once seeded these hold the live edit. The RichTextState
@@ -145,8 +149,15 @@ fun NoteEditorScreen(
     BackHandler { saveAndExit() }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = colors.textPrimary,
+                    navigationIconContentColor = colors.textPrimary,
+                    actionIconContentColor = colors.textSecondary,
+                ),
                 title = {
                     Text(
                         when {
@@ -173,7 +184,7 @@ fun NoteEditorScreen(
                                     Icon(
                                         imageVector = Icons.Filled.FavoriteBorder,
                                         contentDescription = "Share note with partner",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = colors.textSecondary,
                                     )
                                 }
                             }
@@ -205,7 +216,7 @@ fun NoteEditorScreen(
                     Text(
                         text = "This note no longer exists.",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = colors.textSecondary,
                         modifier = Modifier.align(Alignment.Center).padding(32.dp),
                     )
 
