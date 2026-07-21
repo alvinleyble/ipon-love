@@ -9,7 +9,7 @@ CLAUDE.md requires verifying UI changes by running the app, not eyeballing code.
 
 **Flavor:** always the **staging** flavor — applicationId `com.iponlove.app.staging`, launch component `com.iponlove.app.staging/com.iponlove.app.MainActivity`. (The `namespace`/class is `com.iponlove.app`; only the applicationId carries the `.staging` suffix.)
 
-**Env:** JDK + SDK are already configured for Alvin's terminal (`build-run-environment` memory). SDK tools live at `$HOME/Library/Android/sdk/platform-tools` (adb) and `.../emulator` — not on PATH; call by full path if a bare `adb` isn't found.
+**Env:** JDK + SDK are already configured for Alvin's terminal (`build-run-environment` memory). `adb`/`emulator` are on PATH (set in `.zshrc`, inherited by the Bash tool) — always call them bare. Never fall back to the full `$HOME/Library/Android/sdk/...` path or an `export PATH=...;` prefix: most subcommand shapes are only allowlisted in their bare form, so a full-path or PATH-prefixed call silently drops out of the allowlist and prompts.
 
 ## Build + install
 
@@ -19,7 +19,7 @@ CLAUDE.md requires verifying UI changes by running the app, not eyeballing code.
 
 - Only **tablet AVDs** exist (`Pixel_Tablet`, `Medium_Tablet`) unless a phone AVD was added since. `emulator -list-avds` to check.
 - Boot dies between sessions — re-boot each time as a **`run_in_background` Bash task**: `emulator -avd <name> -no-snapshot-save -no-boot-anim`.
-- Wait for boot with an `until` loop on `adb shell getprop sys.boot_completed` = `1` (foreground `sleep` is blocked — use Monitor or a background until-loop).
+- Wait for boot as a second `run_in_background` Bash task, using this **exact** command (it's allowlisted verbatim — do not rephrase it, a different string won't match): `until adb shell getprop sys.boot_completed | grep -q 1; do sleep 2; done`
 
 ## Launch
 
@@ -35,8 +35,10 @@ CLAUDE.md requires verifying UI changes by running the app, not eyeballing code.
 
 ## Inspect the on-device DB
 
-- Device has no `sqlite3` and the DB is WAL. Pull all three files with `dd` under `run-as` (not `cat`/`exec-out` — they corrupt binary):
-  `for f in ipon.db ipon.db-wal ipon.db-shm; do adb shell run-as com.iponlove.app.staging dd if=databases/$f 2>/dev/null > /tmp/$f; done`
+- Device has no `sqlite3` and the DB is WAL. Pull all three files with `dd` under `run-as` (not `cat`/`exec-out` — they corrupt binary). Issue **three separate `adb` calls, never a `for` loop** — a loop's command string starts with `for`, not `adb`, so it can't match the allowlist and prompts every time:
+  - `adb shell run-as com.iponlove.app.staging dd if=databases/ipon.db 2>/dev/null > /tmp/ipon.db`
+  - `adb shell run-as com.iponlove.app.staging dd if=databases/ipon.db-wal 2>/dev/null > /tmp/ipon.db-wal`
+  - `adb shell run-as com.iponlove.app.staging dd if=databases/ipon.db-shm 2>/dev/null > /tmp/ipon.db-shm`
 - Query with **macOS** `sqlite3 /tmp/ipon.db "select ..."` — the `-wal` file holds the most recent writes. Confirms `pending_sync`, stamped `updated_at`, `userId`, etc.
 
 ## Logs
@@ -50,4 +52,4 @@ CLAUDE.md requires verifying UI changes by running the app, not eyeballing code.
 ## Notes
 
 - Alvin usually self-tests each slice on his own device before commit (`feedback-alvin-self-tests-on-device`). When he's driving, this skill is for reproducing/debugging, not gating — don't assume the emulator loop is the gate.
-- Full living detail: `emulator-verification-recipe` memory.
+- This skill is the single source of truth for the recipe — don't let a memory grow a second copy of it (that's how the `for`-loop bug above resurfaced once already).

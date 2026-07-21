@@ -47,6 +47,7 @@
       "Bash(adb -s * wait-for-device)",
       "Bash(emulator -list-avds)",
       "Bash(emulator -avd *)",
+      "Bash(until adb shell getprop sys.boot_completed | grep -q 1; do sleep 2; done)",
       "Bash(export PATH=\"$HOME/Library/Android/sdk/*)",
       "Bash(ADB=$HOME/Library/Android/sdk/platform-tools/adb)",
       "Bash(D=~/Library/Android/sdk/platform-tools/adb)",
@@ -91,6 +92,20 @@
       "Bash(./gradlew tasks*)",
       "Bash(adb shell cmd statusbar expand-notifications)",
       "Bash($ADB shell cmd statusbar expand-notifications)",
+      "Bash(adb shell 'sleep *)",
+      "Bash($ADB shell 'sleep *)",
+      "Bash(adb shell sleep *)",
+      "Bash(git -C /Users/lovzay/ipon-love status*)",
+      "Bash($HOME/Library/Android/sdk/emulator/emulator -avd *)",
+      "Bash($HOME/Library/Android/sdk/emulator/emulator -list-avds)",
+      "Bash($HOME/Library/Android/sdk/platform-tools/adb shell input *)",
+      "Bash($HOME/Library/Android/sdk/platform-tools/adb exec-out screencap *)",
+      "Bash(./gradlew :app:assembleStagingDebug*)",
+      "Bash(./gradlew kspStagingDebugKotlin*)",
+      "Bash(./gradlew bundleProdRelease*)",
+      "Bash(adb shell wm size)",
+      "Bash(adb -s * shell wm size)",
+      "Bash(git -C /Users/lovzay/ipon-love diff*)",
       "mcp__supabase__get_logs"
     ]
   }
