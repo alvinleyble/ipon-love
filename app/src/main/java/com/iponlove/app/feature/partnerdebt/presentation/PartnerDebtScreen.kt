@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.partnerdebt.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,20 +11,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import com.iponlove.app.core.ui.IponFilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -33,17 +36,31 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CapReachedSheet
+import com.iponlove.app.core.ui.HeartBullet
+import com.iponlove.app.core.ui.HeartTippedProgress
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulChip
+import com.iponlove.app.core.ui.PlayfulDialog
+import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.ellipsize
 import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
+import com.iponlove.app.core.ui.parseHexColor
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtItem
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtNet
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtPaymentItem
@@ -56,6 +73,12 @@ private const val PARTNER_NAME_DISPLAY_MAX = 15
  * Chrome-less Debts body — no Scaffold/TopAppBar/FAB. The Couple tab host ([CoupleScreen])
  * provides the scaffold and an Add-debt FAB (visible only on this tab while paired).
  * The dialogs are rendered here so the ViewModel stays the sole owner of dialog state.
+ *
+ * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 6e): the net summary became a Glass leaf hero
+ * (semantic-tinted amount + the Item 7 privacy eye), debt rows are owner-tinted [PlayfulCard]s with
+ * a [HeartTippedProgress] bar, and the three editor dialogs adopt 6-PD's [PlayfulDialog]. The
+ * owner tint uses each side's ADR-0014 accent color (mine for debts I owe, my partner's for theirs).
+ * The [CoupleScreen] host chrome converts in the same commit, as this is the last Couple tab.
  */
 @Composable
 fun PartnerDebtBody(
@@ -64,7 +87,7 @@ fun PartnerDebtBody(
     viewModel: PartnerDebtViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    Box(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize().playfulBackground()) {
         when {
             state.isLoading ->
                 CircularProgressIndicator(Modifier.align(Alignment.Center))
@@ -78,10 +101,16 @@ fun PartnerDebtBody(
 
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item { NetSummaryCard(state.net) }
+                item {
+                    NetSummaryCard(
+                        net = state.net,
+                        isPrivacyModeOn = state.privacyModeEnabled,
+                        onTogglePrivacyMode = viewModel::togglePrivacyMode,
+                    )
+                }
                 if (state.debts.isEmpty()) {
                     item {
                         EmptyState(
@@ -91,9 +120,15 @@ fun PartnerDebtBody(
                         )
                     }
                 } else {
-                    items(state.debts, key = { it.id }) { debt ->
+                    itemsIndexed(state.debts, key = { _, it -> it.id }) { index, debt ->
                         DebtCard(
                             debt = debt,
+                            index = index,
+                            // Owner tint by who owes: my accent for debts I owe, my partner's for theirs.
+                            ownerColor = ownerColor(
+                                accentHex = if (debt.iAmBorrower) state.myAccentColor else state.partnerAccentColor,
+                                isMine = debt.iAmBorrower,
+                            ),
                             onSettle = { viewModel.startSettle(debt) },
                             onReceive = { payment -> viewModel.startReceive(debt, payment) },
                             onDelete = { viewModel.removeDebt(debt.id) },
@@ -145,68 +180,144 @@ fun PartnerDebtBody(
     }
 }
 
+/**
+ * The net-balance hero (v1.6.7 Item 8 Slice 6e): a Glass leaf-squircle [PlayfulCard] with a
+ * translucent heart accent, the direction sentence, and the amount tinted by net direction —
+ * `semantic.negative` when I owe, `semantic.income` when I'm owed (a Glass hero, not a fixed
+ * accent→deepPlum gradient, so this red/green net cue survives the reskin). Carries the Item 7
+ * privacy eye (masking is global — [PartnerDebtViewModel.togglePrivacyMode]).
+ */
 @Composable
-private fun NetSummaryCard(net: DebtNet?) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = "Net balance",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+private fun NetSummaryCard(
+    net: DebtNet?,
+    isPrivacyModeOn: Boolean,
+    onTogglePrivacyMode: () -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.leaf(30.dp, 12.dp),
+        tiltDegrees = -0.6f,
+        contentPadding = 18.dp,
+    ) {
+        // Oversized translucent heart accent, clipped by the card's own leaf-squircle shape.
+        HeartBullet(
+            color = colors.accent.copy(alpha = 0.10f),
+            sizeDp = 88,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 18.dp, y = 18.dp)
+                .rotate(-10f),
+        )
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Net balance",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textSecondary,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onTogglePrivacyMode) {
+                    Icon(
+                        imageVector = if (isPrivacyModeOn) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        contentDescription = if (isPrivacyModeOn) "Show amounts" else "Hide amounts",
+                        tint = colors.textSecondary,
+                    )
+                }
+            }
             val partner = (net?.counterpartName ?: "your partner").ellipsize(PARTNER_NAME_DISPLAY_MAX)
             when (net?.direction) {
                 NetDirection.I_OWE -> {
-                    Text("You owe $partner", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        money(net.amount),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.error,
+                        "You owe $partner",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
                     )
+                    HeroAmount(money(net.amount), colors.semantic.negative)
                 }
 
                 NetDirection.OWED_TO_ME -> {
-                    Text("$partner owes you", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        money(net.amount),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        "$partner owes you",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
                     )
+                    HeroAmount(money(net.amount), colors.semantic.income)
                 }
 
                 else ->
-                    Text("All settled up", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "All settled up",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
+                    )
             }
         }
     }
 }
 
 @Composable
+private fun HeroAmount(text: String, color: Color) {
+    Text(
+        text = text,
+        style = TextStyle(
+            fontSize = 28.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = (-1).sp,
+            color = color,
+        ),
+        modifier = Modifier.padding(top = 2.dp),
+    )
+}
+
+@Composable
 private fun DebtCard(
     debt: DebtItem,
+    index: Int,
+    ownerColor: Color,
     onSettle: () -> Unit,
     onReceive: (DebtPaymentItem) -> Unit,
     onDelete: () -> Unit,
 ) {
+    val colors = LocalPlayfulColors.current
     val partner = (debt.counterpartName ?: "Partner").ellipsize(PARTNER_NAME_DISPLAY_MAX)
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.leafFor(index, 22.dp, 9.dp),
+        contentPadding = 16.dp,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(38.dp).clip(LeafShapes.IconSquircle).background(ownerColor),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    HeartBullet(Color.White, sizeDp = 16)
+                }
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = if (debt.iAmBorrower) "You owe $partner" else "$partner owes you",
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
                     )
                     debt.description?.let {
                         Text(
                             text = it,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = colors.textSecondary,
                         )
                     }
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Outlined.Delete, contentDescription = "Delete debt")
+                    Icon(Icons.Outlined.Delete, contentDescription = "Delete debt", tint = colors.textSecondary)
                 }
             }
 
@@ -214,18 +325,16 @@ private fun DebtCard(
                 Text(
                     text = "Settled · ${money(debt.original)}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = colors.semantic.income,
                     fontWeight = FontWeight.SemiBold,
                 )
             } else {
-                LinearProgressIndicator(
-                    progress = { debt.fraction },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                HeartTippedProgress(progress = debt.fraction, fillColor = ownerColor)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "${money(debt.remaining)} of ${money(debt.original)} left",
                         style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
                         modifier = Modifier.weight(1f),
                     )
                     // Only the borrower settles — they spend from their own account (ADR-0019 #14).
@@ -254,17 +363,18 @@ private fun PaymentRow(
     canReceive: Boolean,
     onReceive: () -> Unit,
 ) {
+    val colors = LocalPlayfulColors.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = payment.note ?: "Payment",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
             modifier = Modifier.weight(1f),
         )
         Text(
             text = "${money(payment.amount)} · ${formatShortDate(payment.date)}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
         )
     }
     when {
@@ -272,7 +382,7 @@ private fun PaymentRow(
         payment.receiverTxnId != null -> Text(
             text = "Added to your account",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
+            color = colors.semantic.income,
         )
     }
 }
@@ -288,33 +398,21 @@ private fun AddDebtDialog(
     onCancel: () -> Unit,
 ) {
     val shortPartnerName = partnerName.ellipsize(PARTNER_NAME_DISPLAY_MAX)
-    AlertDialog(
+    PlayfulDialog(
         onDismissRequest = onCancel,
         title = { Text("Add a debt") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IponFilterChip(
+                    PlayfulChip(
+                        label = "I owe $shortPartnerName",
                         selected = editor.direction == DebtDirection.I_OWE,
                         onClick = { onDirectionChange(DebtDirection.I_OWE) },
-                        label = {
-                            Text(
-                                "I owe $shortPartnerName",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
                     )
-                    IponFilterChip(
+                    PlayfulChip(
+                        label = "$shortPartnerName owes me",
                         selected = editor.direction == DebtDirection.THEY_OWE,
                         onClick = { onDirectionChange(DebtDirection.THEY_OWE) },
-                        label = {
-                            Text(
-                                "$shortPartnerName owes me",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
                     )
                 }
                 OutlinedTextField(
@@ -355,7 +453,7 @@ private fun SettleDialog(
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    AlertDialog(
+    PlayfulDialog(
         onDismissRequest = onCancel,
         title = { Text("Settle debt") },
         text = {
@@ -407,7 +505,7 @@ private fun ReceiveDialog(
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    AlertDialog(
+    PlayfulDialog(
         onDismissRequest = onCancel,
         title = { Text("Add to my account") },
         text = {
@@ -468,17 +566,25 @@ private fun AccountPicker(
 
 @Composable
 private fun EmptyState(title: String, body: String, modifier: Modifier = Modifier) {
+    val colors = LocalPlayfulColors.current
     Column(
         modifier = modifier.padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = colors.textPrimary)
         Spacer(Modifier.height(4.dp))
         Text(
             text = body,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
         )
     }
+}
+
+/** A member's stored accent if usable, else a Playful accent/deepPlum fallback distinct per side. */
+@Composable
+private fun ownerColor(accentHex: String?, isMine: Boolean): Color {
+    val colors = LocalPlayfulColors.current
+    return parseHexColor(accentHex) ?: if (isMine) colors.accent else colors.deepPlum
 }

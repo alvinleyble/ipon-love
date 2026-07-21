@@ -17,10 +17,16 @@ data class PartnerDebtUiState(
     val net: DebtNet? = null,
     val debts: List<DebtItem> = emptyList(),
     val accounts: List<AccountOption> = emptyList(),
+    /** My couple accent color (ADR-0014), for the owner-tint on debts I owe. Null → Playful fallback. */
+    val myAccentColor: String? = null,
+    /** My partner's couple accent color (ADR-0014), for the owner-tint on debts they owe. */
+    val partnerAccentColor: String? = null,
     /** The single open dialog, or null when none is shown. */
     val dialog: DebtDialog? = null,
     /** Non-null while the count-cap upsell sheet is showing (S7; only ever set under enforcement). */
     val upsell: UpsellPrompt? = null,
+    /** Global amount-masking flag (Item 7 / Item 15). Drives the hero's privacy eye icon. */
+    val privacyModeEnabled: Boolean = false,
 )
 
 /** A pickable account for the settle / receive sheets. */
