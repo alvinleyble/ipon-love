@@ -52,6 +52,14 @@ class UserRepositoryImpl @Inject constructor(
         syncTrigger.requestPush()
     }
 
+    override suspend fun updateAvatarMotif(motif: String) {
+        val userId = currentUserProvider.userId()
+        val existing = dao.getById(userId) ?: return
+        val now = clock.stamp()
+        dao.upsert(existing.copy(avatarMotif = motif, updatedAt = now, pendingSync = true))
+        syncTrigger.requestPush()
+    }
+
     override suspend fun updateDisplayName(name: String) {
         val userId = currentUserProvider.userId()
         val existing = dao.getById(userId) ?: return

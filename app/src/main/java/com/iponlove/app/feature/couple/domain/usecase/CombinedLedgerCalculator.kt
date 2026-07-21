@@ -83,6 +83,7 @@ object CombinedLedgerCalculator {
             id = user.id,
             displayName = user.displayName,
             accentColor = user.accentColor,
+            avatarMotif = user.avatarMotif,
             isMine = isMine,
             monthlyExpense = expense,
         )

@@ -37,7 +37,12 @@ class CoupleViewModel @Inject constructor(
 
     val state: StateFlow<CoupleUiState> =
         combine(observePairingState(), local, userRepository.observeCurrentUser()) { pairing, l, me ->
-            l.copy(pairing = pairing, currentDisplayName = me?.displayName)
+            l.copy(
+                pairing = pairing,
+                currentDisplayName = me?.displayName,
+                currentAvatarMotif = me?.avatarMotif,
+                currentAccentColor = me?.accentColor,
+            )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),

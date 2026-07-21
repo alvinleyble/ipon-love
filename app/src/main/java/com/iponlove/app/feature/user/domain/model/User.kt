@@ -8,6 +8,8 @@ data class User(
     val id: String,
     val displayName: String?,
     val accentColor: String?,
+    /** Free motif-avatar key (v1.6.7 Item 3 Leg 1); null → Heart default. */
+    val avatarMotif: String? = null,
     val coupleId: String?,
     val createdAt: Instant? = null,
 )

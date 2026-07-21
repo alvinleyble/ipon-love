@@ -112,6 +112,7 @@ private class FakeUserRepository : UserRepository {
     override fun observePartner(coupleId: String): Flow<User?> = partner
     override suspend fun ensureLocalRow(userId: String, displayName: String?) = Unit
     override suspend fun updateAccentColor(color: String) = Unit
+    override suspend fun updateAvatarMotif(motif: String) = Unit
     override suspend fun updateDisplayName(name: String) = Unit
     override suspend fun getSelfEntitlement(): Entitlement? = null
     override fun observeSelfEntitlement(): Flow<Entitlement> = emptyFlow()

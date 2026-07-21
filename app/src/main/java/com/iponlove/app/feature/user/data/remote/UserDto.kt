@@ -15,6 +15,9 @@ data class UserDto(
     @SerialName("display_name") val displayName: String?,
     @SerialName("avatar_url") val avatarUrl: String?,
     @SerialName("accent_color") val accentColor: String?,
+    // Free motif-avatar key (v1.6.7 Item 3 Leg 1) — round-trips through sync so the partner sees it;
+    // not redacted (partner-visible by design, same as accent_color). Default null = Heart.
+    @SerialName("avatar_motif") val avatarMotif: String? = null,
     @SerialName("couple_id") val coupleId: String?,
     // Premium entitlement (dormant paywall infra, D2 / ADR-0044). Round-trips through sync
     // so a purchase/grant reaches the partner; not redacted (partner-visible by design).

@@ -30,6 +30,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
@@ -41,6 +42,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.iponlove.app.core.ui.AccentColorRow
+import com.iponlove.app.core.ui.MotifAvatar
+import com.iponlove.app.core.ui.MotifPicker
 import com.iponlove.app.core.ui.SettingsSectionHeader
 import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
@@ -88,6 +91,14 @@ fun ProfileScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
+            MotifAvatar(
+                motifKey = state.avatarMotif,
+                accentHex = state.accentColor,
+                size = 72.dp,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+            Spacer(Modifier.height(24.dp))
+
             SettingsSectionHeader("Nickname")
             Text(
                 "This is what your partner sees in the combined view and on shared notes.",
@@ -133,6 +144,21 @@ fun ProfileScreen(
                     label = "",
                 )
             }
+
+            // Avatar motif is free for everyone (not couple-gated) — shown whether single or paired.
+            Spacer(Modifier.height(28.dp))
+            SettingsSectionHeader("Avatar")
+            Text(
+                "Pick a motif for your avatar. It's tinted by your accent color.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            Spacer(Modifier.height(12.dp))
+            MotifPicker(
+                selectedKey = state.avatarMotif,
+                accentHex = state.accentColor,
+                onSelect = viewModel::onMotifSelected,
+            )
 
             Spacer(Modifier.height(28.dp))
             SettingsSectionHeader("Account")

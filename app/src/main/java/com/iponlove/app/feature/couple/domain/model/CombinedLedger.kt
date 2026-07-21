@@ -38,6 +38,8 @@ data class MemberSpend(
     val id: String,
     val displayName: String?,
     val accentColor: String?,
+    /** Free motif-avatar key (v1.6.7 Item 3 Leg 1); null → Heart. */
+    val avatarMotif: String?,
     val isMine: Boolean,
     val monthlyExpense: BigDecimal,
 )

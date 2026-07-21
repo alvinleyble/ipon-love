@@ -54,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.iponlove.app.core.ui.FullScreenImagePager
 import com.iponlove.app.core.ui.HeartBullet
+import com.iponlove.app.core.ui.MotifAvatar
 import com.iponlove.app.core.ui.HeartTippedProgress
 import com.iponlove.app.core.ui.MonthStepperRow
 import com.iponlove.app.core.ui.PlayfulCard
@@ -328,7 +329,6 @@ private fun PartnerSplitSection(
                 Row(modifier = Modifier.fillMaxWidth()) {
                     PartnerSpendCard(
                         member = me,
-                        heartColor = meColor,
                         surface = PlayfulSurface.Blush,
                         shape = LeafShapes.leaf(26.dp, 11.dp),
                         tiltDegrees = -1f,
@@ -337,7 +337,6 @@ private fun PartnerSplitSection(
                     )
                     PartnerSpendCard(
                         member = partner,
-                        heartColor = partnerColor,
                         surface = PlayfulSurface.DeepPlum,
                         shape = LeafShapes.leafMirrored(26.dp, 11.dp),
                         tiltDegrees = 1f,
@@ -367,7 +366,6 @@ private fun PartnerSplitSection(
                 members.forEach { member ->
                     PartnerSpendCard(
                         member = member,
-                        heartColor = ownerColor(member.accentColor, member.isMine),
                         surface = if (member.isMine) PlayfulSurface.Blush else PlayfulSurface.DeepPlum,
                         shape = LeafShapes.Card,
                         tiltDegrees = 0f,
@@ -383,7 +381,6 @@ private fun PartnerSplitSection(
 @Composable
 private fun PartnerSpendCard(
     member: MemberSpend,
-    heartColor: Color,
     surface: PlayfulSurface,
     shape: RoundedCornerShape,
     tiltDegrees: Float,
@@ -401,7 +398,8 @@ private fun PartnerSpendCard(
         contentPadding = 16.dp,
     ) {
         Column {
-            HeartBullet(heartColor, sizeDp = 18)
+            // The member's motif avatar (v1.6.7 Item 3 Leg 1) replaces the plain accent heart bullet.
+            MotifAvatar(motifKey = member.avatarMotif, accentHex = member.accentColor, size = 30.dp)
             Spacer(Modifier.height(6.dp))
             Text(
                 text = member.label(),

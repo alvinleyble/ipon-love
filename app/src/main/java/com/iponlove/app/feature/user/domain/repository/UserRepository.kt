@@ -29,6 +29,13 @@ interface UserRepository {
     suspend fun updateAccentColor(color: String)
 
     /**
+     * Persist [motif] (a motif-avatar key, e.g. "leaf") as the current user's avatar and mark the
+     * row pending_sync so it pushes on next sync — a synced cosmetic like the accent color
+     * (v1.6.7 Item 3 Leg 1, ADR-0014).
+     */
+    suspend fun updateAvatarMotif(motif: String)
+
+    /**
      * Persist [name] as the current user's display name and mark the row pending_sync so it
      * pushes on next sync via the existing UserDto path (ADR-0016).
      */

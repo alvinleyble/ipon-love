@@ -12,6 +12,8 @@ data class ProfileUiState(
     val nameDraft: String = "",
     val email: String? = null,
     val accentColor: String? = null,
+    /** Free motif-avatar key (v1.6.7 Item 3 Leg 1); null → Heart. Drives the header avatar + picker. */
+    val avatarMotif: String? = null,
     val isPaired: Boolean = false,
     val saved: Boolean = false,
     val showResetFinancesDialog: Boolean = false,

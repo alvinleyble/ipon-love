@@ -19,6 +19,9 @@ data class UserEntity(
     val displayName: String?,
     val avatarUrl: String?,
     val accentColor: String?,
+    // Free motif-avatar key (v1.6.7 Item 3 Leg 1) — synced cosmetic like accentColor, null = Heart.
+    // Default lets the Room auto-migration (26→27) add the column without an AutoMigrationSpec.
+    val avatarMotif: String? = null,
     val coupleId: String?,
     // Premium entitlement (dormant paywall infra, D2 / ADR-0044). Defaults let the Room
     // auto-migration (23→24) add these columns without an AutoMigrationSpec.

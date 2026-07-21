@@ -18,6 +18,7 @@ import com.iponlove.app.feature.settings.domain.usecase.ResetFinancesUseCase
 import com.iponlove.app.feature.user.domain.usecase.GetAccountEmailUseCase
 import com.iponlove.app.feature.user.domain.usecase.ObserveCurrentUserUseCase
 import com.iponlove.app.feature.user.domain.usecase.UpdateAccentColorUseCase
+import com.iponlove.app.feature.user.domain.usecase.UpdateAvatarMotifUseCase
 import com.iponlove.app.feature.user.domain.usecase.UpdateDisplayNameUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,6 +36,7 @@ class ProfileViewModel @Inject constructor(
     connectivity: ConnectivityObserver,
     private val updateDisplayName: UpdateDisplayNameUseCase,
     private val updateAccentColor: UpdateAccentColorUseCase,
+    private val updateAvatarMotif: UpdateAvatarMotifUseCase,
     private val previewResetFinances: PreviewResetFinancesUseCase,
     private val resetFinances: ResetFinancesUseCase,
     private val deleteUserAccount: DeleteUserAccountUseCase,
@@ -57,6 +59,7 @@ class ProfileViewModel @Inject constructor(
                     state.copy(
                         nameDraft = if (nameSeeded) state.nameDraft else user?.displayName.orEmpty(),
                         accentColor = user?.accentColor,
+                        avatarMotif = user?.avatarMotif,
                         isPaired = user?.coupleId != null,
                     )
                 }
@@ -89,6 +92,10 @@ class ProfileViewModel @Inject constructor(
 
     fun onAccentColorSelected(hex: String) {
         viewModelScope.launch { updateAccentColor(hex) }
+    }
+
+    fun onMotifSelected(key: String) {
+        viewModelScope.launch { updateAvatarMotif(key) }
     }
 
     /**

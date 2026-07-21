@@ -3,6 +3,7 @@ package com.iponlove.app.feature.couple.presentation
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.iponlove.app.core.ui.AccentColorRow
+import com.iponlove.app.core.ui.MotifAvatar
 import com.iponlove.app.core.ui.PlayfulCard
 import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.theme.LeafShapes
@@ -170,6 +172,21 @@ internal fun PairedContent(
         shape = LeafShapes.Card,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Both partners' motif avatars (Item 3 Leg 1) — mine always, my partner's once synced.
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MotifAvatar(
+                    motifKey = state.currentAvatarMotif,
+                    accentHex = state.currentAccentColor,
+                    size = 44.dp,
+                )
+                paired.partner?.let { partner ->
+                    MotifAvatar(
+                        motifKey = partner.avatarMotif,
+                        accentHex = partner.accentColor,
+                        size = 44.dp,
+                    )
+                }
+            }
             Text(couple.name, style = MaterialTheme.typography.titleLarge, color = colors.onBlush)
             val partnerLabel = when {
                 couple.isAwaitingPartner -> "Waiting for your partner to join…"

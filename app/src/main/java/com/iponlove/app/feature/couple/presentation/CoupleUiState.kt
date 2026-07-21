@@ -15,6 +15,10 @@ data class CoupleUiState(
     val error: PairingError? = null,
     val selectedColor: String? = null,
     val currentDisplayName: String? = null,
+    // Current user's synced cosmetics, for the paired identity card's avatars (Item 3 Leg 1).
+    // The partner's motif/accent ride on PairingState.Paired.partner (a User).
+    val currentAvatarMotif: String? = null,
+    val currentAccentColor: String? = null,
 ) {
     val canCreate: Boolean get() = nameInput.isNotBlank() && selectedColor != null && !isWorking
     val canRedeem: Boolean get() = codeInput.isNotBlank() && selectedColor != null && !isWorking

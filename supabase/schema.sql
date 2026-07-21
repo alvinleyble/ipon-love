@@ -63,6 +63,7 @@ create table users (
     display_name text,
     avatar_url   text,
     accent_color text,                       -- hex, for combined-view color coding
+    avatar_motif text,                       -- free motif-avatar key (heart/leaf/bloom/…); null = Heart (v1.6.7 Item 3 Leg 1)
     couple_id    uuid references couples(id) on delete set null,
     -- Premium entitlement (dormant paywall infra, D2 / ADR-0044). A client-maintained
     -- cache of Play state, carried on the synced users row so the couple can read each
