@@ -2,6 +2,7 @@ package com.iponlove.app.feature.auth.presentation
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +18,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,6 +32,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.iponlove.app.R
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulSurface
+import com.iponlove.app.core.ui.onPlayfulSurface
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.auth.domain.model.AuthError
 
 @Composable
@@ -60,7 +66,8 @@ private fun AuthContent(
     onToggleMode: () -> Unit,
     onForgotPassword: () -> Unit,
 ) {
-    Surface(modifier = Modifier.fillMaxSize()) {
+    val colors = LocalPlayfulColors.current
+    Box(modifier = Modifier.fillMaxSize().playfulBackground()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -76,12 +83,16 @@ private fun AuthContent(
                 modifier = Modifier.size(96.dp),
             )
             Spacer(Modifier.height(16.dp))
-            Text("Love, Ipon", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                "Love, Ipon",
+                style = MaterialTheme.typography.headlineMedium,
+                color = colors.textPrimary,
+            )
             Spacer(Modifier.height(4.dp))
             Text(
                 text = if (state.mode == AuthMode.SIGN_IN) "Welcome back" else "Create your account",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Spacer(Modifier.height(32.dp))
 
@@ -197,17 +208,16 @@ private fun AuthContent(
 
 @Composable
 private fun ConfirmationBanner() {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        shape = MaterialTheme.shapes.medium,
+    PlayfulCard(
         modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Blush,
+        shape = LeafShapes.Card,
     ) {
         Text(
             text = "Account created. Check your email for a confirmation link, then sign in.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            color = onPlayfulSurface(PlayfulSurface.Blush),
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(16.dp),
         )
     }
 }

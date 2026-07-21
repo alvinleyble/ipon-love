@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +30,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.iponlove.app.core.ui.AccentColorRow
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulSurface
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.couple.domain.model.PairingError
 import com.iponlove.app.feature.couple.domain.model.PairingState
 
@@ -40,6 +43,11 @@ private const val INVITE_LANDING_URL = "https://loveipon.app/invite"
  * Pairing/unpair body — create-or-join when unpaired, invite-code sharing + unpair when paired.
  * Chrome-less (no Scaffold): reused by both Settings → Couple (relocated destination, ADR-0024)
  * and the onboarding pair-or-solo step's "Invite"/"Code" sub-forms.
+ *
+ * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 6h): Cards → leaf-squircle [PlayfulCard]s,
+ * every Text explicitly Playful-tinted (the host Scaffold is transparent, so an implicit content
+ * color would fall back to black — the 6a black-fallback rule). Form controls (text fields,
+ * buttons, `AccentColorRow`) and the one-off unpair confirm dialog stay conservative M3.
  */
 @Composable
 fun CoupleOverviewBody(
@@ -69,10 +77,16 @@ fun CoupleOverviewBody(
 
 @Composable
 internal fun NotPairedContent(state: CoupleUiState, viewModel: CoupleViewModel) {
+    val colors = LocalPlayfulColors.current
+
     // Single color picker shown once — shared by both create and join flows.
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Your accent color", style = MaterialTheme.typography.titleSmall)
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Your accent color", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
             AccentColorRow(
                 selectedHex = state.selectedColor,
                 enabled = !state.isWorking,
@@ -81,13 +95,17 @@ internal fun NotPairedContent(state: CoupleUiState, viewModel: CoupleViewModel) 
         }
     }
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Create a couple", style = MaterialTheme.typography.titleMedium)
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.leafMirrored(22.dp, 9.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Create a couple", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
             Text(
                 "Start a shared space and send your partner the invite code.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             OutlinedTextField(
                 value = state.nameInput,
@@ -105,13 +123,17 @@ internal fun NotPairedContent(state: CoupleUiState, viewModel: CoupleViewModel) 
         }
     }
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Join a couple", style = MaterialTheme.typography.titleMedium)
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Join a couple", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
             Text(
                 "Already have a code from your partner? Enter it here.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             OutlinedTextField(
                 value = state.codeInput,
@@ -137,12 +159,18 @@ internal fun PairedContent(
     viewModel: CoupleViewModel,
     currentDisplayName: String?,
 ) {
+    val colors = LocalPlayfulColors.current
     var confirmUnpair by remember { mutableStateOf(false) }
     val couple = paired.couple
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(couple.name, style = MaterialTheme.typography.titleLarge)
+    // The couple identity gets a warm blush pop (pure display, no fields).
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Blush,
+        shape = LeafShapes.Card,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(couple.name, style = MaterialTheme.typography.titleLarge, color = colors.onBlush)
             val partnerLabel = when {
                 couple.isAwaitingPartner -> "Waiting for your partner to join…"
                 else -> "Paired with ${paired.partner?.displayName ?: "your partner"}"
@@ -150,19 +178,24 @@ internal fun PairedContent(
             Text(
                 partnerLabel,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.onBlushSecondary,
             )
         }
     }
 
     if (couple.isAwaitingPartner) {
         val context = LocalContext.current
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Invite code", style = MaterialTheme.typography.titleMedium)
+        PlayfulCard(
+            modifier = Modifier.fillMaxWidth(),
+            surface = PlayfulSurface.Glass,
+            shape = LeafShapes.leafMirrored(22.dp, 9.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Invite code", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
                 Text(
                     couple.inviteCode,
                     style = MaterialTheme.typography.headlineMedium,
+                    color = colors.accent,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -187,7 +220,7 @@ internal fun PairedContent(
                 Text(
                     "Share this code with your partner so they can join.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                 )
                 OutlinedButton(
                     onClick = viewModel::rotateInviteCode,
@@ -230,12 +263,15 @@ internal fun PairedContent(
 
 @Composable
 internal fun ErrorBanner(error: PairingError) {
-    Card(Modifier.fillMaxWidth()) {
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
+    ) {
         Text(
             text = error.message(),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(16.dp),
         )
     }
 }

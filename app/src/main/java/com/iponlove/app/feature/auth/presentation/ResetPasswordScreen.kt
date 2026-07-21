@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.auth.presentation
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,6 +36,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 
 @Composable
 fun ResetPasswordScreen(viewModel: ResetPasswordViewModel) {
@@ -57,7 +59,8 @@ private fun ResetPasswordContent(
     onSubmit: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    Surface(modifier = Modifier.fillMaxSize()) {
+    val colors = LocalPlayfulColors.current
+    Box(modifier = Modifier.fillMaxSize().playfulBackground()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -67,7 +70,11 @@ private fun ResetPasswordContent(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Set a new password", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                "Set a new password",
+                style = MaterialTheme.typography.headlineSmall,
+                color = colors.textPrimary,
+            )
             Spacer(Modifier.height(32.dp))
 
             var passwordVisible by remember { mutableStateOf(false) }

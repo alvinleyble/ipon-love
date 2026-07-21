@@ -91,6 +91,12 @@ private fun AccentColorSwatch(
                     else Modifier
                 ),
         )
-        Text(label, style = MaterialTheme.typography.labelSmall)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            // Explicit color: on the transparent/playful Scaffolds (onboarding pair, Profile),
+            // an unset content color falls back to black and vanishes in dark mode.
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }

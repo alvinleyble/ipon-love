@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.auth.presentation
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,7 +16,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,6 +27,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulSurface
+import com.iponlove.app.core.ui.onPlayfulSurface
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 
 @Composable
 fun ForgotPasswordScreen(viewModel: ForgotPasswordViewModel, onBack: () -> Unit) {
@@ -46,7 +52,8 @@ private fun ForgotPasswordContent(
     onSubmit: () -> Unit,
     onBack: () -> Unit,
 ) {
-    Surface(modifier = Modifier.fillMaxSize()) {
+    val colors = LocalPlayfulColors.current
+    Box(modifier = Modifier.fillMaxSize().playfulBackground()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -56,12 +63,16 @@ private fun ForgotPasswordContent(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Reset your password", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                "Reset your password",
+                style = MaterialTheme.typography.headlineSmall,
+                color = colors.textPrimary,
+            )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "Enter your account email and we'll send you a link to set a new password.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(32.dp))
@@ -114,17 +125,16 @@ private fun ForgotPasswordContent(
 
 @Composable
 private fun ResetEmailSentBanner() {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        shape = MaterialTheme.shapes.medium,
+    PlayfulCard(
         modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Blush,
+        shape = LeafShapes.Card,
     ) {
         Text(
             text = "Check your email for a link to reset your password.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            color = onPlayfulSurface(PlayfulSurface.Blush),
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(16.dp),
         )
     }
 }

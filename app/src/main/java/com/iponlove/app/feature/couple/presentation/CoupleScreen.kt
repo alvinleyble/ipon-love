@@ -20,7 +20,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -76,11 +75,18 @@ fun CoupleScreen(
     val fullyPaired = pairing is PairingState.Paired && pairing.partner != null
 
     if (!fullyPaired) {
-        Scaffold(topBar = { TopAppBar(title = { Text("Couple") }) }) { padding ->
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                Box(Modifier.statusBarsPadding().padding(top = 10.dp, bottom = 2.dp)) {
+                    PlayfulScreenTitle(title = "Couple")
+                }
+            },
+        ) { padding ->
             CoupleOverviewBody(
                 state = coupleState,
                 viewModel = coupleViewModel,
-                modifier = Modifier.padding(padding).fillMaxSize(),
+                modifier = Modifier.padding(padding).fillMaxSize().playfulBackground(),
             )
         }
         return

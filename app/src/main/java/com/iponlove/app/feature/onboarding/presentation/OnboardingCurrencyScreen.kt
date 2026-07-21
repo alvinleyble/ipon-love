@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.onboarding.presentation
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -19,6 +19,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CurrencyGrid
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 
 /**
@@ -34,7 +36,8 @@ fun OnboardingCurrencyScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
-    Surface(modifier = Modifier.fillMaxSize()) {
+    val colors = LocalPlayfulColors.current
+    Box(modifier = Modifier.fillMaxSize().playfulBackground()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -44,6 +47,7 @@ fun OnboardingCurrencyScreen(
             Text(
                 "Choose your currency symbol",
                 style = MaterialTheme.typography.headlineSmall,
+                color = colors.textPrimary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -53,7 +57,7 @@ fun OnboardingCurrencyScreen(
                     "you can change it later from Settings.",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(24.dp))

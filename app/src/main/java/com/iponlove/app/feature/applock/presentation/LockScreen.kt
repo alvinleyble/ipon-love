@@ -17,7 +17,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import android.content.Context
@@ -43,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import com.iponlove.app.R
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -129,23 +130,28 @@ fun LockScreen(
         }
     }
 
-    Surface(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
+    val colors = LocalPlayfulColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .playfulBackground()
+            .padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
             Spacer(Modifier.height(80.dp))
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
+                Text(
+                    stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = colors.textPrimary,
+                )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     if (showPinPad) "Enter your PIN" else "Unlock to continue",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                 )
             }
 
@@ -167,7 +173,7 @@ fun LockScreen(
                     Icons.Filled.Fingerprint,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = colors.accent,
                 )
             }
 
@@ -196,7 +202,6 @@ fun LockScreen(
                     Text("Forgot PIN")
                 }
             }
-        }
     }
 
     if (uiState.showForgotPinDialog) {
