@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.savings.domain.model.GoalContribution
+import com.iponlove.app.feature.savings.domain.model.SavingsGoalProgress
 import com.iponlove.app.feature.savings.domain.usecase.AddGoalContributionUseCase
 import com.iponlove.app.feature.savings.domain.usecase.DeleteGoalContributionUseCase
 import com.iponlove.app.feature.savings.domain.usecase.DeleteSavingsGoalUseCase
@@ -13,6 +14,8 @@ import com.iponlove.app.feature.savings.domain.usecase.EditGoalContributionUseCa
 import com.iponlove.app.feature.savings.domain.usecase.ObserveGoalContributionsUseCase
 import com.iponlove.app.feature.savings.domain.usecase.ObserveSavingsGoalsUseCase
 import com.iponlove.app.feature.savings.domain.usecase.SetGoalArchivedUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -33,6 +36,8 @@ class GoalDetailViewModel @Inject constructor(
     observeGoals: ObserveSavingsGoalsUseCase,
     observeContributions: ObserveGoalContributionsUseCase,
     observePairingState: ObservePairingStateUseCase,
+    observePrivacyMode: ObservePrivacyModeUseCase,
+    private val setPrivacyMode: SetPrivacyModeUseCase,
     private val addContribution: AddGoalContributionUseCase,
     private val editContribution: EditGoalContributionUseCase,
     private val deleteContributionUseCase: DeleteGoalContributionUseCase,
@@ -55,13 +60,14 @@ class GoalDetailViewModel @Inject constructor(
                 observeGoals(),
                 observeContributions(goalId),
                 partnerName,
-            ) { goals, contributions, partner ->
-                Triple(goals, contributions, partner)
-            }.collect { (goals, contributions, partner) ->
+                observePrivacyMode(),
+            ) { goals, contributions, partner, privacyModeOn ->
+                GoalDetailSnapshot(goals, contributions, partner, privacyModeOn)
+            }.collect { (goals, contributions, partner, privacyModeOn) ->
                 val progress = goals.firstOrNull { it.goal.id == goalId }
                 _uiState.update {
                     if (progress == null) {
-                        it.copy(loaded = true, missing = true)
+                        it.copy(loaded = true, missing = true, privacyModeEnabled = privacyModeOn)
                     } else {
                         val goal = progress.goal
                         it.copy(
@@ -79,12 +85,24 @@ class GoalDetailViewModel @Inject constructor(
                             isArchived = goal.isArchived,
                             canManage = !goal.isPartnerGoal,
                             contributions = contributions.map { c -> c.toRow(partner) },
+                            privacyModeEnabled = privacyModeOn,
                         )
                     }
                 }
             }
         }
     }
+
+    fun togglePrivacyMode() {
+        viewModelScope.launch { setPrivacyMode(!_uiState.value.privacyModeEnabled) }
+    }
+
+    private data class GoalDetailSnapshot(
+        val goals: List<SavingsGoalProgress>,
+        val contributions: List<GoalContribution>,
+        val partner: String,
+        val privacyModeOn: Boolean,
+    )
 
     fun addContribution(amount: BigDecimal, date: Instant, note: String?) {
         viewModelScope.launch { addContribution.invoke(goalId, amount, date, note) }

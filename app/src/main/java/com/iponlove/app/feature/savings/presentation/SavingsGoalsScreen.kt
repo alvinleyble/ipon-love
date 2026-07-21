@@ -22,9 +22,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -67,7 +70,8 @@ import kotlin.math.roundToInt
  * — unlike Accounts/Combined — owns its own top-level Scaffold rather than being hosted). Goal
  * cards alternate leaf shapes with a deepPlum (or the goal's own custom color) icon squircle and a
  * [HeartTippedProgress] bar; shared goals get the blush card treatment + a "Shared with partner"
- * caption. The privacy eye is deliberately NOT added here — it stays with Item 7's own slice.
+ * caption. The privacy eye (v1.6.7 Item 7) rides the [PlayfulScreenTitle] actions slot, matching
+ * Records' placement.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,13 +81,25 @@ fun SavingsGoalsScreen(
     viewModel: SavingsGoalsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val colors = LocalPlayfulColors.current
 
     StartTourOnFirstVisit(TutorialTours.SAVINGS, TutorialTours.SAVINGS_COUPLE)
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
             Box(Modifier.statusBarsPadding().padding(top = 10.dp, bottom = 2.dp)) {
-                PlayfulScreenTitle(title = "Savings goals")
+                PlayfulScreenTitle(
+                    title = "Savings goals",
+                    actions = {
+                        IconButton(onClick = viewModel::togglePrivacyMode) {
+                            Icon(
+                                imageVector = if (state.privacyModeEnabled) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = if (state.privacyModeEnabled) "Show amounts" else "Hide amounts",
+                                tint = colors.textSecondary,
+                            )
+                        }
+                    },
+                )
             }
         },
         floatingActionButton = {

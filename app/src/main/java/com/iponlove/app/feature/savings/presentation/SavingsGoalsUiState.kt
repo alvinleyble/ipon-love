@@ -11,4 +11,5 @@ data class SavingsGoalsUiState(
     val active: List<SavingsGoalProgress> = emptyList(),
     val archived: List<SavingsGoalProgress> = emptyList(),
     val showArchived: Boolean = false,
+    val privacyModeEnabled: Boolean = false,
 )

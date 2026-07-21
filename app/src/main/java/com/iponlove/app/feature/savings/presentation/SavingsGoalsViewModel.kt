@@ -3,10 +3,13 @@ package com.iponlove.app.feature.savings.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iponlove.app.feature.savings.domain.usecase.ObserveSavingsGoalsUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -14,6 +17,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SavingsGoalsViewModel @Inject constructor(
     observeGoals: ObserveSavingsGoalsUseCase,
+    observePrivacyMode: ObservePrivacyModeUseCase,
+    private val setPrivacyMode: SetPrivacyModeUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SavingsGoalsUiState())
@@ -21,17 +26,23 @@ class SavingsGoalsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            observeGoals().collect { goals ->
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        active = goals.filterNot { g -> g.goal.isArchived },
-                        archived = goals.filter { g -> g.goal.isArchived },
-                    )
+            combine(observeGoals(), observePrivacyMode()) { goals, privacyModeOn -> goals to privacyModeOn }
+                .collect { (goals, privacyModeOn) ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            active = goals.filterNot { g -> g.goal.isArchived },
+                            archived = goals.filter { g -> g.goal.isArchived },
+                            privacyModeEnabled = privacyModeOn,
+                        )
+                    }
                 }
-            }
         }
     }
 
     fun toggleShowArchived() = _uiState.update { it.copy(showArchived = !it.showArchived) }
+
+    fun togglePrivacyMode() {
+        viewModelScope.launch { setPrivacyMode(!_uiState.value.privacyModeEnabled) }
+    }
 }

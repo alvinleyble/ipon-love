@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -75,7 +77,8 @@ import java.time.ZoneId
  * Slices 3–4. The content area repaints with [playfulBackground] (same local-override pattern
  * [AccountsBody]/[CombinedBody] use under their own untouched hosts) and the goal header +
  * contribution rows move onto [PlayfulCard]/[HeartTippedProgress]. The add/edit-contribution
- * [AlertDialog]s and the delete-confirmation dialog stay untouched.
+ * [AlertDialog]s and the delete-confirmation dialog stay untouched. The privacy eye (v1.6.7 Item 7
+ * closeout) sits in the [TopAppBar] actions, before the overflow menu.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,6 +102,12 @@ fun GoalDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = viewModel::togglePrivacyMode) {
+                        Icon(
+                            imageVector = if (state.privacyModeEnabled) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            contentDescription = if (state.privacyModeEnabled) "Show amounts" else "Hide amounts",
+                        )
+                    }
                     if (state.canManage) {
                         Box {
                             IconButton(onClick = { menuOpen = true }) {

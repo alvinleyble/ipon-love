@@ -35,4 +35,5 @@ data class GoalDetailUiState(
     val isArchived: Boolean = false,
     val canManage: Boolean = false,
     val contributions: List<ContributionRow> = emptyList(),
+    val privacyModeEnabled: Boolean = false,
 )
