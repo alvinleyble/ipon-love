@@ -14,9 +14,11 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 /**
- * The receipt-photos media cap gate (S8) — an INDIVIDUAL per-transaction cap (free = 1, premium = 3).
- * The gate's tier/enforcement logic is proven in `PremiumGateTest`; these cases lock the wiring:
- * the right cap field, INDIVIDUAL scope, and the free-vs-premium boundary a receipt draft sees.
+ * The receipt-photos media cap gate — an INDIVIDUAL per-transaction cap (free = 0, premium = 3).
+ * The free = 0 case is the notable edge: unlike the original free = 1 shape, the *first* receipt
+ * is now blocked when enforced (there is no free allowance at all), so this test pins that boundary
+ * explicitly. The gate's tier/enforcement logic is proven in `PremiumGateTest`; these cases lock the
+ * wiring: the right cap field, INDIVIDUAL scope, and the free-vs-premium boundary a receipt draft sees.
  */
 class CheckReceiptPhotoCapUseCaseTest {
 
@@ -39,19 +41,14 @@ class CheckReceiptPhotoCapUseCaseTest {
         CheckReceiptPhotoCapUseCase(PremiumGate(FakeEntitlement(self), FakeAppConfig(enforcement)))
 
     @Test
-    fun `dormant never blocks`() = runTest {
-        assertThat(useCase(enforcement = false)(currentCount = 3)).isEqualTo(CapCheck.Allowed)
+    fun `dormant allows the first photo despite the zero free cap`() = runTest {
+        assertThat(useCase(enforcement = false)(currentCount = 0)).isEqualTo(CapCheck.Allowed)
     }
 
     @Test
-    fun `free tier allows the first photo`() = runTest {
-        assertThat(useCase(free, enforcement = true)(currentCount = 0)).isEqualTo(CapCheck.Allowed)
-    }
-
-    @Test
-    fun `free tier blocks the second photo`() = runTest {
-        assertThat(useCase(free, enforcement = true)(currentCount = 1))
-            .isEqualTo(CapCheck.Blocked(freeLimit = 1, premiumMax = 3))
+    fun `free tier blocks the very first photo`() = runTest {
+        assertThat(useCase(free, enforcement = true)(currentCount = 0))
+            .isEqualTo(CapCheck.Blocked(freeLimit = 0, premiumMax = 3))
     }
 
     @Test

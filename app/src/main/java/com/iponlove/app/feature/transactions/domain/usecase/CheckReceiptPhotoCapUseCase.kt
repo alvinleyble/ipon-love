@@ -8,7 +8,7 @@ import javax.inject.Inject
 
 /**
  * The receipt-photos media cap gate (S8). A per-transaction media count (§10.1 `maxReceiptPhotos`,
- * INDIVIDUAL scope — free = 1 photo, premium = 3), consulted the moment a new receipt is picked.
+ * INDIVIDUAL scope — free = 0 photos, premium = 3), consulted the moment a new receipt is picked.
  *
  * Unlike the S7 entity-count gates this owns no DAO query: the count is the draft editor's in-flight
  * image count — transient per-editor UI state the ViewModel already holds, not a persisted row set —

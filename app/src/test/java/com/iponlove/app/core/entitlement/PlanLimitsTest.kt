@@ -29,7 +29,7 @@ class PlanLimitsTest {
                 maxPersonalSavingsGoals = 5,
                 maxSharedSavingsGoals = 1,
                 maxCoupleDebtEntries = 10,
-                maxReceiptPhotos = 1,
+                maxReceiptPhotos = 0,
                 maxNoteAttachments = 0,
                 maxNoteChars = 5_000,
                 maxNotes = 10_000,
