@@ -57,6 +57,15 @@ interface TransactionRepository {
 
     suspend fun getTransaction(id: String): Transaction?
 
+    /** Active transactions referencing [categoryId] — feeds the category delete-confirm count (Item 5). */
+    suspend fun countByCategory(categoryId: String): Int
+
+    /**
+     * Active transactions referencing [accountId] on either leg (incl. a transfer's destination) —
+     * feeds the account delete-confirm count (Item 5).
+     */
+    suspend fun countByAccount(accountId: String): Int
+
     suspend fun upsertTransaction(transaction: Transaction)
 
     /** Soft delete — sets `is_deleted = true`; never a hard delete (ADR-0010). */

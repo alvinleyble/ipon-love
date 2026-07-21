@@ -71,8 +71,12 @@ class TransactionsViewModel @Inject constructor(
     val uiState: StateFlow<TransactionsUiState> =
         combine(
             transactionsInRange,
-            observeAccounts(),
-            observeCategories(),
+            // Archived-inclusive so a historical row keeps its real account/category label after
+            // that entity is archived (v1.6.7 Item 5): archiving = hide-from-picker only, it must
+            // never degrade a past row to "Account"/"Uncategorized". The Add/Edit pickers live on
+            // their own screen/ViewModel (archived-excluded), so this only affects display maps.
+            observeAccounts(includeArchived = true),
+            observeCategories(includeArchived = true),
             observeHasAnyTransaction(),
             viewedMonth,
         ) { transactions, accounts, categories, hasAnyEver, month ->
@@ -99,7 +103,9 @@ class TransactionsViewModel @Inject constructor(
                     isCurrentMonth = isCurrentMonth,
                 ),
                 hasAnyTransactionEver = hasAnyEver,
-                canAdd = accounts.isNotEmpty(),
+                // `accounts` is now archived-inclusive (see the combine above), so gate Add on an
+                // *active* account existing — the Add screen's account picker excludes archived.
+                canAdd = accounts.any { !it.isArchived },
                 canGoToNextMonth = MonthWindow.canStepForward(month, today),
             )
         }.combine(isRefreshing) { state, refreshing -> state.copy(isRefreshing = refreshing) }

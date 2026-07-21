@@ -66,6 +66,12 @@ class FakeTransactionDao : TransactionDao {
 
     override suspend fun getById(id: String): TransactionEntity? = store[id]
 
+    override suspend fun countByCategory(categoryId: String): Int =
+        store.values.count { it.categoryId == categoryId && !it.isDeleted }
+
+    override suspend fun countByAccount(accountId: String): Int =
+        store.values.count { (it.accountId == accountId || it.toAccountId == accountId) && !it.isDeleted }
+
     override suspend fun activeOwnedBy(userId: String): List<TransactionEntity> =
         store.values.filter { it.userId == userId && !it.isDeleted }
 

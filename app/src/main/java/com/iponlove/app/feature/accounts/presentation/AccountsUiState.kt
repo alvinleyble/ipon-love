@@ -25,6 +25,20 @@ data class AccountsUiState(
     val editor: AccountEditorState? = null,
     /** Non-null while the count-cap upsell sheet is showing (S7; only ever set under enforcement). */
     val upsell: UpsellPrompt? = null,
+    /** Non-null while the delete-confirm dialog is open (v1.6.7 Item 5). */
+    val pendingDelete: PendingAccountDelete? = null,
+)
+
+/**
+ * An account the user has asked to delete, with how many active transactions reference it on
+ * either leg ([transactionCount], incl. transfer destinations). >0 shows the archive-steering
+ * confirm (deleting removes it from balance + orphans those rows); 0 shows the plain confirm.
+ * (v1.6.7 Item 5)
+ */
+data class PendingAccountDelete(
+    val id: String,
+    val name: String,
+    val transactionCount: Int,
 )
 
 /**

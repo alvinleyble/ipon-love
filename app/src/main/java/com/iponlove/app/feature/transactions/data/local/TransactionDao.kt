@@ -97,6 +97,25 @@ interface TransactionDao {
     suspend fun getById(id: String): TransactionEntity?
 
     /**
+     * How many active transactions reference [categoryId] — the exact count shown in the
+     * delete-confirm (v1.6.7 Item 5) so deleting a category discloses how many rows would drop
+     * to "Uncategorized". No owner filter: for a shared category the combined view / Analysis
+     * relabels both partners' rows, so the honest total counts every referencing row.
+     */
+    @Query("SELECT COUNT(*) FROM transactions WHERE categoryId = :categoryId AND isDeleted = 0")
+    suspend fun countByCategory(categoryId: String): Int
+
+    /**
+     * How many active transactions reference [accountId] on **either** leg — a transfer points its
+     * destination via `toAccountId`, so the destination side counts too (v1.6.7 Item 5
+     * delete-confirm: "incl. transfers").
+     */
+    @Query(
+        "SELECT COUNT(*) FROM transactions WHERE (accountId = :accountId OR toAccountId = :accountId) AND isDeleted = 0",
+    )
+    suspend fun countByAccount(accountId: String): Int
+
+    /**
      * Ids of every transaction ever materialized from a recurring rule — active OR tombstoned
      * (no `isDeleted` filter). Drives confirm-on-arrival's derived "pending" set (Item 37): an
      * occurrence whose deterministic id is already here has been resolved (confirmed, or

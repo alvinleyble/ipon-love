@@ -77,6 +77,10 @@ class TransactionRepositoryImpl @Inject constructor(
 
     override suspend fun getTransaction(id: String): Transaction? = dao.getById(id)?.toDomain()
 
+    override suspend fun countByCategory(categoryId: String): Int = dao.countByCategory(categoryId)
+
+    override suspend fun countByAccount(accountId: String): Int = dao.countByAccount(accountId)
+
     override suspend fun upsertTransaction(transaction: Transaction) {
         val existing = dao.getById(transaction.id)
         val updatedAt = clock.stamp(existing?.updatedAt)

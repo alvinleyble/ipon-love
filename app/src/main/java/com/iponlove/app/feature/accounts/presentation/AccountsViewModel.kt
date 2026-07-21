@@ -21,6 +21,7 @@ import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCas
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.AccountBalanceCalculator
+import com.iponlove.app.feature.transactions.domain.usecase.CountTransactionsForAccountUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveBalanceLedgerUseCase
 import com.iponlove.app.feature.widget.presentation.Widgets
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,6 +51,7 @@ class AccountsViewModel @Inject constructor(
     private val unshareAccount: UnshareAccountUseCase,
     private val reorderAccounts: ReorderAccountsUseCase,
     private val checkAccountCap: CheckAccountCapUseCase,
+    private val countTransactionsForAccount: CountTransactionsForAccountUseCase,
     private val analytics: Analytics,
     observePrivacyMode: ObservePrivacyModeUseCase,
     private val setPrivacyMode: SetPrivacyModeUseCase,
@@ -58,6 +60,7 @@ class AccountsViewModel @Inject constructor(
     private val editor = MutableStateFlow<AccountEditorState?>(null)
     private val upsell = MutableStateFlow<UpsellPrompt?>(null)
     private val showArchived = MutableStateFlow(false)
+    private val pendingDelete = MutableStateFlow<PendingAccountDelete?>(null)
 
     // Which cap raised the current upsell — the analytics source for its "Get Premium" tap.
     private var upsellSource: String? = null
@@ -72,9 +75,10 @@ class AccountsViewModel @Inject constructor(
             observeBalanceLedger(),
             observeCoupleMembers(),
             editor,
-            // Pack the archived toggle alongside the upsell flow to stay within combine's 5-arg arity.
-            combine(upsell, showArchived) { u, s -> u to s },
-        ) { accounts, ledger, members, editorState, (upsellState, showArch) ->
+            // Pack the archived toggle + pending-delete alongside the upsell flow to stay within
+            // combine's 5-arg arity.
+            combine(upsell, showArchived, pendingDelete) { u, s, p -> Triple(u, s, p) },
+        ) { accounts, ledger, members, editorState, (upsellState, showArch, pendingDeleteState) ->
             coupleId = members?.me?.coupleId
             // Current balance = opening_balance + ledger, derived locally (ADR-0007). For a
             // shared account the ledger carries both partners' postings (ADR-0018).
@@ -89,6 +93,7 @@ class AccountsViewModel @Inject constructor(
                 isPaired = members != null,
                 editor = editorState,
                 upsell = upsellState,
+                pendingDelete = pendingDeleteState,
             )
         }.combine(observePrivacyMode()) { state, privacyModeOn ->
             state.copy(privacyModeEnabled = privacyModeOn)
@@ -228,11 +233,40 @@ class AccountsViewModel @Inject constructor(
         }
     }
 
-    fun delete(id: String) {
+    /**
+     * A tap on "Delete" — count the referencing transactions (either leg, incl. transfer
+     * destinations), then open the adaptive confirm ([PendingAccountDelete]) instead of deleting
+     * outright (v1.6.7 Item 5). Delete is permanent (soft-delete, no un-delete UI), always gated.
+     */
+    fun requestDelete(account: Account) {
         viewModelScope.launch {
-            deleteAccount(id)
+            val count = countTransactionsForAccount(account.id)
+            pendingDelete.value = PendingAccountDelete(account.id, account.name, count)
+        }
+    }
+
+    /** Delete-anyway from the confirm — tombstones the account; its rows relabel to "Account". */
+    fun confirmDelete() {
+        val target = pendingDelete.value ?: return
+        pendingDelete.value = null
+        viewModelScope.launch {
+            deleteAccount(target.id)
             Widgets.updateAll(context)
         }
+    }
+
+    /** "Archive instead" from the confirm — the non-destructive twin; balance + labels are kept. */
+    fun archiveInstead() {
+        val target = pendingDelete.value ?: return
+        pendingDelete.value = null
+        viewModelScope.launch {
+            archiveAccount(target.id, true)
+            Widgets.updateAll(context)
+        }
+    }
+
+    fun cancelDelete() {
+        pendingDelete.value = null
     }
 
     private companion object {

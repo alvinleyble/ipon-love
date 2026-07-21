@@ -21,6 +21,19 @@ data class CategoriesUiState(
     val editor: CategoryEditorState? = null,
     /** Non-null while the count-cap upsell sheet is showing (S7; only ever set under enforcement). */
     val upsell: UpsellPrompt? = null,
+    /** Non-null while the delete-confirm dialog is open (v1.6.7 Item 5). */
+    val pendingDelete: PendingCategoryDelete? = null,
+)
+
+/**
+ * A category the user has asked to delete, with how many active transactions reference it
+ * ([transactionCount]). >0 shows the archive-steering confirm (deleting orphans those rows to
+ * "Uncategorized"); 0 shows the plain "can't be undone" confirm. (v1.6.7 Item 5)
+ */
+data class PendingCategoryDelete(
+    val id: String,
+    val name: String,
+    val transactionCount: Int,
 )
 
 /**

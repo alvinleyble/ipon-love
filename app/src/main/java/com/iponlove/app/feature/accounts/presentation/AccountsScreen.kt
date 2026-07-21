@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -197,7 +198,7 @@ fun AccountsBody(
                                     onToggleArchive = { viewModel.archive(account.id, !account.isArchived) },
                                     onShare = { viewModel.share(account.id) },
                                     onUnshare = { viewModel.unshare(account.id) },
-                                    onDelete = { viewModel.delete(account.id) },
+                                    onDelete = { viewModel.requestDelete(account) },
                                 )
                             }
                         }
@@ -220,6 +221,15 @@ fun AccountsBody(
         )
     }
 
+    state.pendingDelete?.let { pending ->
+        DeleteAccountDialog(
+            pending = pending,
+            onArchiveInstead = viewModel::archiveInstead,
+            onDeleteAnyway = viewModel::confirmDelete,
+            onCancel = viewModel::cancelDelete,
+        )
+    }
+
     state.upsell?.let { prompt ->
         CapReachedSheet(
             prompt = prompt,
@@ -227,6 +237,60 @@ fun AccountsBody(
             onUpgrade = { onOpenPremium(viewModel.onUpsellUpgrade()) },
         )
     }
+}
+
+/**
+ * Adaptive delete-confirm (v1.6.7 Item 5). Deleting is permanent (soft-delete, no un-delete UI),
+ * so it's always confirmed. When the account has transactions the dialog shows the exact count
+ * (either leg, incl. transfers) and steers to the non-destructive Archive (which keeps the account
+ * out of the picker but preserves its balance + the rows' labels); the empty case is a plain
+ * confirm. Archive itself stays a frictionless one-tap elsewhere — no dialog there.
+ */
+@Composable
+private fun DeleteAccountDialog(
+    pending: PendingAccountDelete,
+    onArchiveInstead: () -> Unit,
+    onDeleteAnyway: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
+    val count = pending.transactionCount
+    val hasTransactions = count > 0
+    val noun = if (count == 1) "transaction" else "transactions"
+    PlayfulDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Delete “${pending.name}”?") },
+        text = {
+            Text(
+                if (hasTransactions) {
+                    "Used by $count $noun (incl. transfers). Deleting removes it from your balance. " +
+                        "Archive instead to keep everything."
+                } else {
+                    "This can't be undone."
+                },
+            )
+        },
+        confirmButton = {
+            if (hasTransactions) {
+                Column(horizontalAlignment = Alignment.End) {
+                    Button(onClick = onArchiveInstead) { Text("Archive instead") }
+                    TextButton(onClick = onDeleteAnyway) {
+                        Text("Delete anyway", color = colors.semantic.negative)
+                    }
+                    TextButton(onClick = onCancel) { Text("Cancel") }
+                }
+            } else {
+                TextButton(onClick = onDeleteAnyway) {
+                    Text("Delete", color = colors.semantic.negative)
+                }
+            }
+        },
+        dismissButton = if (hasTransactions) {
+            null
+        } else {
+            { TextButton(onClick = onCancel) { Text("Cancel") } }
+        },
+    )
 }
 
 @Composable

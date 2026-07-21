@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -178,7 +179,7 @@ fun CategoriesBody(
                                     onToggleArchive = { viewModel.archive(category.id, !category.isArchived) },
                                     onShare = { viewModel.share(category.id) },
                                     onUnshare = { viewModel.unshare(category.id) },
-                                    onDelete = { viewModel.delete(category.id) },
+                                    onDelete = { viewModel.requestDelete(category) },
                                 )
                             }
                         }
@@ -200,6 +201,15 @@ fun CategoriesBody(
         )
     }
 
+    state.pendingDelete?.let { pending ->
+        DeleteCategoryDialog(
+            pending = pending,
+            onArchiveInstead = viewModel::archiveInstead,
+            onDeleteAnyway = viewModel::confirmDelete,
+            onCancel = viewModel::cancelDelete,
+        )
+    }
+
     state.upsell?.let { prompt ->
         CapReachedSheet(
             prompt = prompt,
@@ -207,6 +217,63 @@ fun CategoriesBody(
             onUpgrade = { onOpenPremium(viewModel.onUpsellUpgrade()) },
         )
     }
+}
+
+/**
+ * Adaptive delete-confirm (v1.6.7 Item 5). Deleting is permanent (soft-delete, no un-delete UI),
+ * so it's always confirmed. When the category has transactions the dialog shows the exact count and
+ * steers to the non-destructive Archive (which preserves the historical label); the empty case is a
+ * plain confirm. Archive itself stays a frictionless one-tap elsewhere — no dialog there.
+ */
+@Composable
+private fun DeleteCategoryDialog(
+    pending: PendingCategoryDelete,
+    onArchiveInstead: () -> Unit,
+    onDeleteAnyway: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
+    val count = pending.transactionCount
+    val hasTransactions = count > 0
+    val noun = if (count == 1) "transaction" else "transactions"
+    PlayfulDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Delete “${pending.name}”?") },
+        text = {
+            Text(
+                if (hasTransactions) {
+                    "Used by $count $noun. Deleting leaves them Uncategorized. " +
+                        "Archive instead to keep their label."
+                } else {
+                    "This can't be undone."
+                },
+            )
+        },
+        confirmButton = {
+            if (hasTransactions) {
+                // Three actions — stacked so the suggested Archive reads as primary and the
+                // destructive Delete stays de-emphasized (red text), per the Item 5 spec.
+                Column(horizontalAlignment = Alignment.End) {
+                    Button(onClick = onArchiveInstead) { Text("Archive instead") }
+                    TextButton(onClick = onDeleteAnyway) {
+                        Text("Delete anyway", color = colors.semantic.negative)
+                    }
+                    TextButton(onClick = onCancel) { Text("Cancel") }
+                }
+            } else {
+                TextButton(onClick = onDeleteAnyway) {
+                    Text("Delete", color = colors.semantic.negative)
+                }
+            }
+        },
+        // The 3-action case builds its own Cancel into the stack above; the plain case keeps the
+        // standard confirm/dismiss pair.
+        dismissButton = if (hasTransactions) {
+            null
+        } else {
+            { TextButton(onClick = onCancel) { Text("Cancel") } }
+        },
+    )
 }
 
 @Composable

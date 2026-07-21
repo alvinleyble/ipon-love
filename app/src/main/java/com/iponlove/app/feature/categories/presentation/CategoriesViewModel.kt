@@ -16,6 +16,7 @@ import com.iponlove.app.feature.categories.domain.usecase.ShareCategoryUseCase
 import com.iponlove.app.feature.categories.domain.usecase.UnshareCategoryUseCase
 import com.iponlove.app.feature.categories.domain.usecase.UpsertCategoryUseCase
 import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.CountTransactionsForCategoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -38,6 +39,7 @@ class CategoriesViewModel @Inject constructor(
     private val unshareCategory: UnshareCategoryUseCase,
     private val reorderCategories: ReorderCategoriesUseCase,
     private val checkCategoryCap: CheckCategoryCapUseCase,
+    private val countTransactionsForCategory: CountTransactionsForCategoryUseCase,
     private val analytics: Analytics,
 ) : ViewModel() {
 
@@ -45,6 +47,7 @@ class CategoriesViewModel @Inject constructor(
     private val filter = MutableStateFlow(CategoryFilter.ALL)
     private val upsell = MutableStateFlow<UpsellPrompt?>(null)
     private val showArchived = MutableStateFlow(false)
+    private val pendingDelete = MutableStateFlow<PendingCategoryDelete?>(null)
 
     // Which cap raised the current upsell — the analytics source for its "Get Premium" tap.
     private var upsellSource: String? = null
@@ -59,9 +62,10 @@ class CategoriesViewModel @Inject constructor(
             observeCoupleMembers(),
             filter,
             editor,
-            // Pack the archived toggle alongside the upsell flow to stay within combine's 5-arg arity.
-            combine(upsell, showArchived) { u, s -> u to s },
-        ) { all, members, activeFilter, editorState, (upsellState, showArch) ->
+            // Pack the archived toggle + pending-delete alongside the upsell flow to stay within
+            // combine's 5-arg arity.
+            combine(upsell, showArchived, pendingDelete) { u, s, p -> Triple(u, s, p) },
+        ) { all, members, activeFilter, editorState, (upsellState, showArch, pendingDeleteState) ->
             coupleId = members?.me?.coupleId
             val typeFiltered = when (activeFilter) {
                 CategoryFilter.ALL -> all
@@ -78,6 +82,7 @@ class CategoriesViewModel @Inject constructor(
                 isPaired = members != null,
                 editor = editorState,
                 upsell = upsellState,
+                pendingDelete = pendingDeleteState,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -200,8 +205,34 @@ class CategoriesViewModel @Inject constructor(
         viewModelScope.launch { reorderCategories(orderedIds) }
     }
 
-    fun delete(id: String) {
-        viewModelScope.launch { deleteCategory(id) }
+    /**
+     * A tap on "Delete" — count the referencing transactions, then open the adaptive confirm
+     * ([PendingCategoryDelete]) instead of deleting outright (v1.6.7 Item 5). Delete is permanent
+     * (soft-delete, no un-delete UI), so it's always gated behind a confirm.
+     */
+    fun requestDelete(category: Category) {
+        viewModelScope.launch {
+            val count = countTransactionsForCategory(category.id)
+            pendingDelete.value = PendingCategoryDelete(category.id, category.name, count)
+        }
+    }
+
+    /** Delete-anyway from the confirm — tombstones the category; its rows relabel to "Uncategorized". */
+    fun confirmDelete() {
+        val target = pendingDelete.value ?: return
+        pendingDelete.value = null
+        viewModelScope.launch { deleteCategory(target.id) }
+    }
+
+    /** "Archive instead" from the confirm — the non-destructive twin; historical labels are kept. */
+    fun archiveInstead() {
+        val target = pendingDelete.value ?: return
+        pendingDelete.value = null
+        viewModelScope.launch { archiveCategory(target.id, true) }
+    }
+
+    fun cancelDelete() {
+        pendingDelete.value = null
     }
 
     private companion object {

@@ -105,7 +105,10 @@ class BudgetsViewModel @Inject constructor(
             observeSharedBudget(),
             observeTransactions(),
             observeCombinedTransactions(),
-            observeCategories(),
+            // Archived-inclusive so a budget row / rollover keeps the real category label after
+            // that category is archived (v1.6.7 Item 5). The editor's category *picker*
+            // ([expenseCategories]) re-excludes archived below, so archiving still hides it there.
+            observeCategories(includeArchived = true),
         ) { personal, shared, ownTxns, combinedTxns, categories ->
             BudgetData(personal, shared, ownTxns, combinedTxns, categories)
         }.let { dataFlow ->
@@ -162,7 +165,9 @@ class BudgetsViewModel @Inject constructor(
             monthLabel = cycleLabel(controls.month, controls.startDay),
             nextMonthShortLabel = controls.month.plusMonths(1).format(SHORT_MONTH_FORMATTER),
             rows = rows,
-            expenseCategories = data.categories.filter { it.type == CategoryType.EXPENSE },
+            // The create/edit picker offers active expense categories only — `data.categories` is
+            // archived-inclusive now (for the label map above), so exclude archived here (Item 5).
+            expenseCategories = data.categories.filter { it.type == CategoryType.EXPENSE && !it.isArchived },
             editor = controls.editor,
             upsell = controls.upsell,
             rolloverLocked = controls.rolloverLocked,
