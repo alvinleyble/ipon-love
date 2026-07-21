@@ -28,7 +28,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -38,14 +40,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.SettingsSectionHeader
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.core.ui.theme.paletteColorScheme
+import com.iponlove.app.core.ui.theme.playfulColorsFrom
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
 
 /**
  * Appearance sub-screen (v1.6.5 Item 34): palette grid + light/dark switch + Apply. Wraps its
  * content in a live-preview [MaterialTheme] so tapping a swatch or the switch re-themes the screen
- * instantly (ADR-0014 live preview); nothing persists until Apply. Lifted verbatim out of
- * PersonalizeScreen — this is the only surface that still needs the local theme wrapper.
+ * instantly (ADR-0014 live preview); nothing persists until Apply.
+ *
+ * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 6g). Because the app-wide Playful backdrop lives
+ * *outside* this screen's local theme wrapper, it would otherwise preview on the persisted palette;
+ * so the draft [LocalPlayfulColors] are re-provided from the live scheme and painted here directly,
+ * keeping the whole preview (backdrop + surfaces) honest under ADR-0014.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,60 +76,78 @@ fun AppearanceScreen(
         colorScheme = liveColorScheme,
         typography = MaterialTheme.typography,
     ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Appearance") },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
+        CompositionLocalProvider(
+            LocalPlayfulColors provides playfulColorsFrom(liveColorScheme, state.draftIsDark),
+        ) {
+            Box(Modifier.fillMaxSize().playfulBackground()) {
+                val colors = LocalPlayfulColors.current
+                Scaffold(
+                    containerColor = Color.Transparent,
+                    topBar = {
+                        TopAppBar(
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent,
+                                titleContentColor = colors.textPrimary,
+                                navigationIconContentColor = colors.textPrimary,
+                                actionIconContentColor = colors.textSecondary,
+                            ),
+                            title = { Text("Appearance") },
+                            navigationIcon = {
+                                IconButton(onClick = onBack) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            },
+                        )
                     },
-                )
-            },
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-            ) {
-                Text("Color Palette", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(12.dp))
+                ) { padding ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                    ) {
+                        SettingsSectionHeader("Color Palette")
+                        Spacer(Modifier.height(12.dp))
 
-                PaletteGrid(
-                    palettes = ThemePalette.entries,
-                    // Highlight the effective (rendered) palette, not the possibly-locked chosen one.
-                    selected = state.draftPalette.effective(state.paletteLocked),
-                    locked = state.paletteLocked,
-                    onSelect = viewModel::selectPalette,
-                    onLockedTap = { onOpenPremium(viewModel.onLockedPaletteTap()) },
-                )
+                        PaletteGrid(
+                            palettes = ThemePalette.entries,
+                            // Highlight the effective (rendered) palette, not the possibly-locked chosen one.
+                            selected = state.draftPalette.effective(state.paletteLocked),
+                            locked = state.paletteLocked,
+                            onSelect = viewModel::selectPalette,
+                            onLockedTap = { onOpenPremium(viewModel.onLockedPaletteTap()) },
+                        )
 
-                Spacer(Modifier.height(28.dp))
-                Text("Mode", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(28.dp))
+                        SettingsSectionHeader("Mode")
+                        Spacer(Modifier.height(8.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(if (state.draftIsDark) "Dark" else "Light", style = MaterialTheme.typography.bodyLarge)
-                    Switch(
-                        checked = state.draftIsDark,
-                        onCheckedChange = viewModel::toggleDarkMode,
-                    )
-                }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                if (state.draftIsDark) "Dark" else "Light",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.textPrimary,
+                            )
+                            Switch(
+                                checked = state.draftIsDark,
+                                onCheckedChange = viewModel::toggleDarkMode,
+                            )
+                        }
 
-                Spacer(Modifier.height(32.dp))
+                        Spacer(Modifier.height(32.dp))
 
-                Button(
-                    onClick = viewModel::save,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(if (state.saved) "Saved!" else "Apply")
+                        Button(
+                            onClick = viewModel::save,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(if (state.saved) "Saved!" else "Apply")
+                        }
+                    }
                 }
             }
         }
@@ -166,6 +194,7 @@ private fun PaletteSwatch(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = LocalPlayfulColors.current
     val seedColor = Color(android.graphics.Color.parseColor(palette.seedHex))
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -180,7 +209,7 @@ private fun PaletteSwatch(
                 // Dim a locked (Premium) swatch so the lock badge reads clearly.
                 .then(if (isLocked) Modifier.alpha(0.45f) else Modifier)
                 .then(
-                    if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onBackground, CircleShape)
+                    if (isSelected) Modifier.border(3.dp, colors.textPrimary, CircleShape)
                     else Modifier
                 ),
         ) {
@@ -194,6 +223,6 @@ private fun PaletteSwatch(
             }
         }
         Spacer(Modifier.height(4.dp))
-        Text(palette.label, style = MaterialTheme.typography.labelSmall)
+        Text(palette.label, style = MaterialTheme.typography.labelSmall, color = colors.textPrimary)
     }
 }

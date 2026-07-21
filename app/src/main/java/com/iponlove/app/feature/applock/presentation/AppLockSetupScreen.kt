@@ -22,6 +22,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -31,9 +32,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +47,7 @@ fun AppLockSetupScreen(
     val prefs by viewModel.preferences.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val colors = LocalPlayfulColors.current
 
     var showBiometricNudge by remember { mutableStateOf(false) }
 
@@ -63,8 +67,15 @@ fun AppLockSetupScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = colors.textPrimary,
+                    navigationIconContentColor = colors.textPrimary,
+                    actionIconContentColor = colors.textSecondary,
+                ),
                 title = { Text("Security") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -88,8 +99,8 @@ fun AppLockSetupScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Column {
-                        Text("PIN lock", style = MaterialTheme.typography.bodyLarge)
-                        Text("Enabled", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        Text("PIN lock", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+                        Text("Enabled", style = MaterialTheme.typography.bodySmall, color = colors.accent)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -98,25 +109,27 @@ fun AppLockSetupScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Use biometric", style = MaterialTheme.typography.bodyLarge)
+                    Text("Use biometric", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
                     Switch(checked = prefs.isBiometricEnabled, onCheckedChange = viewModel::onBiometricToggle)
                 }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
                 Text(
                     if (uiState.step == SetupStep.ENTER_NEW) "Change PIN" else "Confirm new PIN",
                     style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
                     modifier = Modifier.fillMaxWidth(),
                 )
             } else {
                 Text(
                     "Set a 4-digit PIN to lock the app when it goes to the background.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                 )
                 Spacer(Modifier.height(24.dp))
                 Text(
                     if (uiState.step == SetupStep.ENTER_NEW) "Enter PIN" else "Confirm PIN",
                     style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

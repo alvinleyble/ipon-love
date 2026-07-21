@@ -15,19 +15,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,12 +39,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CurrencyGrid
+import com.iponlove.app.core.ui.SettingsRow
+import com.iponlove.app.core.ui.SettingsSectionHeader
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 
 /**
  * Finance sub-screen (v1.6.5 Item 34): currency symbol grid (Item 18), "Hide amounts" switch
  * (Item 15), and the budget-cycle start day (Item 10b). All three write instantly — no Apply gate.
- * Lifted verbatim out of PersonalizeScreen.
+ * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 6g).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,11 +56,19 @@ fun FinanceScreen(
     viewModel: FinanceViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val colors = LocalPlayfulColors.current
     var showBudgetStartDayDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = colors.textPrimary,
+                    navigationIconContentColor = colors.textPrimary,
+                    actionIconContentColor = colors.textSecondary,
+                ),
                 title = { Text("Finance") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -74,14 +83,14 @@ fun FinanceScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
-            Text("Currency", style = MaterialTheme.typography.titleMedium)
+            SettingsSectionHeader("Currency")
             Spacer(Modifier.height(4.dp))
             Text(
                 "Symbol shown with all amounts",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Spacer(Modifier.height(8.dp))
             CurrencyGrid(
@@ -90,49 +99,32 @@ fun FinanceScreen(
                 onSelect = viewModel::setCurrencySymbol,
             )
 
-            Spacer(Modifier.height(28.dp))
-            Text("Privacy", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Hide amounts", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "Mask money values on screen",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = state.privacyModeEnabled,
-                    onCheckedChange = viewModel::setPrivacyMode,
-                )
-            }
-
-            Spacer(Modifier.height(28.dp))
-            Text("Budgets", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(4.dp))
-            HorizontalDivider()
-            ListItem(
-                headlineContent = { Text("Budget month starts on") },
-                supportingContent = {
-                    Text(
-                        if (state.budgetStartDay == 1) {
-                            "1st (calendar month)"
-                        } else {
-                            "${budgetStartDayLabel(state.budgetStartDay)} — payday-aligned budgets"
-                        },
+            Spacer(Modifier.height(24.dp))
+            SettingsSectionHeader("Privacy")
+            Spacer(Modifier.height(10.dp))
+            SettingsRow(
+                headline = "Hide amounts",
+                supporting = "Mask money values on screen",
+                trailing = {
+                    Switch(
+                        checked = state.privacyModeEnabled,
+                        onCheckedChange = viewModel::setPrivacyMode,
                     )
                 },
-                trailingContent = {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-                },
-                modifier = Modifier.clickable { showBudgetStartDayDialog = true },
             )
-            HorizontalDivider()
+
+            Spacer(Modifier.height(24.dp))
+            SettingsSectionHeader("Budgets")
+            Spacer(Modifier.height(10.dp))
+            SettingsRow(
+                headline = "Budget month starts on",
+                supporting = if (state.budgetStartDay == 1) {
+                    "1st (calendar month)"
+                } else {
+                    "${budgetStartDayLabel(state.budgetStartDay)} — payday-aligned budgets"
+                },
+                onClick = { showBudgetStartDayDialog = true },
+            )
         }
 
         if (showBudgetStartDayDialog) {
@@ -164,7 +156,10 @@ private val BUDGET_START_DAY_PRESETS = listOf(
 private fun budgetStartDayLabel(day: Int): String =
     BUDGET_START_DAY_PRESETS.firstOrNull { it.first == day }?.second ?: "1st (calendar month)"
 
-/** Preset picker for the budget-cycle start day (ADR-0046). Day 1 = calendar months. */
+/**
+ * Preset picker for the budget-cycle start day (ADR-0046). Day 1 = calendar months. A one-off
+ * simple dialog — keeps the conservative M3 container per the Slice-6 rollout's standing exception.
+ */
 @Composable
 private fun BudgetStartDayDialog(
     selected: Int,

@@ -26,10 +26,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -39,7 +41,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.iponlove.app.core.ui.AccentColorRow
+import com.iponlove.app.core.ui.SettingsSectionHeader
 import com.iponlove.app.core.ui.currencyGlyph
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.settings.domain.model.ResetFinancesCounts
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,6 +53,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val colors = LocalPlayfulColors.current
 
     // Re-pull the account email whenever Profile becomes visible (incl. returning from the email
     // client after tapping a change-email confirmation link) so it updates without a restart —
@@ -58,8 +63,15 @@ fun ProfileScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = colors.textPrimary,
+                    navigationIconContentColor = colors.textPrimary,
+                    actionIconContentColor = colors.textSecondary,
+                ),
                 title = { Text("Profile") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -76,11 +88,11 @@ fun ProfileScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
-            Text("Nickname", style = MaterialTheme.typography.titleMedium)
+            SettingsSectionHeader("Nickname")
             Text(
                 "This is what your partner sees in the combined view and on shared notes.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
@@ -107,11 +119,11 @@ fun ProfileScreen(
             // against, so it's hidden when single (ADR-0016).
             if (state.isPaired) {
                 Spacer(Modifier.height(28.dp))
-                Text("Attribution color", style = MaterialTheme.typography.titleMedium)
+                SettingsSectionHeader("Attribution color")
                 Text(
                     "Your color in the combined view. Changes apply right away.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                 )
                 Spacer(Modifier.height(12.dp))
                 AccentColorRow(
@@ -123,12 +135,12 @@ fun ProfileScreen(
             }
 
             Spacer(Modifier.height(28.dp))
-            Text("Account", style = MaterialTheme.typography.titleMedium)
+            SettingsSectionHeader("Account")
             Spacer(Modifier.height(4.dp))
             Text(
                 state.email ?: "—",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Spacer(Modifier.height(12.dp))
             OutlinedButton(
@@ -146,12 +158,12 @@ fun ProfileScreen(
             }
 
             Spacer(Modifier.height(28.dp))
-            Text("Restart fresh", style = MaterialTheme.typography.titleMedium)
+            SettingsSectionHeader("Restart fresh")
             Text(
                 "Wipe your transaction history and reset every account balance to ${currencyGlyph()}0. Your " +
                     "accounts, categories, budgets, savings goals, and recurring bills are kept.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Spacer(Modifier.height(12.dp))
             OutlinedButton(
@@ -163,11 +175,11 @@ fun ProfileScreen(
             }
 
             Spacer(Modifier.height(28.dp))
-            Text("Delete account", style = MaterialTheme.typography.titleMedium)
+            SettingsSectionHeader("Delete account")
             Text(
                 "Permanently delete your account and all your data. This can't be undone.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Spacer(Modifier.height(12.dp))
             OutlinedButton(
