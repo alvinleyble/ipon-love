@@ -26,6 +26,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
@@ -43,6 +45,7 @@ import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.EntityColorPicker
 import com.iponlove.app.core.ui.icons.IconPicker
 import com.iponlove.app.core.ui.parseHexColor
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import java.time.format.DateTimeFormatter
 
 private val goalDate = DateTimeFormatter.ofPattern("MMM d, yyyy")
@@ -55,13 +58,22 @@ fun GoalEditorScreen(
     viewModel: GoalEditorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val colors = LocalPlayfulColors.current
     var showDatePicker by remember { mutableStateOf(false) }
     val tint = parseHexColor(state.color) ?: MaterialTheme.colorScheme.primary
     val readOnly = state.isPartnerGoal
 
+    // Transparent chrome — the app-wide playfulBackground() from IponApp shows through.
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = colors.textPrimary,
+                    navigationIconContentColor = colors.textPrimary,
+                    actionIconContentColor = colors.textSecondary,
+                ),
                 title = { Text(if (state.isNew) "New goal" else "Edit goal") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -78,7 +90,11 @@ fun GoalEditorScreen(
     ) { padding ->
         if (!state.loaded) return@Scaffold
         if (state.missing) {
-            Text("Goal not found", modifier = Modifier.padding(padding).padding(16.dp))
+            Text(
+                "Goal not found",
+                color = colors.textPrimary,
+                modifier = Modifier.padding(padding).padding(16.dp),
+            )
             return@Scaffold
         }
         Column(
@@ -122,14 +138,18 @@ fun GoalEditorScreen(
             if (state.isPaired && !readOnly) {
                 Spacer(Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Filled.People, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Filled.People, contentDescription = null, tint = colors.accent)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Share with partner", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Share with partner",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.textPrimary,
+                        )
                         Text(
                             "Both of you can contribute and see the progress.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = colors.textSecondary,
                         )
                     }
                     Switch(checked = state.isShared, onCheckedChange = { viewModel.toggleShared() })
@@ -137,7 +157,7 @@ fun GoalEditorScreen(
             }
 
             Spacer(Modifier.height(16.dp))
-            Text("Icon", style = MaterialTheme.typography.labelLarge)
+            Text("Icon", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
             Spacer(Modifier.height(8.dp))
             IconPicker(
                 icons = GOAL_ICONS,

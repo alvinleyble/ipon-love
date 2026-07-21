@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,9 +28,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,9 +40,17 @@ fun BetaFeedbackScreen(
     onBack: () -> Unit,
     viewModel: BetaFeedbackViewModel = hiltViewModel(),
 ) {
+    val colors = LocalPlayfulColors.current
+    // Transparent chrome — the app-wide playfulBackground() from IponApp shows through.
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = colors.textPrimary,
+                    navigationIconContentColor = colors.textPrimary,
+                ),
                 title = { Text("Beta feedback") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -69,16 +80,21 @@ fun BetaFeedbackScreen(
 
 @Composable
 private fun NotConfiguredState() {
+    val colors = LocalPlayfulColors.current
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(32.dp),
     ) {
-        Text("Feedback form not set up yet", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Feedback form not set up yet",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
         Spacer(Modifier.height(8.dp))
         Text(
             "The beta feedback form will appear here once configured.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
         )
     }
 }
@@ -88,16 +104,21 @@ private fun FeedbackWebView(url: String, modifier: Modifier = Modifier) {
     var hasError by remember { mutableStateOf(false) }
 
     if (hasError) {
+        val colors = LocalPlayfulColors.current
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(32.dp),
         ) {
-            Text("Couldn't load the form", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Couldn't load the form",
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.textPrimary,
+            )
             Spacer(Modifier.height(8.dp))
             Text(
                 "Check your connection and try again.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Spacer(Modifier.height(16.dp))
             Button(onClick = { hasError = false }) {

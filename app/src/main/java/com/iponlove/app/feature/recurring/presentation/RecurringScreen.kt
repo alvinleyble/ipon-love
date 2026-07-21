@@ -1,6 +1,8 @@
 package com.iponlove.app.feature.recurring.presentation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,9 +13,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -26,15 +29,12 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +45,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -55,6 +56,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
@@ -67,10 +70,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.EntityChipRow
 import com.iponlove.app.core.ui.EntityGrid
 import com.iponlove.app.core.ui.EntityPickerOption
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulDialog
+import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
@@ -84,7 +92,6 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
-private val IncomeColor = Color(0xFF2E7D32)
 private val DATE_LABEL: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,10 +102,19 @@ fun RecurringScreen(
     viewModel: RecurringViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val colors = LocalPlayfulColors.current
     StartTourOnFirstVisit(TutorialTours.RECURRING)
+    // Transparent chrome — the app-wide playfulBackground() from IponApp shows through.
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = colors.textPrimary,
+                    navigationIconContentColor = colors.textPrimary,
+                    actionIconContentColor = colors.textSecondary,
+                ),
                 title = { Text("Recurring") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -121,12 +137,10 @@ fun RecurringScreen(
         },
         floatingActionButton = {
             if (state.canAdd && state.viewMode == RecurringViewMode.LIST) {
-                FloatingActionButton(
+                RecurringFab(
                     onClick = viewModel::startCreate,
                     modifier = Modifier.coachMarkTarget(TutorialTargets.RECURRING_ADD),
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add recurring rule")
-                }
+                )
             }
         },
     ) { padding ->
@@ -163,9 +177,10 @@ fun RecurringScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(state.items, key = { it.id }) { item ->
+                    itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
                         RecurringRow(
                             item = item,
+                            index = index,
                             onClick = { viewModel.startEdit(item.id) },
                             onPause = { viewModel.pause(item.id) },
                             onResume = { viewModel.resume(item.id) },
@@ -197,6 +212,29 @@ fun RecurringScreen(
     }
 }
 
+/** −4° accent squircle FAB (the Records/Savings/Manage recipe). */
+@Composable
+private fun RecurringFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalPlayfulColors.current
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = modifier
+            .rotate(-4f)
+            .size(56.dp)
+            .clip(LeafShapes.Fab)
+            .background(colors.accent)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Filled.Add,
+            contentDescription = "Add recurring rule",
+            tint = colors.onAccent,
+            modifier = Modifier.size(27.dp).rotate(4f),
+        )
+    }
+}
+
 private val MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
 
 @Composable
@@ -207,6 +245,7 @@ private fun RecurringCalendarView(
     onDayClick: (Int) -> Unit,
     onLockedTap: () -> Unit,
 ) {
+    val colors = LocalPlayfulColors.current
     val locked = state.calendarLocked
     Box(modifier = Modifier.fillMaxSize()) {
         RecurringCalendarContent(
@@ -231,18 +270,18 @@ private fun RecurringCalendarView(
                     Icon(
                         Icons.Filled.Lock,
                         contentDescription = "Premium",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = colors.accent,
                     )
                     Text(
                         "Calendar view is Premium",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = colors.textPrimary,
                         modifier = Modifier.padding(top = 8.dp),
                     )
                     Text(
                         "Tap to unlock the recurring calendar",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = colors.textSecondary,
                     )
                 }
             }
@@ -259,6 +298,7 @@ private fun RecurringCalendarContent(
     onStep: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val colors = LocalPlayfulColors.current
     Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         // Month stepper
         Row(
@@ -267,15 +307,24 @@ private fun RecurringCalendarContent(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             IconButton(onClick = onPrev, enabled = onStep) {
-                Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
+                Icon(
+                    Icons.Filled.KeyboardArrowLeft,
+                    contentDescription = "Previous month",
+                    tint = colors.accent,
+                )
             }
             Text(
                 text = state.calendarMonth.atDay(1).format(MONTH_FORMATTER),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
             )
             IconButton(onClick = onNext, enabled = onStep) {
-                Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next month")
+                Icon(
+                    Icons.Filled.KeyboardArrowRight,
+                    contentDescription = "Next month",
+                    tint = colors.accent,
+                )
             }
         }
 
@@ -291,7 +340,7 @@ private fun RecurringCalendarContent(
             Text(
                 text = "No recurring rules fire this month",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp, start = 32.dp, end = 32.dp),
             )
@@ -320,17 +369,21 @@ private fun DayRulesCard(
     month: java.time.YearMonth,
     rules: List<RecurringRuleListItem>,
 ) {
+    val colors = LocalPlayfulColors.current
     val date = month.atDay(day)
-    Card(
+    PlayfulCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column {
             Text(
                 text = date.format(DATE_LABEL),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
             )
             Spacer(Modifier.height(8.dp))
             rules.forEach { item ->
@@ -339,11 +392,15 @@ private fun DayRulesCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(item.title, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            item.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textPrimary,
+                        )
                         Text(
                             text = item.scheduleLabel,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = colors.textSecondary,
                         )
                     }
                     Text(
@@ -361,29 +418,39 @@ private fun DayRulesCard(
 @Composable
 private fun RecurringRow(
     item: RecurringRuleListItem,
+    index: Int,
     onClick: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onSkipNext: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val colors = LocalPlayfulColors.current
     var menuOpen by remember { mutableStateOf(false) }
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.leafFor(index, 22.dp, 9.dp),
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(item.title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    item.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
+                )
                 Text(
                     text = item.scheduleLabel,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                 )
                 Text(
                     text = item.nextLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textTertiary,
                 )
             }
             Text(
@@ -394,7 +461,11 @@ private fun RecurringRow(
             )
             Box {
                 IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = "More options",
+                        tint = colors.textSecondary,
+                    )
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     if (item.isPaused) {
@@ -459,7 +530,7 @@ private fun RecurringEditorDialog(
         EntityPickerOption(it.id, it.name, it.icon?.let { k -> CATEGORY_ICONS[k] }, it.color)
     }
 
-    AlertDialog(
+    PlayfulDialog(
         onDismissRequest = onCancel,
         modifier = Modifier
             .fillMaxWidth()
@@ -634,16 +705,24 @@ private fun DateField(
 
 @Composable
 private fun EmptyState(title: String, body: String, modifier: Modifier = Modifier) {
+    val colors = LocalPlayfulColors.current
     Column(
         modifier = modifier.padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
+        Icon(
+            Icons.Filled.DateRange,
+            contentDescription = null,
+            tint = colors.accent,
+            modifier = Modifier.size(48.dp).rotate(-6f),
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
         Spacer(Modifier.height(4.dp))
         Text(
             text = body,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
         )
     }
@@ -661,8 +740,10 @@ private fun RecurringRuleListItem.signedAmount(): String {
 }
 
 @Composable
-private fun RecurringRuleListItem.amountColor(): Color =
-    if (type == TransactionType.INCOME) IncomeColor else MaterialTheme.colorScheme.error
+private fun RecurringRuleListItem.amountColor(): Color {
+    val semantic = LocalPlayfulColors.current.semantic
+    return if (type == TransactionType.INCOME) semantic.income else semantic.negative
+}
 
 private fun RecurringFrequency.label(): String = when (this) {
     RecurringFrequency.DAILY -> "Daily"

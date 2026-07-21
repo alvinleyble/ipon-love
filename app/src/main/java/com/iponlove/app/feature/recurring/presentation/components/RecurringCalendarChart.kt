@@ -18,14 +18,13 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.recurring.presentation.RecurringRuleListItem
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.ceil
 import kotlin.math.min
-
-private val IncomeGreen = Color(0xFF2E7D32)
 
 /**
  * Month grid showing dots on days when recurring rules fire. Dots are green for income
@@ -47,7 +46,9 @@ fun RecurringCalendarChart(
     val primaryContainerColor = MaterialTheme.colorScheme.primaryContainer
     val secondaryContainerColor = MaterialTheme.colorScheme.secondaryContainer
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
-    val errorColor = MaterialTheme.colorScheme.error
+    // Playful Pop (v1.6.7 Item 8 Slice 6i): income/expense dots use the mode-aware money semantics
+    // (grill-note #4), so income reads legible-green even in dark mode instead of a dark 0xFF2E7D32.
+    val semantic = LocalPlayfulColors.current.semantic
 
     // Java DayOfWeek: Mon=1…Sun=7. Map to Sun=0…Sat=6.
     val firstWeekdayOffset = month.atDay(1).dayOfWeek.value % 7
@@ -151,7 +152,7 @@ fun RecurringCalendarChart(
                 val dotY = cellY + cellH - dotRadius - 6.dp.toPx()
 
                 for (i in 0 until dotCount) {
-                    val dotColor = if (firingRules[i].type == TransactionType.INCOME) IncomeGreen else errorColor
+                    val dotColor = if (firingRules[i].type == TransactionType.INCOME) semantic.income else semantic.negative
                     drawCircle(
                         color = dotColor,
                         radius = dotRadius,

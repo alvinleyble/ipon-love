@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -25,11 +26,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.FeatureLockedPanel
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.calculator.domain.CalculatorEngine
 import com.iponlove.app.feature.calculator.domain.CalculatorOperator
 import com.iponlove.app.feature.calculator.domain.CalculatorState
@@ -48,9 +51,20 @@ fun CalculatorScreen(
 ) {
     var state by remember { mutableStateOf(CalculatorState()) }
     val locked by viewModel.locked.collectAsState()
+    val colors = LocalPlayfulColors.current
 
+    // Transparent chrome — the app-wide playfulBackground() from IponApp shows through.
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Calculator") }) },
+        containerColor = Color.Transparent,
+        topBar = {
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = colors.textPrimary,
+                ),
+                title = { Text("Calculator") },
+            )
+        },
     ) { padding ->
         if (locked) {
             FeatureLockedPanel(
@@ -117,6 +131,7 @@ fun CalculatorScreen(
 
 @Composable
 private fun CalculatorDisplay(state: CalculatorState, modifier: Modifier = Modifier) {
+    val colors = LocalPlayfulColors.current
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Bottom,
@@ -129,14 +144,14 @@ private fun CalculatorDisplay(state: CalculatorState, modifier: Modifier = Modif
             Text(
                 expression,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
                 textAlign = TextAlign.End,
             )
         }
         Text(
             state.display,
             style = MaterialTheme.typography.displayMedium,
-            color = if (state.error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+            color = if (state.error) colors.semantic.negative else colors.textPrimary,
             textAlign = TextAlign.End,
             fontSize = 40.sp,
         )

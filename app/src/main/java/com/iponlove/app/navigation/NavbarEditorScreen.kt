@@ -28,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -38,11 +39,14 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 
 /**
  * Drag-to-reorder + replace editor for the bottom bar (ADR-0017). Holds a working [NavConfig]
@@ -76,10 +80,18 @@ fun NavbarEditorScreen(
     val available = NavRegistry.all.filter {
         it.pinnable && it.id !in config.pinnedIds
     }
+    val colors = LocalPlayfulColors.current
 
+    // Transparent chrome — the app-wide playfulBackground() from IponApp shows through.
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = colors.textPrimary,
+                    navigationIconContentColor = colors.textPrimary,
+                ),
                 title = { Text("Edit navbar") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -101,11 +113,11 @@ fun NavbarEditorScreen(
                     "handle to reorder — the first item is your home screen. To change which " +
                     "shortcuts appear, tap a module below and pick which pin to replace.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Spacer(Modifier.height(20.dp))
 
-            Text("On the bar", style = MaterialTheme.typography.titleSmall)
+            Text("On the bar", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
             Spacer(Modifier.height(8.dp))
             ReorderablePins(
                 pinned = pinned,
@@ -114,13 +126,13 @@ fun NavbarEditorScreen(
             )
 
             Spacer(Modifier.height(28.dp))
-            Text("More modules", style = MaterialTheme.typography.titleSmall)
+            Text("More modules", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
             Spacer(Modifier.height(8.dp))
             if (available.isEmpty()) {
                 Text(
                     "Everything's on your bar.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
             } else {
@@ -156,6 +168,7 @@ private fun ReorderablePins(
     var dragAccum by remember { mutableFloatStateOf(0f) }
     // Read the latest order from inside the long-lived drag closure.
     val currentOrder by rememberUpdatedState(pinned.map { it.id })
+    val colors = LocalPlayfulColors.current
 
     Column {
         pinned.forEachIndexed { index, dest ->
@@ -163,7 +176,7 @@ private fun ReorderablePins(
                 val dragging = draggingId == dest.id
                 Surface(
                     tonalElevation = if (dragging) 8.dp else 1.dp,
-                    shape = MaterialTheme.shapes.medium,
+                    shape = LeafShapes.leafFor(index, 22.dp, 9.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(rowHeight)
@@ -178,7 +191,7 @@ private fun ReorderablePins(
                         Icon(
                             Icons.Filled.DragHandle,
                             contentDescription = "Reorder ${dest.label}",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = colors.textSecondary,
                             modifier = Modifier
                                 .padding(8.dp)
                                 .pointerInput(dest.id) {
@@ -205,10 +218,10 @@ private fun ReorderablePins(
                                     )
                                 },
                         )
-                        Icon(dest.icon, contentDescription = null)
+                        Icon(dest.icon, contentDescription = null, tint = colors.textPrimary)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(dest.label, style = MaterialTheme.typography.bodyLarge)
+                            Text(dest.label, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
                             val tag = when {
                                 index == 0 -> "Home"
                                 dest.requiresPaired && !isPaired -> "Paired only"
@@ -218,7 +231,7 @@ private fun ReorderablePins(
                                 Text(
                                     tag,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = colors.textSecondary,
                                 )
                             }
                         }
@@ -231,6 +244,7 @@ private fun ReorderablePins(
 
 @Composable
 private fun AvailableRow(dest: NavDestination, isPaired: Boolean, onReplace: () -> Unit) {
+    val colors = LocalPlayfulColors.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -241,20 +255,24 @@ private fun AvailableRow(dest: NavDestination, isPaired: Boolean, onReplace: () 
             .padding(horizontal = 8.dp),
     ) {
         Box(Modifier.width(40.dp), contentAlignment = Alignment.Center) {
-            Icon(dest.icon, contentDescription = null)
+            Icon(dest.icon, contentDescription = null, tint = colors.textPrimary)
         }
         Column(Modifier.weight(1f)) {
-            Text(dest.label, style = MaterialTheme.typography.bodyLarge)
+            Text(dest.label, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
             if (dest.requiresPaired && !isPaired) {
                 Text(
                     "Paired only",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                 )
             }
         }
         IconButton(onClick = onReplace) {
-            Icon(Icons.Filled.SwapHoriz, contentDescription = "Replace a pin with ${dest.label}")
+            Icon(
+                Icons.Filled.SwapHoriz,
+                contentDescription = "Replace a pin with ${dest.label}",
+                tint = colors.accent,
+            )
         }
     }
 }

@@ -46,6 +46,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -74,6 +75,7 @@ import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.categories.domain.model.CategoryType
@@ -143,9 +145,18 @@ private fun AddTransactionContent(
     onSave: () -> Unit,
 ) {
     val editor = state.editor
+    val colors = LocalPlayfulColors.current
+    // Transparent chrome — the app-wide playfulBackground() from IponApp shows through.
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = colors.textPrimary,
+                    navigationIconContentColor = colors.textPrimary,
+                    actionIconContentColor = colors.textSecondary,
+                ),
                 title = { Text(if (editor?.isEditing == true) "Edit transaction" else "New transaction") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -162,7 +173,7 @@ private fun AddTransactionContent(
     ) { padding ->
         when {
             state.missing -> Box(Modifier.padding(padding).fillMaxSize(), Alignment.Center) {
-                Text("This transaction no longer exists.")
+                Text("This transaction no longer exists.", color = colors.textPrimary)
             }
 
             editor == null -> Box(Modifier.padding(padding).fillMaxSize(), Alignment.Center) {
@@ -226,6 +237,7 @@ private fun EditorForm(
     val touchesSharedAccount =
         editor.accountId in sharedAccountIds || editor.toAccountId in sharedAccountIds
 
+    val colors = LocalPlayfulColors.current
     var showDatePicker by remember { mutableStateOf(false) }
     var receiptViewerIndex by remember { mutableStateOf<Int?>(null) }
 
@@ -309,20 +321,24 @@ private fun EditorForm(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Date", style = MaterialTheme.typography.labelLarge)
-                Text(formatShortDate(editor.date), style = MaterialTheme.typography.bodyMedium)
+                Text("Date", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+                Text(
+                    formatShortDate(editor.date),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textPrimary,
+                )
             }
             Icon(
                 imageVector = Icons.Filled.DateRange,
                 contentDescription = "Pick date",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = colors.accent,
             )
         }
 
         if (!touchesSharedAccount) {
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Private", modifier = Modifier.weight(1f))
+                Text("Private", modifier = Modifier.weight(1f), color = colors.textPrimary)
                 Switch(checked = editor.isPrivate, onCheckedChange = onPrivateChange)
             }
             Text(
@@ -336,20 +352,20 @@ private fun EditorForm(
                         "combined view."
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
         }
 
         if (state.canPayForPartner && editor.type == TransactionType.EXPENSE) {
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Paid for ${state.partnerName}", modifier = Modifier.weight(1f))
+                Text("Paid for ${state.partnerName}", modifier = Modifier.weight(1f), color = colors.textPrimary)
                 Switch(checked = editor.paidForPartner, onCheckedChange = onPaidForPartnerChange)
             }
             Text(
                 "Adds what ${state.partnerName} owes you to the Partner Debt Tracker.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             if (editor.paidForPartner) {
                 Spacer(Modifier.height(8.dp))
@@ -383,7 +399,7 @@ private fun EditorForm(
                 Text(
                     text = error.message(),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = colors.semantic.negative,
                 )
             }
         }
@@ -422,7 +438,11 @@ private fun EditorForm(
 
 @Composable
 private fun FieldLabel(text: String) {
-    Text(text, style = MaterialTheme.typography.labelLarge)
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        color = LocalPlayfulColors.current.textSecondary,
+    )
     Spacer(Modifier.height(6.dp))
 }
 
@@ -439,15 +459,21 @@ private fun ReceiptStrip(
     onRemoveReceipt: (String) -> Unit,
     onViewReceipt: (Int) -> Unit,
 ) {
+    val colors = LocalPlayfulColors.current
     val atMax = images.size >= TransactionImage.MAX
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Receipts", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            Text(
+                "Receipts",
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.textSecondary,
+                modifier = Modifier.weight(1f),
+            )
             if (images.isNotEmpty()) {
                 Text(
                     text = "${images.size}/${TransactionImage.MAX}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (atMax) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (atMax) colors.semantic.negative else colors.textSecondary,
                 )
                 Spacer(Modifier.width(4.dp))
             }
@@ -455,7 +481,7 @@ private fun ReceiptStrip(
                 Icon(
                     Icons.Filled.AddPhotoAlternate,
                     contentDescription = "Attach receipt",
-                    tint = if (atMax) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                    tint = if (atMax) colors.textTertiary else colors.accent,
                 )
             }
         }

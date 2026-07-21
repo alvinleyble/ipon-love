@@ -19,7 +19,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -31,6 +30,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,11 +38,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulSurface
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 
 /** The one-time price shown before purchase (§10.5 / D7). Hardcoded while dormant — a later slice
  *  (S11+) can swap in the live localized `ProductDetails.getFormattedPrice()` once the Play
@@ -72,6 +78,7 @@ fun SubscriptionScreen(
     val context = LocalContext.current
     val activity = LocalActivity.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val colors = LocalPlayfulColors.current
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -80,9 +87,17 @@ fun SubscriptionScreen(
         }
     }
 
+    // Transparent chrome — the app-wide playfulBackground() from IponApp shows through.
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = colors.textPrimary,
+                    navigationIconContentColor = colors.textPrimary,
+                    actionIconContentColor = colors.textSecondary,
+                ),
                 title = { Text("Premium") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -139,25 +154,30 @@ private fun UpsellState(
     onBuy: () -> Unit,
     onRestore: () -> Unit,
 ) {
+    val colors = LocalPlayfulColors.current
     val busy = purchaseInProgress || restoreInProgress
     Icon(
         Icons.Filled.Stars,
         contentDescription = null,
-        tint = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.size(48.dp),
+        tint = colors.accent,
+        modifier = Modifier.size(48.dp).rotate(-8f),
     )
     Spacer(Modifier.height(12.dp))
-    Text("Unlock more of Love, Ipon", style = MaterialTheme.typography.headlineSmall)
+    Text("Unlock more of Love, Ipon", style = MaterialTheme.typography.headlineSmall, color = colors.textPrimary)
     Spacer(Modifier.height(4.dp))
     Text(
         "Tracking your own money is always free. Premium adds more room and a few delightful extras.",
         style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = colors.textSecondary,
     )
 
     Spacer(Modifier.height(20.dp))
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
+    ) {
+        Column {
             PREMIUM_BENEFITS.forEachIndexed { index, benefit ->
                 if (index > 0) Spacer(Modifier.height(12.dp))
                 BenefitRow(benefit)
@@ -191,26 +211,30 @@ private fun ActiveState(
     restoreInProgress: Boolean,
     onRestore: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    val colors = LocalPlayfulColors.current
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth(),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.Card,
+        contentPadding = 24.dp,
+    ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(
                 Icons.Filled.Stars,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp),
+                tint = colors.accent,
+                modifier = Modifier.size(48.dp).rotate(-8f),
             )
             Spacer(Modifier.height(12.dp))
-            Text("Premium — active", style = MaterialTheme.typography.titleLarge)
+            Text("Premium — active", style = MaterialTheme.typography.titleLarge, color = colors.textPrimary)
             Spacer(Modifier.height(4.dp))
             Text(
                 "Thank you! All Premium features are unlocked. Your one-time purchase never expires.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
             )
         }
@@ -227,11 +251,12 @@ private fun ActiveState(
 
 @Composable
 private fun BenefitRow(text: String) {
+    val colors = LocalPlayfulColors.current
     Row(verticalAlignment = Alignment.Top) {
         Icon(
             Icons.Filled.Check,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = colors.accent,
             modifier = Modifier.size(20.dp),
         )
         Spacer(Modifier.size(12.dp))
@@ -239,6 +264,7 @@ private fun BenefitRow(text: String) {
             text,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Normal,
+            color = colors.textPrimary,
         )
     }
 }
