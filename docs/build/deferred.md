@@ -17,11 +17,12 @@ Each item below keeps the version doc it was originally booked under, for tracea
 
 ---
 
-## Item 23 — Archived entity label fallback in Records & Budgets (⏸️ DEFERRED — needs tester feedback)
+## Item 23 — Archived entity label fallback in Records & Budgets (✅ RESOLVED by v1.6.7 Item 5)
 
 *(originally booked in [v1.6.5.md](v1.6.5.md), carried to [v1.6.6.md](v1.6.6.md), moved here 2026-07-17)*
 
-- **Status:** ⏸️ **DEFERRED** — booked but intentionally **not scheduled**; Alvin wants **tester feedback first** before deciding whether it's a bug to fix or the intended signal. Split out of [v1.6.5.md Item 19](v1.6.5.md#item-19--manage-surface-archived-accountscategories-so-they-can-be-unarchived-) to keep that slice tightly scoped. **Model (if built): Sonnet, low effort.** Non-paywall.
+- **Status:** ✅ **RESOLVED `b05087d`** (2026-07-22) — the [v1.6.7 Item 5](v1.6.7.md#item-5--archive-label-preservation--delete-confirm-that-steers-to-archive-resolves-deferred-item-23) grill **overturned the "needs tester feedback" premise**: archiving is the non-destructive twin of delete, so it should *never* degrade a label. Records + Budgets now feed their display name-maps from `observeCategories/Accounts(includeArchived = true)`, so a historical row pointing at an archived entity keeps its real label everywhere (Analysis already did). The label-degrading footgun moved onto **Delete**, which Item 5 gates behind an archive-steering confirm. No tester-feedback wait needed. *(Historical write-up preserved below.)*
+- **Superseded status:** ⏸️ ~~DEFERRED — booked but intentionally not scheduled; Alvin wants tester feedback first before deciding whether it's a bug to fix or the intended signal.~~ Split out of [v1.6.5.md Item 19](v1.6.5.md#item-19--manage-surface-archived-accountscategories-so-they-can-be-unarchived-) to keep that slice tightly scoped. **Model: Sonnet, low effort** (built as part of Item 5). Non-paywall.
 - **Independent** — pure display-time label resolution, no schema/sync/data change.
 - **Related item booked 2026-07-18:** [v1.6.7.md Item 5](v1.6.7.md#item-5--archived-category-confirm-on-archive-warning-related-to-deferred-item-23) tackles the *archive-time* warning UX for the same root problem — this item stays deferred/unscheduled regardless (still waiting on tester feedback for the display-time question), but the two are related and the Item 5 grill may end up resolving this one too.
 
