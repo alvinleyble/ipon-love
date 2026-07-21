@@ -264,7 +264,11 @@ private fun RecordsFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
 private fun DayHeader(label: String) {
     val colors = LocalPlayfulColors.current
     Row(
-        modifier = Modifier.fillMaxWidth().background(colors.backgroundBottom).padding(vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.backgroundBottom)
+            .background(colors.glass)
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HeartBullet(colors.accent, sizeDp = 12)

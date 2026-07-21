@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 
 /**
  * A calendar-month label with prev/next step arrows — the same shape as Analysis's period
@@ -32,6 +33,7 @@ fun MonthStepperRow(
     canGoPrevious: Boolean = true,
     onPreviousLocked: () -> Unit = {},
 ) {
+    val colors = LocalPlayfulColors.current
     Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -42,18 +44,23 @@ fun MonthStepperRow(
         // not a dead disabled button. Dormant/premium: canGoPrevious is true, so it steps as before.
         IconButton(onClick = if (canGoPrevious) onPrevious else onPreviousLocked) {
             if (canGoPrevious) {
-                Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
+                Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous month", tint = colors.textSecondary)
             } else {
-                Icon(Icons.Filled.Lock, contentDescription = "Unlock older history")
+                Icon(Icons.Filled.Lock, contentDescription = "Unlock older history", tint = colors.textSecondary)
             }
         }
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
         IconButton(onClick = onNext, enabled = canGoNext) {
-            Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next month")
+            Icon(
+                Icons.Filled.KeyboardArrowRight,
+                contentDescription = "Next month",
+                tint = colors.textSecondary.copy(alpha = if (canGoNext) 1f else 0.4f),
+            )
         }
     }
 }
