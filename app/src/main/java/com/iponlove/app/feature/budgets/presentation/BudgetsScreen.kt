@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -22,15 +22,14 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import com.iponlove.app.core.ui.IponFilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -44,14 +43,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.CapReachedSheet
+import com.iponlove.app.core.ui.HeartTippedProgress
+import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulChip
+import com.iponlove.app.core.ui.PlayfulDialog
+import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.SharedBadge
 import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
+import com.iponlove.app.core.ui.playfulBackground
+import com.iponlove.app.core.ui.theme.LeafShapes
+import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import java.math.BigDecimal
 
 private const val OVERALL_ID = "__overall__"
@@ -74,11 +82,13 @@ fun BudgetsBody(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    Column(modifier = modifier) {
+    Column(modifier = modifier.playfulBackground()) {
         MonthStepper(
             label = state.monthLabel,
             onPrevious = viewModel::previousMonth,
             onNext = viewModel::nextMonth,
+            isPrivacyModeOn = state.privacyModeEnabled,
+            onTogglePrivacyMode = viewModel::togglePrivacyMode,
         )
         Box(modifier = Modifier.fillMaxSize()) {
             when {
@@ -93,9 +103,10 @@ fun BudgetsBody(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(state.rows, key = { it.id }) { row ->
+                    itemsIndexed(state.rows, key = { _, row -> row.id }) { index, row ->
                         BudgetCard(
                             row = row,
+                            index = index,
                             nextMonthShortLabel = state.nextMonthShortLabel,
                             onClick = { viewModel.startEdit(row) },
                             onDelete = { viewModel.delete(row.id) },
@@ -132,22 +143,47 @@ fun BudgetsBody(
 }
 
 @Composable
-private fun MonthStepper(label: String, onPrevious: () -> Unit, onNext: () -> Unit) {
+private fun MonthStepper(
+    label: String,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    isPrivacyModeOn: Boolean,
+    onTogglePrivacyMode: () -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
     ) {
+        Spacer(Modifier.weight(1f))
         IconButton(onClick = onPrevious) {
-            Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
+            Icon(
+                Icons.Filled.KeyboardArrowLeft,
+                contentDescription = "Previous month",
+                tint = colors.accent,
+            )
         }
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            fontWeight = FontWeight.Bold,
+            color = colors.textPrimary,
+            modifier = Modifier.padding(horizontal = 12.dp),
         )
         IconButton(onClick = onNext) {
-            Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next month")
+            Icon(
+                Icons.Filled.KeyboardArrowRight,
+                contentDescription = "Next month",
+                tint = colors.accent,
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onTogglePrivacyMode) {
+            Icon(
+                imageVector = if (isPrivacyModeOn) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                contentDescription = if (isPrivacyModeOn) "Show amounts" else "Hide amounts",
+                tint = colors.textSecondary,
+            )
         }
     }
 }
@@ -155,6 +191,7 @@ private fun MonthStepper(label: String, onPrevious: () -> Unit, onNext: () -> Un
 @Composable
 private fun BudgetCard(
     row: BudgetRow,
+    index: Int,
     nextMonthShortLabel: String,
     onClick: () -> Unit,
     onDelete: () -> Unit,
@@ -163,12 +200,19 @@ private fun BudgetCard(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var confirmReset by remember { mutableStateOf(false) }
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+    val colors = LocalPlayfulColors.current
+    PlayfulCard(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        surface = PlayfulSurface.Glass,
+        shape = LeafShapes.leafFor(index, 22.dp, 9.dp),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = row.title,
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary,
                 )
                 if (row.isShared) {
                     Spacer(Modifier.width(8.dp))
@@ -197,21 +241,20 @@ private fun BudgetCard(
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { row.fraction },
+            Spacer(Modifier.height(10.dp))
+            // Overspend cue preserved (grill note, v1.6.7 Item 8 Slice-6 rollout): HeartTippedProgress
+            // clamps 0–100%, so an over-budget row still needs an explicit red fill to keep the signal.
+            HeartTippedProgress(
+                progress = row.fraction,
                 modifier = Modifier.fillMaxWidth(),
-                color = if (row.isOverBudget) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.primary
-                },
+                fillColor = if (row.isOverBudget) colors.semantic.negative else colors.accent,
             )
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "${money(row.spent)} of ${formatSignedPhp(row.limit)}",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
                     modifier = Modifier.weight(1f),
                 )
                 Text(
@@ -221,11 +264,8 @@ private fun BudgetCard(
                         "${money(row.remaining)} left"
                     },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (row.isOverBudget) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    fontWeight = FontWeight.Bold,
+                    color = if (row.isOverBudget) colors.semantic.negative else colors.textSecondary,
                 )
             }
             if (row.rolloverEnabled && row.carriedAmount.signum() != 0) {
@@ -237,11 +277,7 @@ private fun BudgetCard(
                         "Base ${money(row.baseAmount)} − ${money(row.carriedAmount.abs())} deficit carried over from last month"
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (row.carriedAmount.signum() < 0) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    color = if (row.carriedAmount.signum() < 0) colors.semantic.negative else colors.textSecondary,
                 )
             }
             if (row.limit.signum() < 0) {
@@ -249,7 +285,7 @@ private fun BudgetCard(
                 Text(
                     text = "Limit already ${formatSignedPhp(row.limit)} before this month's spending",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = colors.semantic.negative,
                 )
             }
         }
@@ -289,7 +325,7 @@ private fun BudgetEditorDialog(
     onCancel: () -> Unit,
 ) {
     val selectedChipId = editor.categoryId ?: OVERALL_ID
-    AlertDialog(
+    PlayfulDialog(
         onDismissRequest = onCancel,
         title = { Text(if (editor.isEditing) "Edit budget" else "New budget") },
         text = {
@@ -391,7 +427,7 @@ private fun BudgetEditorDialog(
 
 @Composable
 private fun BudgetChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    IponFilterChip(selected = selected, onClick = onClick, label = { Text(label) })
+    PlayfulChip(label = label, selected = selected, onClick = onClick)
 }
 
 @Composable

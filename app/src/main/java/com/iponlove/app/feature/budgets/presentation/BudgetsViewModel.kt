@@ -23,6 +23,8 @@ import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCa
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetStartDayUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveCombinedTransactionsForBudgetsUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
@@ -50,6 +52,8 @@ class BudgetsViewModel @Inject constructor(
     observeCombinedTransactions: ObserveCombinedTransactionsForBudgetsUseCase,
     observeCategories: ObserveCategoriesUseCase,
     observePairingState: ObservePairingStateUseCase,
+    private val observePrivacyMode: ObservePrivacyModeUseCase,
+    private val setPrivacyMode: SetPrivacyModeUseCase,
     private val upsertBudget: UpsertBudgetUseCase,
     private val upsertSharedBudget: UpsertSharedBudgetUseCase,
     private val deleteBudget: DeleteBudgetUseCase,
@@ -120,8 +124,8 @@ class BudgetsViewModel @Inject constructor(
                     else -> PairInfo(isPaired = false, coupleId = null)
                 }
             }
-            combine(dataFlow, controlsFlow, pairingFlow) { data, controls, pairing ->
-                buildUiState(data, controls, pairing)
+            combine(dataFlow, controlsFlow, pairingFlow, observePrivacyMode()) { data, controls, pairing, privacyModeOn ->
+                buildUiState(data, controls, pairing, privacyModeOn)
             }
         }.stateIn(
             scope = viewModelScope,
@@ -133,6 +137,7 @@ class BudgetsViewModel @Inject constructor(
         data: BudgetData,
         controls: BudgetControls,
         pairing: PairInfo,
+        privacyModeOn: Boolean,
     ): BudgetsUiState {
         val monthKey = controls.month.toString()
         val categoryNames = data.categories.associate { it.id to it.name }
@@ -162,6 +167,7 @@ class BudgetsViewModel @Inject constructor(
             upsell = controls.upsell,
             rolloverLocked = controls.rolloverLocked,
             isPaired = pairing.isPaired,
+            privacyModeEnabled = privacyModeOn,
         )
     }
 
@@ -188,6 +194,10 @@ class BudgetsViewModel @Inject constructor(
             val window = BudgetCycle.window(displayedMonth.toString(), startDay)
             "${window.firstDay.format(RANGE_FORMATTER)} – ${window.lastDay.format(RANGE_FORMATTER)}"
         }
+
+    fun togglePrivacyMode() {
+        viewModelScope.launch { setPrivacyMode(!uiState.value.privacyModeEnabled) }
+    }
 
     fun previousMonth() {
         month.value = month.value.minusMonths(1)

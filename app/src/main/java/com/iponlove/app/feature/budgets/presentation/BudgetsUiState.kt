@@ -27,6 +27,8 @@ data class BudgetsUiState(
      * When false, every budget is personal and the selector is hidden.
      */
     val isPaired: Boolean = false,
+    /** Global Privacy mode (Item 15/25) — masks [BudgetRow] amounts when on. */
+    val privacyModeEnabled: Boolean = false,
 )
 
 /** One budget with its derived progress for the displayed month. */
