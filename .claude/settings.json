@@ -125,6 +125,25 @@
             "if": "Bash(git *)"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/lovzay/ipon-love/.claude/hooks/book-gate.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/lovzay/ipon-love/.claude/hooks/book-lock-arm.sh"
+          }
+        ]
       }
     ]
   }

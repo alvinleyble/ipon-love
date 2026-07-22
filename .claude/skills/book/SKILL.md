@@ -30,7 +30,7 @@ Nothing here commits. The item stub stays uncommitted and rides along in `/wrap`
    - **Verify:** build-green + the on-device check (a paired staging account per `test-account-credentials` when couples/sharing is involved), and whether tier-1 tests are required (sync/money/mapper/usecase → yes; pure Composable → verified by running).
    - If paywall/entitlement-related, cross-link `docs/build/subscription-paywall-design.md` + ADR-0044 rather than restating the design.
 
-5. **Do NOT commit.** Leave the stub uncommitted. Then build the slice; `/wrap` records the `DONE <sha>` and commits the doc.
+5. **STOP HERE.** Do not commit, and do not edit, write, or otherwise touch any non-doc file in this same invocation — not even a one-line fix already fully diagnosed in the stub's Change section. The item stub stays uncommitted as `PLANNED`. Building happens only on a separate, later, explicit instruction (a follow-up message, `/wrap`ing it, or "go build Item N") — never automatically in the turn that booked it.
 
 ## Notes
 
