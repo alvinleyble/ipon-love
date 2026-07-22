@@ -17,6 +17,17 @@ Each item below keeps the version doc it was originally booked under, for tracea
 
 ---
 
+## Item 41 — Play Store screenshot refresh (Playful Pop reskin)
+
+*(originally booked in [v1.6.8.md](v1.6.8.md), carried to [v1.6.9.md](v1.6.9.md), moved here 2026-07-22)*
+
+- **Status:** ⏸️ **DEFERRED — do at prod release.** Moved here 2026-07-22 (Alvin: hold the re-render until we're releasing into prod). Not blocked on a decision — deliberately timed: more reskin/UI churn is still expected ([[playstore-screenshots-in-flux]]), and the store screenshots should capture the *final* shipping UI rather than be re-shot every batch. **Model: TBD** — booked as Fable 5 (visual/brand-taste fit), but Alvin is weighing Opus instead, since on Claude Pro Fable spends separate credits while Opus rides the session tokens already being paid for; decide at pickup.
+- **Request:** Alvin — "since we reskinned, we'll need to update our screenshots in playstore." The v1.6.7 Item 8 "Playful Pop" redesign (`f570463`+the full Slice 6 rollout, [v1.6.7.md](v1.6.7.md) Item 8) changed the visual identity of every screen since the last screenshot set was rendered (v1.6.5 Item 22, `43f59c1`, Rose-dark captures on the pre-reskin M3 look).
+- **Change (when picked up):** re-run the existing pipeline in [assets/brand/playstore/](../../assets/brand/playstore/) — drop fresh raw captures (Rose, light+dark per the existing convention) into `assets/brand/phone-screenshots/` from the reskinned app, remap slide→screenshot filenames in `slides.css` as needed, re-render via `render.sh` (recipe in `assets/brand/README.md`). Reuses the same 8-slide Heart-Wallet brand-voice design system — no new slides, no copy changes, just re-capturing the underlying screens. Republish to the same Artifact gallery path for review.
+- **Verify:** 8 Play-compliant 1080×1920 images regenerated, reviewed via Artifact gallery; Play Console upload stays Alvin's manual step (repo assets only, no app code/tests affected).
+
+---
+
 ## Item 23 — Archived entity label fallback in Records & Budgets (✅ RESOLVED by v1.6.7 Item 5)
 
 *(originally booked in [v1.6.5.md](v1.6.5.md), carried to [v1.6.6.md](v1.6.6.md), moved here 2026-07-17)*
