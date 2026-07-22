@@ -69,6 +69,25 @@ class BudgetProgressCalculatorTest {
     }
 
     @Test
+    fun overallBudget_excludesPartnerDebtSettlementLegs() {
+        val transactions = listOf(
+            txn("t1", TransactionType.EXPENSE, "1000.00", categoryId = "cat-1", date = june(5)),
+            // A partner-debt settlement leg (ADR-0019 #14): a real EXPENSE with no category and
+            // isSettlement=true. It's a repayment, not spending — must not consume the budget.
+            txn("settle", TransactionType.EXPENSE, "2000.00", categoryId = null, date = june(8), isSettlement = true),
+        )
+
+        val spent = BudgetProgressCalculator.spent(
+            budget = budget("b", categoryId = null, yearMonth = "2026-06"),
+            transactions = transactions,
+            zone = zone,
+        )
+
+        // Only the ₱1000 real expense counts; the ₱2000 settlement leg is excluded.
+        assertThat(spent).isEqualTo(BigDecimal("1000.00"))
+    }
+
+    @Test
     fun noMatchingTransactions_returnsZero() {
         val transactions = listOf(
             txn("t1", TransactionType.EXPENSE, "1000.00", categoryId = "cat-9", date = june(5)),
