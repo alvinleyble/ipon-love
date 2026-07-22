@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.iponlove.app.core.ui.playfulBackground
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 
-/** Onboarding step 1/4 — value-prop (ADR-0024). */
+/** Onboarding step 1/5 — value-prop (ADR-0024). */
 @Composable
 fun OnboardingWelcomeScreen(onContinue: () -> Unit) {
     val colors = LocalPlayfulColors.current

@@ -11,13 +11,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FilterVintage
 import androidx.compose.material.icons.filled.Grass
 import androidx.compose.material.icons.filled.LocalFlorist
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Park
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Waves
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,7 +58,15 @@ enum class AvatarMotif(val key: String, val icon: ImageVector, val label: String
     WAVE("wave", Icons.Filled.Waves, "Wave"),
     CRESCENT("crescent", Icons.Filled.DarkMode, "Crescent"),
     GEM("gem", Icons.Filled.Diamond, "Gem"),
-    SPROUT("sprout", Icons.Filled.Grass, "Sprout");
+    SPROUT("sprout", Icons.Filled.Grass, "Sprout"),
+    STAR("star", Icons.Filled.Star, "Star"),
+    SUN("sun", Icons.Filled.WbSunny, "Sun"),
+    CLOUD("cloud", Icons.Filled.Cloud, "Cloud"),
+    PAWPRINT("pawprint", Icons.Filled.Pets, "Pawprint"),
+    LOTUS("lotus", Icons.Filled.Spa, "Lotus"),
+    PINWHEEL("pinwheel", Icons.Filled.FilterVintage, "Pinwheel"),
+    NOTE("note", Icons.Filled.MusicNote, "Note"),
+    TREE("tree", Icons.Filled.Park, "Tree");
 
     companion object {
         /** The default motif when none is stored (dev-phase, no backfill — [User.avatarMotif] null). */
@@ -95,7 +111,8 @@ fun MotifAvatar(
 }
 
 /**
- * The 8-motif picker (v1.6.7 Item 3 Leg 1): a wrapped grid of avatars in the user's [accentHex],
+ * The motif picker (v1.6.7 Item 3 Leg 1; catalog expanded v1.6.9 Item 42): a wrapped grid of
+ * avatars in the user's [accentHex],
  * the [selectedKey] ringed. Live-preview only — the caller persists on tap (mirrors [AccentColorRow]).
  */
 @Composable

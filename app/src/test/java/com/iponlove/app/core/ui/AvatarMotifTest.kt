@@ -33,12 +33,13 @@ class AvatarMotifTest {
     }
 
     @Test
-    fun catalog_hasEightMotifsWithUniqueKeys() {
-        assertThat(AvatarMotif.entries).hasSize(8)
+    fun catalog_hasSixteenMotifsWithUniqueKeys() {
+        assertThat(AvatarMotif.entries).hasSize(16)
         val keys = AvatarMotif.entries.map { it.key }
-        assertThat(keys.toSet()).hasSize(8) // no duplicate keys
+        assertThat(keys.toSet()).hasSize(16) // no duplicate keys
         assertThat(keys).containsExactly(
             "heart", "leaf", "bloom", "sparkle", "wave", "crescent", "gem", "sprout",
+            "star", "sun", "cloud", "pawprint", "lotus", "pinwheel", "note", "tree",
         )
     }
 }

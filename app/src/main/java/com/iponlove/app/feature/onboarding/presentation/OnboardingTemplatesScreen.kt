@@ -35,7 +35,7 @@ import com.iponlove.app.core.ui.theme.LeafShapes
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.onboarding.domain.model.StarterBundle
 
-/** Onboarding step 4/4 — à-la-carte starter-template picker (ADR-0024). All bundles are
+/** Onboarding step 5/5 — à-la-carte starter-template picker (ADR-0024). All bundles are
  *  pre-checked; unchecking everything and continuing is a valid, fully-skippable path. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

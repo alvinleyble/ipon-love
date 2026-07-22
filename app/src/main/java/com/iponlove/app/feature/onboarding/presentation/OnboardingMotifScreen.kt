@@ -18,21 +18,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.iponlove.app.core.ui.CurrencyGrid
+import com.iponlove.app.core.ui.MotifPicker
 import com.iponlove.app.core.ui.playfulBackground
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
-import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 
 /**
- * Onboarding step 3/5 — display-currency symbol picker (Item 27, split from Item 18). ₱
- * ([CurrencySymbol.DEFAULT]) is pre-selected; a plain tap-through on "Continue" keeps peso, the
- * PH-market default. Existing beta testers (already past onboarding) are unaffected — they use
- * Settings → Personalize → Currency instead.
+ * Onboarding step 2/5 — motif-avatar picker (Item 42). The motif-avatar picker (v1.6.7 Item 3
+ * Leg 1) previously only lived in Settings → Profile, undiscoverable to a new user; this gives it
+ * a gentle, skippable first surface. Heart ([com.iponlove.app.core.ui.AvatarMotif.Default]) is
+ * pre-selected; a plain tap-through on "Continue" keeps it. Existing beta testers (already past
+ * onboarding) are unaffected — they use Settings → Profile instead.
  */
 @Composable
-fun OnboardingCurrencyScreen(
+fun OnboardingMotifScreen(
     onContinue: () -> Unit,
-    viewModel: OnboardingCurrencyViewModel = hiltViewModel(),
+    viewModel: OnboardingMotifViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -45,7 +45,7 @@ fun OnboardingCurrencyScreen(
             verticalArrangement = Arrangement.Center,
         ) {
             Text(
-                "Choose your currency symbol",
+                "What symbol represents you best?",
                 style = MaterialTheme.typography.headlineSmall,
                 color = colors.textPrimary,
                 textAlign = TextAlign.Center,
@@ -53,18 +53,18 @@ fun OnboardingCurrencyScreen(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "This is just a display label — every amount stays the same underneath, and " +
-                    "you can change it later from Settings.",
+                "This is just for you — it shows up next to your name, and you can change it " +
+                    "anytime from Settings.",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = colors.textSecondary,
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(24.dp))
-            CurrencyGrid(
-                symbols = CurrencySymbol.entries,
-                selected = state.selected,
-                onSelect = viewModel::selectSymbol,
+            MotifPicker(
+                selectedKey = state.selected,
+                accentHex = state.accentColor,
+                onSelect = viewModel::selectMotif,
             )
             Spacer(Modifier.height(24.dp))
             Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
