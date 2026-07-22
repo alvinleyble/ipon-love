@@ -2,6 +2,7 @@ package com.iponlove.app.feature.transactions
 
 import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.session.LastActiveUserStore
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.feature.transactions.data.TransactionRepositoryImpl
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
@@ -17,6 +18,34 @@ class TransactionRepositoryImplTest {
     private val clock = SyncClock(now = { now })
     private val currentUser = CurrentUserProvider { "user-1" }
     private val repository = TransactionRepositoryImpl(dao, clock, currentUser)
+
+    // ---- persisted-id fallback for the balance ledger (Item 10 follow-up) -------------
+    // The widget's balance math reads this on a cold/backgrounded process with no live session;
+    // it must resolve the owner from the durable LastActiveUserStore, matching observeAccounts.
+
+    /** A [CurrentUserProvider] with no live session — `userId()` throws, so `userIdOrNull()` is null. */
+    private val noSession = CurrentUserProvider { error("no authenticated user") }
+    private fun lastActive(id: String?) = object : LastActiveUserStore {
+        override suspend fun lastUserId(): String? = id
+        override suspend fun setLastUserId(id: String) {}
+    }
+
+    @Test
+    fun balanceLedger_fallsBackToPersistedId_whenLiveSessionNull() = runTest {
+        // Private + owned by user-1 → only surfaces when the query is scoped to user-1.
+        dao.store["t1"] = transactionEntity(id = "t1", userId = "user-1", isPrivate = true)
+        val repo = TransactionRepositoryImpl(dao, clock, noSession, lastActiveUser = lastActive("user-1"))
+
+        assertThat(repo.observeBalanceLedger().first().map { it.id }).containsExactly("t1")
+    }
+
+    @Test
+    fun balanceLedger_emitsEmpty_whenNoLiveSessionAndNoPersistedId() = runTest {
+        dao.store["t1"] = transactionEntity(id = "t1", userId = "user-1", isPrivate = true)
+        val repo = TransactionRepositoryImpl(dao, clock, noSession, lastActiveUser = lastActive(null))
+
+        assertThat(repo.observeBalanceLedger().first()).isEmpty()
+    }
 
     @Test
     fun upsert_newTransaction_stampsOwnerAndSyncColumns() = runTest {

@@ -2,6 +2,7 @@ package com.iponlove.app.feature.accounts
 
 import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.session.LastActiveUserStore
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.feature.accounts.data.AccountRepositoryImpl
 import com.iponlove.app.feature.accounts.domain.model.Account
@@ -104,6 +105,37 @@ class AccountRepositoryImplTest {
         val accounts = repository.observeAccounts().first()
 
         assertThat(accounts.map { it.name }).containsExactly("Cash")
+    }
+
+    // ---- persisted-id fallback (Item 10 follow-up) ----------------------------------
+    // The home-screen widget renders on a cold/backgrounded process where the live Supabase
+    // session hasn't restored (userIdOrNull() == null). The read must still resolve *whose*
+    // rows to show from the durable LastActiveUserStore so the widget paints local data
+    // without waiting on the network session.
+
+    /** A [CurrentUserProvider] with no live session — `userId()` throws, so `userIdOrNull()` is null. */
+    private val noSession = CurrentUserProvider { error("no authenticated user") }
+    private fun lastActive(id: String?) = object : LastActiveUserStore {
+        override suspend fun lastUserId(): String? = id
+        override suspend fun setLastUserId(id: String) {}
+    }
+
+    @Test
+    fun observeAccounts_fallsBackToPersistedId_whenLiveSessionNull() = runTest {
+        dao.store["a"] = accountEntity(id = "a", userId = "user-1", name = "Cash")
+        val repo = AccountRepositoryImpl(dao, clock, noSession, lastActiveUser = lastActive("user-1"))
+
+        val accounts = repo.observeAccounts().first()
+
+        assertThat(accounts.map { it.name }).containsExactly("Cash")
+    }
+
+    @Test
+    fun observeAccounts_emitsEmpty_whenNoLiveSessionAndNoPersistedId() = runTest {
+        dao.store["a"] = accountEntity(id = "a", userId = "user-1", name = "Cash")
+        val repo = AccountRepositoryImpl(dao, clock, noSession, lastActiveUser = lastActive(null))
+
+        assertThat(repo.observeAccounts().first()).isEmpty()
     }
 
     // ---- manual reorder (item 9b) -----------------------------------------------------

@@ -4,9 +4,9 @@
     android:initialLayout="@layout/balance_widget_initial"
     android:previewLayout="@layout/balance_widget_preview"
     android:minWidth="110dp"
-    android:minHeight="64dp"
+    android:minHeight="110dp"
     android:targetCellWidth="2"
-    android:targetCellHeight="1"
+    android:targetCellHeight="2"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen" />

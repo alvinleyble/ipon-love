@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.transactions.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.session.LastActiveUserStore
 import com.iponlove.app.core.session.userIdOrNull
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncTrigger
@@ -27,6 +28,7 @@ class TransactionRepositoryImpl @Inject constructor(
     private val clock: SyncClock,
     private val currentUser: CurrentUserProvider,
     private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
+    private val lastActiveUser: LastActiveUserStore = LastActiveUserStore.NONE,
 ) : TransactionRepository {
 
     // userId resolved inside each flow, not eagerly: these are re-collected during the
@@ -69,8 +71,11 @@ class TransactionRepositoryImpl @Inject constructor(
 
     override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = dao.observeHasAnyCombinedTransaction()
 
+    // Balance ledger falls back to the persisted last-active id when the live session is null
+    // (Item 10 follow-up) so the home-screen widget's balance math works on a cold/backgrounded
+    // process — the accounts read has the same fallback; both must agree or the rows wouldn't sum.
     override fun observeBalanceLedger(): Flow<List<Transaction>> = flow {
-        val userId = currentUser.userIdOrNull()
+        val userId = currentUser.userIdOrNull() ?: lastActiveUser.lastUserId()
         if (userId == null) emit(emptyList())
         else emitAll(dao.observeForBalances(userId).map { rows -> rows.map { it.toDomain() } })
     }

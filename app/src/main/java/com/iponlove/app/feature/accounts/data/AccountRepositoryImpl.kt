@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.accounts.data
 
 import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.session.LastActiveUserStore
 import com.iponlove.app.core.session.userIdOrNull
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.SyncTrigger
@@ -24,12 +25,19 @@ class AccountRepositoryImpl @Inject constructor(
     private val clock: SyncClock,
     private val currentUser: CurrentUserProvider,
     private val syncTrigger: SyncTrigger = SyncTrigger.NONE,
+    private val lastActiveUser: LastActiveUserStore = LastActiveUserStore.NONE,
 ) : AccountRepository {
 
     // userId resolved inside the flow, not eagerly: re-collected during the sign-out
     // transition (auth already null) where an eager userId() would crash the process.
+    // Fall back to the persisted last-active id (Item 10 follow-up): a cold/backgrounded
+    // process the home-screen widget revives has real local rows but no restored Supabase
+    // session yet — the id is a *local read scope*, not an auth check, so reading it from the
+    // durable store lets the widget paint real data without waiting on the network session.
+    // Safe in-app: currentUserOrNull() is null there only pre-mount (no observer composed) or
+    // during sign-out (Room already wiped → still empty). Writes keep the strict userId().
     override fun observeAccounts(includeArchived: Boolean): Flow<List<Account>> = flow {
-        val userId = currentUser.userIdOrNull()
+        val userId = currentUser.userIdOrNull() ?: lastActiveUser.lastUserId()
         if (userId == null) emit(emptyList())
         else emitAll(dao.observeAccounts(userId, includeArchived).map { rows -> rows.map { it.toDomain(userId) } })
     }

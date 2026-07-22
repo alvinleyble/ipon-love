@@ -18,6 +18,14 @@ interface LastActiveUserStore {
     /** The id recorded by the last [setLastUserId], or null on a fresh install. */
     suspend fun lastUserId(): String?
     suspend fun setLastUserId(id: String)
+
+    companion object {
+        /** No-op store (always no recorded user) — a test/default seam, mirroring `SyncTrigger.NONE`. */
+        val NONE: LastActiveUserStore = object : LastActiveUserStore {
+            override suspend fun lastUserId(): String? = null
+            override suspend fun setLastUserId(id: String) {}
+        }
+    }
 }
 
 class DataStoreLastActiveUserStore(

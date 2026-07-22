@@ -43,8 +43,12 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import androidx.work.WorkManager
 import com.iponlove.app.MainActivity
 import com.iponlove.app.R
+import com.iponlove.app.core.session.CurrentUserProvider
+import com.iponlove.app.core.session.LastActiveUserStore
+import com.iponlove.app.core.session.userIdOrNull
 import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
 import com.iponlove.app.feature.auth.domain.repository.AuthRepository
@@ -53,7 +57,6 @@ import com.iponlove.app.feature.accounts.domain.usecase.ObserveNetAssetsUseCase
 import com.iponlove.app.feature.widget.data.WidgetSessionStore
 import com.iponlove.app.feature.widget.data.resolveWidgetSession
 import com.iponlove.app.feature.settings.domain.usecase.ObserveCurrencySymbolUseCase
-import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -99,24 +102,31 @@ class BalanceWidget : GlanceAppWidget() {
         resolution.seedHint?.let { store.set(it) }
         val hasSession = resolution.hasSession
 
-        // The account/net-assets reads below are scoped to the *live* Supabase user id
-        // (CurrentUserProvider.currentUserOrNull()), which is null until the SDK restores the session
-        // on a cold process — so reading them too early emits an empty list and the widget shows
-        // "No accounts yet" even though the cached hint says logged in (Item 36 follow-up: the mask is
-        // decided from the hint, but the data still needs the real session). When we're logged in,
-        // wait for the session to actually load before reading; a warm process is already
-        // Authenticated so this returns immediately, and Glance keeps the prior render visible while
-        // we wait (no flash of empty).
-        if (hasSession) {
-            withTimeoutOrNull(SESSION_LOAD_MS) {
-                ep.authRepository().status.first { it is AuthStatus.Authenticated }
-            }
+        // Resolve the read-scope user id: the live Supabase session if it's up, else the persisted
+        // last-active id (Item 10 follow-up). We deliberately do NOT block on the live session here.
+        // The old `withTimeoutOrNull(SESSION_LOAD_MS)` wait for Authenticated stalled every
+        // cold/backgrounded render up to 8s (the session never wakes in that context), and the widget
+        // host drops/coalesces a render that slow — so a manual ⟳ often no-op'd and needed several
+        // taps to apply (Alvin, Item 10). The account reads are local Room; with the persisted id we
+        // can paint them immediately, and remote freshness comes from the background sync's
+        // Widgets.updateAll, not from stalling the render. The signed-out state stays gated to
+        // HardMasked upstream by the fast session hint, independent of this id.
+        val resolvedUserId = ep.currentUserProvider().userIdOrNull() ?: ep.lastActiveUserStore().lastUserId()
+        val sessionReady = hasSession && resolvedUserId != null
+
+        // When we're about to render NotReady, actively poll for the session to resolve — Fix A's
+        // transition-based repaint can't fire for a warm process that re-binds during a transient
+        // blip, so without this the "Updating…" placeholder could hang until an app-open/write/⟳.
+        // When we're ready (or signed out), cancel any pending chain so a resolved widget stops polling.
+        if (hasSession && !sessionReady) {
+            BalanceWidgetRetryWorker.schedule(context)
+        } else {
+            WorkManager.getInstance(context).cancelUniqueWork(BalanceWidgetRetryWorker.WORK_NAME)
         }
 
         val netAssets = ep.netAssetsUseCase().invoke().first()
         val accountBalances = ep.accountBalancesUseCase().invoke().first()
         val symbol = ep.currencySymbolUseCase().invoke().first()
-        val globalHide = ep.privacyModeUseCase().invoke().first()
 
         provideContent {
             val prefs = currentState<Preferences>()
@@ -125,7 +135,7 @@ class BalanceWidget : GlanceAppWidget() {
                 netAssets = netAssets,
                 symbol = symbol,
                 hasSession = hasSession,
-                globalHide = globalHide,
+                sessionReady = sessionReady,
                 userToggled = userToggled,
             )
             // Responsive picks the closest declared size; anything at least the tall height shows
@@ -148,10 +158,6 @@ class BalanceWidget : GlanceAppWidget() {
         // Only used in the rare migration-gap probe (hint never written); the common path reads the
         // persisted hint with no wait. Never hang forever regardless.
         private const val FALLBACK_PROBE_MS = 4000L
-        // Cold-process wait for the Supabase session to restore before reading user-scoped accounts
-        // (else they read empty → "No accounts yet"). Instant on a warm/Authenticated process; only
-        // bites on a cold process, where Glance keeps the prior render visible meanwhile.
-        private const val SESSION_LOAD_MS = 8000L
         private val COMPACT = DpSize(110.dp, 64.dp)
         private val TALL = DpSize(180.dp, 220.dp)
     }
@@ -164,9 +170,10 @@ interface WidgetEntryPoint {
     fun netAssetsUseCase(): ObserveNetAssetsUseCase
     fun accountBalancesUseCase(): ObserveAccountBalancesUseCase
     fun currencySymbolUseCase(): ObserveCurrencySymbolUseCase
-    fun privacyModeUseCase(): ObservePrivacyModeUseCase
     fun authRepository(): AuthRepository
     fun widgetSessionStore(): WidgetSessionStore
+    fun currentUserProvider(): CurrentUserProvider
+    fun lastActiveUserStore(): LastActiveUserStore
 }
 
 /** Intent that brings the (singleTask) app forward and lands on Manage → Accounts (its default tab). */
@@ -213,7 +220,8 @@ private fun TallWidget(display: WidgetDisplay, rows: List<AccountRowDisplay>?) {
         }
         Spacer(GlanceModifier.height(10.dp))
         when {
-            rows == null -> Hint("Sign in to view")           // signed out: list suppressed
+            display is WidgetDisplay.NotReady -> Hint("Updating…")  // session still restoring
+            rows == null -> Hint("Sign in to view")                // signed out: list suppressed
             rows.isEmpty() -> Hint("No accounts yet")
             else -> LazyColumn(modifier = GlanceModifier.fillMaxWidth().defaultWeight()) {
                 items(rows) { row -> AccountRow(row) }
@@ -245,14 +253,22 @@ private fun HeaderLabelRow() {
             ),
         )
         Spacer(GlanceModifier.defaultWeight())
-        Image(
-            provider = ImageProvider(R.drawable.ic_widget_refresh),
-            contentDescription = "Refresh",
-            colorFilter = ColorFilter.tint(PlayfulWidgetColors.onCardSecondary),
+        // The bare 18dp icon was near-impossible to hit (Alvin, Item 10) — a mis-tap fell through
+        // to the card's open-app click. Wrap it in a generous tap box, same pattern as the eye.
+        Box(
             modifier = GlanceModifier
-                .size(18.dp)
+                .width(48.dp)
+                .height(40.dp)
                 .clickable(actionRunCallback<RefreshBalanceWidgetAction>()),
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                provider = ImageProvider(R.drawable.ic_widget_refresh),
+                contentDescription = "Refresh",
+                colorFilter = ColorFilter.tint(PlayfulWidgetColors.onCardSecondary),
+                modifier = GlanceModifier.size(20.dp),
+            )
+        }
     }
 }
 
@@ -261,6 +277,7 @@ private fun HeaderLabelRow() {
 private fun AmountRow(display: WidgetDisplay) {
     val amountText = when (display) {
         WidgetDisplay.HardMasked -> MASKED
+        WidgetDisplay.NotReady -> MASKED
         is WidgetDisplay.Soft -> display.text ?: MASKED
     }
     Row(
@@ -280,10 +297,11 @@ private fun AmountRow(display: WidgetDisplay) {
             // Pinned to the row's far right (not floating after the amount, whose width changes
             // between masked and revealed) and wrapped in a generous tap box — the bare 22dp icon
             // was mis-tapped into the open-app body click ~80% of the time (Alvin, 2026-07-14).
+            // Box enlarged 48×36 → 48×40 and the glyph 24 → 26 (Item 10: still read too small).
             Box(
                 modifier = GlanceModifier
                     .width(48.dp)
-                    .height(36.dp)
+                    .height(40.dp)
                     .clickable(actionRunCallback<ToggleBalanceRevealAction>()),
                 contentAlignment = Alignment.Center,
             ) {
@@ -294,7 +312,7 @@ private fun AmountRow(display: WidgetDisplay) {
                     ),
                     contentDescription = if (display.revealed) "Hide amount" else "Show amount",
                     colorFilter = ColorFilter.tint(PlayfulWidgetColors.onCardSecondary),
-                    modifier = GlanceModifier.size(24.dp),
+                    modifier = GlanceModifier.size(26.dp),
                 )
             }
         }

@@ -37,6 +37,10 @@ class BuildAccountRowsTest {
         assertThat(buildAccountRows(WidgetDisplay.HardMasked, accounts, CurrencySymbol.PHP)).isNull()
     }
 
+    @Test fun `not-ready suppresses the whole list (the Updating hint owns the area)`() {
+        assertThat(buildAccountRows(WidgetDisplay.NotReady, accounts, CurrencySymbol.PHP)).isNull()
+    }
+
     @Test fun `revealed soft state shows names and real amounts in order`() {
         val rows = buildAccountRows(WidgetDisplay.Soft(text = "x", revealed = true), accounts, CurrencySymbol.PHP)!!
         assertThat(rows.map { it.name }).containsExactly("Cash", "GCash").inOrder()

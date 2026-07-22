@@ -18,13 +18,13 @@ class WidgetDisplayTest {
 
     private fun resolve(
         hasSession: Boolean = true,
-        globalHide: Boolean = false,
+        sessionReady: Boolean = true,
         userToggled: Boolean = false,
     ) = resolveWidgetDisplay(
         netAssets = amount,
         symbol = CurrencySymbol.PHP,
         hasSession = hasSession,
-        globalHide = globalHide,
+        sessionReady = sessionReady,
         userToggled = userToggled,
     )
 
@@ -35,25 +35,33 @@ class WidgetDisplayTest {
             .isEqualTo(WidgetDisplay.HardMasked)
     }
 
-    // --- Soft state: default follows global "Hide amounts", eye flips it ---
+    // --- Not-ready: hinted logged-in but the live user id hasn't resolved yet (Item 10) ---
 
-    @Test fun `hide off shows the amount by default`() {
-        assertThat(resolve(globalHide = false))
-            .isEqualTo(WidgetDisplay.Soft(text = "₱42,350.00", revealed = true))
+    @Test fun `hinted logged-in but session not ready shows the neutral placeholder`() {
+        assertThat(resolve(hasSession = true, sessionReady = false))
+            .isEqualTo(WidgetDisplay.NotReady)
     }
 
-    @Test fun `hide on masks by default with the eye available`() {
-        assertThat(resolve(globalHide = true))
+    @Test fun `not-ready takes precedence over a reveal toggle (no false peek)`() {
+        assertThat(resolve(hasSession = true, sessionReady = false, userToggled = true))
+            .isEqualTo(WidgetDisplay.NotReady)
+    }
+
+    @Test fun `no session outranks not-ready (still hard-masked)`() {
+        assertThat(resolve(hasSession = false, sessionReady = false))
+            .isEqualTo(WidgetDisplay.HardMasked)
+    }
+
+    // --- Soft state: the widget eye is its own domain — reveal follows only the widget's own
+    // toggle, independent of the in-app "Hide amounts" flag (Item 10) ---
+
+    @Test fun `default (untoggled) masks with the eye available`() {
+        assertThat(resolve(userToggled = false))
             .isEqualTo(WidgetDisplay.Soft(text = null, revealed = false))
     }
 
-    @Test fun `hide on plus a peek reveals the amount`() {
-        assertThat(resolve(globalHide = true, userToggled = true))
+    @Test fun `the widget eye reveals the amount`() {
+        assertThat(resolve(userToggled = true))
             .isEqualTo(WidgetDisplay.Soft(text = "₱42,350.00", revealed = true))
-    }
-
-    @Test fun `hide off plus a toggle blanks the amount`() {
-        assertThat(resolve(globalHide = false, userToggled = true))
-            .isEqualTo(WidgetDisplay.Soft(text = null, revealed = false))
     }
 }

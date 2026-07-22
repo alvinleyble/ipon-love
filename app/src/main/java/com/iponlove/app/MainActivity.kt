@@ -218,6 +218,20 @@ class MainActivity : FragmentActivity() {
                             // if a different account is now signed in (ADR-0021).
                             accountSwitchGuard.onAuthenticated(current.userId)
                             ensureCurrentUserRow()
+                            // Schedule the durable background sync *before* the awaited foreground
+                            // sync below (Item 10 follow-up). WorkManager survives a stalled sync
+                            // and even a ROM force-stop the instant we background, and its SyncWorker
+                            // repaints the home-screen widget when the pull lands. Gating this behind
+                            // sync() (as it was) could strand the first pull: an account switch had
+                            // already wiped Room, so a login-then-immediate-background left the widget
+                            // on "No accounts yet" with nothing scheduled to heal it until the app was
+                            // reopened. Enqueued early, the background pull runs on its own and heals it.
+                            val wm = WorkManager.getInstance(applicationContext)
+                            wm.enqueueUniqueWork(
+                                SyncWorker.WORK_NAME,
+                                ExistingWorkPolicy.KEEP,
+                                SyncWorker.buildRequest(),
+                            )
                             // The new-user gate (ADR-0024) reads *this call's own* outcome —
                             // never local emptiness (would duplicate-seed a reinstall/second
                             // device) and never the shared syncEngine.state snapshot (F4: a
@@ -231,12 +245,6 @@ class MainActivity : FragmentActivity() {
                             // Single write — the gate never observes "decided" without the answer.
                             onboardingDecision = shouldShowOnboarding(syncSucceeded)
                             materializeRecurringRules()
-                            val wm = WorkManager.getInstance(applicationContext)
-                            wm.enqueueUniqueWork(
-                                SyncWorker.WORK_NAME,
-                                ExistingWorkPolicy.KEEP,
-                                SyncWorker.buildRequest(),
-                            )
                             wm.enqueueUniqueWork(
                                 BudgetAlertWorker.WORK_NAME,
                                 ExistingWorkPolicy.REPLACE,
