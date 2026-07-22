@@ -153,11 +153,6 @@ private val ROADMAP = listOf(
         target = RoadmapTarget.Scheduled(2026, 3),
     ),
     RoadmapItem(
-        title = "Facebook Login",
-        description = "Sign up and log in with your Facebook account.",
-        target = RoadmapTarget.Scheduled(2026, 3),
-    ),
-    RoadmapItem(
         title = "Custom fonts",
         description = "Personalize the app's typography, not just its colors.",
         target = RoadmapTarget.Scheduled(2026, 3),
