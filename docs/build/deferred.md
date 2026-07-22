@@ -79,3 +79,10 @@ Distinct from the deferred items above: these aren't blocked on a decision or wa
 
 - **Status:** 🗄️ **SHELVED — deferred indefinitely 2026-07-07** at Alvin's call ("I don't think I need it, put it on the shelf for now"). Already out of V1 scope (CLAUDE.md). Not on the Upcoming-features teaser. Revisit only if a concrete need surfaces.
 - **Shape (if ever revisited):** data is already structured for it — transactions/budgets/analysis are all queryable Room tables; would be a straight export UseCase over existing repositories, per the CLAUDE.md scalability principle ("UseCases own data access... a future export UseCase must be able to reuse them").
+
+### Facebook Login
+
+*(originally [Post-V1 Horizon #2](project-build-progress.md), moved here 2026-07-23)*
+
+- **Status:** 🗄️ **SHELVED — deferred indefinitely 2026-07-23** at Alvin's call, decided alongside booking Google Sign-In ([v1.7.0.md Item 2](v1.7.0.md#item-2--google-sign-in-pulled-from-post-v1-horizon-1)) — Google Sign-In alone covers the SSO ask for now; no active interest in a second OAuth provider. Already out of V1 scope (CLAUDE.md — "Explicitly Out of Scope for V1: Google / Facebook SSO"). Removed from the Upcoming-features teaser ([v1.7.0.md Item 3](v1.7.0.md#item-3--facebook-login-shelved-indefinitely)).
+- **Shape (if ever revisited):** Supabase OAuth + Facebook SDK, most naturally following whatever OAuth plumbing Google Sign-In establishes (deep-link callback handling, account-linking rules for an existing email/password user). Never designed past that one-line sketch.
