@@ -88,6 +88,10 @@ private fun CurrencySwatch(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(symbol.code, style = MaterialTheme.typography.labelSmall)
+        Text(
+            symbol.code,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
