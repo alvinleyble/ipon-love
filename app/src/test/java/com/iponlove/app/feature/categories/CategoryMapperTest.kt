@@ -60,4 +60,16 @@ class CategoryMapperTest {
 
         assertThat(roundTripped).isEqualTo(original.copy(pendingSync = false))
     }
+
+    @Test
+    fun excludeFromAnalysis_survivesRoundTripAndReachesDomain() {
+        val original = categoryEntity(id = "c", name = "Reimbursable", excludeFromAnalysis = true)
+
+        assertThat(original.toDto().excludeFromAnalysis).isTrue()
+        assertThat(original.toDto().toEntity().excludeFromAnalysis).isTrue()
+        assertThat(original.toDomain(currentUserId = "user-1").excludeFromAnalysis).isTrue()
+        // Defaults to false when not set.
+        assertThat(categoryEntity(id = "d").toDomain(currentUserId = "user-1").excludeFromAnalysis)
+            .isFalse()
+    }
 }

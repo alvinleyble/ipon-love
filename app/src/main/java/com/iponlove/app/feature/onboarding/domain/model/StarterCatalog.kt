@@ -12,6 +12,8 @@ data class StarterCategoryItem(
     val type: CategoryType,
     val icon: String,
     val color: String,
+    /** Pass-through category (ADR-0049): its transactions are excluded from Analysis/Budgets/Combined. */
+    val excludeFromAnalysis: Boolean = false,
 )
 
 data class StarterAccountItem(
@@ -44,6 +46,13 @@ object StarterCatalog {
         StarterCategoryItem("salary", "Salary", CategoryType.INCOME, "salary", "#43A047"),
         StarterCategoryItem("business", "Business", CategoryType.INCOME, "business", "#00897B"),
         StarterCategoryItem("gift", "Gifts", CategoryType.INCOME, "gift", "#8E24AA"),
+    )
+
+    // Pass-through pair (ADR-0049): both flagged excludeFromAnalysis so a work expense you'll be
+    // repaid — and the repayment — stay out of Analysis/Budgets/Combined while still moving balance.
+    val REIMBURSABLES = listOf(
+        StarterCategoryItem("reimbursable", "Reimbursable", CategoryType.EXPENSE, "work", "#5E35B1", excludeFromAnalysis = true),
+        StarterCategoryItem("reimbursement", "Reimbursement", CategoryType.INCOME, "payment", "#00ACC1", excludeFromAnalysis = true),
     )
 
     val ACCOUNTS = listOf(

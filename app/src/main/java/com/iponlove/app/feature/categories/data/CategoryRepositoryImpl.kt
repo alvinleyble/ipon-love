@@ -60,6 +60,7 @@ class CategoryRepositoryImpl @Inject constructor(
                 color = category.color,
                 position = category.position,
                 isArchived = category.isArchived,
+                excludeFromAnalysis = category.excludeFromAnalysis,
                 createdAt = existing?.createdAt ?: updatedAt,
                 updatedAt = updatedAt,
                 isDeleted = existing?.isDeleted ?: false,

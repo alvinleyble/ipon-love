@@ -19,6 +19,7 @@ data class CategoryDto(
     val color: String?,
     val position: Int,
     @SerialName("is_archived") val isArchived: Boolean,
+    @SerialName("exclude_from_analysis") val excludeFromAnalysis: Boolean = false,
     @SerialName("created_at")
     @Serializable(with = InstantSerializer::class) val createdAt: Instant,
     @SerialName("updated_at")

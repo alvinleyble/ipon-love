@@ -36,8 +36,8 @@ class SeedStarterDataUseCase @Inject constructor(
         }
 
         // Position is a running counter across every selected category bundle (declared order:
-        // Everyday spending, Bills & utilities, Income) so the list reads cleanly regardless of
-        // which subset the user kept checked, instead of each bundle restarting at position 0.
+        // Everyday spending, Bills & utilities, Income, Reimbursables) so the list reads cleanly
+        // regardless of which subset the user kept checked, instead of each bundle restarting at 0.
         var position = 0
         if (StarterBundle.EVERYDAY_SPENDING in bundles) {
             position = seedCategories(userId, StarterCatalog.EVERYDAY_SPENDING, position)
@@ -46,7 +46,10 @@ class SeedStarterDataUseCase @Inject constructor(
             position = seedCategories(userId, StarterCatalog.BILLS_UTILITIES, position)
         }
         if (StarterBundle.INCOME in bundles) {
-            seedCategories(userId, StarterCatalog.INCOME, position)
+            position = seedCategories(userId, StarterCatalog.INCOME, position)
+        }
+        if (StarterBundle.REIMBURSABLES in bundles) {
+            seedCategories(userId, StarterCatalog.REIMBURSABLES, position)
         }
     }
 
@@ -64,6 +67,7 @@ class SeedStarterDataUseCase @Inject constructor(
                     icon = item.icon,
                     color = item.color,
                     position = startPosition + index,
+                    excludeFromAnalysis = item.excludeFromAnalysis,
                 ),
             )
         }

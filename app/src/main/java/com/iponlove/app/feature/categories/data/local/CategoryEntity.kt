@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.categories.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.iponlove.app.core.sync.SyncMeta
@@ -27,6 +28,9 @@ data class CategoryEntity(
     val color: String?,
     val position: Int,
     val isArchived: Boolean,
+    // Pass-through categories (e.g. reimbursable work expenses): excluded from Analysis/Budgets/
+    // Combined but still in Records + balance (ADR-0049). NOT NULL default false — AutoMigration 27→28.
+    @ColumnInfo(defaultValue = "0") val excludeFromAnalysis: Boolean = false,
     val createdAt: Instant,
     override val updatedAt: Instant,
     override val isDeleted: Boolean,

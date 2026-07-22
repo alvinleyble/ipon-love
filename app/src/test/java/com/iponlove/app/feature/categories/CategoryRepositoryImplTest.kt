@@ -36,6 +36,19 @@ class CategoryRepositoryImplTest {
     }
 
     @Test
+    fun upsert_persistsExcludeFromAnalysisFlag() = runTest {
+        // Regression (v1.6.9 Item 43 / ADR-0049): upsertCategory hand-builds the entity, so the
+        // pass-through flag must be threaded through explicitly — it silently defaulted to false
+        // before the fix, dropping the flag on every editor Save and onboarding seed.
+        repository.upsertCategory(newCategory("c").copy(excludeFromAnalysis = true))
+        assertThat(dao.store.getValue("c").excludeFromAnalysis).isTrue()
+
+        // A false value is preserved too (the value is threaded, not just the default flipped).
+        repository.upsertCategory(newCategory("d").copy(excludeFromAnalysis = false))
+        assertThat(dao.store.getValue("d").excludeFromAnalysis).isFalse()
+    }
+
+    @Test
     fun upsert_existingCategory_advancesUpdatedAtMonotonically_andPreservesProvenance() = runTest {
         dao.store["c"] = categoryEntity(
             id = "c",

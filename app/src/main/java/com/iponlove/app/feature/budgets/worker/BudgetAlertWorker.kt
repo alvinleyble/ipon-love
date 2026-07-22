@@ -12,6 +12,7 @@ import com.iponlove.app.feature.budgets.domain.usecase.CheckBudgetAlertsUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.yearMonthKey
 import com.iponlove.app.feature.budgets.presentation.BudgetAlertNotifier
 import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
+import com.iponlove.app.feature.categories.domain.usecase.AnalysisExclusion
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetAlertsEnabledUseCase
@@ -65,16 +66,21 @@ class BudgetAlertWorker @AssistedInject constructor(
             emptyList()
         }
 
+        // Pass-through categories (reimbursables, ADR-0049) never consume a budget, so they must
+        // not trip a budget alert either. observeAllCategories() covers both owners' flags, so the
+        // shared/combined path excludes the partner's reimbursables too (parity with the Budgets tab).
+        val excludedIds = AnalysisExclusion.excludedIds(categoryRepository.observeAllCategories().first())
+
         val alreadyFired = alertStore.loadFired(currentCalendarMonth)
         val alerts = checkBudgetAlerts(
             budgets = budgets,
-            transactions = transactions,
+            transactions = AnalysisExclusion.retainAnalyzable(transactions, excludedIds) { it.categoryId },
             alreadyFiredKeys = alreadyFired,
             currentMonth = currentCycle,
             startDay = startDay,
         ) + checkBudgetAlerts(
             budgets = sharedBudgets,
-            transactions = combinedTransactions,
+            transactions = AnalysisExclusion.retainAnalyzable(combinedTransactions, excludedIds) { it.categoryId },
             alreadyFiredKeys = alreadyFired,
             currentMonth = currentCalendarMonth,
             startDay = 1,

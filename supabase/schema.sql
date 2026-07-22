@@ -123,6 +123,10 @@ create table categories (
     color       text,
     position    int not null default 0,
     is_archived boolean not null default false,
+    -- Pass-through categories (e.g. reimbursable work expenses, ADR-0049): their transactions
+    -- still show in Records and count toward account balance, but are excluded from Analysis,
+    -- Budgets, and the couple Combined view. Editor-writable on both expense and income types.
+    exclude_from_analysis boolean not null default false,
     created_at  timestamptz not null default now(),
     updated_at  timestamptz not null default now(),
     is_deleted  boolean not null default false,
@@ -632,6 +636,7 @@ create view partner_categories with (security_invoker = false) as
         case when c.is_deleted then null else c.icon        end as icon,
         case when c.is_deleted then null else c.color       end as color,
         case when c.is_deleted then null else c.is_archived end as is_archived,
+        case when c.is_deleted then null else c.exclude_from_analysis end as exclude_from_analysis,
         c.is_deleted,
         c.updated_at,
         c.server_rev

@@ -22,6 +22,7 @@ fun PartnerCategoryDto.toEntity(): CategoryEntity = CategoryEntity(
     color = color,
     position = 0,
     isArchived = isArchived ?: false,
+    excludeFromAnalysis = excludeFromAnalysis ?: false,
     createdAt = updatedAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,

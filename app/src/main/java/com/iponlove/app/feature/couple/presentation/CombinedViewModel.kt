@@ -10,6 +10,7 @@ import com.iponlove.app.core.entitlement.Scope
 import com.iponlove.app.feature.budgets.domain.usecase.BudgetRowsCalculator
 import com.iponlove.app.feature.budgets.domain.usecase.ObserveSharedBudgetUseCase
 import com.iponlove.app.core.sync.SyncEngine
+import com.iponlove.app.feature.categories.domain.usecase.AnalysisExclusion
 import com.iponlove.app.feature.categories.domain.usecase.ObserveAllCategoriesUseCase
 import com.iponlove.app.feature.couple.domain.model.CombinedLedger
 import com.iponlove.app.feature.couple.domain.usecase.CombinedLedgerCalculator
@@ -103,8 +104,12 @@ class CombinedViewModel @Inject constructor(
 
             val window = MonthWindow.windowFor(month, ZONE)
             val categoryNames = categories.associateBy({ it.id }, { it.name })
+            // Pass-through categories (reimbursables, ADR-0049) — including the partner's, whose flag
+            // now crosses via the partner_categories redacting view — aren't shared household spending,
+            // so drop them from both the combined feed/spend and the shared-budget summary below.
+            val excludedIds = AnalysisExclusion.excludedIds(categories)
             val ledger: CombinedLedger = CombinedLedgerCalculator.analyze(
-                transactions = bundle.windowed,
+                transactions = AnalysisExclusion.retainAnalyzable(bundle.windowed, excludedIds) { it.transaction.categoryId },
                 categoryNames = categoryNames,
                 imageUrls = bundle.imageUrls,
                 me = members.me,
@@ -121,7 +126,7 @@ class CombinedViewModel @Inject constructor(
                 personalBudgets = emptyList(),
                 sharedBudgets = sharedBudgets,
                 ownTransactions = emptyList(),
-                combinedTransactions = bundle.allCombined,
+                combinedTransactions = AnalysisExclusion.retainAnalyzable(bundle.allCombined, excludedIds) { it.categoryId },
                 categoryNames = categoryNames,
                 monthKey = monthKey,
                 zone = ZONE,

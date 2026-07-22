@@ -18,6 +18,7 @@ fun CategoryEntity.toDomain(currentUserId: String?): Category = Category(
     // Creator gate for un-share (ADR-0018): true only when *I* created this row. Null
     // createdBy (legacy pre-created_by shared row) is nobody's to un-share via the UI.
     isCreator = createdBy != null && createdBy == currentUserId,
+    excludeFromAnalysis = excludeFromAnalysis,
 )
 
 /** Entity → DTO for push. Drops `pendingSync` (local-only, ADR-0002). */
@@ -32,6 +33,7 @@ fun CategoryEntity.toDto(): CategoryDto = CategoryDto(
     color = color,
     position = position,
     isArchived = isArchived,
+    excludeFromAnalysis = excludeFromAnalysis,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,
@@ -53,6 +55,7 @@ fun CategoryDto.toEntity(): CategoryEntity = CategoryEntity(
     color = color,
     position = position,
     isArchived = isArchived,
+    excludeFromAnalysis = excludeFromAnalysis,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,

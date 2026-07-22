@@ -100,4 +100,14 @@ class SeedStarterDataUseCaseTest {
         assertThat(savedCategories).isEmpty()
         assertThat(savedAccounts).isEmpty()
     }
+
+    @Test
+    fun reimbursablesBundle_seedsPassThroughPair_bothFlagged() = runTest {
+        useCase(setOf(StarterBundle.REIMBURSABLES))
+
+        assertThat(savedCategories.map { it.name }).containsExactly("Reimbursable", "Reimbursement")
+        // Both legs (expense + income) carry the exclude flag so the pass-through washes out
+        // of Analysis on both sides (ADR-0049).
+        assertThat(savedCategories.all { it.excludeFromAnalysis }).isTrue()
+    }
 }

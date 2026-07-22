@@ -19,6 +19,7 @@ import com.iponlove.app.feature.budgets.domain.usecase.UpsertBudgetUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.UpsertSharedBudgetUseCase
 import com.iponlove.app.feature.categories.domain.model.Category
 import com.iponlove.app.feature.categories.domain.model.CategoryType
+import com.iponlove.app.feature.categories.domain.usecase.AnalysisExclusion
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
@@ -150,11 +151,14 @@ class BudgetsViewModel @Inject constructor(
         allShared = data.shared
         coupleId = pairing.coupleId
 
+        // Pass-through categories (reimbursables, ADR-0049) never consume a budget — drop their
+        // transactions before the calculator, on both the personal and shared (combined) sources.
+        val excludedIds = AnalysisExclusion.excludedIds(data.categories)
         val rows = BudgetRowsCalculator.build(
             personalBudgets = data.personal,
             sharedBudgets = data.shared,
-            ownTransactions = data.ownTransactions,
-            combinedTransactions = data.combinedTransactions,
+            ownTransactions = AnalysisExclusion.retainAnalyzable(data.ownTransactions, excludedIds) { it.categoryId },
+            combinedTransactions = AnalysisExclusion.retainAnalyzable(data.combinedTransactions, excludedIds) { it.categoryId },
             categoryNames = categoryNames,
             monthKey = monthKey,
             startDay = controls.startDay,
@@ -167,7 +171,11 @@ class BudgetsViewModel @Inject constructor(
             rows = rows,
             // The create/edit picker offers active expense categories only — `data.categories` is
             // archived-inclusive now (for the label map above), so exclude archived here (Item 5).
-            expenseCategories = data.categories.filter { it.type == CategoryType.EXPENSE && !it.isArchived },
+            // Pass-through categories (ADR-0049) are excluded too — budgeting a reimbursable bucket
+            // is meaningless (its spend is always ₱0 by the exclusion above).
+            expenseCategories = data.categories.filter {
+                it.type == CategoryType.EXPENSE && !it.isArchived && !it.excludeFromAnalysis
+            },
             editor = controls.editor,
             upsell = controls.upsell,
             rolloverLocked = controls.rolloverLocked,

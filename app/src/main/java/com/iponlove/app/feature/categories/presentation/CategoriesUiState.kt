@@ -47,6 +47,8 @@ data class CategoryEditorState(
     val type: CategoryType = CategoryType.EXPENSE,
     val icon: String? = null,
     val color: String? = null,
+    /** Pass-through toggle (ADR-0049): excludes this category's transactions from Analysis/Budgets/Combined. */
+    val excludeFromAnalysis: Boolean = false,
     val nameError: Boolean = false,
 ) {
     val isEditing: Boolean get() = source != null

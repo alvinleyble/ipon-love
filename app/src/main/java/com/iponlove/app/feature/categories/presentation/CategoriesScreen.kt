@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -196,6 +198,7 @@ fun CategoriesBody(
             onTypeChange = viewModel::onTypeChange,
             onIconChange = viewModel::onIconChange,
             onColorChange = viewModel::onColorChange,
+            onExcludeFromAnalysisChange = viewModel::onExcludeFromAnalysisChange,
             onSave = viewModel::save,
             onCancel = viewModel::cancelEdit,
         )
@@ -423,6 +426,7 @@ private fun CategoryEditorDialog(
     onTypeChange: (CategoryType) -> Unit,
     onIconChange: (String?) -> Unit,
     onColorChange: (String?) -> Unit,
+    onExcludeFromAnalysisChange: (Boolean) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -477,6 +481,24 @@ private fun CategoryEditorDialog(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Spacer(Modifier.height(16.dp))
+                // Pass-through toggle (ADR-0049): available on both expense and income categories.
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Exclude from spending reports", style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            text = "For pass-through money like work expenses your employer pays " +
+                                "back — kept in your balance, hidden from charts and budgets.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Switch(
+                        checked = editor.excludeFromAnalysis,
+                        onCheckedChange = onExcludeFromAnalysisChange,
+                    )
+                }
             }
         },
         confirmButton = { TextButton(onClick = onSave) { Text("Save") } },

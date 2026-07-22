@@ -24,4 +24,11 @@ data class Category(
      * Meaningful only while [isShared]; false on personal and legacy no-`created_by` rows.
      */
     val isCreator: Boolean = false,
+    /**
+     * When true, transactions filed under this category are pass-through money (e.g. a work
+     * expense your employer reimburses) — they still show in Records and count toward account
+     * balance, but are excluded from Analysis, Budgets, and the couple Combined view (ADR-0049).
+     * Editor-writable on both expense and income categories; syncs like any category column.
+     */
+    val excludeFromAnalysis: Boolean = false,
 )

@@ -17,6 +17,7 @@ import com.iponlove.app.feature.analysis.domain.usecase.ExpenseFlowCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.FlowComparisonCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.FlowMetricsCalculator
 import com.iponlove.app.feature.analysis.domain.usecase.ProjectedNetCalculator
+import com.iponlove.app.feature.categories.domain.usecase.AnalysisExclusion
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
@@ -97,13 +98,18 @@ class AnalysisViewModel @Inject constructor(
             val today = LocalDate.now(zone)
             val registrationDate = currentUser.value?.createdAt?.atZone(zone)?.toLocalDate()
             val window = AnalysisPeriodRange.windowFor(anchorDate, selectedPeriod, zone)
-            val result = AnalysisCalculator.analyze(transactions, window)
+            // Pass-through categories (reimbursables, ADR-0049) are excluded from every Analysis
+            // surface; filter once here so the pure calculators stay category-unaware.
+            val analyzable = AnalysisExclusion.retainAnalyzable(
+                transactions, AnalysisExclusion.excludedIds(categories),
+            ) { it.categoryId }
+            val result = AnalysisCalculator.analyze(analyzable, window)
 
             val names = categories.associateBy({ it.id }, { it.name })
             val colors = categories.associateBy({ it.id }, { it.color })
 
             // Flow — computed for every range now (Item 3A). Budget line/remaining dropped.
-            val flowData = ExpenseFlowCalculator.calculate(transactions, window, zone, registrationDate, today)
+            val flowData = ExpenseFlowCalculator.calculate(analyzable, window, zone, registrationDate, today)
             val expenseFlow = ExpenseFlowUi(
                 cumulativeByBucket = flowData.cumulativeByBucket.map { it.toFloat() },
                 currentBucketIndex = flowData.currentBucketIndex,
@@ -121,7 +127,7 @@ class AnalysisViewModel @Inject constructor(
             val comparison: FlowComparisonUi? = if (selectedPeriod != AnalysisPeriod.ALL_TIME) {
                 val prevAnchor = AnalysisPeriodRange.step(anchorDate, selectedPeriod, forward = false)
                 val prevWindow = AnalysisPeriodRange.windowFor(prevAnchor, selectedPeriod, zone)
-                val prevExpense = AnalysisCalculator.analyze(transactions, prevWindow).totalExpense
+                val prevExpense = AnalysisCalculator.analyze(analyzable, prevWindow).totalExpense
                 FlowComparisonCalculator.calculate(result.totalExpense, prevExpense)?.let { cmp ->
                     FlowComparisonUi(
                         label = comparisonLabel(selectedPeriod),
@@ -149,8 +155,8 @@ class AnalysisViewModel @Inject constructor(
                 // ₱0 before payday": show last month's actual income alongside it instead.
                 val previousMonthAnchor = AnalysisPeriodRange.step(startDate, AnalysisPeriod.MONTH, forward = false)
                 val previousWindow = AnalysisPeriodRange.windowFor(previousMonthAnchor, AnalysisPeriod.MONTH, zone)
-                lastMonthIncome = AnalysisCalculator.analyze(transactions, previousWindow).totalIncome
-                val dailyNet = DailyNetCalculator.calculate(transactions, window, zone)
+                lastMonthIncome = AnalysisCalculator.analyze(analyzable, previousWindow).totalIncome
+                val dailyNet = DailyNetCalculator.calculate(analyzable, window, zone)
                 calendarNet = CalendarNetUi(
                     days = (0 until dailyNet.daysInMonth).map { idx ->
                         CalendarDayUi(

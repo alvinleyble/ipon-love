@@ -123,6 +123,7 @@ class CategoriesViewModel @Inject constructor(
             type = category.type,
             icon = category.icon,
             color = category.color,
+            excludeFromAnalysis = category.excludeFromAnalysis,
         )
     }
 
@@ -138,6 +139,8 @@ class CategoriesViewModel @Inject constructor(
 
     fun onColorChange(value: String?) = editor.update { it?.copy(color = value) }
 
+    fun onExcludeFromAnalysisChange(value: Boolean) = editor.update { it?.copy(excludeFromAnalysis = value) }
+
     fun save() {
         val state = editor.value ?: return
         if (state.name.isBlank()) {
@@ -149,12 +152,14 @@ class CategoriesViewModel @Inject constructor(
             type = state.type,
             icon = state.icon,
             color = state.color,
+            excludeFromAnalysis = state.excludeFromAnalysis,
         ) ?: Category(
             id = UUID.randomUUID().toString(),
             name = state.name.trim(),
             type = state.type,
             icon = state.icon,
             color = state.color,
+            excludeFromAnalysis = state.excludeFromAnalysis,
         )
         viewModelScope.launch {
             upsertCategory(category)

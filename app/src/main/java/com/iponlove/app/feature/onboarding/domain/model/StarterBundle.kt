@@ -9,5 +9,6 @@ enum class StarterBundle(val label: String, val description: String) {
     EVERYDAY_SPENDING("Everyday spending", "Food, groceries, transport, shopping"),
     BILLS_UTILITIES("Bills & utilities", "Rent, electricity, water, internet, phone load"),
     INCOME("Income", "Salary, business, gifts"),
+    REIMBURSABLES("Reimbursables", "Work expenses your employer pays back — kept out of your spending reports"),
     ACCOUNTS("Accounts", "Cash, GCash, bank account"),
 }

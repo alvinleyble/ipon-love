@@ -20,6 +20,7 @@ data class PartnerCategoryDto(
     val icon: String?,
     val color: String?,
     @SerialName("is_archived") val isArchived: Boolean?,
+    @SerialName("exclude_from_analysis") val excludeFromAnalysis: Boolean? = null,
     @SerialName("is_deleted") val isDeleted: Boolean,
     @SerialName("updated_at")
     @Serializable(with = InstantSerializer::class) val updatedAt: Instant,
