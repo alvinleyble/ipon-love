@@ -65,18 +65,14 @@ fun UpcomingFeaturesScreen(onBack: () -> Unit) {
 
             Spacer(Modifier.height(20.dp))
 
-            val roadmap = listOf(
-                "Google Sign-In (Q3 2026)" to "Sign up and log in with your Google account.",
-                "Facebook Login (Q3 2026)" to "Sign up and log in with your Facebook account.",
-                "AI companion (BYOK) (Not yet scheduled)" to "Ask questions about your spending using your own AI provider key.",
-                "Website / web app (Q4 2026)" to "Access Love, Ipon from a browser, not just Android.",
-                "Custom fonts (Q3 2026)" to "Personalize the app's typography, not just its colors.",
-                "Profile & couple photo upload (Q3 2026)" to "Upload a real photo instead of accent color + initials.",
-                "Premium (Q3 2026)" to "A one-time upgrade that unlocks extra features — core budgeting stays free.",
-            )
-            roadmap.forEachIndexed { index, (title, description) ->
+            val roadmap = ROADMAP.sortedWith(compareBy { it.target })
+            roadmap.forEachIndexed { index, item ->
                 if (index > 0) Spacer(Modifier.height(8.dp))
-                RoadmapCard(index = index, title = title, description = description)
+                RoadmapCard(
+                    index = index,
+                    title = "${item.title} (${item.target.label})",
+                    description = item.description,
+                )
             }
         }
     }
@@ -101,3 +97,106 @@ private fun RoadmapCard(index: Int, title: String, description: String) {
         }
     }
 }
+
+private data class RoadmapItem(val title: String, val description: String, val target: RoadmapTarget)
+
+/**
+ * Sorts latest-first: farthest-out scheduled quarter, then not-yet-scheduled, then shipped items
+ * (newest version first) — so a feature keeps its card (with a version note) instead of being
+ * deleted once it ships, per Alvin's 2026-07-23 call to stop pruning shipped entries outright.
+ */
+private sealed class RoadmapTarget(val label: String) : Comparable<RoadmapTarget> {
+    private val rank: Int
+        get() = when (this) {
+            is Scheduled -> 0
+            NotYetScheduled -> 1
+            is Shipped -> 2
+        }
+
+    override fun compareTo(other: RoadmapTarget): Int {
+        rank.compareTo(other.rank).let { if (it != 0) return it }
+        return when {
+            this is Scheduled && other is Scheduled -> other.quarterIndex.compareTo(quarterIndex)
+            this is Shipped && other is Shipped -> -compareVersions(version, other.version)
+            else -> 0
+        }
+    }
+
+    class Scheduled(val year: Int, val quarter: Int) : RoadmapTarget("Q$quarter $year") {
+        val quarterIndex = year * 4 + quarter
+    }
+
+    data object NotYetScheduled : RoadmapTarget("Not yet scheduled")
+
+    class Shipped(val version: String) : RoadmapTarget(version)
+}
+
+private fun compareVersions(a: String, b: String): Int {
+    val partsA = a.removePrefix("v").split(".").map { it.toIntOrNull() ?: 0 }
+    val partsB = b.removePrefix("v").split(".").map { it.toIntOrNull() ?: 0 }
+    for (i in 0 until maxOf(partsA.size, partsB.size)) {
+        val cmp = partsA.getOrElse(i) { 0 }.compareTo(partsB.getOrElse(i) { 0 })
+        if (cmp != 0) return cmp
+    }
+    return 0
+}
+
+private val ROADMAP = listOf(
+    RoadmapItem(
+        title = "Website / web app",
+        description = "Access Love, Ipon from a browser, not just Android.",
+        target = RoadmapTarget.Scheduled(2026, 4),
+    ),
+    RoadmapItem(
+        title = "Google Sign-In",
+        description = "Sign up and log in with your Google account.",
+        target = RoadmapTarget.Scheduled(2026, 3),
+    ),
+    RoadmapItem(
+        title = "Facebook Login",
+        description = "Sign up and log in with your Facebook account.",
+        target = RoadmapTarget.Scheduled(2026, 3),
+    ),
+    RoadmapItem(
+        title = "Custom fonts",
+        description = "Personalize the app's typography, not just its colors.",
+        target = RoadmapTarget.Scheduled(2026, 3),
+    ),
+    RoadmapItem(
+        title = "Profile & couple photo upload",
+        description = "Upload a real photo instead of accent color + initials.",
+        target = RoadmapTarget.Scheduled(2026, 3),
+    ),
+    RoadmapItem(
+        title = "Premium",
+        description = "A one-time upgrade that unlocks extra features — core budgeting stays free.",
+        target = RoadmapTarget.Scheduled(2026, 3),
+    ),
+    RoadmapItem(
+        title = "AI companion (BYOK)",
+        description = "Ask questions about your spending using your own AI provider key.",
+        target = RoadmapTarget.NotYetScheduled,
+    ),
+    RoadmapItem(
+        title = "Restart fresh",
+        description = "Reset your transactions, recurring rules, budgets, and savings progress " +
+            "without deleting your account or losing your accounts and categories.",
+        target = RoadmapTarget.Shipped("v1.6.5"),
+    ),
+    RoadmapItem(
+        title = "Choose your currency symbol",
+        description = "Swap the ₱ symbol for another currency's symbol. Display only — no " +
+            "conversion, and amounts stay in one currency underneath.",
+        target = RoadmapTarget.Shipped("v1.6.5"),
+    ),
+    RoadmapItem(
+        title = "Shared accounts",
+        description = "Both partners contribute to and track the same account together.",
+        target = RoadmapTarget.Shipped("v1"),
+    ),
+    RoadmapItem(
+        title = "Shared budget",
+        description = "Set a joint monthly budget you and your partner track together.",
+        target = RoadmapTarget.Shipped("v1"),
+    ),
+)
