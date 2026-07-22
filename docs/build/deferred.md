@@ -28,6 +28,17 @@ Each item below keeps the version doc it was originally booked under, for tracea
 
 ---
 
+## Item 4 — Custom fonts (pulled from Post-V1 Horizon #8)
+
+*(originally booked in [v1.6.7.md](v1.6.7.md), held in [v1.6.8.md](v1.6.8.md), carried to [v1.6.9.md](v1.6.9.md), moved here 2026-07-22)*
+
+- **Status:** ⏸️ **DEFERRED — not designed, needs a grill before booking to build.** Moved here 2026-07-22 (Alvin's call). **Model (once grilled): TBD** — likely Opus, since Horizon #8 was explicitly designed to be "born gated" behind the paywall infra (#15), which has since shipped dormant; wiring a new customization axis into the entitlement/`PlanLimits` seam (the S9 boolean/allowlist-gate pattern) is a cross-cutting call, not a pure pattern-follow.
+- **Origin:** [Post-V1 Horizon #8](project-build-progress.md) — "typography customization beyond the built-in color themes" (Target: Q3 2026). Pulled into active consideration at Alvin's call, 2026-07-18 — "we will figure out if this will either be retained or built" — then deferred back to the shelf 2026-07-22 without that question being resolved.
+- **Open question to resolve first, at the grill:** is this still wanted right now, or does it go back on the shelf for good? **If retained:** font source (bundled font files vs. system font picker), where it plugs into the theme system (a `ThemeFont` sibling to `ThemePalette`?), the free-vs-premium split (which fonts if any stay free, mirroring the S9 palette allowlist), and whether it needs a new `Feature` gate or extends existing `PlanLimits`.
+- **Not yet designed** — grill to resolve retain-vs-build first, then the shape if retained.
+
+---
+
 ## Item 23 — Archived entity label fallback in Records & Budgets (✅ RESOLVED by v1.6.7 Item 5)
 
 *(originally booked in [v1.6.5.md](v1.6.5.md), carried to [v1.6.6.md](v1.6.6.md), moved here 2026-07-17)*
