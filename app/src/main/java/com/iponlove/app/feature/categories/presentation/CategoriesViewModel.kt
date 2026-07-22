@@ -48,6 +48,7 @@ class CategoriesViewModel @Inject constructor(
     private val upsell = MutableStateFlow<UpsellPrompt?>(null)
     private val showArchived = MutableStateFlow(false)
     private val pendingDelete = MutableStateFlow<PendingCategoryDelete?>(null)
+    private val pendingCounterpart = MutableStateFlow<PendingCounterpart?>(null)
 
     // Which cap raised the current upsell — the analytics source for its "Get Premium" tap.
     private var upsellSource: String? = null
@@ -84,7 +85,8 @@ class CategoriesViewModel @Inject constructor(
                 upsell = upsellState,
                 pendingDelete = pendingDeleteState,
             )
-        }.stateIn(
+        }.combine(pendingCounterpart) { state, counterpart -> state.copy(pendingCounterpart = counterpart) }
+        .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
             initialValue = CategoriesUiState(),
@@ -147,6 +149,7 @@ class CategoriesViewModel @Inject constructor(
             editor.value = state.copy(nameError = true)
             return
         }
+        val isCreate = state.source == null
         val category = state.source?.copy(
             name = state.name.trim(),
             type = state.type,
@@ -164,6 +167,15 @@ class CategoriesViewModel @Inject constructor(
         viewModelScope.launch {
             upsertCategory(category)
             editor.value = null
+            // Nudge for the missing counterpart leg (v1.7.0 Item 8) — create only, never
+            // retroactive for an edit of an already-flagged category.
+            if (isCreate && category.excludeFromAnalysis) {
+                pendingCounterpart.value = PendingCounterpart(
+                    counterpartType = category.type.opposite(),
+                    icon = category.icon,
+                    color = category.color,
+                )
+            }
         }
     }
 
@@ -240,7 +252,49 @@ class CategoriesViewModel @Inject constructor(
         pendingDelete.value = null
     }
 
+    /** "Yes" on the counterpart prompt (v1.7.0 Item 8) — advances to the name-input step. */
+    fun counterpartPromptYes() {
+        pendingCounterpart.update { it?.copy(stage = CounterpartStage.NAME_INPUT) }
+    }
+
+    /**
+     * "No", or a dismiss at either step — no forced choice. The original category is already
+     * saved; this just drops the offer to also create its counterpart.
+     */
+    fun dismissCounterpartPrompt() {
+        pendingCounterpart.value = null
+    }
+
+    fun onCounterpartNameChange(value: String) =
+        pendingCounterpart.update { it?.copy(name = value, nameError = false) }
+
+    /** Create the counterpart with the typed name; icon/color are inherited from the original. */
+    fun confirmCounterpartName() {
+        val pending = pendingCounterpart.value ?: return
+        if (pending.name.isBlank()) {
+            pendingCounterpart.value = pending.copy(nameError = true)
+            return
+        }
+        val counterpart = Category(
+            id = UUID.randomUUID().toString(),
+            name = pending.name.trim(),
+            type = pending.counterpartType,
+            icon = pending.icon,
+            color = pending.color,
+            excludeFromAnalysis = true,
+        )
+        viewModelScope.launch {
+            upsertCategory(counterpart)
+            pendingCounterpart.value = null
+        }
+    }
+
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
     }
+}
+
+private fun CategoryType.opposite(): CategoryType = when (this) {
+    CategoryType.EXPENSE -> CategoryType.INCOME
+    CategoryType.INCOME -> CategoryType.EXPENSE
 }

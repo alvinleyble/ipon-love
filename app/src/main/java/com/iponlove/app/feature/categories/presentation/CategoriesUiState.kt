@@ -23,6 +23,8 @@ data class CategoriesUiState(
     val upsell: UpsellPrompt? = null,
     /** Non-null while the delete-confirm dialog is open (v1.6.7 Item 5). */
     val pendingDelete: PendingCategoryDelete? = null,
+    /** Non-null while the create-counterpart flow is open (v1.7.0 Item 8). */
+    val pendingCounterpart: PendingCounterpart? = null,
 )
 
 /**
@@ -34,6 +36,26 @@ data class PendingCategoryDelete(
     val id: String,
     val name: String,
     val transactionCount: Int,
+)
+
+/** Which step of the create-counterpart flow ([PendingCounterpart]) is showing. */
+enum class CounterpartStage { ASK, NAME_INPUT }
+
+/**
+ * Drives the two-step "create the reimbursement counterpart?" flow that fires after saving a
+ * *new* category with the ADR-0049 exclude-from-analysis flag ON (v1.7.0 Item 8) — never on
+ * editing an existing category, and never retroactively for categories that already carry the
+ * flag. [stage] ASK shows the Yes/No prompt; NAME_INPUT shows the text-input step.
+ * [counterpartType]/[icon]/[color] describe the category that gets created on confirm: the
+ * opposite [CategoryType], same icon/color as the original — only the name is user-chosen.
+ */
+data class PendingCounterpart(
+    val counterpartType: CategoryType,
+    val icon: String?,
+    val color: String?,
+    val stage: CounterpartStage = CounterpartStage.ASK,
+    val name: String = "",
+    val nameError: Boolean = false,
 )
 
 /**

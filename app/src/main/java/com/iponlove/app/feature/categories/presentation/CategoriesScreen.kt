@@ -220,6 +220,22 @@ fun CategoriesBody(
             onUpgrade = { onOpenPremium(viewModel.onUpsellUpgrade()) },
         )
     }
+
+    state.pendingCounterpart?.let { pending ->
+        when (pending.stage) {
+            CounterpartStage.ASK -> CounterpartPromptDialog(
+                counterpartType = pending.counterpartType,
+                onConfirm = viewModel::counterpartPromptYes,
+                onDismiss = viewModel::dismissCounterpartPrompt,
+            )
+            CounterpartStage.NAME_INPUT -> CounterpartNameDialog(
+                pending = pending,
+                onNameChange = viewModel::onCounterpartNameChange,
+                onConfirm = viewModel::confirmCounterpartName,
+                onCancel = viewModel::dismissCounterpartPrompt,
+            )
+        }
+    }
 }
 
 /**
@@ -277,6 +293,74 @@ private fun DeleteCategoryDialog(
             { TextButton(onClick = onCancel) { Text("Cancel") } }
         },
     )
+}
+
+/**
+ * Step 1 of the create-counterpart flow (v1.7.0 Item 8): fires right after saving a *new*
+ * reimbursable category (ADR-0049 flag ON), asking whether to also create the opposite-type
+ * category that completes the pass-through pair. No/dismiss leaves the one category that's
+ * already saved — no forced choice.
+ */
+@Composable
+private fun CounterpartPromptDialog(
+    counterpartType: CategoryType,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val message = "Do you want to create an ${counterpartType.label().lowercase()} " +
+        "reimbursement category for this? " + counterpartHelperText(counterpartType)
+    PlayfulDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Create counterpart category?") },
+        text = { Text(message) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Yes") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("No") } },
+    )
+}
+
+/**
+ * Step 2: name the counterpart. Icon/color are inherited from the original category (per the
+ * Item 8 spec, not re-picked) — only the name is user-chosen.
+ */
+@Composable
+private fun CounterpartNameDialog(
+    pending: PendingCounterpart,
+    onNameChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    PlayfulDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Name the ${pending.counterpartType.label().lowercase()} category") },
+        text = {
+            Column {
+                Text(counterpartHelperText(pending.counterpartType))
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = pending.name,
+                    onValueChange = onNameChange,
+                    label = { Text("Name") },
+                    placeholder = { Text("e.g. Reimbursement") },
+                    singleLine = true,
+                    isError = pending.nameError,
+                    supportingText = if (pending.nameError) {
+                        { Text("Name is required") }
+                    } else {
+                        null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Create") } },
+        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+    )
+}
+
+/** Shared tail clause for both counterpart-flow dialogs (v1.7.0 Item 8) — what the new category is for. */
+private fun counterpartHelperText(counterpartType: CategoryType): String = when (counterpartType) {
+    CategoryType.INCOME -> "This is where you'll log when you get paid back."
+    CategoryType.EXPENSE -> "This is where you'll log when you spend your reimbursement."
 }
 
 @Composable
