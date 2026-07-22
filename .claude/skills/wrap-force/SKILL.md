@@ -35,7 +35,7 @@ Angle brackets in the trailer email are fine — the hook only blocks `;`/`&`/`|
 
 ## Phase 2 — commit the docs (after the code sha exists)
 
-5. **Update `docs/build/project-build-progress.md`** — edit the "Current state (as of YYYY-MM-DD)" section in place: mark this slice `DONE <sha>` using the real sha from Phase 1, update the date, and update the version's row in the index table. If the Room schema version changed, update the "Room version" living-reference line too.
+5. **Update `docs/build/project-build-progress.md`** — edit the "Current state (as of YYYY-MM-DD)" section in place: update the date and the short in-flight-version summary (which item is now DONE `<sha>`), and update the version's row in the index table. If the Room schema version changed, update the "Room version" living-reference line too. **Keep "Current state" to a few short sentences — do not append a new narrative paragraph per slice.** The full slice detail (files touched, tests, on-device verification) belongs only in the `vX.Y.md` doc from step 6; this section was trimmed 2026-07-23 after growing to 150+ lines of duplicated prose, and the house rule now is to edit the existing short summary in place, not accumulate.
 
 6. **Append/update the slice in the in-flight `docs/build/vX.Y.md`** — match the existing item format exactly: a `## Item N — <title>` heading (or update the existing one), then `**Status:**` (`✅ DONE <sha>`), `**Suggested model:**`, decisions locked in (reference the ADR if one governs it), **Files touched:**, **Tests added:**, and an on-device verification line once Alvin confirms. Terse, factual, matches the neighbors.
 
