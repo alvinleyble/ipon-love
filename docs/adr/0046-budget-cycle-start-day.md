@@ -1,5 +1,7 @@
 # Budget cycle start day: local display-class preference, personal budgets only, label reinterpretation
 
+> **Superseded/Reversed (v1.7.0 Item 4, 2026-07-23):** the payday-aligned cycle only ever re-windowed the Budgets tab — Records/Combined/Analysis/paywall stayed calendar-month by design (§1 below), so the "matches how you actually experience cash flow" payoff broke the moment you checked Analysis. Not worth the added settings surface + edge-case handling (short-month clamping, personal-vs-shared-calendar split, ADR-0047's amendment below) for a benefit that only landed in one of four places. Reverted to calendar-month-only budgets; this ADR is kept for the rationale/history, not as current behavior. See `docs/build/v1.7.0.md` Item 4.
+
 ## Context
 
 V1.6.5 Item 10b, grilled 2026-07-13. Users paid mid-month (PH kinsenas/katapusan — the 15th and 30th) experience "this month's money" as payday-to-payday, not calendar months. A calendar-month budget puts payday mid-budget, so every budget month reads "broke half, flush half." The reference app (MyMoney) ships this as "Start day of month."

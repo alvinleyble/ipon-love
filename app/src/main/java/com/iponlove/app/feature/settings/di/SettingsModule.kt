@@ -5,7 +5,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.iponlove.app.feature.settings.data.AccountDeletionRepositoryImpl
-import com.iponlove.app.feature.settings.data.BudgetStartDayRepositoryImpl
 import com.iponlove.app.feature.settings.data.CurrencySymbolRepositoryImpl
 import com.iponlove.app.feature.settings.data.NotificationPreferencesRepositoryImpl
 import com.iponlove.app.feature.settings.data.PrivacyModeRepositoryImpl
@@ -14,7 +13,6 @@ import com.iponlove.app.feature.settings.data.ThemeRepositoryImpl
 import com.iponlove.app.feature.settings.data.remote.AccountDeletionRemoteSource
 import com.iponlove.app.feature.settings.data.remote.SupabaseAccountDeletionRemoteSource
 import com.iponlove.app.feature.settings.domain.repository.AccountDeletionRepository
-import com.iponlove.app.feature.settings.domain.repository.BudgetStartDayRepository
 import com.iponlove.app.feature.settings.domain.repository.CurrencySymbolRepository
 import com.iponlove.app.feature.settings.domain.repository.NotificationPreferencesRepository
 import com.iponlove.app.feature.settings.domain.repository.PrivacyModeRepository
@@ -98,10 +96,6 @@ interface SettingsModule {
     fun bindNotificationPreferencesRepository(
         impl: NotificationPreferencesRepositoryImpl,
     ): NotificationPreferencesRepository
-
-    @Binds
-    @Singleton
-    fun bindBudgetStartDayRepository(impl: BudgetStartDayRepositoryImpl): BudgetStartDayRepository
 
     @Binds
     @Singleton

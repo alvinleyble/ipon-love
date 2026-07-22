@@ -16,15 +16,9 @@ import java.time.ZoneId
  * Pure (no Android / no coroutines) so the merge + scope-pick is JVM-unit-testable. Personal rows
  * come first, shared rows after (each tagged [Row.isShared] for the "Shared" badge).
  *
- * **Cycle:** personal budgets honour the user's payday-aligned "budget month starts on" [startDay]
- * (ADR-0046); **shared budgets always use calendar months** ([CALENDAR_START_DAY]) — a jointly-owned
- * budget can't follow one partner's personal payday (which differs per device), and this preserves
- * the pre-Item-35 overall-shared-budget behaviour (it was always a calendar-month window).
+ * Both personal and shared budgets are calendar-month.
  */
 object BudgetRowsCalculator {
-
-    /** Shared budgets are calendar-month; see the class doc. */
-    const val CALENDAR_START_DAY = 1
 
     /** One budget with its derived progress for the displayed month — presentation-agnostic. */
     data class Row(
@@ -50,17 +44,16 @@ object BudgetRowsCalculator {
         categoryNames: Map<String, String>,
         monthKey: String,
         zone: ZoneId = ZoneId.systemDefault(),
-        startDay: Int = 1,
     ): List<Row> {
         val personalRows = personalBudgets
             .filter { it.yearMonth == monthKey }
             .map { budget ->
-                row(budget, personalBudgets, ownTransactions, categoryNames, zone, startDay)
+                row(budget, personalBudgets, ownTransactions, categoryNames, zone)
             }
         val sharedRows = sharedBudgets
             .filter { it.yearMonth == monthKey }
             .map { budget ->
-                row(budget, sharedBudgets, combinedTransactions, categoryNames, zone, CALENDAR_START_DAY)
+                row(budget, sharedBudgets, combinedTransactions, categoryNames, zone)
             }
         return personalRows + sharedRows
     }
@@ -71,11 +64,10 @@ object BudgetRowsCalculator {
         transactions: List<Transaction>,
         categoryNames: Map<String, String>,
         zone: ZoneId,
-        startDay: Int,
     ): Row {
-        val spent = BudgetProgressCalculator.spent(budget, transactions, zone, startDay)
+        val spent = BudgetProgressCalculator.spent(budget, transactions, zone)
         val sameCategoryBudgets = sameScopeBudgets.filter { it.categoryId == budget.categoryId }
-        val limit = BudgetProgressCalculator.effectiveLimit(budget, sameCategoryBudgets, transactions, zone, startDay)
+        val limit = BudgetProgressCalculator.effectiveLimit(budget, sameCategoryBudgets, transactions, zone)
         val fraction = if (limit.signum() > 0) {
             (spent.toFloat() / limit.toFloat()).coerceIn(0f, 1f)
         } else {

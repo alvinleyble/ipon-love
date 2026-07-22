@@ -7,7 +7,6 @@ import com.iponlove.app.core.entitlement.CapCheck
 import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.budgets.domain.model.Budget
-import com.iponlove.app.feature.budgets.domain.usecase.BudgetCycle
 import com.iponlove.app.feature.budgets.domain.usecase.BudgetRowsCalculator
 import com.iponlove.app.feature.budgets.domain.usecase.CheckBudgetCapUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.DeleteBudgetUseCase
@@ -23,7 +22,6 @@ import com.iponlove.app.feature.categories.domain.usecase.AnalysisExclusion
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
-import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetStartDayUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.model.Transaction
@@ -34,12 +32,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Instant
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -63,7 +59,6 @@ class BudgetsViewModel @Inject constructor(
     private val checkBudgetCap: CheckBudgetCapUseCase,
     private val premiumGate: PremiumGate,
     private val analytics: Analytics,
-    private val observeBudgetStartDay: ObserveBudgetStartDayUseCase,
 ) : ViewModel() {
 
     private val month = MutableStateFlow(YearMonth.now())
@@ -73,19 +68,6 @@ class BudgetsViewModel @Inject constructor(
     // The analytics source (§10.10) of the currently-shown upsell, so the "Get Premium" tap logs
     // the same key it was raised under — "budgets" (personal) or "shared_budgets".
     private var upsellSource = "budgets"
-
-    init {
-        // With a non-calendar start day, "today" often belongs to the cycle keyed to the *previous*
-        // calendar month (ADR-0046: on Jul 13 @ start-day 15 the current cycle is "2026-06", Jun 15
-        // – Jul 14). Re-anchor the stepper to the cycle we're actually in, so the tab opens on it.
-        // Runs before any user step; a startDay of 1 already matches YearMonth.now(), so this no-ops.
-        viewModelScope.launch {
-            val startDay = observeBudgetStartDay().first()
-            if (startDay != BudgetCycle.MIN_START_DAY) {
-                month.value = YearMonth.parse(BudgetCycle.cycleKey(Instant.now(), startDay))
-            }
-        }
-    }
 
     // Budgets for the displayed month, split by scope, captured so save() can reuse the existing
     // row for the same category+month+scope instead of creating a duplicate.
@@ -118,9 +100,8 @@ class BudgetsViewModel @Inject constructor(
                 editor,
                 upsell,
                 premiumGate.observeLocked(),
-                observeBudgetStartDay(),
-            ) { displayedMonth, editorState, upsellState, rolloverLocked, startDay ->
-                BudgetControls(displayedMonth, editorState, upsellState, rolloverLocked, startDay)
+            ) { displayedMonth, editorState, upsellState, rolloverLocked ->
+                BudgetControls(displayedMonth, editorState, upsellState, rolloverLocked)
             }
             val pairingFlow = observePairingState().map { state ->
                 when (state) {
@@ -161,12 +142,11 @@ class BudgetsViewModel @Inject constructor(
             combinedTransactions = AnalysisExclusion.retainAnalyzable(data.combinedTransactions, excludedIds) { it.categoryId },
             categoryNames = categoryNames,
             monthKey = monthKey,
-            startDay = controls.startDay,
         ).map { it.toRow() }
 
         return BudgetsUiState(
             isLoading = false,
-            monthLabel = cycleLabel(controls.month, controls.startDay),
+            monthLabel = controls.month.format(MONTH_FORMATTER),
             nextMonthShortLabel = controls.month.plusMonths(1).format(SHORT_MONTH_FORMATTER),
             rows = rows,
             // The create/edit picker offers active expense categories only — `data.categories` is
@@ -198,15 +178,6 @@ class BudgetsViewModel @Inject constructor(
         carriedAmount = carriedAmount,
         isShared = isShared,
     )
-
-    /** "July 2026" for calendar months (start-day 1), else the cycle's date range ("Jul 15 – Aug 14"). */
-    private fun cycleLabel(displayedMonth: YearMonth, startDay: Int): String =
-        if (startDay == BudgetCycle.MIN_START_DAY) {
-            displayedMonth.format(MONTH_FORMATTER)
-        } else {
-            val window = BudgetCycle.window(displayedMonth.toString(), startDay)
-            "${window.firstDay.format(RANGE_FORMATTER)} – ${window.lastDay.format(RANGE_FORMATTER)}"
-        }
 
     fun togglePrivacyMode() {
         viewModelScope.launch { setPrivacyMode(!uiState.value.privacyModeEnabled) }
@@ -378,7 +349,6 @@ class BudgetsViewModel @Inject constructor(
         val editor: BudgetEditorState?,
         val upsell: UpsellPrompt?,
         val rolloverLocked: Boolean,
-        val startDay: Int,
     )
 
     private data class PairInfo(val isPaired: Boolean, val coupleId: String?)
@@ -387,6 +357,5 @@ class BudgetsViewModel @Inject constructor(
         const val STOP_TIMEOUT_MS = 5_000L
         val MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
         val SHORT_MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM")
-        val RANGE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d")
     }
 }

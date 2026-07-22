@@ -12,8 +12,7 @@ import java.time.ZoneOffset
 /**
  * The personal+shared merge (Item 35). The load-bearing rules: a personal budget counts the user's
  * own transactions while a shared budget counts the combined (both-partner) stream; both scopes
- * appear tagged; rollover chains never cross scope; and shared budgets always use calendar months
- * regardless of the personal payday start day.
+ * appear tagged; and rollover chains never cross scope.
  */
 class BudgetRowsCalculatorTest {
 
@@ -78,27 +77,6 @@ class BudgetRowsCalculatorTest {
         val june = rows.single()
         assertThat(june.id).isEqualTo("sJun")
         assertThat(june.limit).isEqualTo(BigDecimal("1600.00"))
-    }
-
-    @Test
-    fun sharedBudgetsUseCalendarMonthsIgnoringPersonalStartDay() {
-        // Payday start-day 15: the personal "2026-06" cycle is Jun 15 – Jul 14, so a Jun-5 expense
-        // belongs to the *previous* cycle for a personal budget — but a shared budget is calendar
-        // (Jun 1 – 30), so the same Jun-5 expense counts toward it.
-        val jun5 = listOf(txn("t", TransactionType.EXPENSE, "500.00", categoryId = "cat-1", date = jun(5)))
-        val rows = BudgetRowsCalculator.build(
-            personalBudgets = listOf(budget("bp", categoryId = "cat-1", amount = "1000.00", yearMonth = "2026-06")),
-            sharedBudgets = listOf(budget("bs", categoryId = "cat-1", amount = "1000.00", yearMonth = "2026-06", isShared = true)),
-            ownTransactions = jun5,
-            combinedTransactions = jun5,
-            categoryNames = names,
-            monthKey = "2026-06",
-            zone = zone,
-            startDay = 15,
-        )
-
-        assertThat(rows.first { it.id == "bp" }.spent).isEqualTo(BigDecimal.ZERO)      // payday-windowed out
-        assertThat(rows.first { it.id == "bs" }.spent).isEqualTo(BigDecimal("500.00")) // calendar month
     }
 
     @Test
