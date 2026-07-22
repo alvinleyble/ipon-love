@@ -108,7 +108,10 @@
       "Bash(git -C /Users/lovzay/ipon-love diff*)",
       "Bash(touch /tmp/ipon-love-wrap-force.lock)",
       "Bash(rm -f /tmp/ipon-love-wrap-force.lock)",
-      "mcp__supabase__get_logs"
+      "Bash(claude mcp list)",
+      "Bash(awk '/CREATE TABLE.*)",
+      "mcp__supabase__get_logs",
+      "mcp__clickup__clickup_get_task"
     ]
   },
   "hooks": {
