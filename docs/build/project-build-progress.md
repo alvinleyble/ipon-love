@@ -12,7 +12,7 @@
 
 **v1.6.9 RELEASED to closed testing 2026-07-23** — supersedes v1.6.8 (which shipped with a since-fixed widget-button regression, see [v1.6.9.md](v1.6.9.md) Item 46). All non-deferred v1.6.9 items are DONE. Room is at **v28**.
 
-**v1.7.0 is the active version** ([v1.7.0.md](v1.7.0.md)): Item 1 (seeded realistic screenshot data on testdev7/8), Item 4 (reverted the payday-aligned budget-cycle start-day feature, ADR-0046 superseded), and Item 5 (currency-code dark-mode fix) are DONE; Item 3 (Facebook Login) shelved. Still open: Item 2 (Google Sign-In, needs a grill), Items 9/10 (Item-3 Legs 2+3 — couple banner + premium photo upload, need a grill), Item 11 (Appearance "Follow system" mode, no grill needed).
+**v1.7.0 is the active version** ([v1.7.0.md](v1.7.0.md)): Item 1 (seeded realistic screenshot data on testdev7/8), Item 4 (reverted the payday-aligned budget-cycle start-day feature, ADR-0046 superseded), Item 5 (currency-code dark-mode fix), and Item 8 (reimbursable counterpart-category prompt) are DONE; Item 3 (Facebook Login) shelved. Still open: Item 2 (Google Sign-In), Items 6/7 (reimbursable export report, Records filter), and Items 9/10 (Item-3 Legs 2+3 — couple banner + premium photo upload) all need a grill; Item 11 (Appearance "Follow system" mode, no grill needed).
 
 Full per-slice history for every closed version lives in its own doc, linked from the table below.
 
