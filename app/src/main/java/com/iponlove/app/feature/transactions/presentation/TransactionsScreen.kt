@@ -7,8 +7,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,9 +19,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
@@ -31,7 +26,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -39,13 +33,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,7 +49,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,7 +56,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.HeartBullet
 import com.iponlove.app.core.ui.MonthStepperRow
 import com.iponlove.app.core.ui.PlayfulCard
-import com.iponlove.app.core.ui.PlayfulChip
 import com.iponlove.app.core.ui.PlayfulScreenTitle
 import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
@@ -77,10 +66,12 @@ import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.core.ui.theme.LeafShapes
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
+import com.iponlove.app.feature.export.presentation.ExportSheet
 import com.iponlove.app.feature.recurring.presentation.components.ComingUpCard
 import com.iponlove.app.feature.recurring.presentation.components.PendingConfirmationsCard
 import com.iponlove.app.feature.transactions.domain.model.TransactionFilter
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
+import com.iponlove.app.feature.transactions.presentation.components.TransactionFilterSheet
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 
@@ -143,6 +134,8 @@ private fun TransactionsContent(
     StartTourOnFirstVisit(TutorialTours.RECORDS)
     val colors = LocalPlayfulColors.current
     var filterSheetOpen by remember { mutableStateOf(false) }
+    var exportSheetOpen by remember { mutableStateOf(false) }
+    var overflowOpen by remember { mutableStateOf(false) }
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -150,16 +143,6 @@ private fun TransactionsContent(
                 PlayfulScreenTitle(
                     title = "Records",
                     actions = {
-                        IconButton(
-                            onClick = onOpenRecurring,
-                            modifier = Modifier.coachMarkTarget(TutorialTargets.RECORDS_RECURRING),
-                        ) {
-                            Icon(
-                                Icons.Filled.Refresh,
-                                contentDescription = "Recurring rules",
-                                tint = colors.textSecondary,
-                            )
-                        }
                         // The filter icon carries an accent dot whenever a filter is applied — the
                         // user's only explanation for why rows are hidden (Item 7 decision 1). Gated
                         // on hasAnyTransactionEver: nothing to filter on a fresh install, but it
@@ -189,6 +172,34 @@ private fun TransactionsContent(
                                 contentDescription = if (state.privacyModeEnabled) "Show amounts" else "Hide amounts",
                                 tint = colors.textSecondary,
                             )
+                        }
+                        // Overflow (v1.7.0 Item 6 decision 2): Recurring (occasional, navigational)
+                        // moves off the surface to join Export here, keeping the title row to two
+                        // direct icons + ⋮ rather than four glyphs.
+                        Box {
+                            IconButton(
+                                onClick = { overflowOpen = true },
+                                modifier = Modifier.coachMarkTarget(TutorialTargets.RECORDS_RECURRING),
+                            ) {
+                                Icon(
+                                    Icons.Filled.MoreVert,
+                                    contentDescription = "More",
+                                    tint = colors.textSecondary,
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = overflowOpen,
+                                onDismissRequest = { overflowOpen = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Recurring rules") },
+                                    onClick = { overflowOpen = false; onOpenRecurring() },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Export…") },
+                                    onClick = { overflowOpen = false; exportSheetOpen = true },
+                                )
+                            }
                         }
                     },
                 )
@@ -300,6 +311,12 @@ private fun TransactionsContent(
                 },
                 onDismiss = { filterSheetOpen = false },
             )
+        }
+
+        // Export sheet (v1.7.0 Item 6, re-grilled 2026-07-24) — fully self-contained: its own
+        // filter + date range, decoupled from Records' own applied filter and viewed month.
+        if (exportSheetOpen) {
+            ExportSheet(onDismiss = { exportSheetOpen = false })
         }
     }
 }
@@ -489,192 +506,3 @@ private fun TransactionListItem.amountColor(): Color {
         TransactionType.TRANSFER -> colors.textSecondary
     }
 }
-
-/**
- * The Records filter sheet (v1.7.0 Item 7). Four sections — Type, Category, Account (each a wrapping
- * chip grid, empty selection = All per decision 3/12) + an absolute Min/Max amount range. Holds a
- * **draft** seeded from the applied filter; **Apply** commits it, **dismissing discards** it, **Clear**
- * resets to none. Apply is disabled while the range is inverted (decision 5/7).
- */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable
-private fun TransactionFilterSheet(
-    applied: TransactionFilter,
-    categories: List<FilterOption>,
-    accounts: List<FilterOption>,
-    onApply: (TransactionFilter) -> Unit,
-    onClear: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val colors = LocalPlayfulColors.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    var categoryIds by remember { mutableStateOf(applied.categoryIds) }
-    var accountIds by remember { mutableStateOf(applied.accountIds) }
-    var types by remember { mutableStateOf(applied.types) }
-    var minText by remember { mutableStateOf(applied.minAmount?.toPlainString().orEmpty()) }
-    var maxText by remember { mutableStateOf(applied.maxAmount?.toPlainString().orEmpty()) }
-
-    val min = TransactionFilter.parseBound(minText)
-    val max = TransactionFilter.parseBound(maxText)
-    val rangeInverted = min != null && max != null && min > max
-
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            Text(
-                "Filter",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = colors.textPrimary,
-            )
-
-            FilterSection(title = "Type", showAllHint = types.isEmpty()) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    TransactionType.entries.forEach { t ->
-                        PlayfulChip(
-                            label = t.filterLabel(),
-                            selected = t in types,
-                            onClick = { types = types.toggle(t) },
-                        )
-                    }
-                }
-            }
-
-            if (categories.isNotEmpty()) {
-                FilterSection(title = "Category", showAllHint = categoryIds.isEmpty()) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        categories.forEach { opt ->
-                            PlayfulChip(
-                                label = opt.label,
-                                selected = opt.id in categoryIds,
-                                onClick = { categoryIds = categoryIds.toggle(opt.id) },
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (accounts.isNotEmpty()) {
-                FilterSection(title = "Account", showAllHint = accountIds.isEmpty()) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        accounts.forEach { opt ->
-                            PlayfulChip(
-                                label = opt.label,
-                                selected = opt.id in accountIds,
-                                onClick = { accountIds = accountIds.toggle(opt.id) },
-                            )
-                        }
-                    }
-                }
-            }
-
-            FilterSection(title = "Amount range", showAllHint = false) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = minText,
-                        onValueChange = { minText = it },
-                        label = { Text("Min") },
-                        singleLine = true,
-                        isError = rangeInverted,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.weight(1f),
-                    )
-                    OutlinedTextField(
-                        value = maxText,
-                        onValueChange = { maxText = it },
-                        label = { Text("Max") },
-                        singleLine = true,
-                        isError = rangeInverted,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if (rangeInverted) {
-                    Text(
-                        "Minimum can't be larger than maximum",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.semantic.negative,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                TextButton(onClick = onClear, modifier = Modifier.weight(1f)) { Text("Clear") }
-                Button(
-                    onClick = {
-                        onApply(
-                            TransactionFilter(
-                                categoryIds = categoryIds,
-                                accountIds = accountIds,
-                                types = types,
-                                minAmount = min,
-                                maxAmount = max,
-                            ),
-                        )
-                    },
-                    enabled = !rangeInverted,
-                    modifier = Modifier.weight(1f),
-                ) { Text("Apply") }
-            }
-        }
-    }
-}
-
-/** One labelled filter section; shows a subtle "All" hint beside the title when nothing in it is
- *  selected (decision 12 — empty selection *is* all, so no explicit "All" chip). */
-@Composable
-private fun FilterSection(
-    title: String,
-    showAllHint: Boolean,
-    content: @Composable () -> Unit,
-) {
-    val colors = LocalPlayfulColors.current
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                title,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = colors.textPrimary,
-            )
-            if (showAllHint) {
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "All",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textTertiary,
-                )
-            }
-        }
-        content()
-    }
-}
-
-private fun TransactionType.filterLabel(): String = when (this) {
-    TransactionType.INCOME -> "Income"
-    TransactionType.EXPENSE -> "Expense"
-    TransactionType.TRANSFER -> "Transfer"
-}
-
-/** Toggles membership of [item] in the set (add if absent, remove if present) — the chip semantics. */
-private fun <T> Set<T>.toggle(item: T): Set<T> = if (item in this) this - item else this + item

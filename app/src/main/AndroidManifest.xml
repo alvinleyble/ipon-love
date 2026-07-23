@@ -55,6 +55,19 @@
             </intent-filter>
         </activity>
 
+        <!-- Shares exported CSV/PDF/ZIP files from cacheDir/exports via the share sheet
+             (v1.7.0 Item 6). Authority tracks the per-flavor applicationId so context.packageName
+             always resolves to the same authority. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <activity
             android:name=".feature.widget.presentation.QuickAddActivity"
             android:exported="false"

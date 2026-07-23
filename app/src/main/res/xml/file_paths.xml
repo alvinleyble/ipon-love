@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider paths for the export facility (v1.7.0 Item 6). Only the temporary exports folder
+     under cacheDir is exposed — receipts/note images live in filesDir and are never shared this way. -->
+<paths>
+    <cache-path name="exports" path="exports/" />
+</paths>
