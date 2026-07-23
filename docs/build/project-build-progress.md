@@ -12,7 +12,7 @@
 
 **v1.6.9 RELEASED to closed testing 2026-07-23** — supersedes v1.6.8 (which shipped with a since-fixed widget-button regression, see [v1.6.9.md](v1.6.9.md) Item 46). All non-deferred v1.6.9 items are DONE. Room is at **v28**.
 
-**v1.7.0 is the active version** ([v1.7.0.md](v1.7.0.md)): Item 1 (seeded realistic screenshot data on testdev7/8), Item 4 (reverted the payday-aligned budget-cycle start-day feature, ADR-0046 superseded), Item 5 (currency-code dark-mode fix), and Item 8 (reimbursable counterpart-category prompt) are DONE; Item 3 (Facebook Login) shelved. Item 2 (Google Sign-In) and Items 9/10 (couple banner — derived free layer + premium photo override) are **grilled + design-locked, not yet built**. Still needing a grill: Items 6/7 (reimbursable export report, Records filter). Item 11 (Appearance "Follow system" mode, no grill needed).
+**v1.7.0 is the active version** ([v1.7.0.md](v1.7.0.md)): Item 1 (seeded realistic screenshot data on testdev7/8), Item 4 (reverted the payday-aligned budget-cycle start-day feature, ADR-0046 superseded), Item 5 (currency-code dark-mode fix), and Item 8 (reimbursable counterpart-category prompt) are DONE; Item 3 (Facebook Login) shelved. Item 2 (Google Sign-In, ADR-0050), Items 9/10 (couple banner — derived free layer + premium photo override), and Item 13 (in-app Connect Google / `linkIdentity`, ADR-0051) are **grilled + design-locked, not yet built**. Still needing a grill: Items 6/7 (reimbursable export report, Records filter). Items 11/12 (Appearance "Follow system" mode; Personalize Finance-row copy fix — no grill needed).
 
 Full per-slice history for every closed version lives in its own doc, linked from the table below.
 
