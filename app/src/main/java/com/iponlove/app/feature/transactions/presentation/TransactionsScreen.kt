@@ -7,6 +7,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,12 +21,17 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -32,9 +39,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,6 +58,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,6 +66,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.HeartBullet
 import com.iponlove.app.core.ui.MonthStepperRow
 import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulChip
 import com.iponlove.app.core.ui.PlayfulScreenTitle
 import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
@@ -66,6 +79,7 @@ import com.iponlove.app.core.ui.theme.LeafShapes
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.recurring.presentation.components.ComingUpCard
 import com.iponlove.app.feature.recurring.presentation.components.PendingConfirmationsCard
+import com.iponlove.app.feature.transactions.domain.model.TransactionFilter
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
@@ -104,6 +118,8 @@ fun TransactionsScreen(
         onDeepHistoryUpsell = { onOpenPremium(viewModel.onDeepHistoryUpsell()) },
         onOpenPremium = onOpenPremium,
         onTogglePrivacyMode = viewModel::togglePrivacyMode,
+        onApplyFilter = viewModel::applyFilter,
+        onClearFilter = viewModel::clearFilter,
     )
 }
 
@@ -121,9 +137,12 @@ private fun TransactionsContent(
     onDeepHistoryUpsell: () -> Unit = {},
     onOpenPremium: (source: String) -> Unit = {},
     onTogglePrivacyMode: () -> Unit = {},
+    onApplyFilter: (TransactionFilter) -> Unit = {},
+    onClearFilter: () -> Unit = {},
 ) {
     StartTourOnFirstVisit(TutorialTours.RECORDS)
     val colors = LocalPlayfulColors.current
+    var filterSheetOpen by remember { mutableStateOf(false) }
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -140,6 +159,29 @@ private fun TransactionsContent(
                                 contentDescription = "Recurring rules",
                                 tint = colors.textSecondary,
                             )
+                        }
+                        // The filter icon carries an accent dot whenever a filter is applied — the
+                        // user's only explanation for why rows are hidden (Item 7 decision 1). Gated
+                        // on hasAnyTransactionEver: nothing to filter on a fresh install, but it
+                        // stays available in an empty *month* so a filter can be ruled out.
+                        if (state.hasAnyTransactionEver) {
+                            IconButton(onClick = { filterSheetOpen = true }) {
+                                Box(contentAlignment = Alignment.TopEnd) {
+                                    Icon(
+                                        Icons.Filled.FilterList,
+                                        contentDescription = "Filter transactions",
+                                        tint = colors.textSecondary,
+                                    )
+                                    if (state.filterIsActive) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .clip(LeafShapes.IconSquircle)
+                                                .background(colors.accent),
+                                        )
+                                    }
+                                }
+                            }
                         }
                         IconButton(onClick = onTogglePrivacyMode) {
                             Icon(
@@ -204,6 +246,17 @@ private fun TransactionsContent(
                             modifier = Modifier.align(Alignment.Center),
                         )
 
+                    // Rows exist this month but the filter hid them all (decision 8) — distinct
+                    // from a genuinely empty month, with an inline escape so the user needn't
+                    // reopen the sheet.
+                    state.dayGroups.isEmpty() && state.filterIsActive && state.hadRowsBeforeFilter ->
+                        EmptyState(
+                            title = "No matches",
+                            body = "No transactions this month match your filters.",
+                            action = "Clear filters" to onClearFilter,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+
                     state.dayGroups.isEmpty() ->
                         EmptyState(
                             title = "No transactions this month",
@@ -230,6 +283,23 @@ private fun TransactionsContent(
                     }
                 }
             }
+        }
+
+        if (filterSheetOpen) {
+            TransactionFilterSheet(
+                applied = state.appliedFilter,
+                categories = state.filterableCategories,
+                accounts = state.filterableAccounts,
+                onApply = {
+                    onApplyFilter(it)
+                    filterSheetOpen = false
+                },
+                onClear = {
+                    onClearFilter()
+                    filterSheetOpen = false
+                },
+                onDismiss = { filterSheetOpen = false },
+            )
         }
     }
 }
@@ -374,7 +444,12 @@ private fun TransactionRow(
 }
 
 @Composable
-private fun EmptyState(title: String, body: String, modifier: Modifier = Modifier) {
+private fun EmptyState(
+    title: String,
+    body: String,
+    modifier: Modifier = Modifier,
+    action: Pair<String, () -> Unit>? = null,
+) {
     val colors = LocalPlayfulColors.current
     Column(
         modifier = modifier.padding(32.dp),
@@ -388,6 +463,10 @@ private fun EmptyState(title: String, body: String, modifier: Modifier = Modifie
             color = colors.textSecondary,
             textAlign = TextAlign.Center,
         )
+        if (action != null) {
+            Spacer(Modifier.height(12.dp))
+            TextButton(onClick = action.second) { Text(action.first) }
+        }
     }
 }
 
@@ -410,3 +489,192 @@ private fun TransactionListItem.amountColor(): Color {
         TransactionType.TRANSFER -> colors.textSecondary
     }
 }
+
+/**
+ * The Records filter sheet (v1.7.0 Item 7). Four sections — Type, Category, Account (each a wrapping
+ * chip grid, empty selection = All per decision 3/12) + an absolute Min/Max amount range. Holds a
+ * **draft** seeded from the applied filter; **Apply** commits it, **dismissing discards** it, **Clear**
+ * resets to none. Apply is disabled while the range is inverted (decision 5/7).
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun TransactionFilterSheet(
+    applied: TransactionFilter,
+    categories: List<FilterOption>,
+    accounts: List<FilterOption>,
+    onApply: (TransactionFilter) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    var categoryIds by remember { mutableStateOf(applied.categoryIds) }
+    var accountIds by remember { mutableStateOf(applied.accountIds) }
+    var types by remember { mutableStateOf(applied.types) }
+    var minText by remember { mutableStateOf(applied.minAmount?.toPlainString().orEmpty()) }
+    var maxText by remember { mutableStateOf(applied.maxAmount?.toPlainString().orEmpty()) }
+
+    val min = TransactionFilter.parseBound(minText)
+    val max = TransactionFilter.parseBound(maxText)
+    val rangeInverted = min != null && max != null && min > max
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 22.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Text(
+                "Filter",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = colors.textPrimary,
+            )
+
+            FilterSection(title = "Type", showAllHint = types.isEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TransactionType.entries.forEach { t ->
+                        PlayfulChip(
+                            label = t.filterLabel(),
+                            selected = t in types,
+                            onClick = { types = types.toggle(t) },
+                        )
+                    }
+                }
+            }
+
+            if (categories.isNotEmpty()) {
+                FilterSection(title = "Category", showAllHint = categoryIds.isEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        categories.forEach { opt ->
+                            PlayfulChip(
+                                label = opt.label,
+                                selected = opt.id in categoryIds,
+                                onClick = { categoryIds = categoryIds.toggle(opt.id) },
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (accounts.isNotEmpty()) {
+                FilterSection(title = "Account", showAllHint = accountIds.isEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        accounts.forEach { opt ->
+                            PlayfulChip(
+                                label = opt.label,
+                                selected = opt.id in accountIds,
+                                onClick = { accountIds = accountIds.toggle(opt.id) },
+                            )
+                        }
+                    }
+                }
+            }
+
+            FilterSection(title = "Amount range", showAllHint = false) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = minText,
+                        onValueChange = { minText = it },
+                        label = { Text("Min") },
+                        singleLine = true,
+                        isError = rangeInverted,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = maxText,
+                        onValueChange = { maxText = it },
+                        label = { Text("Max") },
+                        singleLine = true,
+                        isError = rangeInverted,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (rangeInverted) {
+                    Text(
+                        "Minimum can't be larger than maximum",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.semantic.negative,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                TextButton(onClick = onClear, modifier = Modifier.weight(1f)) { Text("Clear") }
+                Button(
+                    onClick = {
+                        onApply(
+                            TransactionFilter(
+                                categoryIds = categoryIds,
+                                accountIds = accountIds,
+                                types = types,
+                                minAmount = min,
+                                maxAmount = max,
+                            ),
+                        )
+                    },
+                    enabled = !rangeInverted,
+                    modifier = Modifier.weight(1f),
+                ) { Text("Apply") }
+            }
+        }
+    }
+}
+
+/** One labelled filter section; shows a subtle "All" hint beside the title when nothing in it is
+ *  selected (decision 12 — empty selection *is* all, so no explicit "All" chip). */
+@Composable
+private fun FilterSection(
+    title: String,
+    showAllHint: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                title,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = colors.textPrimary,
+            )
+            if (showAllHint) {
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "All",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textTertiary,
+                )
+            }
+        }
+        content()
+    }
+}
+
+private fun TransactionType.filterLabel(): String = when (this) {
+    TransactionType.INCOME -> "Income"
+    TransactionType.EXPENSE -> "Expense"
+    TransactionType.TRANSFER -> "Transfer"
+}
+
+/** Toggles membership of [item] in the set (add if absent, remove if present) — the chip semantics. */
+private fun <T> Set<T>.toggle(item: T): Set<T> = if (item in this) this - item else this + item

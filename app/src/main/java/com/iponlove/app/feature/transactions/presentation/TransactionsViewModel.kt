@@ -16,6 +16,7 @@ import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCa
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.model.Transaction
+import com.iponlove.app.feature.transactions.domain.model.TransactionFilter
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.DeleteTransactionUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveHasAnyTransactionUseCase
@@ -68,9 +69,28 @@ class TransactionsViewModel @Inject constructor(
         observeTransactions(window.startInclusive, window.endExclusive)
     }
 
+    /** The applied Records filter (v1.7.0 Item 7). Session-scoped, deliberately NOT persisted and
+     *  independent of [viewedMonth] — the lens survives month-stepping and dies with the ViewModel. */
+    private val filter = MutableStateFlow(TransactionFilter.NONE)
+
+    /**
+     * The filter applied *upstream* of the main combine (which is already at its 5-flow ceiling):
+     * grouping runs over already-filtered rows, and [FilteredTransactions] carries the applied
+     * filter + the pre-filter row-presence flag the "No matches" empty state needs — so the main
+     * combine's first slot stays a single flow.
+     */
+    private val filteredInRange: Flow<FilteredTransactions> =
+        combine(transactionsInRange, filter) { txns, f ->
+            FilteredTransactions(
+                transactions = f.apply(txns),
+                filter = f,
+                hadRowsBeforeFilter = txns.isNotEmpty(),
+            )
+        }
+
     val uiState: StateFlow<TransactionsUiState> =
         combine(
-            transactionsInRange,
+            filteredInRange,
             // Archived-inclusive so a historical row keeps its real account/category label after
             // that entity is archived (v1.6.7 Item 5): archiving = hide-from-picker only, it must
             // never degrade a past row to "Account"/"Uncategorized". The Add/Edit pickers live on
@@ -79,7 +99,8 @@ class TransactionsViewModel @Inject constructor(
             observeCategories(includeArchived = true),
             observeHasAnyTransaction(),
             viewedMonth,
-        ) { transactions, accounts, categories, hasAnyEver, month ->
+        ) { filtered, accounts, categories, hasAnyEver, month ->
+            val transactions = filtered.transactions
             val accountNames = accounts.associate { it.id to it.name }
             val categoryNames = categories.associate { it.id to it.name }
             // Icon/color keys for the Records row's tinted icon squircle (v1.6.7 Item 8 Slice 6a) —
@@ -107,6 +128,17 @@ class TransactionsViewModel @Inject constructor(
                 // *active* account existing — the Add screen's account picker excludes archived.
                 canAdd = accounts.any { !it.isArchived },
                 canGoToNextMonth = MonthWindow.canStepForward(month, today),
+                appliedFilter = filtered.filter,
+                filterIsActive = filtered.filter.isActive,
+                hadRowsBeforeFilter = filtered.hadRowsBeforeFilter,
+                // Filter chips are active-only (decision 9): archiving hides an entity from the
+                // picker even though a historical row keeps its real label above.
+                filterableCategories = categories
+                    .filter { !it.isArchived }
+                    .map { FilterOption(it.id, it.name) },
+                filterableAccounts = accounts
+                    .filter { !it.isArchived }
+                    .map { FilterOption(it.id, it.name) },
             )
         }.combine(isRefreshing) { state, refreshing -> state.copy(isRefreshing = refreshing) }
             // DEEP_HISTORY back-wall (S10). viewedMonth.value is read fresh — the same anchor that
@@ -177,12 +209,36 @@ class TransactionsViewModel @Inject constructor(
         viewModelScope.launch { setPrivacyMode(!uiState.value.privacyModeEnabled) }
     }
 
+    /** Commits the sheet's draft filter (v1.7.0 Item 7). Session-scoped — reflows the list upstream
+     *  of the main combine, survives month-stepping, and is never persisted. */
+    fun applyFilter(filter: TransactionFilter) {
+        this.filter.value = filter
+    }
+
+    /** Resets the Records filter to unfiltered — used by the sheet's Clear and the "No matches"
+     *  empty-state inline action. */
+    fun clearFilter() {
+        filter.value = TransactionFilter.NONE
+    }
+
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
         val ZONE: ZoneId = ZoneId.systemDefault()
         val MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
     }
 }
+
+/**
+ * Carries the filter result into the main combine's single first slot (v1.7.0 Item 7): the
+ * post-filter rows plus the two facts the UiState needs but the filtered list alone can't supply —
+ * the applied [filter] (for the active dot + sheet seeding) and [hadRowsBeforeFilter] (to tell the
+ * "No matches" empty state from a genuinely empty month).
+ */
+private data class FilteredTransactions(
+    val transactions: List<Transaction>,
+    val filter: TransactionFilter,
+    val hadRowsBeforeFilter: Boolean,
+)
 
 /**
  * Maps a [Transaction] to its Records row. Extracted from the ViewModel so the display
