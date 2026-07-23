@@ -77,8 +77,9 @@ Distinct from the deferred items above: these aren't blocked on a decision or wa
 
 *(originally [Post-V1 Horizon #7](project-build-progress.md), shelved 2026-07-07, write-up moved here from [v1.6.5.md](v1.6.5.md) 2026-07-18)*
 
-- **Status:** 🗄️ **SHELVED — deferred indefinitely 2026-07-07** at Alvin's call ("I don't think I need it, put it on the shelf for now"). Already out of V1 scope (CLAUDE.md). Not on the Upcoming-features teaser. Revisit only if a concrete need surfaces.
-- **Shape (if ever revisited):** data is already structured for it — transactions/budgets/analysis are all queryable Room tables; would be a straight export UseCase over existing repositories, per the CLAUDE.md scalability principle ("UseCases own data access... a future export UseCase must be able to reuse them").
+- **Status:** ✅ **UN-SHELVED 2026-07-23 → [v1.7.0.md Item 6](v1.7.0.md#item-6--general-export-facility-csv--pdf--zip-receipt-photos-included).** The "concrete need" below surfaced: a tester needs to submit reimbursable work expenses (with receipt photo proof) to their employer. Alvin's call on the first grill question was to build it **general, not reimbursable-specific** — three formats (CSV without attachments, PDF with, ZIP with), grilled to design-locked 2026-07-23, two slices, no ADR. `CLAUDE.md`'s out-of-scope list amended to match.
+- *(Was: **SHELVED — deferred indefinitely 2026-07-07** at Alvin's call — "I don't think I need it, put it on the shelf for now". Not on the Upcoming-features teaser.)*
+- **Shape, as sketched here and as built:** the sketch held — "a straight export UseCase over existing repositories, per the CLAUDE.md scalability principle" is exactly the shape Item 6 landed on (read-only over existing repositories, no schema/DAO change). The two things the sketch did **not** anticipate: receipt photos are deleted locally after upload (so attachment formats need the network), and there is no `FileProvider`/share-sheet plumbing in the app at all.
 
 ### Facebook Login
 

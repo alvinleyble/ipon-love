@@ -230,6 +230,7 @@ Throughout, "**(max count is implicit)**" is Alvin's phrasing for *a ceiling hig
 | **Notes — attachments** | **0** (none) | **3** photos | Hard gate | Harshest line in the map — clearest "real cost" (storage) lever, but collides hard with existing beta notes that have images (§2.1). |
 | **Notes — character limit** | **5,000** | **~50,000** | Hard gate — tiered limit | **DECIDED (2026-07-07):** tiered (Alvin chose over my single-ceiling rec). Caveat: 5k is tight for rich text — one pasted list exceeds it; adjustable. See §8.2. |
 | **Notes — total count** | ~10,000 (implicit) | ~10,000 (implicit) | *Not a paywall lever* | **DECIDED (2026-07-07):** same unadvertised ceiling both tiers; guards sync/storage, no UI/upsell. See §8.2. |
+| **Records — export** | **CSV** (no attachments) | **+ PDF and ZIP** (receipt photos bundled) | Soft gate (`EXPORT_WITH_ATTACHMENTS`) | **ADDED 2026-07-23** (v1.7.0 Item 6, grilled). CSV stays free permanently — data portability; "recording your own money is never gated" reads badly if the data is trapped, and CSV costs no Storage egress. The gate lands on the two formats that download photos. **Non-cannibalizing by construction:** free = 0 receipt photos, so a free user has nothing to bundle. |
 | **Themes — palettes** | **Rose, Peach** (2) | **+ Mauve, Sage, Mocha, Lavender** (6 total) | Soft gate + revert-on-lapse | Lapsed user on a paid palette → revert to Rose/Peach (§2.1, Q2.1). |
 | **Couple — active debt entries** | **10** | **100** | Plan limit (hard) | Shared surface → §2.2. "Active" = un-settled; settled ones shouldn't count. Confirm. |
 
@@ -321,6 +322,7 @@ Two kinds of gate, two data shapes (per §1.2, §1.5).
 | `RECURRING_FORECAST` | soft — Records "Coming up" preview degrades to an upsell teaser; Analysis month-end projected Net hidden behind a lock teaser (free = confirm-on-arrival, which is **free**) | Records + Analysis | individual |
 | `BUDGET_ROLLOVER` | soft (hide toggle) | Budgets | individual |
 | `CALCULATOR` | soft (module lock) | Calculator | individual |
+| `EXPORT_WITH_ATTACHMENTS` | soft — tap **PDF** or **ZIP** in the export sheet → paywall; **CSV is never gated** | Records → overflow → Export | individual |
 | `ANALYSIS_EXTENDED_RANGES` | soft — tap a locked **3M/6M/12M/ALL** tab → paywall (free = 1D/1W/1M) | Analysis | individual |
 | `DEEP_HISTORY` | hard (past beyond −12mo) | Records stepper **+ Analysis free-range stepper (1D/1W/1M), on the shared anchor** | individual |
 

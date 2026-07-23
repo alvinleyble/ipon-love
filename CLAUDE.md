@@ -172,7 +172,7 @@ When in doubt: favor thin, composable layers over shortcuts. Three constraints t
 - AI chatbot
 - Password vault
 - Voice recording
-- CSV / PDF export
+- ~~CSV / PDF export~~ — **no longer out of scope** (2026-07-23): un-shelved and grilled as a *general* export facility (CSV / PDF / ZIP, receipt photos included, share-sheet delivery) — see `docs/build/v1.7.0.md` Item 6. CSV is free; PDF/ZIP sit behind `EXPORT_WITH_ATTACHMENTS`.
 - iOS (dropped from roadmap — web app is the planned cross-platform target instead, see Post-V1 Horizon)
 - Custom fonts (typography only — category/account icon customization already shipped in V1.3; themes remain color-only otherwise)
 - Profile / couple photo upload (avatars are accent color + initials in V1)

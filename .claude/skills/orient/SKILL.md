@@ -20,9 +20,12 @@ Establish current build state fast and cheaply. The point is to read the **right
 
 ## Then report back, tightly
 
-- **Where we are:** current in-flight version + a one-line state of it (what's DONE/committed vs. FIXED-uncommitted vs. NEEDS DECISION).
+Lead with a table of every item in the in-flight version doc, columns `Item #, Description, Model, Status`, **sorted in build order (dependency/sequence order), not by item number**. Status is one of: `Done (SHA)`, `Booked`, `For Grilling`, `Ready`. Note any cross-item dependency inline in the Description cell (e.g. "— depends on Item 7").
+
+After the table:
+- **Where we are:** one-line state of the in-flight version (what's DONE/committed vs. FIXED-uncommitted vs. NEEDS DECISION).
 - **Room version:** the last committed `vNN` (flag if an uncommitted slice bumped it).
-- **What's next:** the specific next item/decision, phrased as one actionable line.
+- **What's next:** the specific next item, phrased as one actionable line — the top of the build-order table that isn't Done.
 - **Model + effort recommendation** for that next item, with a one-sentence rationale — per the Sonnet-by-default / Opus-for-novel-or-cross-ADR rule in CLAUDE.md. State this even if the user hasn't asked yet; it's required before any build.
 
-Keep the report to a few lines. Don't dump file contents back — synthesize.
+Don't dump file contents back — synthesize.
