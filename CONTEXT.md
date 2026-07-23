@@ -192,6 +192,14 @@ _Avoid_: first launch, is-new-user flag
 A distinct `AuthStatus` state, entered only when the SDK session originates from a password-reset deep link (`session.type == "recovery"`) rather than an ordinary sign-in. Routes to a dedicated "set new password" screen instead of the app shell, and short-circuits the `Authenticated` cascade (sync, onboarding decision, WorkManager enqueues) until the recovery is resolved. Ends in a forced sign-out back to ordinary sign-in, never an auto-continue into the app. See ADR-0027.
 _Avoid_: recovery session, reset gate
 
+**Native Google sign-in**:
+The Google auth pathway: a Google **ID token** obtained on-device via Android **Credential Manager** (not the deprecated `GoogleSignInClient`, and not an OAuth browser redirect) and exchanged through `client.auth.signInWith(IDToken)`. Its only job is to *make a Supabase session exist* — the session-driven cascade ([[New-user gate|onboarding]], users-row bootstrap, account-switch purge) then runs unchanged and method-agnostic. A Google identity is pre-verified, so it bypasses the email-confirmation gate entirely; the display name comes from Google's `full_name`/`name` claims via a read-time fallback, since onboarding has no name-entry step. See ADR-0050.
+_Avoid_: Google OAuth (implies the redirect flow, which was rejected), Google Sign-In SDK (deprecated)
+
+**Identity linking**:
+Two Supabase auth identities (e.g. email+password and Google) resolving to the **same user id**, so either method logs into the same account with all data + [[Couple|couple pairing]] intact. Happens two ways: *implicitly/automatically* when a Google login's verified email matches an existing verified account (relied on in [[Native Google sign-in]], ADR-0050 decision 4), or *explicitly in-app* via `linkIdentity` from an already-signed-in account — which runs the OAuth **redirect** flow (supabase-kt has no native link) and is booked as a separate follow-up (v1.7.0 Item 13), not part of the initial Google sign-in.
+_Avoid_: account merge (no data is merged — it's one account with two sign-in methods), connect account
+
 **PIN lockout**:
 A flat 5-wrong-attempt threshold on the PIN path, followed by a 30-second timed cooldown. The counter persists in DataStore (survives a force-kill) and resets only on a successful unlock, never on elapsed time alone. "Forgot PIN" (email+password re-auth) stays available throughout as an opt-in escape hatch — the lockout never forces it. Biometric's OS-level lockout (`ERROR_LOCKOUT`/`ERROR_LOCKOUT_PERMANENT`) is surfaced with a message rather than silently falling back to the PIN pad. See ADR-0028.
 _Avoid_: PIN throttling, brute-force protection
