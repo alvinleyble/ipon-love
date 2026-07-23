@@ -27,6 +27,7 @@ import com.iponlove.app.feature.transactions.domain.usecase.SaveTransferUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.UpsertTransactionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -243,8 +244,12 @@ class AddTransactionViewModel @Inject constructor(
         return source
     }
 
-    fun onRemoveImage(imageId: String) =
+    fun onRemoveImage(imageId: String) {
+        editor.value?.images?.find { it.id == imageId }?.localPath?.let { path ->
+            File(path).delete()
+        }
         mutate { it.copy(images = it.images.filterNot { image -> image.id == imageId }) }
+    }
 
     fun save(onDone: () -> Unit) {
         val s = editor.value ?: return

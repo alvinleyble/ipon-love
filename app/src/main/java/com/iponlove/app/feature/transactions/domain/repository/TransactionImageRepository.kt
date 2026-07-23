@@ -28,4 +28,7 @@ interface TransactionImageRepository {
 
     /** Hard-delete all replicated partner images on unpair (ADR-0008). */
     suspend fun purgePartnerData(userId: String)
+
+    /** Every row id on record, deleted or not — the "nothing points at this file" cleanup key. */
+    suspend fun allImageIds(): List<String>
 }

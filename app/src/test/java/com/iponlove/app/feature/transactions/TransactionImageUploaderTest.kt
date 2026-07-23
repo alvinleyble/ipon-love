@@ -28,6 +28,7 @@ class TransactionImageUploaderTest {
         override suspend fun getByTransactionId(transactionId: String) = emptyList<TransactionImageEntity>()
         override fun observeAllUploaded(): Flow<List<TransactionImageEntity>> = emptyFlow()
         override suspend fun getById(id: String) = store[id]
+        override suspend fun allIds(): List<String> = store.keys.toList()
         override suspend fun countActiveByTransactionId(transactionId: String) = 0
         override suspend fun upsert(entity: TransactionImageEntity) { store[entity.id] = entity }
         override suspend fun deleteById(id: String) { store.remove(id); deleted += id }

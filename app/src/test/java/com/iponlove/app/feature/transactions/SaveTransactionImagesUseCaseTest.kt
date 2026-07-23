@@ -31,6 +31,7 @@ class SaveTransactionImagesUseCaseTest {
         override suspend fun deleteImage(id: String) { active.remove(id); deleted += id }
 
         override suspend fun purgePartnerData(userId: String) {}
+        override suspend fun allImageIds(): List<String> = active.keys.toList()
     }
 
     private fun draftPick(id: String) = TransactionImage(id = id, transactionId = "t1", localPath = "/f/$id.jpg")

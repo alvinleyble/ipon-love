@@ -67,4 +67,6 @@ class TransactionImageRepositoryImpl @Inject constructor(
     }
 
     override suspend fun purgePartnerData(userId: String) = dao.deleteNotOwnedByUser(userId)
+
+    override suspend fun allImageIds(): List<String> = dao.allIds()
 }

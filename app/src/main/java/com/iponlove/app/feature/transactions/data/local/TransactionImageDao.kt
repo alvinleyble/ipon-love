@@ -24,6 +24,11 @@ interface TransactionImageDao {
     @Query("SELECT * FROM transaction_images WHERE id = :id")
     suspend fun getById(id: String): TransactionImageEntity?
 
+    /** Every row's id, deleted or not — used to identify orphaned receipt files on disk (nothing
+     *  points at them iff their id isn't in this set, per {imageId}.jpg's naming convention). */
+    @Query("SELECT id FROM transaction_images")
+    suspend fun allIds(): List<String>
+
     @Query("SELECT COUNT(*) FROM transaction_images WHERE transactionId = :transactionId AND isDeleted = 0")
     suspend fun countActiveByTransactionId(transactionId: String): Int
 

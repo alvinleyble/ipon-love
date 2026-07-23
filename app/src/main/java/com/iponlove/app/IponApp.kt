@@ -9,6 +9,7 @@ import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.data.ClockOffsetStore
 import com.iponlove.app.feature.budgets.presentation.BudgetAlertNotifier
+import com.iponlove.app.feature.transactions.domain.usecase.CleanupOrphanedReceiptsUseCase
 import com.iponlove.app.feature.widget.data.WidgetSessionHintWriter
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +31,7 @@ class IponApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject lateinit var budgetAlertNotifier: BudgetAlertNotifier
     @Inject lateinit var coupleChannelManager: CoupleChannelManager
     @Inject lateinit var widgetSessionHintWriter: WidgetSessionHintWriter
+    @Inject lateinit var cleanupOrphanedReceipts: CleanupOrphanedReceiptsUseCase
 
     // Coil asks for this lazily on first image load; every AsyncImage in the app then goes
     // through the auth-attaching loader (private Storage buckets — see StorageAuthInterceptor).
@@ -49,6 +51,9 @@ class IponApp : Application(), Configuration.Provider, ImageLoaderFactory {
         // Mirror the session state into a fast local hint so the balance widget never blocks on the
         // Supabase SDK's cold-start session read (Item 36).
         widgetSessionHintWriter.start(appScope)
+        // Sweep filesDir/receipts for compressed files that never got a transaction_images row
+        // (abandoned editor, or picked-then-removed before save — Item 14).
+        appScope.launch { cleanupOrphanedReceipts() }
     }
 
     override val workManagerConfiguration: Configuration

@@ -162,7 +162,7 @@ fun PersonalizeScreen(
             SettingsSectionHeader("Finance")
             SettingsRow(
                 headline = "Finance",
-                supporting = "Currency, privacy & budget cycle",
+                supporting = "Currency & privacy",
                 index = 0,
                 onClick = onOpenFinance,
             )

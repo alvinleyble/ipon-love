@@ -94,6 +94,7 @@ internal class CountingTransactionImageRepo : TransactionImageRepository {
     override suspend fun addImage(transactionId: String, imageId: String, localPath: String) = Unit
     override suspend fun deleteImage(id: String) = Unit
     override suspend fun purgePartnerData(userId: String) { purgeCount++ }
+    override suspend fun allImageIds(): List<String> = emptyList()
 }
 
 internal class CountingNoteRepo : NoteRepository {
