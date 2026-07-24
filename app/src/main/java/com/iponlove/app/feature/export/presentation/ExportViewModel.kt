@@ -231,7 +231,7 @@ class ExportViewModel @Inject constructor(
             viewModelScope.launch {
                 val uri = fileWriter.write(
                     ExportFilename.build(payload.range, format.extension),
-                    CsvExporter.build(payload.rows, ZONE),
+                    CsvExporter.BOM + CsvExporter.build(payload.rows, ZONE),
                 )
                 events.send(ExportEvent.Share(uri, format.mimeType))
             }

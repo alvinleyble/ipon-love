@@ -38,7 +38,7 @@ class ZipExporter @Inject constructor(
     ) {
         ZipOutputStream(target.outputStream().buffered()).use { zip ->
             zip.putNextEntry(ZipEntry(ZipEntryNaming.CSV_ENTRY))
-            zip.write(CsvExporter.build(numbered.rows.map { it.row }, zone).toByteArray())
+            zip.write((CsvExporter.BOM + CsvExporter.build(numbered.rows.map { it.row }, zone)).toByteArray())
             zip.closeEntry()
 
             for (receipt in numbered.receipts) {

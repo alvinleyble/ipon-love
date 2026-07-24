@@ -20,6 +20,11 @@ import java.util.Locale
  */
 object CsvExporter {
 
+    /** UTF-8 byte-order mark. Prepend to [build]'s output — never inside it — before writing to a
+     *  real file, so Excel auto-detects UTF-8 and renders the transfer `→` correctly instead of as
+     *  mojibake; [build] itself stays BOM-free so its unit tests compare plain strings. */
+    const val BOM = "\uFEFF"
+
     private const val HEADER = "Date,Type,Category,Account,Note,Amount,Receipts"
 
     fun build(rows: List<ExportRow>, zone: ZoneId = ZoneId.systemDefault()): String {
