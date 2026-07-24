@@ -56,4 +56,48 @@ class StorageUrlRewriteTest {
         val url = "$supabase/storage/v1/object/sign/receipts/u1/t1.jpg?token=xyz"
         assertThat(StorageUrlRewrite.toAuthenticatedUrl(url, supabase)).isNull()
     }
+
+    // ---- toObjectRef: the inverse of authenticatedUrl(path), for the export receipt fetcher ----
+
+    @Test
+    fun objectRef_splitsBucketFromPath() {
+        val ref = StorageUrlRewrite.toObjectRef(
+            "$supabase/storage/v1/object/authenticated/receipts/u1/t1/img1.jpg",
+            supabase,
+        )
+        assertThat(ref).isEqualTo(StorageObjectRef(bucket = "receipts", path = "u1/t1/img1.jpg"))
+    }
+
+    @Test
+    fun objectRef_handlesLegacyPublicUrlsForFree() {
+        // Rows stamped before the buckets were confirmed private still have to be fetchable.
+        val ref = StorageUrlRewrite.toObjectRef(
+            "$supabase/storage/v1/object/public/note-images/u1/n1/img1.jpg",
+            supabase,
+        )
+        assertThat(ref).isEqualTo(StorageObjectRef(bucket = "note-images", path = "u1/n1/img1.jpg"))
+    }
+
+    @Test
+    fun objectRef_dropsQueryAndFragment() {
+        val ref = StorageUrlRewrite.toObjectRef(
+            "$supabase/storage/v1/object/authenticated/receipts/u1/t1.jpg?download=1#frag",
+            supabase,
+        )
+        assertThat(ref).isEqualTo(StorageObjectRef(bucket = "receipts", path = "u1/t1.jpg"))
+    }
+
+    @Test
+    fun objectRef_isNullForANonStorageUrl() {
+        assertThat(StorageUrlRewrite.toObjectRef("https://example.com/a/b.jpg", supabase)).isNull()
+    }
+
+    @Test
+    fun objectRef_isNullWhenThereIsNoPathBeyondTheBucket() {
+        val ref = StorageUrlRewrite.toObjectRef(
+            "$supabase/storage/v1/object/authenticated/receipts",
+            supabase,
+        )
+        assertThat(ref).isNull()
+    }
 }

@@ -91,6 +91,7 @@ internal class CountingTransactionImageRepo : TransactionImageRepository {
     var purgeCount = 0
     override suspend fun getImages(transactionId: String): List<TransactionImage> = emptyList()
     override fun observeImageUrls(): Flow<Map<String, List<String>>> = emptyFlow()
+    override fun observeImages(): Flow<Map<String, List<TransactionImage>>> = emptyFlow()
     override suspend fun addImage(transactionId: String, imageId: String, localPath: String) = Unit
     override suspend fun deleteImage(id: String) = Unit
     override suspend fun purgePartnerData(userId: String) { purgeCount++ }

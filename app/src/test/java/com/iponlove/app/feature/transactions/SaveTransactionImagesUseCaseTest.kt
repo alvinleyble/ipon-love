@@ -22,6 +22,9 @@ class SaveTransactionImagesUseCaseTest {
 
         override fun observeImageUrls(): Flow<Map<String, List<String>>> = flowOf(emptyMap())
 
+        override fun observeImages(): Flow<Map<String, List<TransactionImage>>> =
+            flowOf(active.values.groupBy { it.transactionId })
+
         override suspend fun addImage(transactionId: String, imageId: String, localPath: String) {
             if (active.values.count { it.transactionId == transactionId } >= TransactionImage.MAX) return
             active[imageId] = TransactionImage(imageId, transactionId, localPath = localPath)

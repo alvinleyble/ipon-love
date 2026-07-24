@@ -1,21 +1,28 @@
 package com.iponlove.app.feature.export.presentation
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -34,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
+import com.iponlove.app.feature.export.domain.AttachmentLimits
+import com.iponlove.app.feature.export.domain.model.ExportFormat
 import com.iponlove.app.feature.transactions.presentation.components.TransactionFilterSheet
 import java.time.Instant
 import java.time.LocalDate
@@ -53,6 +62,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ExportSheet(
     onDismiss: () -> Unit,
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: ExportViewModel = hiltViewModel(),
 ) {
     val colors = LocalPlayfulColors.current
@@ -76,11 +86,21 @@ fun ExportSheet(
                     context.startActivity(Intent.createChooser(send, "Export records"))
                     onDismiss()
                 }
+                is ExportEvent.OpenPaywall -> {
+                    onDismiss()
+                    onOpenPremium(event.source)
+                }
+                ExportEvent.Failed ->
+                    Toast.makeText(context, "Couldn't finish the export.", Toast.LENGTH_LONG).show()
             }
         }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    // An export is foreground-only (decision 5): walking away from the sheet abandons it.
+    ModalBottomSheet(
+        onDismissRequest = { viewModel.cancelExport(); onDismiss() },
+        sheetState = sheetState,
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -95,11 +115,7 @@ fun ExportSheet(
                 color = colors.textPrimary,
             )
             Text(
-                text = if (state.transactionCount > 0) {
-                    "Exporting ${state.transactionCount} transaction${if (state.transactionCount == 1) "" else "s"}"
-                } else {
-                    "No transactions to export"
-                },
+                text = scopeSummary(state),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -153,11 +169,42 @@ fun ExportSheet(
                 )
             }
 
-            Button(
-                onClick = { viewModel.exportCsv() },
-                enabled = state.ready,
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            ) { Text("Export CSV") }
+            // Slice 2: the three formats, with their pre-tap guards spelled out rather than the
+            // buttons just going dead. CSV is always available; PDF/ZIP carry receipt photos.
+            val progress = state.progress
+            if (progress != null) {
+                ExportProgressRow(progress = progress, onCancel = viewModel::cancelExport)
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { viewModel.export(ExportFormat.CSV) },
+                        enabled = state.enabled(ExportFormat.CSV),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Export CSV") }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AttachmentFormatButton(
+                            format = ExportFormat.PDF,
+                            state = state,
+                            onClick = { viewModel.export(ExportFormat.PDF) },
+                            modifier = Modifier.weight(1f),
+                        )
+                        AttachmentFormatButton(
+                            format = ExportFormat.ZIP,
+                            state = state,
+                            onClick = { viewModel.export(ExportFormat.ZIP) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    attachmentNote(state)?.let { note ->
+                        Text(
+                            note,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary,
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -191,6 +238,81 @@ fun ExportSheet(
             onDismiss = { toPickerOpen = false },
             onConfirm = { viewModel.setToDate(it); toPickerOpen = false },
         )
+    }
+}
+
+/** The live scope readout — transaction count, plus the photo count once there is one, since the
+ *  photos are what make an attachment export slow, capped and network-bound. */
+private fun scopeSummary(state: ExportUiState): String {
+    if (state.transactionCount == 0) return "No transactions to export"
+    val txns = "${state.transactionCount} transaction${if (state.transactionCount == 1) "" else "s"}"
+    if (state.photoCount == 0) return "Exporting $txns"
+    return "Exporting $txns · ${state.photoCount} receipt${if (state.photoCount == 1) "" else "s"}"
+}
+
+/**
+ * The single line under the PDF/ZIP pair explaining why they can't be tapped, in the order the user
+ * would hit them. Returns null when the pair is usable — no note, no noise.
+ */
+private fun attachmentNote(state: ExportUiState): String? = when {
+    !state.ready -> null
+    state.photoCapExceeded ->
+        "PDF and ZIP carry up to ${AttachmentLimits.MAX_PHOTOS} receipts — this range has " +
+            "${state.photoCount}. Narrow the dates or filter to fewer."
+    state.offlineBlocked ->
+        "PDF and ZIP need a connection to fetch your receipt photos. CSV works offline."
+    state.attachmentsLocked -> "PDF and ZIP bundle your receipt photos — a Premium feature."
+    state.photoCount == 0 -> "No receipts in this range — PDF and ZIP will carry the records only."
+    else -> null
+}
+
+@Composable
+private fun AttachmentFormatButton(
+    format: ExportFormat,
+    state: ExportUiState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        // A *locked* format stays tappable — the tap is the paywall route, not a refusal
+        // (decision 2). Only the real blockers (cap, offline, empty scope) disable it.
+        enabled = state.attachmentsAvailable(),
+        modifier = modifier,
+    ) {
+        Text(format.label)
+        if (state.attachmentsLocked) {
+            Spacer(Modifier.width(6.dp))
+            Icon(
+                Icons.Filled.Lock,
+                contentDescription = "Premium",
+                modifier = Modifier.size(14.dp),
+            )
+        }
+    }
+}
+
+/** Numeric, cancellable progress (decision 5) — "Downloading receipts… 34 of 112". */
+@Composable
+private fun ExportProgressRow(progress: ExportProgress, onCancel: () -> Unit) {
+    val colors = LocalPlayfulColors.current
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = if (progress.assembling) {
+                "Building your ${progress.format.label}…"
+            } else {
+                "Downloading receipts… ${progress.done} of ${progress.total}"
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textPrimary,
+        )
+        LinearProgressIndicator(
+            progress = {
+                if (progress.total == 0) 0f else progress.done.toFloat() / progress.total
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
     }
 }
 

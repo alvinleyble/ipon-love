@@ -21,6 +21,15 @@ interface TransactionImageDao {
     @Query("SELECT * FROM transaction_images WHERE isDeleted = 0 AND url IS NOT NULL")
     fun observeAllUploaded(): Flow<List<TransactionImageEntity>>
 
+    /**
+     * Every active receipt image, **including rows still pending upload** (localPath set, url null)
+     * — unlike [observeAllUploaded], which the combined view uses and which can only render a URL.
+     * Export (v1.7.0 Item 6 Slice 2) needs both forms: a photo still on disk is exported straight
+     * from the local file, no network involved.
+     */
+    @Query("SELECT * FROM transaction_images WHERE isDeleted = 0")
+    fun observeAllActive(): Flow<List<TransactionImageEntity>>
+
     @Query("SELECT * FROM transaction_images WHERE id = :id")
     suspend fun getById(id: String): TransactionImageEntity?
 

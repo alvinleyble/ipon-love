@@ -26,6 +26,13 @@ class TransactionImageRepositoryImpl @Inject constructor(
                 .groupBy({ it.transactionId }, { it.url!! })
         }
 
+    override fun observeImages(): Flow<Map<String, List<TransactionImage>>> =
+        dao.observeAllActive().map { rows ->
+            rows.sortedWith(compareBy({ it.position }, { it.createdAt }))
+                .groupBy { it.transactionId }
+                .mapValues { (_, images) -> images.map { it.toDomain() } }
+        }
+
     override suspend fun addImage(transactionId: String, imageId: String, localPath: String) {
         // Data-layer backstop for the 3-cap: never persist a 4th active image for a transaction.
         if (dao.countActiveByTransactionId(transactionId) >= TransactionImage.MAX) return

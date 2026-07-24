@@ -20,6 +20,13 @@ interface TransactionImageRepository {
      */
     fun observeImageUrls(): Flow<Map<String, List<String>>>
 
+    /**
+     * Every active receipt image grouped transactionId → ordered images, **including pre-upload
+     * rows** (localPath set, url null). Export (Item 6 Slice 2) needs the whole picture: a receipt
+     * that hasn't synced yet is still exportable — straight off local disk, no network.
+     */
+    fun observeImages(): Flow<Map<String, List<TransactionImage>>>
+
     /** Insert a newly-picked image row (localPath set, url null) pending upload. No-op past [TransactionImage.MAX]. */
     suspend fun addImage(transactionId: String, imageId: String, localPath: String)
 

@@ -16,4 +16,13 @@ enum class Feature {
     CALCULATOR,
     ANALYSIS_EXTENDED_RANGES,
     DEEP_HISTORY,
+
+    /**
+     * Exporting **with receipt photos** — the PDF and ZIP formats (v1.7.0 Item 6 Slice 2). Plain
+     * CSV is deliberately never gated: data portability stays free, text costs no Storage egress,
+     * and a free user has zero receipt photos anyway (the free cap is 0 since v1.6.7 Item 9), so
+     * this gate is non-cannibalising by construction. Soft gate, individual scope — export reads
+     * only the signed-in user's own rows.
+     */
+    EXPORT_WITH_ATTACHMENTS,
 }

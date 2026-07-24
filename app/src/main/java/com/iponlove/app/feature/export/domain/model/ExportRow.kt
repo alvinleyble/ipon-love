@@ -7,9 +7,9 @@ import java.time.Instant
 
 /**
  * One transaction resolved for export (v1.7.0 Item 6): account/category ids looked up to names,
- * the amount signed by [type] (income +, expense/transfer −), and a receipt-photo count attached.
- * The pure output of [ExportRowMapper] — the CSV writer (and the Slice-2 PDF/ZIP writers) format
- * from this, never from a raw [Transaction].
+ * the amount signed by [type] (income +, expense/transfer −), and its receipt photos attached.
+ * The pure output of [ExportRowMapper] — the CSV, PDF and ZIP writers all format from this, never
+ * from a raw [Transaction].
  */
 data class ExportRow(
     val date: Instant,
@@ -24,8 +24,12 @@ data class ExportRow(
     /** Signed magnitude: income positive, expense/transfer negative — so a spreadsheet column-sum
      *  equals the CSV's own Total row. */
     val signedAmount: BigDecimal,
-    val receiptCount: Int,
-)
+    /** This row's receipt photos, in display order (Slice 2 bundles them; the CSV only counts them). */
+    val receipts: List<ExportPhoto> = emptyList(),
+) {
+    /** The CSV's `Receipts` column. Counts pre-upload photos too — they are just as exportable. */
+    val receiptCount: Int get() = receipts.size
+}
 
 /**
  * Maps a [Transaction] to an [ExportRow]. Pure and Android-free so the export shape (category-less
@@ -37,7 +41,7 @@ object ExportRowMapper {
         transaction: Transaction,
         accountNames: Map<String, String>,
         categoryNames: Map<String, String>,
-        receiptCount: Int,
+        receipts: List<ExportPhoto> = emptyList(),
     ): ExportRow {
         val account = accountNames[transaction.accountId] ?: "Account"
         val category = when {
@@ -58,7 +62,7 @@ object ExportRowMapper {
             account = account,
             note = transaction.note.orEmpty(),
             signedAmount = signed,
-            receiptCount = receiptCount,
+            receipts = receipts,
         )
     }
 }

@@ -2,6 +2,7 @@ package com.iponlove.app.feature.export
 
 import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.feature.export.domain.CsvExporter
+import com.iponlove.app.feature.export.domain.model.ExportPhoto
 import com.iponlove.app.feature.export.domain.model.ExportRow
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import org.junit.Test
@@ -33,7 +34,7 @@ class CsvExporterTest {
         account = account,
         note = note,
         signedAmount = BigDecimal(signed),
-        receiptCount = receipts,
+        receipts = List(receipts) { ExportPhoto(id = "img$it", url = "https://example/$it.jpg") },
     )
 
     private fun lines(csv: String) = csv.trimEnd().split("\r\n")

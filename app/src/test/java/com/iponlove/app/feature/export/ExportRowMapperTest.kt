@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.export
 
 import com.google.common.truth.Truth.assertThat
+import com.iponlove.app.feature.export.domain.model.ExportPhoto
 import com.iponlove.app.feature.export.domain.model.ExportRowMapper
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
@@ -43,10 +44,10 @@ class ExportRowMapperTest {
     @Test
     fun `income keeps a positive amount, expense negates`() {
         val income = ExportRowMapper.toRow(
-            txn(TransactionType.INCOME, "20000.00", categoryId = "food"), accountNames, categoryNames, 0,
+            txn(TransactionType.INCOME, "20000.00", categoryId = "food"), accountNames, categoryNames,
         )
         val expense = ExportRowMapper.toRow(
-            txn(TransactionType.EXPENSE, "500.00", categoryId = "food"), accountNames, categoryNames, 0,
+            txn(TransactionType.EXPENSE, "500.00", categoryId = "food"), accountNames, categoryNames,
         )
         assertThat(income.signedAmount).isEqualTo(BigDecimal("20000.00"))
         assertThat(expense.signedAmount).isEqualTo(BigDecimal("-500.00"))
@@ -56,7 +57,7 @@ class ExportRowMapperTest {
     fun `transfer resolves the destination account and negates`() {
         val row = ExportRowMapper.toRow(
             txn(TransactionType.TRANSFER, "800.00", accountId = "bank", toAccountId = "card"),
-            accountNames, categoryNames, 0,
+            accountNames, categoryNames,
         )
         assertThat(row.category).isEqualTo("→ Credit Card")
         assertThat(row.account).isEqualTo("BPI")
@@ -67,7 +68,7 @@ class ExportRowMapperTest {
     fun `settlement leg is labelled and never uncategorized`() {
         val row = ExportRowMapper.toRow(
             txn(TransactionType.EXPENSE, "300.00", categoryId = null, isSettlement = true),
-            accountNames, categoryNames, 0,
+            accountNames, categoryNames,
         )
         assertThat(row.category).isEqualTo("Debt settlement")
     }
@@ -75,7 +76,7 @@ class ExportRowMapperTest {
     @Test
     fun `a categorised row with an unknown category falls back to Uncategorized`() {
         val row = ExportRowMapper.toRow(
-            txn(TransactionType.EXPENSE, "100.00", categoryId = "ghost"), accountNames, categoryNames, 0,
+            txn(TransactionType.EXPENSE, "100.00", categoryId = "ghost"), accountNames, categoryNames,
         )
         assertThat(row.category).isEqualTo("Uncategorized")
     }
@@ -84,7 +85,7 @@ class ExportRowMapperTest {
     fun `private rows are exported like any other`() {
         val row = ExportRowMapper.toRow(
             txn(TransactionType.EXPENSE, "100.00", categoryId = "food", isPrivate = true, note = "secret"),
-            accountNames, categoryNames, 0,
+            accountNames, categoryNames,
         )
         assertThat(row.category).isEqualTo("Groceries")
         assertThat(row.note).isEqualTo("secret")
@@ -92,10 +93,22 @@ class ExportRowMapperTest {
     }
 
     @Test
-    fun `receipt count is carried through`() {
+    fun `receipt photos are carried through and counted`() {
         val row = ExportRowMapper.toRow(
-            txn(TransactionType.EXPENSE, "100.00", categoryId = "food"), accountNames, categoryNames, 3,
+            txn(TransactionType.EXPENSE, "100.00", categoryId = "food"),
+            accountNames,
+            categoryNames,
+            receipts = List(3) { ExportPhoto(id = "img$it", url = "https://example/$it.jpg") },
         )
         assertThat(row.receiptCount).isEqualTo(3)
+        assertThat(row.receipts.map { it.id }).containsExactly("img0", "img1", "img2").inOrder()
+    }
+
+    @Test
+    fun `a row with no photos counts zero`() {
+        val row = ExportRowMapper.toRow(
+            txn(TransactionType.EXPENSE, "100.00", categoryId = "food"), accountNames, categoryNames,
+        )
+        assertThat(row.receiptCount).isEqualTo(0)
     }
 }

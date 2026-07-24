@@ -59,4 +59,31 @@ object StorageUrlRewrite {
             else -> null
         }
     }
+
+    /**
+     * Splits a Storage URL back into the `(bucket, objectPath)` pair the Supabase SDK's own
+     * download API speaks — the inverse of `BucketApi.authenticatedUrl(path)`.
+     *
+     * Rows store the *URL*, not the path, so anything wanting to fetch an object outside Coil (the
+     * export facility's receipt bundler, v1.7.0 Item 6 Slice 2) has to recover the path. Routing it
+     * through [toAuthenticatedUrl] first means legacy public-form URLs are handled for free, and
+     * going back through the SDK means auth/refresh stays the SDK's job rather than being
+     * hand-rolled a second time alongside [StorageAuthInterceptor].
+     *
+     * Returns `null` when [url] is not a Storage object URL for [supabaseUrl].
+     */
+    fun toObjectRef(url: String, supabaseUrl: String): StorageObjectRef? {
+        val base = supabaseUrl.trimEnd('/')
+        val authenticated = toAuthenticatedUrl(url, supabaseUrl) ?: return null
+        val objectPath = authenticated
+            .removePrefix(base + AUTHENTICATED_SEGMENT)
+            .substringBefore('?')
+            .substringBefore('#')
+        val bucket = objectPath.substringBefore('/', missingDelimiterValue = "")
+        val path = objectPath.substringAfter('/', missingDelimiterValue = "")
+        return if (bucket.isEmpty() || path.isEmpty()) null else StorageObjectRef(bucket, path)
+    }
 }
+
+/** A Storage object addressed the way the Supabase SDK wants it: bucket + path within the bucket. */
+data class StorageObjectRef(val bucket: String, val path: String)

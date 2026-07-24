@@ -18,12 +18,22 @@ class ExportFileWriter @Inject constructor(
 ) {
     /** Writes UTF-8 [content] to `exports/[filename]`, replacing any existing file, and returns its
      *  shareable content Uri. */
-    fun write(filename: String, content: String): Uri {
+    fun write(filename: String, content: String): Uri = uriFor(newFile(filename).also { it.writeText(content) })
+
+    /**
+     * An empty `exports/[filename]` ready to be *streamed* into, replacing any existing file. The
+     * attachment formats (Slice 2) can't build their payload as a String first — a PDF or ZIP is
+     * written incrementally, one receipt at a time, precisely so a 100-photo export never sits in
+     * memory whole (decision 3c).
+     */
+    fun newFile(filename: String): File {
         val dir = File(context.cacheDir, DIR).also { it.mkdirs() }
-        val file = File(dir, filename)
-        file.writeText(content)
-        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        return File(dir, filename).also { if (it.exists()) it.delete() }
     }
+
+    /** The shareable content Uri for a file produced by [newFile]. */
+    fun uriFor(file: File): Uri =
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 
     /** Deletes every file in `cacheDir/exports` — the startup sweep wired into `IponApp`. */
     fun sweep() {

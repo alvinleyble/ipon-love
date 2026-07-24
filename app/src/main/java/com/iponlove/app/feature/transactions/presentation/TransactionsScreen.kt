@@ -316,7 +316,11 @@ private fun TransactionsContent(
         // Export sheet (v1.7.0 Item 6, re-grilled 2026-07-24) — fully self-contained: its own
         // filter + date range, decoupled from Records' own applied filter and viewed month.
         if (exportSheetOpen) {
-            ExportSheet(onDismiss = { exportSheetOpen = false })
+            ExportSheet(
+                onDismiss = { exportSheetOpen = false },
+                // Slice 2: tapping a locked PDF/ZIP routes to the paywall (EXPORT_WITH_ATTACHMENTS).
+                onOpenPremium = onOpenPremium,
+            )
         }
     }
 }

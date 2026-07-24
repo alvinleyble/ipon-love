@@ -1,7 +1,6 @@
 package com.iponlove.app.feature.export.domain
 
 import com.iponlove.app.feature.export.domain.model.ExportRow
-import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import java.math.BigDecimal
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -32,7 +31,7 @@ object CsvExporter {
         for (row in rows) {
             total = total.add(row.signedAmount)
             sb.append(escape(dateFmt.format(row.date))).append(',')
-            sb.append(escape(typeLabel(row.type))).append(',')
+            sb.append(escape(ExportDescription.typeLabel(row.type))).append(',')
             sb.append(escape(row.category)).append(',')
             sb.append(escape(row.account)).append(',')
             sb.append(escape(row.note)).append(',')
@@ -42,12 +41,6 @@ object CsvExporter {
         // Total row: label in the Date column, sum in the Amount column, others blank.
         sb.append("Total,,,,,").append(amountFmt.format(total)).append(',').append(LINE)
         return sb.toString()
-    }
-
-    private fun typeLabel(type: TransactionType): String = when (type) {
-        TransactionType.INCOME -> "Income"
-        TransactionType.EXPENSE -> "Expense"
-        TransactionType.TRANSFER -> "Transfer"
     }
 
     private fun escape(field: String): String =
