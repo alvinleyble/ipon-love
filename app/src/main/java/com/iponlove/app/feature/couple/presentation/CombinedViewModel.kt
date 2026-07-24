@@ -149,6 +149,7 @@ class CombinedViewModel @Inject constructor(
                 isLoading = false,
                 isPaired = true,
                 monthLabel = month.format(MONTH_FORMAT),
+                coupleName = members.coupleName,
                 members = ledger.members,
                 dayGroups = DayGrouping.groupByDay(
                     items = ledger.entries,

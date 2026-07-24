@@ -2,7 +2,6 @@ package com.iponlove.app.feature.couple.presentation
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,7 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -52,9 +50,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.iponlove.app.core.ui.CoupleBanner
 import com.iponlove.app.core.ui.FullScreenImagePager
 import com.iponlove.app.core.ui.HeartBullet
-import com.iponlove.app.core.ui.MotifAvatar
 import com.iponlove.app.core.ui.HeartTippedProgress
 import com.iponlove.app.core.ui.MonthStepperRow
 import com.iponlove.app.core.ui.PlayfulCard
@@ -62,15 +60,14 @@ import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.icons.msRounded
-import com.iponlove.app.core.ui.onPlayfulSurface
 import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.core.ui.playfulBackground
 import com.iponlove.app.core.ui.theme.LeafShapes
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.couple.domain.model.CombinedEntry
 import com.iponlove.app.feature.couple.domain.model.MemberSpend
+import com.iponlove.app.feature.couple.domain.usecase.spendSplit
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
-import kotlin.math.roundToInt
 
 private val VolunteerActivism = msRounded("volunteer_activism", "M549-53q8 2 17 2t17-2l297-91q0-54-30.5-80.5T762-251H587q-45 0-69.5-4.5T477-265l-61-21q-6-2-8.5-7.5T407-305q2-6 7.5-8.5t11.5-.5l59 19q24 8 44 11t46 3h73q8 0 13-5t5-13q0-23-16-45.5T604-378l-245-92q-5-2-10.5-3t-10.5-1h-83v337l294 84ZM40-140q0 25 17.5 42.5T100-80h34q25 0 42.5-17.5T194-140v-274q0-25-17.5-42.5T134-474h-34q-25 0-42.5 17.5T40-414v274Zm584-344.5q-11-4.5-20-12.5L482-616q-30-29-50-64.5T412-758q0-51 35.5-86.5T534-880q34 0 62 17.5t50 43.5q22-26 50-43.5t62-17.5q51 0 86.5 35.5T880-758q0 42-20 77.5T810-616L688-497q-9 8-20 12.5t-22 4.5q-11 0-22-4.5Z")
 
@@ -130,6 +127,17 @@ fun CombinedBody(
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
+                        // The couple's face + headline spend leads the list (Item 9 Slice B, decision 7),
+                        // above the shared-budgets summary.
+                        item {
+                            CombinedBanner(
+                                coupleName = state.coupleName ?: "Us",
+                                monthLabel = state.monthLabel,
+                                members = state.members,
+                                isPrivacyModeOn = state.privacyModeEnabled,
+                                onTogglePrivacyMode = viewModel::togglePrivacyMode,
+                            )
+                        }
                         if (state.sharedBudgets.isNotEmpty()) {
                             item {
                                 SharedBudgetsSummaryCard(
@@ -137,14 +145,6 @@ fun CombinedBody(
                                     monthLabel = state.monthLabel,
                                 )
                             }
-                        }
-                        item {
-                            PartnerSplitSection(
-                                monthLabel = state.monthLabel,
-                                members = state.members,
-                                isPrivacyModeOn = state.privacyModeEnabled,
-                                onTogglePrivacyMode = viewModel::togglePrivacyMode,
-                            )
                         }
                         if (state.dayGroups.isEmpty()) {
                             item {
@@ -284,13 +284,17 @@ private fun SharedBudgetsSummaryCard(
 }
 
 /**
- * The You/Partner spend split (v1.6.7 Item 8 Slice 4): overlapping blush (you, −1°) / deepPlum
- * (partner, +1°) leaf cards with an accent squircle "knot" at their seam, plus a two-color split
- * bar with a heart riding the boundary. Falls back to a plain per-member row if fewer than two
- * members are resolved yet (a brief loading edge — [CombinedBody] only reaches here once paired).
+ * The couple banner section on the Combined view (v1.7.0 Item 9 Slice B, layout "C"): a
+ * "Spending · month" header row + privacy eye on the screen background, then the shared identity
+ * hero ([CoupleBanner] — gradient + both avatars + couple name) with a [SpendStrip] folded in below
+ * it as a darkened continuation of the same gradient, replacing the old You/Partner spend cards.
+ * Both members present → hero + strip; the brief unresolved-partner transient reuses the
+ * single-accent wash and hides the strip (decision 8). The eye toggles the global privacy flag —
+ * [money] masks the amounts, while the % and split bar (a ratio, not a peso figure) stay visible.
  */
 @Composable
-private fun PartnerSplitSection(
+private fun CombinedBanner(
+    coupleName: String,
     monthLabel: String,
     members: List<MemberSpend>,
     isPrivacyModeOn: Boolean,
@@ -316,113 +320,75 @@ private fun PartnerSplitSection(
                 )
             }
         }
-        if (me != null && partner != null) {
-            val meColor = ownerColor(me.accentColor, isMine = true)
-            val partnerColor = ownerColor(partner.accentColor, isMine = false)
-            val meAmount = me.monthlyExpense.toFloat()
-            val partnerAmount = partner.monthlyExpense.toFloat()
-            val total = meAmount + partnerAmount
-            val meFraction = if (total <= 0f) 0.5f else meAmount / total
-            val mePercent = (meFraction * 100).roundToInt()
-
-            Box {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    PartnerSpendCard(
-                        member = me,
-                        surface = PlayfulSurface.Blush,
-                        shape = LeafShapes.leaf(26.dp, 11.dp),
-                        tiltDegrees = -1f,
-                        percent = mePercent,
-                        modifier = Modifier.weight(1f),
-                    )
-                    PartnerSpendCard(
-                        member = partner,
-                        surface = PlayfulSurface.DeepPlum,
-                        shape = LeafShapes.leafMirrored(26.dp, 11.dp),
-                        tiltDegrees = 1f,
-                        percent = 100 - mePercent,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(36.dp)
-                        .rotate(-8f)
-                        .clip(LeafShapes.leaf(13.dp, 5.dp))
-                        .background(colors.accent)
-                        .border(2.dp, colors.backgroundBottom, LeafShapes.leaf(13.dp, 5.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    HeartBullet(colors.onAccent, sizeDp = 16)
-                }
-            }
-            SplitBar(meFraction = meFraction, meColor = meColor, partnerColor = partnerColor)
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                members.forEach { member ->
-                    PartnerSpendCard(
-                        member = member,
-                        surface = if (member.isMine) PlayfulSurface.Blush else PlayfulSurface.DeepPlum,
-                        shape = LeafShapes.Card,
-                        tiltDegrees = 0f,
-                        percent = null,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-        }
+        CoupleBanner(
+            coupleName = coupleName,
+            currentMotifKey = me?.avatarMotif,
+            currentAccentHex = me?.accentColor,
+            partnerMotifKey = partner?.avatarMotif,
+            partnerAccentHex = partner?.accentColor,
+            hasPartner = partner != null,
+            modifier = Modifier.fillMaxWidth(),
+            footer = if (me != null && partner != null) {
+                { SpendStrip(me, partner) }
+            } else {
+                null
+            },
+        )
     }
 }
 
+/**
+ * The spend strip under the identity hero (layout "C"): a semi-transparent black scrim over the
+ * gradient the hero already carries — so it reads as a *darkened continuation* of the same identity
+ * gradient, and the peso figures stay legible in white regardless of where each accent falls. Holds
+ * both members' amounts inline with their share, and the two-color split bar with the heart on the
+ * boundary.
+ */
 @Composable
-private fun PartnerSpendCard(
+private fun SpendStrip(me: MemberSpend, partner: MemberSpend) {
+    val split = spendSplit(me.monthlyExpense, partner.monthlyExpense)
+    val meColor = ownerColor(me.accentColor, isMine = true)
+    val partnerColor = ownerColor(partner.accentColor, isMine = false)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.32f))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            SpendLine(member = me, percent = split.mePercent, alignEnd = false, modifier = Modifier.weight(1f))
+            SpendLine(member = partner, percent = split.partnerPercent, alignEnd = true, modifier = Modifier.weight(1f))
+        }
+        SplitBar(meFraction = split.meFraction, meColor = meColor, partnerColor = partnerColor)
+    }
+}
+
+/** One member's spend inline: the peso amount (prominent) followed by "Name XX%" (softer). */
+@Composable
+private fun SpendLine(
     member: MemberSpend,
-    surface: PlayfulSurface,
-    shape: RoundedCornerShape,
-    tiltDegrees: Float,
-    percent: Int?,
+    percent: Int,
+    alignEnd: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val colors = LocalPlayfulColors.current
-    val ink = onPlayfulSurface(surface)
-    val secondaryInk = if (surface == PlayfulSurface.Blush) colors.onBlushSecondary else ink.copy(alpha = 0.75f)
-    PlayfulCard(
+    Row(
         modifier = modifier,
-        surface = surface,
-        shape = shape,
-        tiltDegrees = tiltDegrees,
-        contentPadding = 16.dp,
+        horizontalArrangement = if (alignEnd) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
-            // The member's motif avatar (v1.6.7 Item 3 Leg 1) replaces the plain accent heart bullet.
-            MotifAvatar(motifKey = member.avatarMotif, accentHex = member.accentColor, size = 30.dp)
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = member.label(),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = ink,
-            )
-            Text(
-                text = money(member.monthlyExpense),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = ink,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-            if (percent != null) {
-                Text(
-                    text = "$percent% of spend",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = secondaryInk,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-        }
+        Text(
+            text = money(member.monthlyExpense),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color.White,
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = "${member.label()} $percent%",
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White.copy(alpha = 0.72f),
+        )
     }
 }
 

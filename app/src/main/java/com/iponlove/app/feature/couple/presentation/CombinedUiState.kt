@@ -17,6 +17,8 @@ data class CombinedUiState(
     val isPaired: Boolean = false,
     val isRefreshing: Boolean = false,
     val monthLabel: String = "",
+    /** The couple's name for the identity banner (v1.7.0 Item 9 Slice B); null until it replicates. */
+    val coupleName: String? = null,
     val members: List<MemberSpend> = emptyList(),
     val dayGroups: List<DayGrouping.DayGroup<CombinedEntry>> = emptyList(),
     val hasAnySharedActivityEver: Boolean = false,
