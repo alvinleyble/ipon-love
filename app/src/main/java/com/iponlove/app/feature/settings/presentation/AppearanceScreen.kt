@@ -3,6 +3,7 @@ package com.iponlove.app.feature.settings.presentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -40,11 +40,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.iponlove.app.core.ui.PlayfulChip
 import com.iponlove.app.core.ui.SettingsSectionHeader
 import com.iponlove.app.core.ui.playfulBackground
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.core.ui.theme.paletteColorScheme
 import com.iponlove.app.core.ui.theme.playfulColorsFrom
+import com.iponlove.app.feature.settings.domain.model.ThemeMode
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
 
 /**
@@ -67,9 +69,14 @@ fun AppearanceScreen(
     val state by viewModel.uiState.collectAsState()
     // Render the *effective* palette (G8): a locked Premium palette shows as the free default here
     // and app-wide, while the chosen one stays saved and auto-restores on unlock.
+    val effectiveIsDark = when (state.draftMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
     val liveColorScheme = paletteColorScheme(
         state.draftPalette.effective(state.paletteLocked),
-        state.draftIsDark,
+        effectiveIsDark,
     )
 
     MaterialTheme(
@@ -77,7 +84,7 @@ fun AppearanceScreen(
         typography = MaterialTheme.typography,
     ) {
         CompositionLocalProvider(
-            LocalPlayfulColors provides playfulColorsFrom(liveColorScheme, state.draftIsDark),
+            LocalPlayfulColors provides playfulColorsFrom(liveColorScheme, effectiveIsDark),
         ) {
             Box(Modifier.fillMaxSize().playfulBackground()) {
                 val colors = LocalPlayfulColors.current
@@ -125,18 +132,15 @@ fun AppearanceScreen(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Text(
-                                if (state.draftIsDark) "Dark" else "Light",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = colors.textPrimary,
-                            )
-                            Switch(
-                                checked = state.draftIsDark,
-                                onCheckedChange = viewModel::toggleDarkMode,
-                            )
+                            ThemeMode.entries.forEach { mode ->
+                                PlayfulChip(
+                                    label = mode.label(),
+                                    selected = state.draftMode == mode,
+                                    onClick = { viewModel.setThemeMode(mode) },
+                                )
+                            }
                         }
 
                         Spacer(Modifier.height(32.dp))
@@ -152,6 +156,12 @@ fun AppearanceScreen(
             }
         }
     }
+}
+
+private fun ThemeMode.label(): String = when (this) {
+    ThemeMode.LIGHT -> "Light"
+    ThemeMode.DARK -> "Dark"
+    ThemeMode.SYSTEM -> "System"
 }
 
 @Composable

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.feature.settings.data.ThemeDraftRepository
+import com.iponlove.app.feature.settings.domain.model.ThemeMode
 import com.iponlove.app.feature.settings.domain.model.ThemePalette
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
@@ -40,7 +41,7 @@ class AppearanceViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val saved = observeTheme().first()
-            _uiState.update { it.copy(draftPalette = saved.palette, draftIsDark = saved.isDark) }
+            _uiState.update { it.copy(draftPalette = saved.palette, draftMode = saved.mode) }
         }
         premiumGate.observeLocked()
             .onEach { locked -> _uiState.update { it.copy(paletteLocked = locked) } }
@@ -53,7 +54,7 @@ class AppearanceViewModel @Inject constructor(
         // can't overwrite it — the non-destructive half of G8.
         if (_uiState.value.paletteLocked && !palette.isFree) return
         _uiState.update { it.copy(draftPalette = palette, saved = false) }
-        themeDraft.set(ThemePreferences(palette = palette, isDark = _uiState.value.draftIsDark))
+        themeDraft.set(ThemePreferences(palette = palette, mode = _uiState.value.draftMode))
     }
 
     /** Locked-palette tap: logs the §10.10 touchpoint and returns the paywall entry source. */
@@ -63,15 +64,15 @@ class AppearanceViewModel @Inject constructor(
         return source
     }
 
-    fun toggleDarkMode(isDark: Boolean) {
-        _uiState.update { it.copy(draftIsDark = isDark, saved = false) }
-        themeDraft.set(ThemePreferences(palette = _uiState.value.draftPalette, isDark = isDark))
+    fun setThemeMode(mode: ThemeMode) {
+        _uiState.update { it.copy(draftMode = mode, saved = false) }
+        themeDraft.set(ThemePreferences(palette = _uiState.value.draftPalette, mode = mode))
     }
 
     fun save() {
         viewModelScope.launch {
             val state = _uiState.value
-            saveTheme(ThemePreferences(palette = state.draftPalette, isDark = state.draftIsDark))
+            saveTheme(ThemePreferences(palette = state.draftPalette, mode = state.draftMode))
             _uiState.update { it.copy(saved = true) }
         }
     }

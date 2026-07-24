@@ -1,6 +1,7 @@
 package com.iponlove.app.core.ui.theme
 
 import android.provider.Settings
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -10,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.iponlove.app.feature.settings.domain.model.ThemeMode
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
 
 // Global M3 shapes stay conservative (Playful Pop's asymmetric leaf-squircles are applied via
@@ -34,15 +36,20 @@ fun IponTheme(
     themePreferences: ThemePreferences = ThemePreferences(),
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = paletteColorScheme(themePreferences.palette, themePreferences.isDark)
+    val isDark = when (themePreferences.mode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+    val colorScheme = paletteColorScheme(themePreferences.palette, isDark)
     val context = LocalContext.current
     val reducedMotion = remember(context) {
         Settings.Global.getFloat(
             context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f,
         ) == 0f
     }
-    val playfulColors = remember(colorScheme, themePreferences.isDark) {
-        playfulColorsFrom(colorScheme, themePreferences.isDark)
+    val playfulColors = remember(colorScheme, isDark) {
+        playfulColorsFrom(colorScheme, isDark)
     }
     CompositionLocalProvider(
         LocalPlayfulColors provides playfulColors,
