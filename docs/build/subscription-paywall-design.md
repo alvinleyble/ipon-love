@@ -322,7 +322,7 @@ Two kinds of gate, two data shapes (per §1.2, §1.5).
 | `RECURRING_FORECAST` | soft — Records "Coming up" preview degrades to an upsell teaser; Analysis month-end projected Net hidden behind a lock teaser (free = confirm-on-arrival, which is **free**) | Records + Analysis | individual |
 | `BUDGET_ROLLOVER` | soft (hide toggle) | Budgets | individual |
 | `CALCULATOR` | soft (module lock) | Calculator | individual |
-| `EXPORT_WITH_ATTACHMENTS` | soft — tap **PDF** or **ZIP** in the export sheet → paywall; **CSV is never gated** | Records → overflow → Export | individual |
+| `EXPORT_WITH_ATTACHMENTS` | soft — tap **PDF** or **ZIP** in the export sheet → paywall; **CSV is never gated** | Records → overflow → Export | individual | **WIRED (dormant) `bd36116`** — `Feature.EXPORT_WITH_ATTACHMENTS` added, consulted via `PremiumGate.observeLocked(INDIVIDUAL)` in `ExportViewModel` (v1.7.0 Item 6 Slice 2). Locked tap → `subscriptionRoute("export")`. Zero effect until the enforcement flip. |
 | `ANALYSIS_EXTENDED_RANGES` | soft — tap a locked **3M/6M/12M/ALL** tab → paywall (free = 1D/1W/1M) | Analysis | individual |
 | `DEEP_HISTORY` | hard (past beyond −12mo) | Records stepper **+ Analysis free-range stepper (1D/1W/1M), on the shared anchor** | individual |
 
