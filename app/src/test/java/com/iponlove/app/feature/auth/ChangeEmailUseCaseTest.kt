@@ -77,6 +77,8 @@ private class FakeAuthForEmail : AuthRepository {
         if (password != expectedPassword) throw AuthException(AuthError.INVALID_CREDENTIALS)
     }
 
+    override suspend fun signInWithGoogleIdToken(idToken: String, nonce: String) = Unit
+
     override suspend fun signOut() = error("unused")
     override suspend fun clearLocalSession() = error("unused")
     override suspend fun sendPasswordReset(email: String) = error("unused")

@@ -73,6 +73,8 @@ private class FakeAuthRepositoryForDelete : AuthRepository {
         if (password != expectedPassword) throw AuthException(AuthError.INVALID_CREDENTIALS)
     }
 
+    override suspend fun signInWithGoogleIdToken(idToken: String, nonce: String) = Unit
+
     override suspend fun signOut() = error("not used by this test")
     override suspend fun clearLocalSession() = error("not used by this test")
     override suspend fun sendPasswordReset(email: String) = error("not used by this test")

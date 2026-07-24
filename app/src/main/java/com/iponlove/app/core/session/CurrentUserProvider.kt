@@ -2,6 +2,7 @@ package com.iponlove.app.core.session
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import javax.inject.Inject
@@ -45,8 +46,28 @@ class SupabaseCurrentUserProvider @Inject constructor(
     override fun userId(): String = client.auth.currentUserOrNull()?.id
         ?: error("No authenticated user — a write was attempted before sign-in")
 
-    override fun displayName(): String? = client.auth.currentUserOrNull()
-        ?.userMetadata?.get("display_name")?.jsonPrimitive?.contentOrNull
+    // Email sign-ups set `display_name` (ADR-0016); a Google identity never does — it carries
+    // `full_name`/`name` instead. Onboarding has no name-entry step, so resolve across all three
+    // so a Google user's row seeds with their real name, not initials (ADR-0050 decision 3).
+    override fun displayName(): String? =
+        DisplayNameResolver.resolve(client.auth.currentUserOrNull()?.userMetadata)
 
     override fun email(): String? = client.auth.currentUserOrNull()?.email
+}
+
+/**
+ * Resolves the display name from auth `user_metadata`, tolerating both the email sign-up shape
+ * (`display_name`, ADR-0016) and the Google identity shape (`full_name`/`name`, ADR-0050). Pure —
+ * unit-tested.
+ */
+internal object DisplayNameResolver {
+    fun resolve(metadata: JsonObject?): String? {
+        if (metadata == null) return null
+        return metadata.stringOrNull("display_name")
+            ?: metadata.stringOrNull("full_name")
+            ?: metadata.stringOrNull("name")
+    }
+
+    private fun JsonObject.stringOrNull(key: String): String? =
+        this[key]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
 }

@@ -40,6 +40,10 @@ android {
             versionNameSuffix = "-staging"
             buildConfigField("String", "SUPABASE_URL", "\"${prop("STAGING_SUPABASE_URL")}\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${prop("STAGING_SUPABASE_ANON_KEY")}\"")
+            // Google Sign-In server client ID (the *Web* OAuth client, NOT the Android client —
+            // the classic Credential Manager failure trap). ADR-0050. Prod Supabase/OAuth don't
+            // exist yet, so prod reuses the staging value for now (mirrors the Supabase keys).
+            buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${prop("STAGING_GOOGLE_WEB_CLIENT_ID")}\"")
             buildConfigField("Boolean", "IS_BETA_BUILD", "true")
         }
         create("prod") {
@@ -47,6 +51,7 @@ android {
             applicationId = "com.iponlove.app"
             buildConfigField("String", "SUPABASE_URL", "\"${prop("PROD_SUPABASE_URL")}\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${prop("PROD_SUPABASE_ANON_KEY")}\"")
+            buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${prop("STAGING_GOOGLE_WEB_CLIENT_ID")}\"")
             // Play Console locked the app listing's applicationId to this flavor, so it's
             // currently the only distribution channel for internal testers too — not yet real
             // paying customers (prod Supabase doesn't even exist yet, see staging-prod-environment
@@ -156,6 +161,11 @@ dependencies {
 
     // Play Billing (core/billing, paywall S3 — dormant)
     implementation(libs.billing.ktx)
+
+    // Google Sign-In (Item 2, ADR-0050) — native Credential Manager + Google ID token
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     // Supabase (Auth + Postgrest) + Ktor engine — the cloud backend
     implementation(platform(libs.supabase.bom))

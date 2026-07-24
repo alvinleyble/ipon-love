@@ -20,6 +20,15 @@ interface AuthRepository {
 
     suspend fun signIn(email: String, password: String)
 
+    /**
+     * Signs in (or, via Supabase's automatic linking, into an existing verified account) with a
+     * Google ID token obtained on-device (ADR-0050). [nonce] is the raw nonce whose hash is
+     * embedded in the token. A Google identity is pre-verified, so this yields a session directly —
+     * no email-confirmation path. On success the SDK's session status flips and the app's normal
+     * authenticated bootstrap (ADR-0013/0021/0024) runs unchanged, method-agnostic.
+     */
+    suspend fun signInWithGoogleIdToken(idToken: String, nonce: String)
+
     suspend fun signOut()
 
     /**

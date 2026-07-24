@@ -16,6 +16,9 @@ data class AuthUiState(
     val password: String = "",
     val confirmPassword: String = "",
     val isSubmitting: Boolean = false,
+    // Independent of [isSubmitting] so the Google button spins without disabling/spinning the
+    // email button, and vice-versa (ADR-0050 decision 6).
+    val isGoogleSubmitting: Boolean = false,
     val error: AuthError? = null,
     val confirmationSent: Boolean = false,
     // Raised when sign-out couldn't flush pending changes (offline): wiping local data would

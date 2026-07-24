@@ -1,9 +1,13 @@
 package com.iponlove.app.feature.auth.presentation
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,12 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -25,6 +32,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,6 +51,8 @@ import com.iponlove.app.feature.auth.domain.model.AuthError
 @Composable
 fun AuthScreen(viewModel: AuthViewModel, onForgotPassword: () -> Unit) {
     val state by viewModel.form.collectAsState()
+    // Credential Manager needs an Activity context (not the application context) to host its UI.
+    val activity = LocalContext.current.findActivity()
     AuthContent(
         state = state,
         onNameChange = viewModel::onNameChange,
@@ -52,7 +62,14 @@ fun AuthScreen(viewModel: AuthViewModel, onForgotPassword: () -> Unit) {
         onSubmit = viewModel::submit,
         onToggleMode = viewModel::toggleMode,
         onForgotPassword = onForgotPassword,
+        onGoogleSignIn = { activity?.let(viewModel::signInWithGoogle) },
     )
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 @Composable
@@ -65,6 +82,7 @@ private fun AuthContent(
     onSubmit: () -> Unit,
     onToggleMode: () -> Unit,
     onForgotPassword: () -> Unit,
+    onGoogleSignIn: () -> Unit,
 ) {
     val colors = LocalPlayfulColors.current
     Box(modifier = Modifier.fillMaxSize().playfulBackground()) {
@@ -192,6 +210,33 @@ private fun AuthContent(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+
+            Spacer(Modifier.height(16.dp))
+            OrDivider()
+            Spacer(Modifier.height(16.dp))
+            // Same button in both modes — the tap creates, signs in, or links identically; the
+            // SDK session flip drives the gate (ADR-0050 decision 5).
+            OutlinedButton(
+                onClick = onGoogleSignIn,
+                enabled = !state.isGoogleSubmitting && !state.isSubmitting,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (state.isGoogleSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.height(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(R.drawable.ic_google_g),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text("Continue with Google")
+                }
+            }
+
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onToggleMode, enabled = !state.isSubmitting) {
                 Text(
@@ -203,6 +248,24 @@ private fun AuthContent(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun OrDivider() {
+    val colors = LocalPlayfulColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f), color = colors.textSecondary.copy(alpha = 0.3f))
+        Text(
+            text = "or",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f), color = colors.textSecondary.copy(alpha = 0.3f))
     }
 }
 
@@ -233,6 +296,8 @@ internal fun AuthError.message(): String = when (this) {
     AuthError.PASSWORD_MISMATCH -> "Passwords don't match"
     AuthError.SAME_AS_OLD_PASSWORD -> "New password must be different from your current password"
     AuthError.RATE_LIMITED -> "Please wait a bit before making another request"
+    AuthError.GOOGLE_NO_ACCOUNT -> "No Google account found on this device — add one in Settings first"
+    AuthError.GOOGLE_SIGN_IN_FAILED -> "Couldn't sign in with Google. Please try again"
     AuthError.NETWORK -> "Can't reach the server — check your connection"
     AuthError.UNKNOWN -> "Something went wrong. Please try again"
 }

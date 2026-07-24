@@ -2,12 +2,16 @@ package com.iponlove.app.feature.auth.presentation
 
 import android.content.Context
 import android.util.Log
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
+import com.iponlove.app.BuildConfig
 import com.iponlove.app.core.session.LocalDataWiper
 import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.core.sync.SyncWorker
+import com.iponlove.app.feature.auth.data.GoogleCredentialClient
+import com.iponlove.app.feature.auth.data.GoogleCredentialResult
 import com.iponlove.app.feature.auth.domain.model.AuthError
 import com.iponlove.app.feature.auth.domain.model.AuthException
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
@@ -16,6 +20,7 @@ import com.iponlove.app.feature.auth.domain.repository.SignUpResult
 import com.iponlove.app.feature.auth.domain.usecase.AuthCredentials
 import com.iponlove.app.feature.auth.domain.usecase.ObserveAuthStatusUseCase
 import com.iponlove.app.feature.auth.domain.usecase.SignInUseCase
+import com.iponlove.app.feature.auth.domain.usecase.SignInWithGoogleUseCase
 import com.iponlove.app.feature.auth.domain.usecase.SignOutUseCase
 import com.iponlove.app.feature.auth.domain.usecase.SignUpUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,6 +48,8 @@ class AuthViewModel @Inject constructor(
     observeAuthStatus: ObserveAuthStatusUseCase,
     private val signIn: SignInUseCase,
     private val signUp: SignUpUseCase,
+    private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
+    private val googleCredentialClient: GoogleCredentialClient,
     private val signOutUseCase: SignOutUseCase,
     private val syncEngine: SyncEngine,
     private val localDataWiper: LocalDataWiper,
@@ -100,6 +107,36 @@ class AuthViewModel @Inject constructor(
                 if (state.mode == AuthMode.SIGN_IN && e.error == AuthError.INVALID_CREDENTIALS) {
                     registerFailedSignIn()
                 }
+            }
+        }
+    }
+
+    /**
+     * Google Sign-In (ADR-0050). Fetches a Google ID token on-device via Credential Manager, then
+     * signs in through the same repository spine as email/password. Same tap serves sign-in,
+     * sign-up, and implicit account linking — the SDK session flip drives the gate either way.
+     * Runs on its own [AuthUiState.isGoogleSubmitting] flag so the email button is untouched.
+     */
+    fun signInWithGoogle(activity: Activity) {
+        if (_form.value.isGoogleSubmitting) return
+        _form.update { it.copy(isGoogleSubmitting = true, error = null, confirmationSent = false) }
+        viewModelScope.launch {
+            when (val result = googleCredentialClient.getIdToken(activity, BuildConfig.GOOGLE_WEB_CLIENT_ID)) {
+                is GoogleCredentialResult.Success -> {
+                    try {
+                        signInWithGoogleUseCase(result.idToken, result.nonce)
+                        // On success the status stream flips and the gate swaps screens; clearing
+                        // the spinner covers the rare case we somehow stay on this screen.
+                        _form.update { it.copy(isGoogleSubmitting = false) }
+                    } catch (e: AuthException) {
+                        _form.update { it.copy(isGoogleSubmitting = false, error = e.error) }
+                    }
+                }
+                // User dismissed the picker — stay silent, just drop the spinner.
+                GoogleCredentialResult.Cancelled ->
+                    _form.update { it.copy(isGoogleSubmitting = false) }
+                is GoogleCredentialResult.Failure ->
+                    _form.update { it.copy(isGoogleSubmitting = false, error = result.error) }
             }
         }
     }

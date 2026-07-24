@@ -6,7 +6,9 @@ import com.iponlove.app.feature.auth.domain.repository.AuthRepository
 import com.iponlove.app.feature.auth.domain.repository.SignUpResult
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -60,6 +62,14 @@ class AuthRepositoryImpl @Inject constructor(
         client.auth.signInWith(Email) {
             this.email = email
             this.password = password
+        }
+    }
+
+    override suspend fun signInWithGoogleIdToken(idToken: String, nonce: String) = mapErrors {
+        client.auth.signInWith(IDToken) {
+            this.idToken = idToken
+            this.provider = Google
+            this.nonce = nonce
         }
     }
 
