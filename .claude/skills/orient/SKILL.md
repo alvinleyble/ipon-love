@@ -20,7 +20,7 @@ Establish current build state fast and cheaply. The point is to read the **right
 
 ## Then report back, tightly
 
-Lead with a table of every item in the in-flight version doc, columns `Item #, Description, Model, Status`, **sorted in build order (dependency/sequence order), not by item number**. Status is one of: `Done (SHA)`, `Booked`, `For Grilling`, `Ready`. Note any cross-item dependency inline in the Description cell (e.g. "— depends on Item 7").
+Lead with a table of every item in the in-flight version doc, columns `Item #, Description, Model, Status`. Order the rows: **Done items first, in actual commit order** (chronological — verify with `git log --reverse` against each item's SHA, not by item number or doc position), **then not-yet-done items in build order** (dependency/sequence order). Status is one of: `Done (SHA)`, `Booked`, `For Grilling`, `Ready`. Note any cross-item dependency inline in the Description cell (e.g. "— depends on Item 7").
 
 After the table:
 - **Where we are:** one-line state of the in-flight version (what's DONE/committed vs. FIXED-uncommitted vs. NEEDS DECISION).

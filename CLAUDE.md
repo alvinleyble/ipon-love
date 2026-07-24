@@ -168,7 +168,7 @@ When in doubt: favor thin, composable layers over shortcuts. Three constraints t
 ---
 
 ## Explicitly Out of Scope for V1
-- Google / Facebook SSO
+- ~~Google SSO~~ — **shipped post-V1** (v1.7.0 Item 2, ADR-0050, native Credential Manager). **Facebook SSO** remains out (shelved indefinitely, v1.7.0 Item 3)
 - AI chatbot
 - Password vault
 - Voice recording
