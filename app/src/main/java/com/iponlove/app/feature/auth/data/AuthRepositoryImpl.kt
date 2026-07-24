@@ -2,6 +2,7 @@ package com.iponlove.app.feature.auth.data
 
 import com.iponlove.app.feature.auth.domain.model.AuthException
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
+import com.iponlove.app.feature.auth.domain.model.LinkedIdentity
 import com.iponlove.app.feature.auth.domain.repository.AuthRepository
 import com.iponlove.app.feature.auth.domain.repository.SignUpResult
 import io.github.jan.supabase.SupabaseClient
@@ -71,6 +72,28 @@ class AuthRepositoryImpl @Inject constructor(
             this.provider = Google
             this.nonce = nonce
         }
+    }
+
+    override suspend fun linkGoogleIdentity(idToken: String, nonce: String) {
+        // Native ID-token linking (ADR-0051, corrected 2026-07-24): auth-kt 3.6.0 offers this in
+        // Kotlin — it sets IDToken.Config.linkIdentity=true and posts token?grant_type=id_token with
+        // the current session's auth, attaching the Google identity to *this* user. Mapped through a
+        // link-specific classifier so an already-linked-elsewhere account gets its own message (the
+        // synchronous outcome the redirect flow couldn't give).
+        try {
+            client.auth.linkIdentityWithIdToken(Google, idToken) { this.nonce = nonce }
+        } catch (e: AuthException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.w("AuthRepositoryImpl", "Google identity link failed", e)
+            throw AuthException(GoogleLinkErrorMapper.classify(e.message))
+        }
+    }
+
+    override suspend fun linkedGoogleIdentity(): LinkedIdentity? {
+        val identities = client.auth.currentIdentitiesOrNull().orEmpty()
+            .map { GoogleIdentityResolver.RawIdentity(it.provider, it.identityData) }
+        return GoogleIdentityResolver.resolve(identities)
     }
 
     override suspend fun signOut() = mapErrors { client.auth.signOut() }

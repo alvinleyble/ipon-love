@@ -85,4 +85,6 @@ private class FakeAuthForEmail : AuthRepository {
     override suspend fun updatePassword(newPassword: String) = error("unused")
     override suspend fun updateEmail(newEmail: String) { updatedEmail = newEmail }
     override suspend fun refreshCurrentUser() = error("unused")
+    override suspend fun linkGoogleIdentity(idToken: String, nonce: String) = error("unused")
+    override suspend fun linkedGoogleIdentity(): com.iponlove.app.feature.auth.domain.model.LinkedIdentity? = null
 }

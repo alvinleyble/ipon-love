@@ -15,6 +15,11 @@ enum class AuthError {
     GOOGLE_NO_ACCOUNT,
     // Any other Google Sign-In failure that isn't a user cancellation (cancellations are silent).
     GOOGLE_SIGN_IN_FAILED,
+    // In-app "Connect Google account" (ADR-0051): the chosen Google account is already linked to a
+    // different Love, Ipon account, so it can't be attached to this one.
+    GOOGLE_ALREADY_LINKED,
+    // In-app "Connect Google account" (ADR-0051): any other link failure that isn't a cancellation.
+    GOOGLE_LINK_FAILED,
     NETWORK,
     UNKNOWN,
 }

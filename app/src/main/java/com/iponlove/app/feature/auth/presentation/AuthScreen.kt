@@ -298,6 +298,8 @@ internal fun AuthError.message(): String = when (this) {
     AuthError.RATE_LIMITED -> "Please wait a bit before making another request"
     AuthError.GOOGLE_NO_ACCOUNT -> "No Google account found on this device — add one in Settings first"
     AuthError.GOOGLE_SIGN_IN_FAILED -> "Couldn't sign in with Google. Please try again"
+    AuthError.GOOGLE_ALREADY_LINKED -> "That Google account is already connected to another Love, Ipon account"
+    AuthError.GOOGLE_LINK_FAILED -> "Couldn't connect your Google account. Please try again"
     AuthError.NETWORK -> "Can't reach the server — check your connection"
     AuthError.UNKNOWN -> "Something went wrong. Please try again"
 }

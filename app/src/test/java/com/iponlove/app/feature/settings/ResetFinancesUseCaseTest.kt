@@ -79,6 +79,8 @@ private class FakeAuthRepository : AuthRepository {
     override suspend fun updatePassword(newPassword: String) = error("not used by this test")
     override suspend fun updateEmail(newEmail: String) = error("not used by this test")
     override suspend fun refreshCurrentUser() = error("not used by this test")
+    override suspend fun linkGoogleIdentity(idToken: String, nonce: String) = error("not used by this test")
+    override suspend fun linkedGoogleIdentity(): com.iponlove.app.feature.auth.domain.model.LinkedIdentity? = null
 }
 
 private class FakeResetFinancesRepository : ResetFinancesRepository {

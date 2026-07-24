@@ -49,6 +49,14 @@ data class ProfileUiState(
     val isChangeEmailLoading: Boolean = false,
     val changeEmailError: String? = null,
     val emailChangeRequested: Boolean = false,
+    // Connect Google account (ADR-0051) — a state-driven Account row. [googleLinked] renders the
+    // read-only Connected state (incl. a Google-signup user); [isGoogleLinking] spins the Connect
+    // button; [googleJustLinked] shows a brief success confirmation on the flip.
+    val googleLinked: Boolean = false,
+    val googleEmail: String? = null,
+    val isGoogleLinking: Boolean = false,
+    val googleLinkError: String? = null,
+    val googleJustLinked: Boolean = false,
 ) {
     val canSave: Boolean get() = nameDraft.isNotBlank()
 

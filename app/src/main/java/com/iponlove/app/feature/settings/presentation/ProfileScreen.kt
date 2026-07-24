@@ -1,5 +1,8 @@
 package com.iponlove.app.feature.settings.presentation
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -33,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -57,12 +61,13 @@ fun ProfileScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val colors = LocalPlayfulColors.current
+    val activity = LocalContext.current.findActivity()
 
-    // Re-pull the account email whenever Profile becomes visible (incl. returning from the email
-    // client after tapping a change-email confirmation link) so it updates without a restart —
-    // Item 8. ON_RESUME fires on first entry too, so this also covers the initial load.
+    // Re-pull the account email + linked Google identity whenever Profile becomes visible (incl.
+    // returning from the email client after a change-email link) so they update without a restart —
+    // Item 8 + ADR-0051. ON_RESUME fires on first entry too, so this also covers the initial load.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        viewModel.refreshEmail()
+        viewModel.refreshAccount()
     }
 
     Scaffold(
@@ -182,6 +187,11 @@ fun ProfileScreen(
             ) {
                 Text("Change email")
             }
+            Spacer(Modifier.height(8.dp))
+            ConnectGoogleRow(
+                state = state,
+                onConnect = { activity?.let(viewModel::connectGoogle) },
+            )
 
             Spacer(Modifier.height(28.dp))
             SettingsSectionHeader("Restart fresh")
@@ -266,6 +276,65 @@ fun ProfileScreen(
             onDismiss = viewModel::dismissChangeEmail,
         )
     }
+}
+
+/**
+ * "Connect Google account" Account row (ADR-0051). State-driven: linked (incl. a Google-signup
+ * user) renders a read-only Connected line with the Gmail; unlinked renders a full-width Connect
+ * button matching its Change password / Change email siblings — no Google "G" mark, per decision 6
+ * (section consistency over brand recognition for an in-app settings action).
+ */
+@Composable
+private fun ConnectGoogleRow(
+    state: ProfileUiState,
+    onConnect: () -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
+    if (state.googleLinked) {
+        Column {
+            Text(
+                "Google account",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            Text(
+                state.googleEmail ?: "Connected",
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textPrimary,
+            )
+            Text(
+                if (state.googleJustLinked) "Connected!" else "Connected",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    } else {
+        OutlinedButton(
+            onClick = onConnect,
+            enabled = !state.isGoogleLinking,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (state.isGoogleLinking) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp))
+            } else {
+                Text("Connect Google account")
+            }
+        }
+        if (state.googleLinkError != null) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                state.googleLinkError,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 @Composable

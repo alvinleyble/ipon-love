@@ -1,15 +1,21 @@
 package com.iponlove.app.feature.settings.presentation
 
+import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
+import com.iponlove.app.BuildConfig
 import com.iponlove.app.core.network.ConnectivityObserver
 import com.iponlove.app.core.sync.SyncWorker
+import com.iponlove.app.feature.auth.data.GoogleCredentialClient
+import com.iponlove.app.feature.auth.data.GoogleCredentialResult
 import com.iponlove.app.feature.auth.domain.model.AuthException
 import com.iponlove.app.feature.auth.domain.usecase.AuthCredentials
 import com.iponlove.app.feature.auth.domain.usecase.ChangeEmailUseCase
 import com.iponlove.app.feature.auth.domain.usecase.ChangePasswordUseCase
+import com.iponlove.app.feature.auth.domain.usecase.GetLinkedGoogleIdentityUseCase
+import com.iponlove.app.feature.auth.domain.usecase.LinkGoogleIdentityUseCase
 import com.iponlove.app.feature.auth.domain.usecase.RefreshSessionUseCase
 import com.iponlove.app.feature.auth.presentation.message
 import com.iponlove.app.feature.settings.domain.usecase.DeleteUserAccountUseCase
@@ -43,6 +49,9 @@ class ProfileViewModel @Inject constructor(
     private val changePassword: ChangePasswordUseCase,
     private val changeEmail: ChangeEmailUseCase,
     private val refreshSession: RefreshSessionUseCase,
+    private val linkGoogleIdentity: LinkGoogleIdentityUseCase,
+    private val getLinkedGoogleIdentity: GetLinkedGoogleIdentityUseCase,
+    private val googleCredentialClient: GoogleCredentialClient,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState(email = getAccountEmail()))
@@ -99,15 +108,70 @@ class ProfileViewModel @Inject constructor(
     }
 
     /**
-     * Refreshed on every Profile resume (Item 8): pulls the server user into the local session
-     * then re-reads the email, so a confirmed email change shows without an app restart. The email
-     * is otherwise a one-shot session read, which goes stale after a change. Best-effort — offline
-     * leaves the cached value in place.
+     * Refreshed on every Profile resume (Item 8 + ADR-0051): pulls the server user into the local
+     * session, then re-reads the email (so a confirmed email change shows without a restart) and the
+     * linked Google identity (so a Google-signup user, or one linked on another device, renders as
+     * Connected). Both are otherwise one-shot session reads that go stale. Best-effort — offline
+     * leaves the cached values in place.
      */
-    fun refreshEmail() {
+    fun refreshAccount() {
         viewModelScope.launch {
             refreshSession()
-            _uiState.update { it.copy(email = getAccountEmail()) }
+            val linked = getLinkedGoogleIdentity()
+            _uiState.update {
+                it.copy(
+                    email = getAccountEmail(),
+                    googleLinked = linked != null,
+                    googleEmail = linked?.email,
+                )
+            }
+        }
+    }
+
+    /**
+     * Connect a Google account to the signed-in account (ADR-0051), reusing Item 2's Credential
+     * Manager sheet. The native link is synchronous, so success flips the row here directly (no
+     * deep-link/resume-diff) and failures surface typed — including "already connected to another
+     * account". A dismissed picker is silent. Runs on its own [ProfileUiState.isGoogleLinking] flag.
+     */
+    fun connectGoogle(activity: Activity) {
+        if (_uiState.value.isGoogleLinking) return
+        _uiState.update {
+            it.copy(isGoogleLinking = true, googleLinkError = null, googleJustLinked = false)
+        }
+        viewModelScope.launch {
+            when (val result =
+                googleCredentialClient.getIdToken(activity, BuildConfig.GOOGLE_WEB_CLIENT_ID)) {
+                is GoogleCredentialResult.Success -> {
+                    try {
+                        linkGoogleIdentity(result.idToken, result.nonce)
+                        // Success ⇒ linked regardless of the re-read's freshness; the email is
+                        // best-effort from a post-link identity read.
+                        refreshSession()
+                        val linked = getLinkedGoogleIdentity()
+                        _uiState.update {
+                            it.copy(
+                                isGoogleLinking = false,
+                                googleLinked = true,
+                                googleEmail = linked?.email,
+                                googleJustLinked = true,
+                                googleLinkError = null,
+                            )
+                        }
+                    } catch (e: AuthException) {
+                        _uiState.update {
+                            it.copy(isGoogleLinking = false, googleLinkError = e.error.message())
+                        }
+                    }
+                }
+                // User dismissed the picker — stay silent, just drop the spinner.
+                GoogleCredentialResult.Cancelled ->
+                    _uiState.update { it.copy(isGoogleLinking = false) }
+                is GoogleCredentialResult.Failure ->
+                    _uiState.update {
+                        it.copy(isGoogleLinking = false, googleLinkError = result.error.message())
+                    }
+            }
         }
     }
 

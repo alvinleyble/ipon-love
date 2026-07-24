@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.auth.domain.repository
 
 import com.iponlove.app.feature.auth.domain.model.AuthStatus
+import com.iponlove.app.feature.auth.domain.model.LinkedIdentity
 import kotlinx.coroutines.flow.Flow
 
 /** Outcome of a sign-up: whether the user can proceed or must confirm their email first. */
@@ -28,6 +29,23 @@ interface AuthRepository {
      * authenticated bootstrap (ADR-0013/0021/0024) runs unchanged, method-agnostic.
      */
     suspend fun signInWithGoogleIdToken(idToken: String, nonce: String)
+
+    /**
+     * Links a Google identity to the already-signed-in account (ADR-0051), using a Google ID token
+     * obtained on-device (same Credential Manager path as [signInWithGoogleIdToken]). Unlike
+     * sign-in, this keeps the current user id — it attaches the identity, it does not switch
+     * accounts — so no ADR-0021 purge runs. Throws [com.iponlove.app.feature.auth.domain.model
+     * .AuthException] on failure (e.g. the account is already linked elsewhere). [nonce] is the raw
+     * nonce whose hash is embedded in the token. Requires Supabase manual linking to be enabled.
+     */
+    suspend fun linkGoogleIdentity(idToken: String, nonce: String)
+
+    /**
+     * The Google identity currently linked to the signed-in account, or null if none is linked
+     * (ADR-0051). Read from the in-memory session's identity list; callers refresh the session
+     * first if they need it post-link-or-elsewhere-fresh.
+     */
+    suspend fun linkedGoogleIdentity(): LinkedIdentity?
 
     suspend fun signOut()
 
