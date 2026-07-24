@@ -19,6 +19,11 @@ data class CoupleUiState(
     // The partner's motif/accent ride on PairingState.Paired.partner (a User).
     val currentAvatarMotif: String? = null,
     val currentAccentColor: String? = null,
+    // Premium couple-photo gate (Item 10). Shared soft gate — either partner's premium unlocks it;
+    // true while dormant (enforcement OFF). Drives the photo render + the "Set couple photo" tap.
+    val bannerUnlocked: Boolean = false,
+    val isBannerWorking: Boolean = false,
+    val bannerError: String? = null,
 ) {
     val canCreate: Boolean get() = nameInput.isNotBlank() && selectedColor != null && !isWorking
     val canRedeem: Boolean get() = codeInput.isNotBlank() && selectedColor != null && !isWorking

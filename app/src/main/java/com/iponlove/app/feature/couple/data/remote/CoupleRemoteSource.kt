@@ -22,6 +22,9 @@ interface CoupleRemoteSource {
 
     /** Dissolve the caller's couple. */
     suspend fun unpair()
+
+    /** Set (or clear, with null) the couple's shared banner photo URL (v1.7.0 Item 10). */
+    suspend fun setCoupleBanner(url: String?)
 }
 
 /** No-op fallback (push/pull only); pairing RPCs are unsupported offline. */
@@ -32,4 +35,5 @@ class StubCoupleRemoteSource @Inject constructor() : CoupleRemoteSource {
     override suspend fun redeemInvite(code: String): String = error("not supported")
     override suspend fun rotateInviteCode(): String = error("not supported")
     override suspend fun unpair() = error("not supported")
+    override suspend fun setCoupleBanner(url: String?) = error("not supported")
 }

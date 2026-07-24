@@ -45,4 +45,8 @@ class SupabaseCoupleRemoteSource @Inject constructor(
     override suspend fun unpair() {
         client.postgrest.rpc("unpair")
     }
+
+    override suspend fun setCoupleBanner(url: String?) {
+        client.postgrest.rpc("set_couple_banner", buildJsonObject { put("p_url", url) })
+    }
 }

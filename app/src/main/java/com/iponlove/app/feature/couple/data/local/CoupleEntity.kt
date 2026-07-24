@@ -21,6 +21,10 @@ data class CoupleEntity(
     val inviteCode: String,
     val user1Id: String,
     val user2Id: String?,
+    // Premium couple photo (v1.7.0 Item 10); null = no photo → derived gradient banner (Item 9).
+    // Written server-side only via set_couple_banner (couples are RPC-write-only), so it lands
+    // here via pull like every other field. Room v29 auto-migration, nullable.
+    val bannerUrl: String? = null,
     val createdAt: Instant,
     override val updatedAt: Instant,
     override val isDeleted: Boolean,

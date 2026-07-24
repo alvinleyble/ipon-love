@@ -1,19 +1,29 @@
 package com.iponlove.app.feature.couple.presentation
 
 import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -26,13 +36,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.iponlove.app.core.ui.AccentColorRow
+import com.iponlove.app.core.ui.BannerSource
 import com.iponlove.app.core.ui.CoupleBanner
+import com.iponlove.app.core.ui.CoupleBannerCropDialog
+import com.iponlove.app.core.ui.CouplePhotoOverlap
+import com.iponlove.app.core.ui.FullScreenImagePager
 import com.iponlove.app.core.ui.PlayfulCard
 import com.iponlove.app.core.ui.PlayfulSurface
+import com.iponlove.app.core.ui.effectiveBannerSource
 import com.iponlove.app.core.ui.theme.LeafShapes
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.couple.domain.model.PairingError
@@ -55,6 +72,7 @@ fun CoupleOverviewBody(
     state: CoupleUiState,
     viewModel: CoupleViewModel,
     modifier: Modifier = Modifier,
+    onOpenPremium: (source: String) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -71,7 +89,7 @@ fun CoupleOverviewBody(
             PairingState.NotPaired -> NotPairedContent(state, viewModel)
 
             is PairingState.Paired ->
-                PairedContent(pairing, state, viewModel, state.currentDisplayName)
+                PairedContent(pairing, state, viewModel, state.currentDisplayName, onOpenPremium)
         }
     }
 }
@@ -159,39 +177,102 @@ internal fun PairedContent(
     state: CoupleUiState,
     viewModel: CoupleViewModel,
     currentDisplayName: String?,
+    onOpenPremium: (source: String) -> Unit = {},
 ) {
     val colors = LocalPlayfulColors.current
     var confirmUnpair by remember { mutableStateOf(false) }
     val couple = paired.couple
 
-    // The couple identity gets a warm blush pop (pure display, no fields). The derived banner
-    // (Item 9) is the hero — a two-tone blend of both partners' accent colors with their motif
-    // avatars + couple name overlaid; the partner label sits below it on the blush.
-    PlayfulCard(
-        modifier = Modifier.fillMaxWidth(),
-        surface = PlayfulSurface.Blush,
-        shape = LeafShapes.Card,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CoupleBanner(
-                coupleName = couple.name,
-                currentMotifKey = state.currentAvatarMotif,
-                currentAccentHex = state.currentAccentColor,
-                partnerMotifKey = paired.partner?.avatarMotif,
-                partnerAccentHex = paired.partner?.accentColor,
-                hasPartner = paired.partner != null,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            val partnerLabel = when {
-                couple.isAwaitingPartner -> "Waiting for your partner to join…"
-                else -> "Paired with ${paired.partner?.displayName ?: "your partner"}"
-            }
-            Text(
-                partnerLabel,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onBlushSecondary,
-            )
-        }
+    // Item 10: pick a photo → hand-rolled square crop → upload. The photo shows only while
+    // unlocked (dormant ⇒ always); tapping while locked routes to the paywall instead of the picker.
+    var cropUri by remember { mutableStateOf<Uri?>(null) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { cropUri = it }
+    }
+    cropUri?.let { uri ->
+        CoupleBannerCropDialog(
+            imageUri = uri,
+            onCancel = { cropUri = null },
+            onCropped = { bitmap ->
+                cropUri = null
+                viewModel.setCoupleBanner(bitmap)
+            },
+        )
+    }
+
+    // Tapping the photo circle opens the full couple photo full-screen (tap anywhere to dismiss).
+    var viewPhoto by remember { mutableStateOf(false) }
+    if (viewPhoto && couple.bannerUrl != null) {
+        FullScreenImagePager(
+            models = listOf(couple.bannerUrl),
+            startIndex = 0,
+            contentDescription = "Couple photo",
+            onDismiss = { viewPhoto = false },
+        )
+    }
+
+    // The couple identity is one gradient card (Item 9) — a two-tone blend of both partners' accent
+    // colors with their motif avatars + couple name overlaid; the partner label + Remove photo ride
+    // a darkened continuation of that same gradient as its [footer] (same as the Combined surface),
+    // so there's no separate cream card whose color would show through the photo's overlap zone. A
+    // premium uploaded photo (Item 10) floats as a circle straddling the card's top edge, set via
+    // the camera affordance — nudged down by [CouplePhotoOverlap] so it clears the photo.
+    val photoActive = effectiveBannerSource(couple.bannerUrl, state.bannerUnlocked) is BannerSource.Photo
+    Box(modifier = Modifier.fillMaxWidth()) {
+        CoupleBanner(
+            coupleName = couple.name,
+            currentMotifKey = state.currentAvatarMotif,
+            currentAccentHex = state.currentAccentColor,
+            partnerMotifKey = paired.partner?.avatarMotif,
+            partnerAccentHex = paired.partner?.accentColor,
+            hasPartner = paired.partner != null,
+            bannerUrl = couple.bannerUrl,
+            bannerUnlocked = state.bannerUnlocked,
+            onPhotoClick = { viewPhoto = true },
+            modifier = Modifier.fillMaxWidth(),
+            footer = {
+                val partnerLabel = when {
+                    couple.isAwaitingPartner -> "Waiting for your partner to join…"
+                    else -> "Paired with ${paired.partner?.displayName ?: "your partner"}"
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.22f))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        partnerLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.9f),
+                    )
+                    state.bannerError?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    }
+                    if (state.bannerUnlocked && couple.bannerUrl != null && !state.isBannerWorking) {
+                        Text(
+                            "Remove photo",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White,
+                            modifier = Modifier
+                                .clickable(onClick = viewModel::removeCoupleBanner)
+                                .padding(vertical = 4.dp),
+                        )
+                    }
+                }
+            },
+        )
+        BannerCameraButton(
+            working = state.isBannerWorking,
+            onClick = {
+                if (!state.bannerUnlocked) onOpenPremium("couple_banner")
+                else picker.launch("image/*")
+            },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = if (photoActive) CouplePhotoOverlap + 8.dp else 8.dp, end = 8.dp),
+        )
     }
 
     if (couple.isAwaitingPartner) {
@@ -269,6 +350,29 @@ internal fun PairedContent(
                 TextButton(onClick = { confirmUnpair = false }) { Text("Cancel") }
             },
         )
+    }
+}
+
+/** The camera affordance overlaid on the couple banner's hero (Item 10) — a translucent circle so
+ *  it reads over either the gradient or a photo. Swaps to a small spinner while an upload runs. */
+@Composable
+private fun BannerCameraButton(working: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.size(36.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.45f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (working) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
+        } else {
+            IconButton(onClick = onClick, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    Icons.Filled.PhotoCamera,
+                    contentDescription = "Set couple photo",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
     }
 }
 

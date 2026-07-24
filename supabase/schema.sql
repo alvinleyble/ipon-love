@@ -50,6 +50,7 @@ create table couples (
     invite_code text not null unique,
     user1_id    uuid not null,
     user2_id    uuid,                                  -- null until partner redeems invite
+    banner_url  text,                                  -- premium couple photo (Item 10); null = derived gradient
     created_at  timestamptz not null default now(),
     updated_at  timestamptz not null default now(),    -- client-set LWW key
     is_deleted  boolean     not null default false,    -- soft-deleted on unpair
@@ -874,6 +875,25 @@ begin
 end;
 $$;
 
+-- Set (or clear, with null) the caller's couple banner photo (Item 10). Member-gated like
+-- rotate_invite_code; the updated_at bump fires the couples server_rev trigger so the new URL
+-- pulls back into both partners' Room (either partner may set it — D1). Couples are RPC-write-only
+-- (ADR-0006/0008), so this is the only write path for banner_url.
+create or replace function set_couple_banner(p_url text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    update couples set banner_url = p_url, updated_at = now()
+        where id = auth_couple_id() and (user1_id = auth.uid() or user2_id = auth.uid());
+    if not found then
+        raise exception 'no couple to update';
+    end if;
+end;
+$$;
+
 -- Dissolve the caller's couple: both leave, shared budgets soft-deleted, shared
 -- notes + savings goals revert to private-to-owner, shared accounts & categories
 -- revert-to-creator, couple soft-deleted. Each client then bulk-purges replicated non-owned rows on
@@ -942,6 +962,15 @@ begin
         'couple:' || v_couple_id::text,  -- topic: this dissolving couple's channel
         true                             -- private: matches the client's isPrivate = true
     );
+
+    -- Delete the couple's banner object(s) before the couple row is gone (Item 10, decision 6).
+    -- unpair is the common orphan path and is postgres-owned, so it holds the DELETE privilege;
+    -- the storage.allow_delete_query GUC (Supabase-platform BEFORE-DELETE guard, per delete_account)
+    -- must be set first. delete_account() inherits this via its own unpair() call.
+    perform set_config('storage.allow_delete_query', 'true', true);
+    delete from storage.objects
+        where bucket_id = 'couple-banners'
+          and name like v_couple_id::text || '/%';
 
     update users set couple_id = null, updated_at = now() where couple_id = v_couple_id;
 
@@ -1126,6 +1155,21 @@ create policy note_images_owner on storage.objects for all
 create policy note_images_partner_read on storage.objects for select
     to authenticated
     using (bucket_id = 'note-images' and public.partner_can_read_note_image(name));
+
+-- couple-banners (Item 10): the premium couple photo, path {couple_id}/{uuid}.jpg. folder[1] =
+-- couple_id is the RLS key; both partners resolve the same auth_couple_id() (a SECURITY DEFINER
+-- function → no base-table RLS trap, ADR-0043), so either can read AND write the shared banner. One
+-- policy for all operations; no partner-read helper needed (the couple-id folder key IS the gate).
+create policy couple_banners_rw on storage.objects for all
+    to authenticated
+    using (
+        bucket_id = 'couple-banners'
+        and (storage.foldername(name))[1] = auth_couple_id()::text
+    )
+    with check (
+        bucket_id = 'couple-banners'
+        and (storage.foldername(name))[1] = auth_couple_id()::text
+    );
 
 -- ============================================================================
 --  app_release_info — beta version-mismatch gate  [ADR-0029]

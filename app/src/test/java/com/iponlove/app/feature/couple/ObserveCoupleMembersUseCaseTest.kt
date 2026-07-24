@@ -58,6 +58,19 @@ class ObserveCoupleMembersUseCaseTest {
     }
 
     @Test
+    fun `threads the couple banner url alongside the name (Item 10)`() = runTest {
+        val withPhoto = couple.copy(bannerUrl = "https://x/couple-banners/c-1/pic.jpg")
+        val useCase = ObserveCoupleMembersUseCase(
+            FakeUserRepo(MutableStateFlow(me), MutableStateFlow(partner)),
+            FakeCoupleRepo(MutableStateFlow(withPhoto)),
+        )
+
+        val result = useCase().first()
+
+        assertThat(result!!.coupleBannerUrl).isEqualTo("https://x/couple-banners/c-1/pic.jpg")
+    }
+
+    @Test
     fun `couple name is null until the couple row replicates`() = runTest {
         val useCase = ObserveCoupleMembersUseCase(
             FakeUserRepo(MutableStateFlow(me), MutableStateFlow(partner)),
@@ -95,5 +108,6 @@ class ObserveCoupleMembersUseCaseTest {
         override suspend fun redeemInvite(code: String) = Unit
         override suspend fun rotateInviteCode() = Unit
         override suspend fun unpair() = Unit
+        override suspend fun setCoupleBanner(url: String?) = Unit
     }
 }

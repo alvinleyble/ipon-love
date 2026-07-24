@@ -16,6 +16,7 @@ data class CoupleDto(
     @SerialName("invite_code") val inviteCode: String,
     @SerialName("user1_id") val user1Id: String,
     @SerialName("user2_id") val user2Id: String?,
+    @SerialName("banner_url") val bannerUrl: String? = null,
     @SerialName("created_at")
     @Serializable(with = InstantSerializer::class) val createdAt: Instant,
     @SerialName("updated_at")

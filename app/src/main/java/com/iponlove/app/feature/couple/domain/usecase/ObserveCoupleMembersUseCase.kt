@@ -30,7 +30,9 @@ class ObserveCoupleMembersUseCase @Inject constructor(
                 combine(
                     userRepository.observePartner(coupleId),
                     coupleRepository.observeCouple(coupleId),
-                ) { partner, couple -> CoupleMembers(me, partner, couple?.name) }
+                ) { partner, couple ->
+                    CoupleMembers(me, partner, couple?.name, couple?.bannerUrl)
+                }
             }
         }
 }

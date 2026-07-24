@@ -11,6 +11,7 @@ fun CoupleEntity.toDomain(): Couple = Couple(
     user1Id = user1Id,
     user2Id = user2Id,
     isDeleted = isDeleted,
+    bannerUrl = bannerUrl,
 )
 
 fun CoupleEntity.toDto(): CoupleDto = CoupleDto(
@@ -19,6 +20,7 @@ fun CoupleEntity.toDto(): CoupleDto = CoupleDto(
     inviteCode = inviteCode,
     user1Id = user1Id,
     user2Id = user2Id,
+    bannerUrl = bannerUrl,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,
@@ -31,6 +33,7 @@ fun CoupleDto.toEntity(): CoupleEntity = CoupleEntity(
     inviteCode = inviteCode,
     user1Id = user1Id,
     user2Id = user2Id,
+    bannerUrl = bannerUrl,
     createdAt = createdAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,

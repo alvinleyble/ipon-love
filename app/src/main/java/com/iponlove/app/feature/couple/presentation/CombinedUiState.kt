@@ -19,6 +19,10 @@ data class CombinedUiState(
     val monthLabel: String = "",
     /** The couple's name for the identity banner (v1.7.0 Item 9 Slice B); null until it replicates. */
     val coupleName: String? = null,
+    /** The premium couple photo (Item 10); null = no photo → derived gradient hero. */
+    val coupleBannerUrl: String? = null,
+    /** SHARED couple-photo gate — true while dormant/unlocked; gates whether [coupleBannerUrl] renders. */
+    val bannerUnlocked: Boolean = false,
     val members: List<MemberSpend> = emptyList(),
     val dayGroups: List<DayGrouping.DayGroup<CombinedEntry>> = emptyList(),
     val hasAnySharedActivityEver: Boolean = false,

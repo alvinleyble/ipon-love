@@ -134,6 +134,8 @@ fun CombinedBody(
                                 coupleName = state.coupleName ?: "Us",
                                 monthLabel = state.monthLabel,
                                 members = state.members,
+                                bannerUrl = state.coupleBannerUrl,
+                                bannerUnlocked = state.bannerUnlocked,
                                 isPrivacyModeOn = state.privacyModeEnabled,
                                 onTogglePrivacyMode = viewModel::togglePrivacyMode,
                             )
@@ -286,17 +288,20 @@ private fun SharedBudgetsSummaryCard(
 /**
  * The couple banner section on the Combined view (v1.7.0 Item 9 Slice B, layout "C"): a
  * "Spending · month" header row + privacy eye on the screen background, then the shared identity
- * hero ([CoupleBanner] — gradient + both avatars + couple name) with a [SpendStrip] folded in below
- * it as a darkened continuation of the same gradient, replacing the old You/Partner spend cards.
- * Both members present → hero + strip; the brief unresolved-partner transient reuses the
- * single-accent wash and hides the strip (decision 8). The eye toggles the global privacy flag —
- * [money] masks the amounts, while the % and split bar (a ratio, not a peso figure) stay visible.
+ * hero ([CoupleBanner] — gradient + both avatars + couple name, plus a circle photo straddling the
+ * top edge when Item 10 is unlocked) with a [SpendStrip] folded in below it as a darkened continuation
+ * of the same gradient, replacing the old You/Partner spend cards. Both members present → hero +
+ * strip; the brief unresolved-partner transient reuses the single-accent wash and hides the strip
+ * (decision 8). The eye toggles the global privacy flag — [money] masks the amounts, while the %
+ * and split bar (a ratio, not a peso figure) stay visible.
  */
 @Composable
 private fun CombinedBanner(
     coupleName: String,
     monthLabel: String,
     members: List<MemberSpend>,
+    bannerUrl: String?,
+    bannerUnlocked: Boolean,
     isPrivacyModeOn: Boolean,
     onTogglePrivacyMode: () -> Unit,
 ) {
@@ -327,6 +332,8 @@ private fun CombinedBanner(
             partnerMotifKey = partner?.avatarMotif,
             partnerAccentHex = partner?.accentColor,
             hasPartner = partner != null,
+            bannerUrl = bannerUrl,
+            bannerUnlocked = bannerUnlocked,
             modifier = Modifier.fillMaxWidth(),
             footer = if (me != null && partner != null) {
                 { SpendStrip(me, partner) }
@@ -364,7 +371,7 @@ private fun SpendStrip(me: MemberSpend, partner: MemberSpend) {
     }
 }
 
-/** One member's spend inline: the peso amount (prominent) followed by "Name XX%" (softer). */
+/** One member's spend inline: the peso amount (prominent), then "Name XX%" (softer). */
 @Composable
 private fun SpendLine(
     member: MemberSpend,

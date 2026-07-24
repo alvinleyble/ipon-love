@@ -24,4 +24,11 @@ interface CoupleRepository {
 
     /** Dissolve the current couple. */
     suspend fun unpair()
+
+    /**
+     * Set (or clear, with null) the couple's shared banner photo URL (v1.7.0 Item 10), via the
+     * `set_couple_banner` RPC then a sync that pulls the updated couple row back into Room.
+     * Uploading + deleting the Storage object itself is the caller's job (SetCoupleBannerUseCase).
+     */
+    suspend fun setCoupleBanner(url: String?)
 }

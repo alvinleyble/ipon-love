@@ -38,4 +38,36 @@ class CoupleBannerSpecTest {
         assertThat(spec).isInstanceOf(BannerBrushSpec.Gradient::class.java)
         assertThat((spec as BannerBrushSpec.Gradient).colors).containsExactly(blue, blue).inOrder()
     }
+
+    // ---- effectiveBannerSource (Item 10) — the freeze/revert correctness for the shared gate ----
+
+    @Test
+    fun `unlocked with a url renders the photo`() {
+        val source = effectiveBannerSource("https://x/couple-banners/c/1.jpg", unlocked = true)
+
+        assertThat(source).isInstanceOf(BannerSource.Photo::class.java)
+        assertThat((source as BannerSource.Photo).url).isEqualTo("https://x/couple-banners/c/1.jpg")
+    }
+
+    @Test
+    fun `locked with a url reverts to the derived gradient (freeze, non-destructive)`() {
+        val source = effectiveBannerSource("https://x/couple-banners/c/1.jpg", unlocked = false)
+
+        assertThat(source).isEqualTo(BannerSource.Derived)
+    }
+
+    @Test
+    fun `unlocked with no url is derived`() {
+        assertThat(effectiveBannerSource(null, unlocked = true)).isEqualTo(BannerSource.Derived)
+    }
+
+    @Test
+    fun `unlocked with a blank url is derived (never a blank photo)`() {
+        assertThat(effectiveBannerSource("  ", unlocked = true)).isEqualTo(BannerSource.Derived)
+    }
+
+    @Test
+    fun `locked with no url is derived`() {
+        assertThat(effectiveBannerSource(null, unlocked = false)).isEqualTo(BannerSource.Derived)
+    }
 }

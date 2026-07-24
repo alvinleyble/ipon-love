@@ -41,6 +41,9 @@ class CoupleRepositoryImpl @Inject constructor(
     override suspend fun unpair() =
         pairingMutation { remote.unpair() }
 
+    override suspend fun setCoupleBanner(url: String?) =
+        pairingMutation { remote.setCoupleBanner(url) }
+
     /** Flush → RPC → pull, translating any failure to a [PairingException]. */
     private suspend inline fun pairingMutation(rpc: () -> Unit) {
         try {

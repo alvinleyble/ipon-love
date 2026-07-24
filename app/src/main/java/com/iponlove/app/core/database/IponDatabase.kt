@@ -65,7 +65,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AppConfigEntity::class,
         AnalyticsEventEntity::class,
     ],
-    version = 28,
+    version = 29,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 10, to = 11),
@@ -92,6 +92,8 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AutoMigration(from = 26, to = 27),
         // v28: categories.excludeFromAnalysis (reimbursable pass-through, Item 43); default 0 = counts.
         AutoMigration(from = 27, to = 28),
+        // v29: couples.bannerUrl (premium couple photo, Item 10); nullable, null = derived gradient.
+        AutoMigration(from = 28, to = 29),
     ],
 )
 @TypeConverters(IponConverters::class)

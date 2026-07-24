@@ -467,7 +467,10 @@ private fun IponAppContent(
                     SubscriptionScreen(onBack = { navController.popBackStack() })
                 }
                 composable(SETTINGS_COUPLE_ROUTE) {
-                    SettingsCoupleScreen(onBack = { navController.popBackStack() })
+                    SettingsCoupleScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
+                    )
                 }
                 composable(APP_LOCK_SETUP_ROUTE) {
                     AppLockSetupScreen(onBack = { navController.popBackStack() })

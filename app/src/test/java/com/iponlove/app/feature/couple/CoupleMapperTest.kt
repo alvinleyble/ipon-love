@@ -48,6 +48,24 @@ class CoupleMapperTest {
 
         assertThat(roundTripped).isEqualTo(original.copy(pendingSync = false))
     }
+
+    @Test
+    fun bannerUrl_roundTrips_throughDomainDtoEntity() {
+        val url = "https://x/storage/v1/object/authenticated/couple-banners/c/abc.jpg"
+        val entity = coupleEntity(id = "c", user2Id = "user-2", bannerUrl = url)
+
+        assertThat(entity.toDomain().bannerUrl).isEqualTo(url)
+        assertThat(entity.toDto().bannerUrl).isEqualTo(url)
+        assertThat(entity.toDto().toEntity().bannerUrl).isEqualTo(url)
+    }
+
+    @Test
+    fun nullBannerUrl_roundTrips_asNull() {
+        val entity = coupleEntity(id = "c", user2Id = "user-2", bannerUrl = null)
+
+        assertThat(entity.toDomain().bannerUrl).isNull()
+        assertThat(entity.toDto().toEntity().bannerUrl).isNull()
+    }
 }
 
 private fun coupleEntity(
@@ -56,12 +74,14 @@ private fun coupleEntity(
     serverRev: Long? = null,
     isDeleted: Boolean = false,
     pendingSync: Boolean = false,
+    bannerUrl: String? = null,
 ) = CoupleEntity(
     id = id,
     coupleName = "Us",
     inviteCode = "ABCD23",
     user1Id = "user-1",
     user2Id = user2Id,
+    bannerUrl = bannerUrl,
     createdAt = Instant.ofEpochMilli(1_000),
     updatedAt = Instant.ofEpochMilli(2_000),
     isDeleted = isDeleted,

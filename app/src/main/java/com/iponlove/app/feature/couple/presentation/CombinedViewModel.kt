@@ -150,6 +150,7 @@ class CombinedViewModel @Inject constructor(
                 isPaired = true,
                 monthLabel = month.format(MONTH_FORMAT),
                 coupleName = members.coupleName,
+                coupleBannerUrl = members.coupleBannerUrl,
                 members = ledger.members,
                 dayGroups = DayGrouping.groupByDay(
                     items = ledger.entries,
@@ -168,6 +169,10 @@ class CombinedViewModel @Inject constructor(
             .combine(isRefreshing) { state, refreshing -> state.copy(isRefreshing = refreshing) }
             .combine(observePrivacyMode()) { state, privacyModeOn ->
                 state.copy(privacyModeEnabled = privacyModeOn)
+            }
+            // Item 10: the SHARED couple-photo gate. True while dormant, so a set photo shows.
+            .combine(premiumGate.observeLocked(Scope.SHARED)) { state, bannerLocked ->
+                state.copy(bannerUnlocked = !bannerLocked)
             }
             // DEEP_HISTORY back-wall (S10). viewedMonth.value is read fresh — the same anchor that
             // produced `state`. Always allowed while dormant (locked = false).

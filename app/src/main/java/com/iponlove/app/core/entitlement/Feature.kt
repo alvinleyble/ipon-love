@@ -25,4 +25,14 @@ enum class Feature {
      * only the signed-in user's own rows.
      */
     EXPORT_WITH_ATTACHMENTS,
+
+    /**
+     * Uploading a **premium couple photo** to override Item 9's derived banner (v1.7.0 Item 10).
+     * Soft gate, **shared** scope (D1 — either partner's premium unlocks it for the couple, the
+     * first shared soft gate; consumed via `PremiumGate.observeLocked(Scope.SHARED)`). Lapse is
+     * non-destructive: the render is derived at read time from `unlocked && banner_url != null`
+     * (see `effectiveBannerSource`), so a freeze reverts to the gradient and a re-grant auto-restores
+     * the chosen photo with no re-upload. Ships dormant (kill-switch OFF).
+     */
+    COUPLE_BANNER_PHOTO,
 }

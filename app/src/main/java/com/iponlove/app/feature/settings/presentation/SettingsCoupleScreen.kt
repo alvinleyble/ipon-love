@@ -36,6 +36,7 @@ import com.iponlove.app.feature.couple.presentation.CoupleViewModel
 @Composable
 fun SettingsCoupleScreen(
     onBack: () -> Unit,
+    onOpenPremium: (source: String) -> Unit = {},
     viewModel: CoupleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -64,6 +65,7 @@ fun SettingsCoupleScreen(
             state = state,
             viewModel = viewModel,
             modifier = Modifier.padding(padding).fillMaxSize(),
+            onOpenPremium = onOpenPremium,
         )
     }
 }

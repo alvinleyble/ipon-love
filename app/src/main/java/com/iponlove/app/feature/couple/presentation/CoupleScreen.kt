@@ -87,6 +87,7 @@ fun CoupleScreen(
                 state = coupleState,
                 viewModel = coupleViewModel,
                 modifier = Modifier.padding(padding).fillMaxSize().playfulBackground(),
+                onOpenPremium = onOpenPremium,
             )
         }
         return

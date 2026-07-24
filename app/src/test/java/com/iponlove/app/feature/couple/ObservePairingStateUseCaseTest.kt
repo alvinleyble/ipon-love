@@ -127,4 +127,5 @@ private class FakeCoupleRepository : CoupleRepository {
     override suspend fun redeemInvite(code: String) = Unit
     override suspend fun rotateInviteCode() = Unit
     override suspend fun unpair() = Unit
+    override suspend fun setCoupleBanner(url: String?) = Unit
 }
