@@ -5,7 +5,7 @@
 - [Anthropic Model Overview — claude.ai/docs](https://docs.anthropic.com/en/docs/about-claude/models/overview)
   Authoritative capability and pricing table. Use for: confirming current model names, token costs, context windows.
 
-- [Love, Ipon CLAUDE.md — project root](./CLAUDE.md)
+- [Love, Ipon CLAUDE.md — project root](../CLAUDE.md)
   The project's own decision guide. The "Which Model to Use" section is the primary reference for this topic. Use for: project-specific signal mapping.
 
 ## Wisdom (Communities)

@@ -7,7 +7,7 @@
 2. One reference feature folder (e.g. `app/src/main/java/com/iponlove/app/feature/budgets/`) — for copy-paste pattern
 3. The relevant table(s) in `supabase/schema.sql` — for the new entity/DTO shape
 
-**Do NOT read:** `PRD.md`, `ARCHITECTURE.md`, `CONTEXT.md`, or browse the folder tree. `CLAUDE.md` (this file) already covers everything needed. `docs/build/` covers build state.
+**Do NOT read:** `docs/archive/PRD.md`, `docs/archive/ARCHITECTURE.md` (superseded planning docs, archived 2026-07-25), `CONTEXT.md`, or browse the folder tree. `CLAUDE.md` (this file) already covers everything needed. `docs/build/` covers build state.
 
 **After each feature slice is committed:** update `docs/build/project-build-progress.md`'s "Current state" section, and append the slice to the current version's `docs/build/vX.Y.md` (or start a new one for a new version). Bump the Room version note in `project-build-progress.md` if it changed. This is the single source of truth for orientation in the next conversation.
 

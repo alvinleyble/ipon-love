@@ -1,3 +1,5 @@
+> **Archived 2026-07-25** — superseded by `CLAUDE.md` and `docs/build/`. Kept for historical reference only.
+
 # Product Requirements Document — Love, Ipon
 
 **Version:** 1.6.5

@@ -1,3 +1,5 @@
+> **Archived 2026-07-25** — superseded by `CLAUDE.md` and `docs/build/` (ADRs 0044–0051 postdate this doc). Kept for historical reference only.
+
 # Architecture Document — Love, Ipon
 
 **Version:** 1.2

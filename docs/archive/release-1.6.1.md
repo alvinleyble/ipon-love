@@ -1,3 +1,5 @@
+> Archived 2026-07-25 — superseded by `docs/build/v1.6.1.md`. Kept for historical reference only.
+
 Fixed beta feedback screen showing misleading "(prod)" version tag
 Records & Combined view now load month-by-month with sticky day headers instead of your entire history at once (much faster at scale)
 Added forgot password flow, including a "set new password" screen and fixes for several email/deep-link bugs

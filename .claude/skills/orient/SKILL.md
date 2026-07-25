@@ -16,7 +16,7 @@ Establish current build state fast and cheaply. The point is to read the **right
 
 ## Do NOT read
 
-`PRD.md`, `ARCHITECTURE.md`, `CONTEXT.md`, and do not browse the folder tree. CLAUDE.md + the build docs already cover orientation. Reading these is the main token sink this skill exists to prevent.
+`docs/archive/PRD.md`, `docs/archive/ARCHITECTURE.md` (superseded, archived), `CONTEXT.md`, and do not browse the folder tree. CLAUDE.md + the build docs already cover orientation. Reading these is the main token sink this skill exists to prevent.
 
 ## Then report back, tightly
 
