@@ -112,17 +112,22 @@ class PartnerDebtRepositoryImpl @Inject constructor(
         syncTrigger.requestPush()
     }
 
-    override suspend fun stampReceiverTxn(paymentId: String, receiverTxnId: String) {
-        val existing = dao.getPayment(paymentId) ?: return
-        // First writer wins — if the receiver leg was already added, don't double-stamp.
-        if (existing.receiverTxnId != null) return
-        dao.upsertPayment(
-            existing.copy(
-                receiverTxnId = receiverTxnId,
-                updatedAt = clock.stamp(existing.updatedAt),
-                pendingSync = true,
-            ),
-        )
+    override suspend fun stampReceiverTxn(payorTxnId: String, receiverTxnId: String) {
+        // One payor expense can back several payments when a lump was split across debts
+        // (ADR-0055) — the whole group takes the same receiver leg.
+        val group = dao.paymentsForPayorTxn(payorTxnId)
+        // First writer wins per row — if the receiver leg was already added, don't double-stamp.
+        val unstamped = group.filter { it.receiverTxnId == null }
+        if (unstamped.isEmpty()) return
+        unstamped.forEach { existing ->
+            dao.upsertPayment(
+                existing.copy(
+                    receiverTxnId = receiverTxnId,
+                    updatedAt = clock.stamp(existing.updatedAt),
+                    pendingSync = true,
+                ),
+            )
+        }
         syncTrigger.requestPush()
     }
 

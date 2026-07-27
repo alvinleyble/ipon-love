@@ -41,11 +41,13 @@ interface PartnerDebtRepository {
     suspend fun upsertPayment(payment: DebtPayment)
 
     /**
-     * Stamp [receiverTxnId] onto an existing settlement payment when the receiver (lender)
-     * adds the matching income to their own account (ADR-0019 #14). First writer wins — a
-     * payment that already has a receiver leg is left untouched.
+     * Stamp [receiverTxnId] onto every settlement payment the payor's [payorTxnId] backs, when
+     * the receiver (lender) adds the matching income to their own account (ADR-0019 #14). One
+     * lump may have been split across several debts (ADR-0055), so the group — not a single
+     * payment — is the unit. First writer wins per row: a payment that already has a receiver
+     * leg is left untouched.
      */
-    suspend fun stampReceiverTxn(paymentId: String, receiverTxnId: String)
+    suspend fun stampReceiverTxn(payorTxnId: String, receiverTxnId: String)
 
     /**
      * Hard-delete every debt and payment on unpair (ADR-0008). RLS hides them the instant

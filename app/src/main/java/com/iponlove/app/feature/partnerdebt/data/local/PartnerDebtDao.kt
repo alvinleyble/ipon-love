@@ -44,6 +44,14 @@ interface PartnerDebtDao {
     suspend fun activePayments(): List<DebtPaymentEntity>
 
     /**
+     * Every active payment backed by one payor expense. A lump settlement split across debts
+     * (ADR-0055) writes several payments sharing one `payorTxnId`, and the receiver's income
+     * leg stamps the whole group at once; a single-debt settlement returns a group of one.
+     */
+    @Query("SELECT * FROM partner_debt_payments WHERE payorTxnId = :payorTxnId AND isDeleted = 0")
+    suspend fun paymentsForPayorTxn(payorTxnId: String): List<DebtPaymentEntity>
+
+    /**
      * Active netting payments touching [debtId] — either attached to it or referencing it
      * as the counter-debt. Used to cascade soft-delete when the parent debt is deleted.
      */

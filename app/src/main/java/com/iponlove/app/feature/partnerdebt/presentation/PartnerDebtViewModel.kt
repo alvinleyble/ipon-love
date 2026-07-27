@@ -12,9 +12,10 @@ import com.iponlove.app.core.entitlement.CapCheck
 import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.partnerdebt.domain.usecase.AddSettlementIncomeUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.CheckPartnerDebtCapUseCase
+import com.iponlove.app.feature.partnerdebt.domain.usecase.DebtAllocationCalculator
 import com.iponlove.app.feature.partnerdebt.domain.usecase.DeletePartnerDebtUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.ObservePartnerDebtBoardUseCase
-import com.iponlove.app.feature.partnerdebt.domain.usecase.SettleDebtUseCase
+import com.iponlove.app.feature.partnerdebt.domain.usecase.SettleDebtsUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.UpsertPartnerDebtUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
@@ -42,7 +44,7 @@ class PartnerDebtViewModel @Inject constructor(
     observeCoupleMembers: ObserveCoupleMembersUseCase,
     observeAccounts: ObserveAccountsUseCase,
     private val upsertDebt: UpsertPartnerDebtUseCase,
-    private val settleDebt: SettleDebtUseCase,
+    private val settleDebts: SettleDebtsUseCase,
     private val addSettlementIncome: AddSettlementIncomeUseCase,
     private val deleteDebt: DeletePartnerDebtUseCase,
     private val checkDebtCap: CheckPartnerDebtCapUseCase,
@@ -172,11 +174,17 @@ class PartnerDebtViewModel @Inject constructor(
     // ---- settle (payor leg) ----
 
     fun startSettle(debt: DebtItem) {
+        // Overflow may only spill into debts running the same way — never into one my partner
+        // owes me, which would flip who owes whom (ADR-0055 #1).
+        val others = uiState.value.debts
+            .filter { it.id != debt.id && it.iAmBorrower && !it.isSettled }
+            .map { SettleCandidate(it.id, it.description ?: "Untitled debt", it.remaining) }
         dialog.value = DebtDialog.Settle(
             debtId = debt.id,
             debtLabel = debt.description ?: "this debt",
             remaining = debt.remaining,
             accountId = uiState.value.accounts.firstOrNull()?.id,
+            others = others,
         )
     }
 
@@ -186,11 +194,28 @@ class PartnerDebtViewModel @Inject constructor(
 
     fun onSettleNoteChange(value: String) = updateSettle { it.copy(note = value) }
 
+    /** Tick/untick a debt to include it in the overflow; ticks append, so the list is fill order. */
+    fun onToggleSettleTarget(debtId: String) = updateSettle { editor ->
+        val ticked = if (debtId in editor.tickedIds) {
+            editor.tickedIds - debtId
+        } else {
+            editor.tickedIds + debtId
+        }
+        editor.copy(tickedIds = ticked, amountError = false)
+    }
+
+    /** The "Pay everything" shortcut — ticks every candidate and fills the amount to the ceiling. */
+    fun onPayFullOutstanding() = updateSettle { editor ->
+        val allTicked = editor.copy(tickedIds = editor.others.map { it.debtId })
+        allTicked.copy(amountText = allTicked.ceiling.toPlainString(), amountError = false)
+    }
+
     fun saveSettle() {
         val editor = dialog.value as? DebtDialog.Settle ?: return
-        val amount = editor.amountText.trim().toBigDecimalOrNull()
-        // Guard against a non-positive amount or paying more than what's outstanding.
-        if (amount == null || amount.signum() <= 0 || amount > editor.remaining) {
+        // Blocked, not silently capped: a non-positive amount, or more than the ticked debts
+        // can absorb, keeps the sheet open with the ceiling spelled out (ADR-0055 #4).
+        val amount = editor.amount
+        if (amount == null || editor.exceedsCeiling) {
             dialog.value = editor.copy(amountError = true)
             return
         }
@@ -199,10 +224,10 @@ class PartnerDebtViewModel @Inject constructor(
             dialog.value = editor.copy(accountError = true)
             return
         }
+        val allocations = DebtAllocationCalculator.allocate(editor.targets, amount)
         viewModelScope.launch {
-            settleDebt(
-                debtId = editor.debtId,
-                amount = amount,
+            settleDebts(
+                allocations = allocations,
                 payorAccountId = account,
                 note = editor.note.trim().ifBlank { null },
             )
@@ -213,10 +238,21 @@ class PartnerDebtViewModel @Inject constructor(
     // ---- add to my account (receiver leg) ----
 
     fun startReceive(debt: DebtItem, payment: DebtPaymentItem) {
+        val payorTxnId = payment.payorTxnId ?: return
+        // The payor may have split one lump across several debts, so the income leg covers the
+        // whole group at once — the amount is the lump, not this row's share (ADR-0055 #6).
+        // Rows that already carry a receiver leg are left out of both the total and the count,
+        // matching what the repository will actually stamp (first writer wins per row).
+        val group = uiState.value.debts
+            .flatMap { it.payments }
+            .filter { it.payorTxnId == payorTxnId && it.receiverTxnId == null }
+            .distinctBy { it.id }
+        if (group.isEmpty()) return
+        val total = group.fold(BigDecimal.ZERO) { sum, it -> sum + it.amount }
         dialog.value = DebtDialog.Receive(
-            paymentId = payment.id,
-            amount = payment.amount,
-            debtLabel = debt.description ?: "this debt",
+            payorTxnId = payorTxnId,
+            amount = total,
+            debtLabel = if (group.size > 1) "${group.size} debts" else debt.description ?: "this debt",
             accountId = uiState.value.accounts.firstOrNull()?.id,
         )
     }
@@ -232,7 +268,7 @@ class PartnerDebtViewModel @Inject constructor(
         }
         viewModelScope.launch {
             addSettlementIncome(
-                paymentId = editor.paymentId,
+                payorTxnId = editor.payorTxnId,
                 amount = editor.amount,
                 receiverAccountId = account,
                 note = editor.debtLabel,

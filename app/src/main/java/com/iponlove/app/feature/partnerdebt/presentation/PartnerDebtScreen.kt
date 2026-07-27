@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.partnerdebt.presentation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import com.iponlove.app.core.ui.IponFilterChip
 import androidx.compose.material3.Icon
@@ -43,6 +45,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -65,6 +68,7 @@ import com.iponlove.app.feature.partnerdebt.domain.model.DebtItem
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtNet
 import com.iponlove.app.feature.partnerdebt.domain.model.DebtPaymentItem
 import com.iponlove.app.feature.partnerdebt.domain.model.NetDirection
+import java.math.BigDecimal
 
 /** Keeps a long partner name from overflowing the tight chip/header layouts below. */
 private const val PARTNER_NAME_DISPLAY_MAX = 15
@@ -156,6 +160,8 @@ fun PartnerDebtBody(
             onAmountChange = viewModel::onSettleAmountChange,
             onAccountChange = viewModel::onSettleAccountChange,
             onNoteChange = viewModel::onSettleNoteChange,
+            onToggleTarget = viewModel::onToggleSettleTarget,
+            onPayFull = viewModel::onPayFullOutstanding,
             onSave = viewModel::saveSettle,
             onCancel = viewModel::cancelDialog,
         )
@@ -443,6 +449,12 @@ private fun AddDebtDialog(
     )
 }
 
+/**
+ * The settle sheet, with the overpay allocation folded in by progressive disclosure
+ * (ADR-0055 #2): a normal single-debt payment looks exactly as it always did, and the other
+ * "I owe" debts only appear once the typed amount spills past the tapped debt's remaining.
+ * Ticking a debt raises the ceiling and puts it next in the fill order.
+ */
 @Composable
 private fun SettleDialog(
     editor: DebtDialog.Settle,
@@ -450,9 +462,13 @@ private fun SettleDialog(
     onAmountChange: (String) -> Unit,
     onAccountChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
+    onToggleTarget: (String) -> Unit,
+    onPayFull: () -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    val showAllocation = editor.isOverflowing && editor.others.isNotEmpty()
+    val allocated = editor.allocations.associate { it.debtId to it.amount }
     PlayfulDialog(
         onDismissRequest = onCancel,
         title = { Text("Settle debt") },
@@ -468,15 +484,19 @@ private fun SettleDialog(
                     onValueChange = onAmountChange,
                     label = { Text("Amount (${currencyGlyph()})") },
                     singleLine = true,
-                    isError = editor.amountError,
-                    supportingText = if (editor.amountError) {
-                        { Text("Enter an amount up to ${money(editor.remaining)}") }
-                    } else {
-                        null
-                    },
+                    isError = editor.amountError || editor.exceedsCeiling,
+                    supportingText = settleAmountHint(editor),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (showAllocation) {
+                    SettleAllocationSection(
+                        editor = editor,
+                        allocated = allocated,
+                        onToggleTarget = onToggleTarget,
+                        onPayFull = onPayFull,
+                    )
+                }
                 AccountPicker(
                     accounts = accounts,
                     selectedId = editor.accountId,
@@ -495,6 +515,73 @@ private fun SettleDialog(
         confirmButton = { TextButton(onClick = onSave) { Text("Pay") } },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )
+}
+
+/**
+ * The amount field's supporting line. Over the ceiling it names the shortfall and what is
+ * currently payable rather than capping the entry silently; while it fits, it just states the
+ * ceiling so ticking another debt visibly buys headroom.
+ */
+private fun settleAmountHint(editor: DebtDialog.Settle): (@Composable () -> Unit)? = when {
+    // Only point at the tick list when there is actually something left to tick — with no
+    // other "I owe" debts the ceiling is just this debt, and the plain limit reads better.
+    editor.exceedsCeiling && editor.tickedIds.size < editor.others.size -> {
+        { Text("Tick more debts to cover this — you can pay up to ${money(editor.ceiling)}") }
+    }
+
+    editor.exceedsCeiling || editor.amountError -> {
+        { Text("Enter an amount up to ${money(editor.ceiling)}") }
+    }
+
+    editor.isOverflowing -> {
+        { Text("Covers ${editor.allocations.size} debts") }
+    }
+
+    else -> null
+}
+
+@Composable
+private fun SettleAllocationSection(
+    editor: DebtDialog.Settle,
+    allocated: Map<String, BigDecimal>,
+    onToggleTarget: (String) -> Unit,
+    onPayFull: () -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "That's more than this debt. Pick which of your other debts it should cover — " +
+                "they're paid in the order you tick them.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
+        editor.others.forEach { candidate ->
+            val ticked = candidate.debtId in editor.tickedIds
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onToggleTarget(candidate.debtId) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = ticked, onCheckedChange = { onToggleTarget(candidate.debtId) })
+                Text(
+                    text = candidate.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                val share = allocated[candidate.debtId]
+                Text(
+                    text = if (share != null) "${money(share)} of ${money(candidate.remaining)}" else money(candidate.remaining),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (share != null) colors.semantic.income else colors.textSecondary,
+                )
+            }
+        }
+        TextButton(onClick = onPayFull) { Text("Pay everything I owe") }
+    }
 }
 
 @Composable
