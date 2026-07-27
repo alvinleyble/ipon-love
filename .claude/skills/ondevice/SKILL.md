@@ -17,22 +17,24 @@ CLAUDE.md requires verifying UI changes by running the app, not eyeballing code.
 
 ## Emulator (only if not using Alvin's real device)
 
-- Only **tablet AVDs** exist (`Pixel_Tablet`, `Medium_Tablet`) unless a phone AVD was added since. `emulator -list-avds` to check.
-- Boot dies between sessions — re-boot each time as a **`run_in_background` Bash task**: `emulator -avd <name> -no-snapshot-save -no-boot-anim`.
+- **HARD RULE: always use `Medium_Phone`, which boots as `emulator-5554`.** Never `Medium_Phone_2`, never `Pixel_Tablet`, even though all three currently exist (`emulator -list-avds` to check the live list). Screenshot coordinates, tap coordinates, and any `-s <serial>` in commands below all assume this specific device.
+- Boot dies between sessions — re-boot each time as a **`run_in_background` Bash task**: `emulator -avd Medium_Phone -no-snapshot-save -no-boot-anim`.
 - Wait for boot as a second `run_in_background` Bash task, using this **exact** command (it's allowlisted verbatim — do not rephrase it, a different string won't match): `until adb shell getprop sys.boot_completed | grep -q 1; do sleep 2; done`
+- If more than one emulator/device is attached, target the phone explicitly: `adb -s emulator-5554 ...` / `uidump.sh -s emulator-5554`.
 
 ## Launch
 
 - `adb shell am force-stop com.iponlove.app.staging` then `adb shell am start -n com.iponlove.app.staging/com.iponlove.app.MainActivity`.
 - Confirm it's up: `adb shell dumpsys activity activities | grep ResumedActivity` shows the app. The first `screencap` after launch often catches the splash — wait ~2s and re-shoot.
-- Screenshot: `adb exec-out screencap -p > /tmp/x.png`, then Read it. On the tablet AVD the screen is 1600×2560 portrait; PNG pixels == device coords 1:1.
+- Screenshot: `adb exec-out screencap -p > /tmp/x.png`, then Read it. PNG pixels == device coords 1:1 — check the actual resolution with `adb shell wm size` rather than assuming (differs by AVD; don't carry over a tablet's dimensions onto `Medium_Phone`).
 
 ## Drive the UI — DON'T eyeball coordinates
 
-- Small `FilterChip`s / dialog buttons get missed by guessed taps. **Use `.claude/scripts/uidump.sh`** — it dumps, pulls, and parses the hierarchy in one allowlisted call, so it never prompts:
-  - `.claude/scripts/uidump.sh` — every element with text/content-desc, printed as `<cx> <cy> | <label> [clickable]`
-  - `.claude/scripts/uidump.sh --grep Budget` — filter to matching labels (case-insensitive)
-  - `.claude/scripts/uidump.sh --tap "Clear all"` — find the element and tap its centre in one step (prefers a `clickable="true"` match, since Compose often marks the parent rather than the label)
+- Small `FilterChip`s / dialog buttons get missed by guessed taps. **Use `.claude/scripts/uidump.sh`** to read the hierarchy, then tap by coordinate:
+  - `.claude/scripts/uidump.sh` — every element with text/content-desc, printed as `<cx> <cy> | <label> [clickable]`. This bare form (no args) is reliably allowlisted — use it every time.
+  - `.claude/scripts/uidump.sh --grep Budget` — filter to matching labels (case-insensitive). Also reliably allowlisted.
+  - Read the `<cx> <cy>` for your target off the dump, then tap with `adb shell input tap <cx> <cy>` — a true wildcard (`Bash(adb shell input *)`) that never needs a new allowlist entry.
+  - **Do NOT use `--tap "<label>"`.** It looks covered by a general wildcard in `.claude/settings.json` but isn't — in practice it prompts fresh for *every distinct label string* (confirmed 2026-07-27/28; `.claude/settings.local.json` had accumulated dozens of one-off literal `--tap "X"` entries before this was caught). Dump + coordinate-tap is the only combination that's actually prompt-free.
   - add `-s <serial>` for a specific device
 - **Do NOT hand-roll the old three-step loop** (`uiautomator dump && adb pull && python3 -c '…'`). Every segment of a compound command must match the allowlist for the line to pass, and `python3 -c` can never be allowlisted — that loop is what made dispatched runs raise a permission prompt on nearly every UI step.
 - **keyevent 4 (Back) gotcha:** it closes the *dialog* if the soft keyboard isn't actually up. Only use it to dismiss a keyboard you're sure is shown. Otherwise the Save button sits just above the keyboard (~y 1790 on these dialogs) — tap it directly.
