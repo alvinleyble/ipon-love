@@ -1,5 +1,6 @@
 package com.iponlove.app.feature.settings.presentation
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -23,7 +24,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.SettingsRow
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 
-/** Notifications sub-screen (v1.6.6 Item 7) — currently just the budget-alerts toggle. */
+/**
+ * Notifications sub-screen (v1.6.6 Item 7). One flat row per category so far — sectioning
+ * (Budgets/Recurring/Couple headers) is deferred to v1.7.1 Items 2-4, which is where the next
+ * budget-alert controls land (ADR-0052/ADR-0054).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
@@ -57,14 +62,27 @@ fun NotificationsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             SettingsRow(
                 headline = "Budget alerts",
                 supporting = "Notify when a budget reaches 80% or 100% of its limit. Off hides them from the inbox too.",
+                index = 0,
                 trailing = {
                     Switch(
                         checked = state.budgetAlertsEnabled,
                         onCheckedChange = viewModel::setBudgetAlertsEnabled,
+                    )
+                },
+            )
+            SettingsRow(
+                headline = "Recurring reminders",
+                supporting = "Nudge to confirm a recurring income or bill on its due date.",
+                index = 1,
+                trailing = {
+                    Switch(
+                        checked = state.recurringRemindersEnabled,
+                        onCheckedChange = viewModel::setRecurringRemindersEnabled,
                     )
                 },
             )

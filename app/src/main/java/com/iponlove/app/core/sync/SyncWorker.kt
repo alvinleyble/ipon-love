@@ -13,6 +13,7 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
+import com.iponlove.app.feature.recurring.worker.RecurringReminderWorker
 import com.iponlove.app.feature.widget.presentation.Widgets
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -38,6 +39,7 @@ class SyncWorker @AssistedInject constructor(
         // foreground post-sync path in MainActivity covers app-open; this covers WorkManager).
         Widgets.updateAll(applicationContext)
         enqueueBudgetAlerts()
+        enqueueRecurringReminders()
         Result.success()
     } catch (e: Exception) {
         if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.failure()
@@ -48,6 +50,14 @@ class SyncWorker @AssistedInject constructor(
             BudgetAlertWorker.WORK_NAME,
             ExistingWorkPolicy.REPLACE,
             BudgetAlertWorker.buildRequest(),
+        )
+    }
+
+    private fun enqueueRecurringReminders() {
+        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            RecurringReminderWorker.WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            RecurringReminderWorker.buildRequest(),
         )
     }
 

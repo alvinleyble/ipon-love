@@ -21,7 +21,15 @@ class NotificationPreferencesRepositoryImpl @Inject constructor(
         dataStore.edit { p -> p[KEY_BUDGET_ALERTS_ENABLED] = enabled }
     }
 
+    override fun observeRecurringRemindersEnabled(): Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[KEY_RECURRING_REMINDERS_ENABLED] ?: true }
+
+    override suspend fun setRecurringRemindersEnabled(enabled: Boolean) {
+        dataStore.edit { p -> p[KEY_RECURRING_REMINDERS_ENABLED] = enabled }
+    }
+
     private companion object {
         val KEY_BUDGET_ALERTS_ENABLED = booleanPreferencesKey("budget_alerts_enabled")
+        val KEY_RECURRING_REMINDERS_ENABLED = booleanPreferencesKey("recurring_reminders_enabled")
     }
 }

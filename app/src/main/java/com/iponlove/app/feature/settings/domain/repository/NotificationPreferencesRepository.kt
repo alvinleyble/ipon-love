@@ -6,4 +6,8 @@ import kotlinx.coroutines.flow.Flow
 interface NotificationPreferencesRepository {
     fun observeBudgetAlertsEnabled(): Flow<Boolean>
     suspend fun setBudgetAlertsEnabled(enabled: Boolean)
+
+    /** Recurring due-date reminders (ADR-0052 decision 4) — one combined toggle, default ON. */
+    fun observeRecurringRemindersEnabled(): Flow<Boolean>
+    suspend fun setRecurringRemindersEnabled(enabled: Boolean)
 }

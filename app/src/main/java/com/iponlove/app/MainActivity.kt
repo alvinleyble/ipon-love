@@ -52,6 +52,7 @@ import com.iponlove.app.core.sync.SyncWorker
 import com.iponlove.app.core.ui.LocalCurrencySymbol
 import com.iponlove.app.core.ui.LocalPrivacyMode
 import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
+import com.iponlove.app.feature.recurring.worker.RecurringReminderWorker
 import com.iponlove.app.core.ui.theme.IponTheme
 import com.iponlove.app.feature.applock.domain.model.AppLockPreferences
 import com.iponlove.app.feature.applock.domain.usecase.ObserveAppLockUseCase
@@ -250,6 +251,11 @@ class MainActivity : FragmentActivity() {
                                 ExistingWorkPolicy.REPLACE,
                                 BudgetAlertWorker.buildRequest(),
                             )
+                            wm.enqueueUniqueWork(
+                                RecurringReminderWorker.WORK_NAME,
+                                ExistingWorkPolicy.REPLACE,
+                                RecurringReminderWorker.buildRequest(),
+                            )
                             Widgets.updateAll(applicationContext)
                         }
                         LaunchedEffect(current.userId) { watchUnpair() }
@@ -396,6 +402,10 @@ class MainActivity : FragmentActivity() {
 
         /** [EXTRA_START_ROUTE] value for Manage (whose default sub-tab is Accounts). */
         const val ROUTE_MANAGE = "manage"
+
+        /** [EXTRA_START_ROUTE] value for Records — hosts the "To confirm" card recurring
+         *  due-date reminders deep-link to (v1.7.1 Item 1, ADR-0052 decision 6). */
+        const val ROUTE_RECORDS = "records"
 
         private const val TAG = "MainActivity"
     }
