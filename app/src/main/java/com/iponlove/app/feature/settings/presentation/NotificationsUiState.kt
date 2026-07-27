@@ -2,6 +2,9 @@ package com.iponlove.app.feature.settings.presentation
 
 /** Notifications sub-screen (v1.6.6 Item 7). Instant, undrafted write-through — no Apply gate. */
 data class NotificationsUiState(
-    /** Gates [com.iponlove.app.feature.budgets.presentation.BudgetAlertNotifier]'s posts. */
+    /**
+     * The **Budgets category** switch (ADR-0053 decision 5): off means silent everywhere for
+     * budget alerts — no inbox row and no OS push.
+     */
     val budgetAlertsEnabled: Boolean = true,
 )

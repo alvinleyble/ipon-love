@@ -23,6 +23,8 @@ import com.iponlove.app.feature.notes.data.local.NoteAttachmentDao
 import com.iponlove.app.feature.notes.data.local.NoteAttachmentEntity
 import com.iponlove.app.feature.notes.data.local.NoteDao
 import com.iponlove.app.feature.notes.data.local.NoteEntity
+import com.iponlove.app.feature.notifications.data.local.NotificationDao
+import com.iponlove.app.feature.notifications.data.local.NotificationEntity
 import com.iponlove.app.feature.partnerdebt.data.local.DebtPaymentEntity
 import com.iponlove.app.feature.partnerdebt.data.local.PartnerDebtDao
 import com.iponlove.app.feature.partnerdebt.data.local.PartnerDebtEntity
@@ -64,8 +66,9 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         GoalContributionEntity::class,
         AppConfigEntity::class,
         AnalyticsEventEntity::class,
+        NotificationEntity::class,
     ],
-    version = 29,
+    version = 30,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 10, to = 11),
@@ -94,6 +97,8 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AutoMigration(from = 27, to = 28),
         // v29: couples.bannerUrl (premium couple photo, Item 10); nullable, null = derived gradient.
         AutoMigration(from = 28, to = 29),
+        // v30: notifications table auto-created (notification inbox, v1.7.1 Item 6 / ADR-0053).
+        AutoMigration(from = 29, to = 30),
     ],
 )
 @TypeConverters(IponConverters::class)
@@ -113,6 +118,7 @@ abstract class IponDatabase : RoomDatabase() {
     abstract fun goalContributionDao(): GoalContributionDao
     abstract fun appConfigDao(): AppConfigDao
     abstract fun analyticsEventDao(): AnalyticsEventDao
+    abstract fun notificationDao(): NotificationDao
 
     /**
      * Wipe every table — the local source of truth for one account. Called on sign-out and on

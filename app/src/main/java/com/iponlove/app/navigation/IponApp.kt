@@ -92,6 +92,10 @@ import com.iponlove.app.feature.manage.presentation.ManageScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorScreen
 import com.iponlove.app.feature.notes.presentation.NoteEditorViewModel.Companion.NOTE_ID_KEY
 import com.iponlove.app.feature.notes.presentation.NotesScreen
+import com.iponlove.app.feature.notifications.presentation.InboxBellState
+import com.iponlove.app.feature.notifications.presentation.LocalInboxBell
+import com.iponlove.app.feature.notifications.presentation.NotificationBellViewModel
+import com.iponlove.app.feature.notifications.presentation.NotificationInboxScreen
 import com.iponlove.app.feature.recurring.presentation.RecurringScreen
 import com.iponlove.app.feature.savings.presentation.GoalDetailScreen
 import com.iponlove.app.feature.savings.presentation.GoalEditorScreen
@@ -125,6 +129,7 @@ private const val SUBSCRIPTION_ROUTE = "subscription"
 private fun subscriptionRoute(source: String) = "$SUBSCRIPTION_ROUTE?$SOURCE_KEY=$source"
 private const val SETTINGS_COUPLE_ROUTE = "settings_couple"
 private const val NAV_EDITOR_ROUTE = "nav_editor"
+private const val NOTIFICATION_INBOX_ROUTE = "notification_inbox"
 private const val HELP_ROUTE = "help"
 private const val ABOUT_ROUTE = "settings_about"
 private const val LICENSES_ROUTE = "settings_licenses"
@@ -275,10 +280,21 @@ private fun IponAppContent(
     fun isInGraph(dest: NavDestination): Boolean =
         currentDestination?.hierarchy?.any { it.route == dest.graphRoute() } == true
 
+    // The notification bell is account-global chrome, not a per-screen action, so its state is
+    // resolved once here and provided down — PlayfulScreenTitle renders it on every top-level
+    // module without each screen (or its ViewModel) knowing the inbox exists (ADR-0053).
+    val inboxViewModel: NotificationBellViewModel = hiltViewModel()
+    val unreadCount by inboxViewModel.unreadCount.collectAsState()
+    val inboxBell = InboxBellState(
+        unreadCount = unreadCount,
+        onOpen = { navController.navigate(NOTIFICATION_INBOX_ROUTE) },
+    )
+
     Box(Modifier.fillMaxSize().playfulBackground()) {
     CompositionLocalProvider(
         LocalCoachMarkState provides coachState,
         LocalTutorialController provides tutorialViewModel,
+        LocalInboxBell provides inboxBell,
     ) {
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -514,6 +530,20 @@ private fun IponAppContent(
                 AddTransactionScreen(
                     onBack = { navController.popBackStack() },
                     onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
+                )
+            }
+            // Notification inbox (ADR-0053): a standalone top-level route, like Add/Edit and the
+            // navbar editor — it is reachable from EVERY module's bell, so nesting it inside any
+            // one module's graph would stack a second module graph over the origin tab.
+            composable(NOTIFICATION_INBOX_ROUTE) {
+                NotificationInboxScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenDeepLink = { route ->
+                        NavRegistry.byId[route]?.let { dest ->
+                            navController.popBackStack()
+                            navController.switchTab(dest)
+                        }
+                    },
                 )
             }
         }

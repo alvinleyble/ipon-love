@@ -11,6 +11,7 @@ import com.iponlove.app.feature.categories.data.local.CategoryDao
 import com.iponlove.app.feature.couple.data.local.CoupleDao
 import com.iponlove.app.feature.notes.data.local.NoteAttachmentDao
 import com.iponlove.app.feature.notes.data.local.NoteDao
+import com.iponlove.app.feature.notifications.data.local.NotificationDao
 import com.iponlove.app.feature.partnerdebt.data.local.PartnerDebtDao
 import com.iponlove.app.feature.recurring.data.local.RecurringRuleDao
 import com.iponlove.app.feature.savings.data.local.GoalContributionDao
@@ -80,4 +81,7 @@ object DatabaseModule {
 
     @Provides
     fun analyticsEventDao(database: IponDatabase): AnalyticsEventDao = database.analyticsEventDao()
+
+    @Provides
+    fun notificationDao(database: IponDatabase): NotificationDao = database.notificationDao()
 }

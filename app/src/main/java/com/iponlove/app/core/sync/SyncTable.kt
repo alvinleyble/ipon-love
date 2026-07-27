@@ -41,4 +41,8 @@ enum class SyncTable {
     // Partner's shared goals + their contributions (redacting views, ADR-0005).
     PARTNER_SAVINGS_GOALS,
     PARTNER_GOAL_CONTRIBUTIONS,
+    // Notification inbox — a leaf depending only on the users row, and own-user-only (no
+    // partner variant, never replicated). Last in the order because nothing depends on it
+    // and it must never delay a financial row's push (ADR-0053).
+    NOTIFICATIONS,
 }

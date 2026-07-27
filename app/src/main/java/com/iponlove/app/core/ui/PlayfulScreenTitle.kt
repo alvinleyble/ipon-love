@@ -21,16 +21,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
+import com.iponlove.app.feature.notifications.presentation.InboxBell
 
 /**
  * The Playful Pop screen title (v1.6.7 Item 8): a bold 30sp title with a small tilted accent heart
  * beside it, plus an optional trailing [actions] slot (e.g. a privacy eye). Colors from the derived
  * [LocalPlayfulColors].
+ *
+ * Every top-level module's title bar goes through here, so the **notification bell** is rendered
+ * here too rather than added screen by screen — that is what makes ADR-0053's "bell on every
+ * top-level screen" a single rollout. It leads the action cluster (bell first, then the screen's
+ * own [actions]) so per-screen icons keep their existing order, and it self-hides wherever no
+ * inbox is provided. Set [showInboxBell] to false for a title bar that should not carry it.
  */
 @Composable
 fun PlayfulScreenTitle(
     title: String,
     modifier: Modifier = Modifier,
+    showInboxBell: Boolean = true,
     actions: (@Composable () -> Unit)? = null,
 ) {
     val colors = LocalPlayfulColors.current
@@ -54,9 +62,10 @@ fun PlayfulScreenTitle(
             tint = colors.accent,
             modifier = Modifier.size(20.dp).rotate(-8f),
         )
-        if (actions != null) {
+        if (actions != null || showInboxBell) {
             Spacer(Modifier.weight(1f))
-            actions()
+            if (showInboxBell) InboxBell()
+            actions?.invoke()
         }
     }
 }

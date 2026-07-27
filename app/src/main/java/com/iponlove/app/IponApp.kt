@@ -8,8 +8,8 @@ import coil.ImageLoaderFactory
 import com.iponlove.app.core.sync.CoupleChannelManager
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.data.ClockOffsetStore
-import com.iponlove.app.feature.budgets.presentation.BudgetAlertNotifier
 import com.iponlove.app.feature.export.data.ExportFileWriter
+import com.iponlove.app.feature.notifications.presentation.SystemNotificationPresenter
 import com.iponlove.app.feature.transactions.domain.usecase.CleanupOrphanedReceiptsUseCase
 import com.iponlove.app.feature.widget.data.WidgetSessionHintWriter
 import dagger.hilt.android.HiltAndroidApp
@@ -29,7 +29,7 @@ class IponApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var syncClock: SyncClock
     @Inject lateinit var clockOffsetStore: ClockOffsetStore
-    @Inject lateinit var budgetAlertNotifier: BudgetAlertNotifier
+    @Inject lateinit var notificationPresenter: SystemNotificationPresenter
     @Inject lateinit var coupleChannelManager: CoupleChannelManager
     @Inject lateinit var widgetSessionHintWriter: WidgetSessionHintWriter
     @Inject lateinit var cleanupOrphanedReceipts: CleanupOrphanedReceiptsUseCase
@@ -46,7 +46,9 @@ class IponApp : Application(), Configuration.Provider, ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         appScope.launch { clockOffsetStore.restoreInto(syncClock) }
-        budgetAlertNotifier.createChannel()
+        // One OS channel per notification category (ADR-0053) — registered up front so a channel
+        // exists before its first post, whichever category produces first.
+        notificationPresenter.createChannels()
         // Launch the live-sync collectors once per process. They idle (no socket, no push)
         // until MainActivity reports foreground + an authenticated, paired user (ADR-0015).
         coupleChannelManager.start()

@@ -60,7 +60,7 @@ fun NotificationsScreen(
         ) {
             SettingsRow(
                 headline = "Budget alerts",
-                supporting = "Notify when a budget reaches 80% or 100% of its limit",
+                supporting = "Notify when a budget reaches 80% or 100% of its limit. Off hides them from the inbox too.",
                 trailing = {
                     Switch(
                         checked = state.budgetAlertsEnabled,

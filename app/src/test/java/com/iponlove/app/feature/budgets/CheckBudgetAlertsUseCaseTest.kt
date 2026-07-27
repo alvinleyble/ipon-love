@@ -1,6 +1,7 @@
 package com.iponlove.app.feature.budgets
 
 import com.google.common.truth.Truth.assertThat
+import com.iponlove.app.feature.budgets.domain.usecase.BudgetAlertSlot
 import com.iponlove.app.feature.budgets.domain.usecase.CheckBudgetAlertsUseCase
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.txn
@@ -30,41 +31,59 @@ class CheckBudgetAlertsUseCaseTest {
     }
 
     @Test
-    fun `fires 80 percent alert at exactly 80`() {
+    fun `fires warn rung at exactly 80`() {
         val budget = budget("b1", amount = "10000.00", yearMonth = month)
         val txns = listOf(expense("t1", "8000.00"))
         val result = useCase(listOf(budget), txns, emptySet(), month, zone)
         assertThat(result).hasSize(1)
-        assertThat(result[0].threshold).isEqualTo(80)
+        assertThat(result[0].slot).isEqualTo(BudgetAlertSlot.WARN)
     }
 
     @Test
-    fun `fires both 80 and 100 alerts at 100 percent`() {
+    fun `fires both warn and limit rungs at 100 percent`() {
         val budget = budget("b1", amount = "10000.00", yearMonth = month)
         val txns = listOf(expense("t1", "10000.00"))
         val result = useCase(listOf(budget), txns, emptySet(), month, zone)
-        assertThat(result.map { it.threshold }).containsExactly(80, 100)
+        assertThat(result.map { it.slot })
+            .containsExactly(BudgetAlertSlot.WARN, BudgetAlertSlot.LIMIT)
+            .inOrder()
     }
 
     @Test
-    fun `does not re-fire already-fired thresholds`() {
+    fun `does not re-fire rungs already raised in the inbox`() {
         val budget = budget("b1", amount = "10000.00", yearMonth = month)
         val txns = listOf(expense("t1", "10000.00"))
-        val alreadyFired = setOf(
-            CheckBudgetAlertsUseCase.dedupeKey("b1", month, 80),
-            CheckBudgetAlertsUseCase.dedupeKey("b1", month, 100),
+        val alreadyRaised = setOf(
+            CheckBudgetAlertsUseCase.notificationId("b1", month, BudgetAlertSlot.WARN),
+            CheckBudgetAlertsUseCase.notificationId("b1", month, BudgetAlertSlot.LIMIT),
         )
-        val result = useCase(listOf(budget), txns, alreadyFired, month, zone)
+        val result = useCase(listOf(budget), txns, alreadyRaised, month, zone)
         assertThat(result).isEmpty()
     }
 
     @Test
-    fun `fires 80 when only 100 already deduped`() {
+    fun `fires warn when only limit already raised`() {
         val budget = budget("b1", amount = "10000.00", yearMonth = month)
         val txns = listOf(expense("t1", "10000.00"))
-        val alreadyFired = setOf(CheckBudgetAlertsUseCase.dedupeKey("b1", month, 100))
-        val result = useCase(listOf(budget), txns, alreadyFired, month, zone)
-        assertThat(result.map { it.threshold }).containsExactly(80)
+        val alreadyRaised =
+            setOf(CheckBudgetAlertsUseCase.notificationId("b1", month, BudgetAlertSlot.LIMIT))
+        val result = useCase(listOf(budget), txns, alreadyRaised, month, zone)
+        assertThat(result.map { it.slot }).containsExactly(BudgetAlertSlot.WARN)
+    }
+
+    /**
+     * The month is part of the id, so a new month re-arms every rung automatically — this is
+     * what let the old BudgetAlertStore's explicit month-clear go away (ADR-0053).
+     */
+    @Test
+    fun `last month's raised ids do not suppress this month's rungs`() {
+        val budget = budget("b1", amount = "10000.00", yearMonth = month)
+        val txns = listOf(expense("t1", "8000.00"))
+        val lastMonth = setOf(
+            CheckBudgetAlertsUseCase.notificationId("b1", "2026-05", BudgetAlertSlot.WARN),
+        )
+        val result = useCase(listOf(budget), txns, lastMonth, month, zone)
+        assertThat(result.map { it.slot }).containsExactly(BudgetAlertSlot.WARN)
     }
 
     @Test
@@ -87,11 +106,11 @@ class CheckBudgetAlertsUseCaseTest {
     }
 
     @Test
-    fun `category budget fires at 80 for matching category`() {
+    fun `category budget fires warn for matching category`() {
         val budget = budget("b1", categoryId = "cat-food", amount = "3000.00", yearMonth = month)
         val txns = listOf(expense("t1", "2500.00", categoryId = "cat-food"))
         val result = useCase(listOf(budget), txns, emptySet(), month, zone)
-        assertThat(result.map { it.threshold }).containsExactly(80)
+        assertThat(result.map { it.slot }).containsExactly(BudgetAlertSlot.WARN)
     }
 
     @Test
@@ -102,7 +121,7 @@ class CheckBudgetAlertsUseCaseTest {
             expense("t2", "2000.00", categoryId = "cat-rent"),
         )
         val result = useCase(listOf(budget), txns, emptySet(), month, zone)
-        assertThat(result.map { it.threshold }).containsExactly(80)
+        assertThat(result.map { it.slot }).containsExactly(BudgetAlertSlot.WARN)
     }
 
     @Test
@@ -121,9 +140,27 @@ class CheckBudgetAlertsUseCaseTest {
         assertThat(result).isEmpty()
     }
 
+    /**
+     * The id shape is a synced contract (two clients raising the same rung must collide on one
+     * row) AND is amended by ADR-0054 to key on the rung NAME, never the numeric threshold —
+     * pin it so a later slider change can't silently re-key it.
+     */
     @Test
-    fun `dedupeKey format is stable`() {
-        assertThat(CheckBudgetAlertsUseCase.dedupeKey("abc", "2026-06", 80))
-            .isEqualTo("abc:2026-06:80")
+    fun `notification id is slot-named and stable`() {
+        assertThat(CheckBudgetAlertsUseCase.notificationId("abc", "2026-06", BudgetAlertSlot.WARN))
+            .isEqualTo("budget:abc:2026-06:warn")
+        assertThat(CheckBudgetAlertsUseCase.notificationId("abc", "2026-06", BudgetAlertSlot.LIMIT))
+            .isEqualTo("budget:abc:2026-06:limit")
+        assertThat(CheckBudgetAlertsUseCase.notificationId("abc", "2026-06", BudgetAlertSlot.OVER))
+            .isEqualTo("budget:abc:2026-06:over")
+    }
+
+    @Test
+    fun `every raised id carries the category prefix the inbox query filters on`() {
+        val budget = budget("b1", amount = "10000.00", yearMonth = month)
+        val txns = listOf(expense("t1", "10000.00"))
+        val result = useCase(listOf(budget), txns, emptySet(), month, zone)
+        assertThat(result.map { it.notificationId })
+            .containsExactly("budget:b1:2026-06:warn", "budget:b1:2026-06:limit")
     }
 }

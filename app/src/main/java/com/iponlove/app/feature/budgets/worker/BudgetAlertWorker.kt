@@ -5,15 +5,21 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkerParameters
-import com.iponlove.app.feature.budgets.data.BudgetAlertStore
-import com.iponlove.app.feature.budgets.domain.repository.BudgetRepository
+import com.iponlove.app.MainActivity
+import com.iponlove.app.feature.budgets.domain.usecase.BudgetAlertCopy
 import com.iponlove.app.feature.budgets.domain.usecase.CheckBudgetAlertsUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.yearMonthKey
-import com.iponlove.app.feature.budgets.presentation.BudgetAlertNotifier
+import com.iponlove.app.feature.budgets.domain.repository.BudgetRepository
 import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
 import com.iponlove.app.feature.categories.domain.usecase.AnalysisExclusion
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
+import com.iponlove.app.feature.notifications.domain.model.AppNotification
+import com.iponlove.app.feature.notifications.domain.model.NotificationCategory
+import com.iponlove.app.feature.notifications.domain.usecase.GetRaisedNotificationIdsUseCase
+import com.iponlove.app.feature.notifications.domain.usecase.PruneExpiredNotificationsUseCase
+import com.iponlove.app.feature.notifications.domain.usecase.RecordNotificationUseCase
+import com.iponlove.app.feature.notifications.presentation.SystemNotificationPresenter
 import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetAlertsEnabledUseCase
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import dagger.assisted.Assisted
@@ -21,6 +27,13 @@ import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
 import java.time.Instant
 
+/**
+ * The pilot producer for the notification inbox (ADR-0053): every crossed budget rung is written
+ * to the inbox first, and only a *newly created* row also raises the best-effort OS push. That
+ * one Boolean is what retired `BudgetAlertStore` — the inbox row's existence is now the dedup
+ * record, and because the ids embed the month, rung re-arming at month rollover falls out for
+ * free instead of needing the store's explicit month-clear.
+ */
 @HiltWorker
 class BudgetAlertWorker @AssistedInject constructor(
     @Assisted appContext: Context,
@@ -31,11 +44,25 @@ class BudgetAlertWorker @AssistedInject constructor(
     private val observePairingState: ObservePairingStateUseCase,
     private val checkBudgetAlerts: CheckBudgetAlertsUseCase,
     private val observeBudgetAlertsEnabled: ObserveBudgetAlertsEnabledUseCase,
-    private val alertStore: BudgetAlertStore,
-    private val notifier: BudgetAlertNotifier,
+    private val recordNotification: RecordNotificationUseCase,
+    private val getRaisedNotificationIds: GetRaisedNotificationIdsUseCase,
+    private val pruneExpiredNotifications: PruneExpiredNotificationsUseCase,
+    private val presenter: SystemNotificationPresenter,
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        // Opportunistic retention sweep — this worker already runs after every sync, so the
+        // 60-day window needs no scheduled job of its own (ADR-0053 decision 4, ADR-0012).
+        runCatching { pruneExpiredNotifications() }
+
+        // The Budgets category switch is a full gate: off means silent everywhere, no inbox row
+        // and no push (ADR-0053 decision 5 / ADR-0054 decision 1). This deliberately drops the
+        // old "mark fired even when suppressed" seeding — with the inbox authoritative, flipping
+        // the switch back on surfaces the budgets that are *actually* over right now rather than
+        // pretending the crossings never happened. Items 2-4 revisit this for the opt-in `over`
+        // rung, where seeding-while-off is the recommended behavior.
+        if (!observeBudgetAlertsEnabled().first()) return Result.success()
+
         val now = Instant.now()
         val currentCalendarMonth = yearMonthKey(now)
 
@@ -62,28 +89,50 @@ class BudgetAlertWorker @AssistedInject constructor(
         // shared/combined path excludes the partner's reimbursables too (parity with the Budgets tab).
         val excludedIds = AnalysisExclusion.excludedIds(categoryRepository.observeAllCategories().first())
 
-        val alreadyFired = alertStore.loadFired(currentCalendarMonth)
+        // One query for the whole category's already-raised ids (read, unread, and dismissed
+        // alike — a dismissed alert must never fire again), instead of a round trip per candidate.
+        val alreadyRaised = getRaisedNotificationIds(CheckBudgetAlertsUseCase.ID_PREFIX)
         val alerts = checkBudgetAlerts(
             budgets = budgets,
             transactions = AnalysisExclusion.retainAnalyzable(transactions, excludedIds) { it.categoryId },
-            alreadyFiredKeys = alreadyFired,
+            alreadyRaisedIds = alreadyRaised,
             currentMonth = currentCalendarMonth,
         ) + checkBudgetAlerts(
             budgets = sharedBudgets,
             transactions = AnalysisExclusion.retainAnalyzable(combinedTransactions, excludedIds) { it.categoryId },
-            alreadyFiredKeys = alreadyFired,
+            alreadyRaisedIds = alreadyRaised,
             currentMonth = currentCalendarMonth,
         )
 
-        // Marking fired even when suppressed (Item 7) prevents a backlog of stale alerts from
-        // dumping all at once if the user re-enables the toggle after several crossings.
-        val alertsEnabled = observeBudgetAlertsEnabled.invoke().first()
         for (alert in alerts) {
-            if (alertsEnabled) {
-                val categoryName = alert.budget.categoryId?.let { categoryRepository.getCategory(it)?.name }
-                notifier.fire(alert, categoryName)
+            val label = BudgetAlertCopy.label(
+                alert.budget.categoryId?.let { categoryRepository.getCategory(it)?.name },
+            )
+            val title = BudgetAlertCopy.title(alert.slot, label, alert.spentPercent)
+            val body = BudgetAlertCopy.body(alert.slot, label, alert.spentPercent)
+            val created = recordNotification(
+                id = alert.notificationId,
+                category = NotificationCategory.BUDGET,
+                title = title,
+                body = body,
+                deepLink = MainActivity.ROUTE_MANAGE,
+            )
+            // Push only on a genuinely new row: create-if-absent already collapsed the case where
+            // this device re-detects a crossing, or where the partner's/web client's row for the
+            // same rung arrived by sync first.
+            if (created) {
+                presenter.post(
+                    AppNotification(
+                        id = alert.notificationId,
+                        category = NotificationCategory.BUDGET,
+                        title = title,
+                        body = body,
+                        deepLink = MainActivity.ROUTE_MANAGE,
+                        createdAt = now,
+                        isRead = false,
+                    ),
+                )
             }
-            alertStore.markFired(alert.dedupeKey, currentCalendarMonth)
         }
 
         return Result.success()
