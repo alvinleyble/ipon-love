@@ -327,16 +327,24 @@ private fun IponAppContent(
             // Each pinnable module is its own nested graph (ADR-0033) so its back stack survives
             // tab switches (saveState/restoreState) and re-tapping the tab pops it back to root.
 
-            // Records: root + Recurring (Notes moved to its own top-level module — Item 13).
+            // Records: root only (Notes moved to its own top-level module — Item 13; Recurring
+            // moved to its own top-level module — Item 8).
             navigation(startDestination = NavRegistry.RECORDS.route, route = NavRegistry.RECORDS.graphRoute()) {
                 composable(NavRegistry.RECORDS.route) {
                     TransactionsScreen(
-                        onOpenRecurring = { navController.navigate(NavRegistry.RECURRING.route) },
+                        onOpenRecurring = { navController.switchTab(NavRegistry.RECURRING) },
                         onAddTransaction = { navController.navigate(ADD_TRANSACTION_ROUTE) },
                         onEditTransaction = { id -> navController.navigate("$EDIT_TRANSACTION_ROUTE/$id") },
                         onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                     )
                 }
+            }
+
+            // Recurring: single-node graph (uniform nesting per ADR-0033 decision 1), promoted
+            // out of Records' nested graph to its own top-level module (Item 8) — reachable via
+            // the More sheet/navbar editor like any other module, plus Records' own "Recurring
+            // rules" overflow shortcut above.
+            navigation(startDestination = NavRegistry.RECURRING.route, route = NavRegistry.RECURRING.graphRoute()) {
                 composable(NavRegistry.RECURRING.route) {
                     RecurringScreen(
                         onBack = { navController.popBackStack() },
