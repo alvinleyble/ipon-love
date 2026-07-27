@@ -116,6 +116,10 @@ _Avoid_: covered, fronted
 Repaying a partner debt as real money movement: two ledger legs — the payor's outflow (their account) and the receiver's inflow (their account, an optional inline affordance on the debt board). Both legs are EXPENSE/INCOME flagged `is_settlement` so balances move but Analysis excludes them. Distinct from a bare [[Partner debt payment]], which need not touch any account. See ADR-0019.
 _Avoid_: payback transaction, repayment transfer
 
+**Overpay cascade**:
+Paying one lump sum that spreads across several of your same-direction debts in one action. Entry is a normal [[Settlement (debt)]] on one debt; typing more than that debt's remaining reveals your other "I owe" debts to **tick** into the payment. The lump fills the ticked debts **in tick order** (first ticked paid first, each floored at its remaining, last takes the remainder); its **ceiling** is the sum of the ticked debts' remaining (blocked above it, never capped, never flips direction). One EXPENSE backs all the resulting payments (linked via `payorTxnId`); the whole write is atomic. Distinct from [[Debt netting]] (create-time, automatic, opposing debts) — the cascade is settle-time, user-driven, and only reads already-netted `remaining`. See ADR-0055.
+_Avoid_: cascade (bare), overflow, multi-settle, bulk pay
+
 ### Goals
 
 **Savings goal**:
@@ -211,6 +215,28 @@ _Avoid_: account merge (no data is merged — it's one account with two sign-in 
 **PIN lockout**:
 A flat 5-wrong-attempt threshold on the PIN path, followed by a 30-second timed cooldown. The counter persists in DataStore (survives a force-kill) and resets only on a successful unlock, never on elapsed time alone. "Forgot PIN" (email+password re-auth) stays available throughout as an opt-in escape hatch — the lockout never forces it. Biometric's OS-level lockout (`ERROR_LOCKOUT`/`ERROR_LOCKOUT_PERMANENT`) is surfaced with a message rather than silently falling back to the PIN pad. See ADR-0028.
 _Avoid_: PIN throttling, brute-force protection
+
+### Notifications
+
+**Notification inbox**:
+The per-user, cloud-synced list of past notifications that is the *source of truth* for every notification the app raises — a budget alert, a recurring due-date reminder, a partner-debt alert. A notification is written here first; an OS system-tray push is a secondary, best-effort courtesy on top (Way A). Strictly own-user (never replicated to a partner). See ADR-0053.
+_Avoid_: notification center, feed, activity log
+
+**Inbox bell**:
+The bell icon in the top-right of every top-level screen (beside the [[Privacy mode|privacy eye]]) that opens the [[Notification inbox]], carrying an unread-count badge. The *only* thing "bell" may refer to on its own is the unpair broadcast bell (the Realtime unpair signal) — for the notification UI, always say **inbox bell**.
+_Avoid_: bell (ambiguous with the unpair broadcast bell), notification icon
+
+**Notification** (inbox entry):
+One entry in the [[Notification inbox]], identified by a **deterministic** per-category id (e.g. `budget:{id}:{month}:{slot}` where `slot ∈ {warn, limit, over}`, `recurring:{occurrenceId}`, `debt:{debtId}`) so the same real-world event produced independently on two devices merges into one row rather than duplicating. Carries denormalized display text + a deep-link target, an unread/read state, and is auto-purged 60 days after it is raised. Generation is *create-if-absent* — re-detecting an event never overwrites its read/dismissed state. (The budget id uses a **slot name**, not the numeric threshold, so a user-configurable threshold that moves mid-month — or two devices set to different thresholds — still map to one row; ADR-0054 amends ADR-0053's original `{threshold}` form.)
+_Avoid_: alert (reserve for the budget-alert source specifically), message
+
+**Budget alert rung**:
+One of the three points at which a [[budget|Budget]] can raise a [[Notification]] in a month: **warn** (user-set 5–100%, default 80%), **limit** (fixed 100%), **over** (user-set 110–300%, default 120%, own opt-in toggle, default off). The warn and limit rungs ride the master Budgets switch; each rung fires at most once per month (deduped by slot name, see [[Notification]]). warn is suppressed at exactly 100% (limit takes over); over is a single trip-wire, not repeated nagging. See ADR-0054.
+_Avoid_: threshold (ambiguous — a rung has a threshold), tier, level
+
+**Budget mute**:
+A per-device, per-budget-line silence toggle (in each Budgets-tab row's ⋮ menu) that stops *all three* [[Budget alert rung|rungs]] for that one budget, in both the inbox and OS push. Stored as a **local** preference keyed so it persists across months (not a synced `budgets` column) — so on a shared budget it silences only your own alerts, never the partner's. See ADR-0054.
+_Avoid_: disable notifications (too broad), per-budget toggle
 
 ### Premium & gating
 
