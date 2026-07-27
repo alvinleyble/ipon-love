@@ -1,5 +1,7 @@
 # Recurring due-date reminders ride the foreground reactive-notification pattern; off-app alarm scheduling is deliberately declined
 
+> **Amended by [ADR-0056](0056-off-app-recurring-reminder-periodic-sweep.md)** (v1.7.1 Item 12, 2026-07-28). Off-app reach now exists as an **opt-in** `PeriodicWorkRequest` sweep, default OFF — so the third Consequence below ("off-app reach is explicitly out of scope") is superseded. **Decision 1's rejection of `AlarmManager` stands unchanged and is reaffirmed on stronger grounds** in ADR-0056 decision 1; do not read the amendment as licence to revisit it. **Correction:** this ADR's Context claims off-app scheduling "cuts against ADR-0012's foreground-only posture" — that was overstated. [ADR-0012](0012-interactive-in-process-background-workmanager.md)'s decision text explicitly assigns WorkManager "any periodic sweep"; what it forbids is routing *interactive* work through WorkManager. A periodic worker was never evaluated here — only `AlarmManager` was.
+
 ## Context
 
 v1.7.1 Item 1, grilled 2026-07-25. Resolves the deferral recorded in [ADR-0048](0048-confirm-on-arrival-recurring.md) decision 10 and split out as [deferred.md Item 40](../build/deferred.md) — a due-date reminder notification for recurring rules, so a user is nudged to confirm a pending occurrence rather than only discovering it passively on the Records "To confirm" card.

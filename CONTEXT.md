@@ -238,6 +238,14 @@ _Avoid_: threshold (ambiguous — a rung has a threshold), tier, level
 A per-device, per-budget-line silence toggle (in each Budgets-tab row's ⋮ menu) that stops *all three* [[Budget alert rung|rungs]] for that one budget, in both the inbox and OS push. Stored as a **local** preference keyed so it persists across months (not a synced `budgets` column) — so on a shared budget it silences only your own alerts, never the partner's. See ADR-0054.
 _Avoid_: disable notifications (too broad), per-budget toggle
 
+**Recurring due-date reminder**:
+The [[Notification]] raised when a confirm-on-arrival recurring rule's occurrence has come due and hasn't been recorded yet. **Catch-up, not calendar-exact**: it fires the first time the app *checks* on or after the due date, never before, and exactly once per occurrence. Auto-posting rules never raise one — they record silently, so there is nothing to confirm; [[Paused (recurring rule)|paused]] rules and already-confirmed occurrences are suppressed for free. See ADR-0052.
+_Avoid_: due alert, bill reminder (the rule may be income), payday notification
+
+**Off-app delivery**:
+An opt-in property of a notification category: the app wakes itself on a schedule to raise it, instead of only checking when it is opened. Default **off** — the app's normal posture is that notifications are only *detected* while it is running. Only the [[Recurring due-date reminder]] can offer it, because it is the only category whose trigger is **the passage of time** rather than data arriving (which would need a sync, and sync is foreground-only). Bounded by a fixed daytime **delivery window** so a wake-up can't buzz at 3am, and **best-effort by nature** — a phone that force-stops the app delivers nothing until it is next opened, which is why the setting's own copy admits the limitation. See ADR-0056.
+_Avoid_: background notification, push (means the OS tray surface, not the trigger), scheduled reminder (implies a chosen clock time, which it isn't)
+
 ### Premium & gating
 
 **Entitlement**:

@@ -29,6 +29,24 @@ When an id is a deterministic function of stable inputs, two clients independent
 
 - **To pin at grill:** exact date-string format for `{occurrenceDate}` (ISO `yyyy-MM-dd`? confirm); the full `{key}` list for starter items (from StarterCatalog); byte-order details of the namespace serialization; a shared conformance vector (known name → expected UUID) the web team can unit-test against.
 
+### 1b. Notification-inbox composite ids — a second, distinct scheme (✅ BUILT + live, v1.7.1 Item 6 / ADR-0053)
+
+The synced notification inbox (`notifications` table, `supabase/schema.sql`, migration #22, Room v30) does **not** use v5-UUID hashing — `id` is a **plain TEXT deterministic composite key**, built client-side from the event itself:
+
+| Category | Id format | Notes |
+|---|---|---|
+| Budget alert | `budget:{budgetId}:{yyyy-MM}:{slot}` | `slot ∈ {warn, limit, over}` — amended from an earlier `{threshold}` design (ADR-0054) specifically so per-device threshold values stay duplicate-safe across clients. |
+| Recurring reminder | `recurring:{occurrenceId}` | |
+| Partner debt | `debt:{debtId}` | |
+
+Web MUST build these exact strings so a phone-detected and a web-detected instance of the same event **merge into one row**, not two.
+
+- **Generation is create-if-absent, never upsert-over** — `record()` is implemented as `@Insert(IGNORE)` (returns −1 on conflict). This is intentional: re-detecting an already-recorded event must never clobber its `is_read`/dismissed state. Web's write path must use the equivalent (`INSERT ... ON CONFLICT DO NOTHING`), not a plain upsert.
+- **The row's existence *is* the dedup record** — it retired the earlier local `BudgetAlertStore`. Don't build a second, web-local dedup store; trust the shared row.
+- **Retention is a sanctioned exception to tombstone-only (ADR-0010):** rows older than **60 days** are genuinely hard-deleted by a client sweep, not soft-deleted — safe only because every client computes the identical cutoff (`now() - 60d`, not per-user timezone-shifted). Web's sweep (if it runs one) must use the same cutoff rule. Ordinary user dismiss/clear-all stays an ordinary soft-delete that syncs normally.
+- **Own-user-only, no partner variant, never replicated** — RLS is own-row (`for all using (user_id = auth.uid())`); there is no redacting view. A couple-relevant event (e.g. "partner logged a debt") is generated **independently by each client** from an already-synced base row (the debt), landing as the *recipient's own* inbox row — it is never copied cross-user.
+- **This table was deliberately built *now*, not deferred, specifically because the web app is imminent** (ADR-0053's own stated rationale) — it's the one piece of this contract that's already proven out, not speculative. See also **W9** in [web-phase-0-prep.md](web-phase-0-prep.md#w9--evaluate-server-side-notification-generation-explicitly-deferred-by-adr-0053) for the piece of this ADR-0053 explicitly deferred to the web build.
+
 ---
 
 ## 2. Last-Writer-Wins write rule
@@ -50,7 +68,8 @@ Both push and pull process tables in FK order; upserts are idempotent by `id`; a
 
 - **Core order (ADR-0009):** `users → couples → accounts → categories → recurring_rules → transactions → budgets → notes → note_images`.
 - **Partner variants** follow their owned counterparts.
-- **Newer leaves to slot in:** `savings_goals` + `goal_contributions` (V1.5), `transaction_images` (V1.6.5), `partner_debts` + `partner_debt_payments`, and the **notification inbox at the very end** (ADR-0053, own-user-only, no partner variant).
+- **Newer leaves to slot in:** `savings_goals` + `goal_contributions` (V1.5), `transaction_images` (V1.6.5), `partner_debts` + `partner_debt_payments`.
+- **✅ Confirmed live:** `notifications` sits at the **very end** of the order (`SyncTable.NOTIFICATIONS` is last) — built 2026-07-27 (v1.7.1 Item 6, migration #22, Room v30). Own-user-only, no partner variant — see §1b above.
 - **To pin at grill:** the single authoritative full ordering incl. every table currently in `SyncTable`/`schema.sql`, and the pull cursor rule (`server_rev > cursor`, per-table cursor).
 
 ---
@@ -63,6 +82,7 @@ Both push and pull process tables in FK order; upserts are idempotent by `id`; a
 - **Wire format:** JSON **double** (`BigDecimalSerializer` uses `PrimitiveKind.DOUBLE`). JS `Number` is also IEEE-754 double, so web is naturally consistent with the wire *for `numeric(14,2)` magnitudes* — but web MUST NOT do arithmetic in native floats.
 - **Derived per-client (never stored):** account balance (opening + ledger, ADR-0007), analysis aggregations, budget spent/percent, debt splits, netting. Two clients that round differently show different numbers for identical rows.
 - **To pin at grill:** the exact rounding mode + scale for every derived computation (default appears to be HALF_UP, scale 2 — confirm per site), division/percent rules, and a mandate that web use a decimal library (e.g. decimal.js), not `number`, for all money math. Provide worked examples (budget %, transfer split, netting) as conformance vectors.
+- **New derived-math site to pin (added 2026-07-28, v1.7.1 Item 10 / ADR-0055):** the debt-overpay allocation — `DebtAllocationCalculator.allocate(orderedTickedDebts, lump)`, a pure function: fills same-direction "I owe" debts **in tick order**, each floored at its own remaining, the **last-ticked debt absorbs the remainder**, blocked (never silently capped) above the ticked-total ceiling. If web ever builds or even just *renders* this feature, the fill algorithm must match exactly — it determines which named debt shows as paid, not just a total.
 
 ---
 
