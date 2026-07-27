@@ -1,6 +1,6 @@
 ---
 name: book
-description: Book a pending change as an item in the in-flight version doc BEFORE building it, in the Love, Ipon repo. Use at the start of any new slice/change — states the model+effort choice, records the item stub in the house format, and grills first if the design is novel. The middle of the loop between /orient (start) and /wrap (close).
+description: Book a pending change as an item in the in-flight version doc BEFORE building it, in the Love, Ipon repo. Use at the start of any new slice/change — states the model+effort choice and records the item stub in the house format, flagging it "not yet grilled" if the design is novel (grilling happens later, as its own explicit step). The middle of the loop between /orient (start) and /wrap (close).
 ---
 
 # /book — book a slice before building
@@ -17,9 +17,9 @@ Nothing here commits. The item stub stays uncommitted and rides along in `/wrap`
 
 2. **State the model + effort with a one-sentence rationale**, per CLAUDE.md's rule and the `feedback-model-effort-before-build` memory. Sonnet by default; Opus only when the design is genuinely novel, spans multiple ADRs, involves shared/couple state, or you're unsure how it fits before writing code.
 
-## Phase 2 — grill if novel
+## Phase 2 — flag if novel (do not grill here)
 
-3. **Decide if it needs a grill.** If the change is a straight pattern-follow (new entity→DAO→syncer→usecase→screen, or a UI/copy tweak), skip. If it's cross-ADR, touches sync/entitlement/couple-shared state, or you can't yet describe the exact shape — run `/grilling` first and book the *grilled* design, not the first guess. Reference the governing ADR (or note a new ADR is needed).
+3. **Decide if it needs a grill.** If the change is a straight pattern-follow (new entity→DAO→syncer→usecase→screen, or a UI/copy tweak), skip. If it's cross-ADR, touches sync/entitlement/couple-shared state, or you can't yet describe the exact shape — **do not run `/grilling` in this invocation.** Book it as a plain stub marked "not yet grilled," listing the open questions the grill will need to resolve and the ADR(s) in tension. Grilling is always a separate, later, explicitly-requested step (its own message or session) — same rule as building: never automatic in the turn that booked it. Reference the governing ADR (or note a new ADR is needed).
 
 ## Phase 3 — write the item stub
 
