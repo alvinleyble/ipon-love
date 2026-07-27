@@ -37,7 +37,8 @@ import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 /**
  * Notifications sub-screen. Sectioned since v1.7.1 Items 2-4 (ADR-0054): a "Budgets" section
  * groups the master switch with the two configurable rungs; Recurring reminders (Item 1) stays
- * its own flat row outside any section (its own grill decided it doesn't warrant one).
+ * its own flat row outside any section (its own grill decided it doesn't warrant one). A "Couple"
+ * section (Item 9) holds the sole partner-debt-alert switch and hides entirely while unpaired.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,6 +130,22 @@ fun NotificationsScreen(
                     )
                 },
             )
+            // Hidden entirely while unpaired (Item 9 grill) — the Debt Tracker itself is
+            // paired-only, so a mute for it makes no sense to show before pairing.
+            if (state.isPaired) {
+                SettingsSectionHeader("Couple")
+                SettingsRow(
+                    headline = "Partner debt alerts",
+                    supporting = "Notify me when my partner logs a new debt I owe.",
+                    index = 5,
+                    trailing = {
+                        Switch(
+                            checked = state.partnerDebtAlertsEnabled,
+                            onCheckedChange = viewModel::setPartnerDebtAlertsEnabled,
+                        )
+                    },
+                )
+            }
         }
     }
 }

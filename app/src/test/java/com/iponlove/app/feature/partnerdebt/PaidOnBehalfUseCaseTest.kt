@@ -3,6 +3,7 @@ package com.iponlove.app.feature.partnerdebt
 import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.feature.partnerdebt.data.PartnerDebtRepositoryImpl
+import com.iponlove.app.feature.partnerdebt.data.PartnerDebtSeenStore
 import com.iponlove.app.feature.partnerdebt.domain.usecase.ApplyDebtNettingUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.PaidOnBehalfUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.UpsertPartnerDebtUseCase
@@ -11,6 +12,7 @@ import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import com.iponlove.app.feature.transactions.domain.usecase.UpsertTransactionUseCase
+import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -53,7 +55,11 @@ class PaidOnBehalfUseCaseTest {
     private val dao = FakePartnerDebtDao()
     private val clock = SyncClock(now = { Instant.ofEpochMilli(10_000) })
     private val debtRepo = PartnerDebtRepositoryImpl(dao, clock)
-    private val upsertDebt = UpsertPartnerDebtUseCase(debtRepo, ApplyDebtNettingUseCase(debtRepo, clock))
+    private val upsertDebt = UpsertPartnerDebtUseCase(
+        debtRepo,
+        ApplyDebtNettingUseCase(debtRepo, clock),
+        mockk<PartnerDebtSeenStore>(relaxed = true),
+    )
     private val txnRepo = RecordingTransactionRepository()
     private val upsertTransaction = UpsertTransactionUseCase(txnRepo)
     private val useCase = PaidOnBehalfUseCase(upsertTransaction, upsertDebt)

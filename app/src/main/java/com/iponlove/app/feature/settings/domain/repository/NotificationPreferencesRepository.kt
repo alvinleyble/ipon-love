@@ -11,6 +11,10 @@ interface NotificationPreferencesRepository {
     fun observeRecurringRemindersEnabled(): Flow<Boolean>
     suspend fun setRecurringRemindersEnabled(enabled: Boolean)
 
+    /** "Partner logs a new debt" alerts (Item 9 grill) — one toggle, default ON. */
+    fun observePartnerDebtAlertsEnabled(): Flow<Boolean>
+    suspend fun setPartnerDebtAlertsEnabled(enabled: Boolean)
+
     /** The single warn rung, applies to every budget (ADR-0054 decision 2) — 5-100%, default 80. */
     fun observeBudgetWarnThresholdPercent(): Flow<Int>
     suspend fun setBudgetWarnThresholdPercent(percent: Int)

@@ -2,20 +2,24 @@ package com.iponlove.app.feature.settings.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetAlertsEnabledUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetOverAlertsEnabledUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetOverThresholdUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetWarnThresholdUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObservePartnerDebtAlertsEnabledUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveRecurringRemindersEnabledUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetBudgetAlertsEnabledUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetBudgetOverAlertsEnabledUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetBudgetOverThresholdUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetBudgetWarnThresholdUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetPartnerDebtAlertsEnabledUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetRecurringRemindersEnabledUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -33,6 +37,9 @@ class NotificationsViewModel @Inject constructor(
     observeBudgetOverThreshold: ObserveBudgetOverThresholdUseCase,
     private val setRecurringRemindersEnabledUseCase: SetRecurringRemindersEnabledUseCase,
     observeRecurringRemindersEnabled: ObserveRecurringRemindersEnabledUseCase,
+    private val setPartnerDebtAlertsEnabledUseCase: SetPartnerDebtAlertsEnabledUseCase,
+    observePartnerDebtAlertsEnabled: ObservePartnerDebtAlertsEnabledUseCase,
+    observeCoupleMembers: ObserveCoupleMembersUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NotificationsUiState())
@@ -54,6 +61,13 @@ class NotificationsViewModel @Inject constructor(
         observeRecurringRemindersEnabled()
             .onEach { enabled -> _uiState.update { it.copy(recurringRemindersEnabled = enabled) } }
             .launchIn(viewModelScope)
+        observePartnerDebtAlertsEnabled()
+            .onEach { enabled -> _uiState.update { it.copy(partnerDebtAlertsEnabled = enabled) } }
+            .launchIn(viewModelScope)
+        observeCoupleMembers()
+            .map { it != null }
+            .onEach { paired -> _uiState.update { it.copy(isPaired = paired) } }
+            .launchIn(viewModelScope)
     }
 
     fun setBudgetAlertsEnabled(enabled: Boolean) {
@@ -74,5 +88,9 @@ class NotificationsViewModel @Inject constructor(
 
     fun setRecurringRemindersEnabled(enabled: Boolean) {
         viewModelScope.launch { setRecurringRemindersEnabledUseCase(enabled) }
+    }
+
+    fun setPartnerDebtAlertsEnabled(enabled: Boolean) {
+        viewModelScope.launch { setPartnerDebtAlertsEnabledUseCase(enabled) }
     }
 }

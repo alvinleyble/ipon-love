@@ -52,6 +52,7 @@ import com.iponlove.app.core.sync.SyncWorker
 import com.iponlove.app.core.ui.LocalCurrencySymbol
 import com.iponlove.app.core.ui.LocalPrivacyMode
 import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
+import com.iponlove.app.feature.partnerdebt.worker.PartnerDebtNotificationWorker
 import com.iponlove.app.feature.recurring.worker.RecurringReminderWorker
 import com.iponlove.app.core.ui.theme.IponTheme
 import com.iponlove.app.feature.applock.domain.model.AppLockPreferences
@@ -256,6 +257,11 @@ class MainActivity : FragmentActivity() {
                                 ExistingWorkPolicy.REPLACE,
                                 RecurringReminderWorker.buildRequest(),
                             )
+                            wm.enqueueUniqueWork(
+                                PartnerDebtNotificationWorker.WORK_NAME,
+                                ExistingWorkPolicy.REPLACE,
+                                PartnerDebtNotificationWorker.buildRequest(),
+                            )
                             Widgets.updateAll(applicationContext)
                         }
                         LaunchedEffect(current.userId) { watchUnpair() }
@@ -406,6 +412,12 @@ class MainActivity : FragmentActivity() {
         /** [EXTRA_START_ROUTE] value for Records — hosts the "To confirm" card recurring
          *  due-date reminders deep-link to (v1.7.1 Item 1, ADR-0052 decision 6). */
         const val ROUTE_RECORDS = "records"
+
+        /** [EXTRA_START_ROUTE] value for Couple — the partner-debt alert's tap target (v1.7.1
+         *  Item 9). Lands on the module root (Combined tab), one tap from Debts; jumping straight
+         *  to the specific debt row would need extending the deep-link plumbing past module-root
+         *  (flagged, not built here — a scope call, not an oversight). */
+        const val ROUTE_COUPLE = "couple"
 
         private const val TAG = "MainActivity"
     }

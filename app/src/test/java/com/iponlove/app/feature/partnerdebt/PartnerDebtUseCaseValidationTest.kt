@@ -2,10 +2,12 @@ package com.iponlove.app.feature.partnerdebt
 
 import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.feature.partnerdebt.data.PartnerDebtRepositoryImpl
+import com.iponlove.app.feature.partnerdebt.data.PartnerDebtSeenStore
 import com.iponlove.app.feature.partnerdebt.domain.usecase.ApplyDebtNettingUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.RecordDebtPaymentUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.UpsertPartnerDebtUseCase
 import com.iponlove.app.core.sync.SyncClock
+import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.time.Instant
@@ -17,7 +19,8 @@ class PartnerDebtUseCaseValidationTest {
     private val clock = SyncClock(now = { Instant.ofEpochMilli(0) })
     private val repository = PartnerDebtRepositoryImpl(dao, clock)
     private val applyNetting = ApplyDebtNettingUseCase(repository, clock)
-    private val upsertDebt = UpsertPartnerDebtUseCase(repository, applyNetting)
+    private val seenStore = mockk<PartnerDebtSeenStore>(relaxed = true)
+    private val upsertDebt = UpsertPartnerDebtUseCase(repository, applyNetting, seenStore)
     private val recordPayment = RecordDebtPaymentUseCase(repository)
 
     @Test

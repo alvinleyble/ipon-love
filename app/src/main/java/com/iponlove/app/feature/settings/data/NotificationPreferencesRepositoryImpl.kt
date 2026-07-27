@@ -30,6 +30,13 @@ class NotificationPreferencesRepositoryImpl @Inject constructor(
         dataStore.edit { p -> p[KEY_RECURRING_REMINDERS_ENABLED] = enabled }
     }
 
+    override fun observePartnerDebtAlertsEnabled(): Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[KEY_PARTNER_DEBT_ALERTS_ENABLED] ?: true }
+
+    override suspend fun setPartnerDebtAlertsEnabled(enabled: Boolean) {
+        dataStore.edit { p -> p[KEY_PARTNER_DEBT_ALERTS_ENABLED] = enabled }
+    }
+
     override fun observeBudgetWarnThresholdPercent(): Flow<Int> =
         dataStore.data.map { prefs -> prefs[KEY_BUDGET_WARN_THRESHOLD] ?: 80 }
 
@@ -64,6 +71,7 @@ class NotificationPreferencesRepositoryImpl @Inject constructor(
     private companion object {
         val KEY_BUDGET_ALERTS_ENABLED = booleanPreferencesKey("budget_alerts_enabled")
         val KEY_RECURRING_REMINDERS_ENABLED = booleanPreferencesKey("recurring_reminders_enabled")
+        val KEY_PARTNER_DEBT_ALERTS_ENABLED = booleanPreferencesKey("partner_debt_alerts_enabled")
         val KEY_BUDGET_WARN_THRESHOLD = intPreferencesKey("budget_warn_threshold_percent")
         val KEY_BUDGET_OVER_ENABLED = booleanPreferencesKey("budget_over_alerts_enabled")
         val KEY_BUDGET_OVER_THRESHOLD = intPreferencesKey("budget_over_threshold_percent")

@@ -13,6 +13,7 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
+import com.iponlove.app.feature.partnerdebt.worker.PartnerDebtNotificationWorker
 import com.iponlove.app.feature.recurring.worker.RecurringReminderWorker
 import com.iponlove.app.feature.widget.presentation.Widgets
 import dagger.assisted.Assisted
@@ -40,6 +41,7 @@ class SyncWorker @AssistedInject constructor(
         Widgets.updateAll(applicationContext)
         enqueueBudgetAlerts()
         enqueueRecurringReminders()
+        enqueuePartnerDebtAlerts()
         Result.success()
     } catch (e: Exception) {
         if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.failure()
@@ -58,6 +60,14 @@ class SyncWorker @AssistedInject constructor(
             RecurringReminderWorker.WORK_NAME,
             ExistingWorkPolicy.REPLACE,
             RecurringReminderWorker.buildRequest(),
+        )
+    }
+
+    private fun enqueuePartnerDebtAlerts() {
+        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            PartnerDebtNotificationWorker.WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            PartnerDebtNotificationWorker.buildRequest(),
         )
     }
 

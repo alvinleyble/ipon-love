@@ -16,4 +16,9 @@ data class NotificationsUiState(
     val budgetOverThresholdPercent: Int = 120,
     /** Recurring due-date reminders (ADR-0052 decision 4) — one combined toggle, default ON. */
     val recurringRemindersEnabled: Boolean = true,
+    /** "Partner logs a new debt" alerts (Item 9 grill) — default ON. */
+    val partnerDebtAlertsEnabled: Boolean = true,
+    /** Gates the Couple section entirely — hidden while unpaired, matching the Debt Tracker
+     *  itself being paired-only. */
+    val isPaired: Boolean = false,
 )
