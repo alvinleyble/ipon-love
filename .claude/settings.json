@@ -181,6 +181,16 @@
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/lovzay/ipon-love/.claude/hooks/ondevice-completion-nudge.sh"
+          }
+        ]
+      }
     ]
   }
 }
