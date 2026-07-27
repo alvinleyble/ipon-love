@@ -112,6 +112,7 @@ fun BudgetsBody(
                             onDelete = { viewModel.delete(row.id) },
                             onResetRollover = { viewModel.resetRollover(row) },
                             onDuplicate = { viewModel.duplicateToNextMonth(row) },
+                            onToggleMute = { viewModel.toggleMute(row) },
                         )
                     }
                 }
@@ -197,6 +198,7 @@ private fun BudgetCard(
     onDelete: () -> Unit,
     onResetRollover: () -> Unit,
     onDuplicate: () -> Unit,
+    onToggleMute: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var confirmReset by remember { mutableStateOf(false) }
@@ -214,6 +216,10 @@ private fun BudgetCard(
                     fontWeight = FontWeight.Bold,
                     color = colors.textPrimary,
                 )
+                if (row.isMuted) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(text = "🔕", style = MaterialTheme.typography.titleMedium)
+                }
                 if (row.isShared) {
                     Spacer(Modifier.width(8.dp))
                     SharedBadge()
@@ -230,6 +236,10 @@ private fun BudgetCard(
                                 onClick = { menuOpen = false; confirmReset = true },
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text(if (row.isMuted) "Unmute alerts" else "Mute alerts") },
+                            onClick = { menuOpen = false; onToggleMute() },
+                        )
                         DropdownMenuItem(
                             text = { Text("Duplicate for $nextMonthShortLabel") },
                             onClick = { menuOpen = false; onDuplicate() },

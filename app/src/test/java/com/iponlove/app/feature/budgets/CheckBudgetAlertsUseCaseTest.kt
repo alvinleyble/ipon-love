@@ -163,4 +163,75 @@ class CheckBudgetAlertsUseCaseTest {
         assertThat(result.map { it.notificationId })
             .containsExactly("budget:b1:2026-06:warn", "budget:b1:2026-06:limit")
     }
+
+    // --- ADR-0054 (Items 2-4): configurable warn/over rungs, built by CheckBudgetAlertsUseCase.rungs() ---
+
+    @Test
+    fun `rungs honors a user-chosen warn percent`() {
+        val budget = budget("b1", amount = "10000.00", yearMonth = month)
+        val txns = listOf(expense("t1", "6000.00")) // 60%
+        val rungs = CheckBudgetAlertsUseCase.rungs(warnPercent = 60, overPercent = null)
+        val result = useCase(listOf(budget), txns, emptySet(), month, zone, rungs)
+        assertThat(result.map { it.slot }).containsExactly(BudgetAlertSlot.WARN)
+    }
+
+    @Test
+    fun `rungs suppresses warn when dragged to exactly 100 (decision 4)`() {
+        val budget = budget("b1", amount = "10000.00", yearMonth = month)
+        val txns = listOf(expense("t1", "10000.00")) // 100%
+        val rungs = CheckBudgetAlertsUseCase.rungs(warnPercent = 100, overPercent = null)
+        val result = useCase(listOf(budget), txns, emptySet(), month, zone, rungs)
+        assertThat(result.map { it.slot }).containsExactly(BudgetAlertSlot.LIMIT)
+    }
+
+    @Test
+    fun `rungs omits over entirely when its toggle is off (overPercent null)`() {
+        val budget = budget("b1", amount = "10000.00", yearMonth = month)
+        val txns = listOf(expense("t1", "30000.00")) // 300%, way past any over threshold
+        val rungs = CheckBudgetAlertsUseCase.rungs(warnPercent = 80, overPercent = null)
+        val result = useCase(listOf(budget), txns, emptySet(), month, zone, rungs)
+        assertThat(result.map { it.slot }).containsExactly(BudgetAlertSlot.WARN, BudgetAlertSlot.LIMIT)
+    }
+
+    @Test
+    fun `rungs fires over at the user-chosen threshold when enabled`() {
+        val budget = budget("b1", amount = "10000.00", yearMonth = month)
+        val txns = listOf(expense("t1", "12000.00")) // 120%
+        val rungs = CheckBudgetAlertsUseCase.rungs(warnPercent = 80, overPercent = 120)
+        val alreadyRaised = setOf(
+            CheckBudgetAlertsUseCase.notificationId("b1", month, BudgetAlertSlot.WARN),
+            CheckBudgetAlertsUseCase.notificationId("b1", month, BudgetAlertSlot.LIMIT),
+        )
+        val result = useCase(listOf(budget), txns, alreadyRaised, month, zone, rungs)
+        assertThat(result.map { it.slot }).containsExactly(BudgetAlertSlot.OVER)
+    }
+
+    @Test
+    fun `rungs does not fire over below the user-chosen threshold`() {
+        val budget = budget("b1", amount = "10000.00", yearMonth = month)
+        val txns = listOf(expense("t1", "11000.00")) // 110%, below a 120% over threshold
+        val rungs = CheckBudgetAlertsUseCase.rungs(warnPercent = 80, overPercent = 120)
+        val alreadyRaised = setOf(
+            CheckBudgetAlertsUseCase.notificationId("b1", month, BudgetAlertSlot.WARN),
+            CheckBudgetAlertsUseCase.notificationId("b1", month, BudgetAlertSlot.LIMIT),
+        )
+        val result = useCase(listOf(budget), txns, alreadyRaised, month, zone, rungs)
+        assertThat(result).isEmpty()
+    }
+
+    @Test
+    fun `over does not re-fire after the threshold slider moves mid-month (decision 3)`() {
+        // Already raised at over=120; the user then lowers the slider to 110. Since dedup keys on
+        // the slot name (not the number), the already-fired rung must stay suppressed.
+        val budget = budget("b1", amount = "10000.00", yearMonth = month)
+        val txns = listOf(expense("t1", "12500.00")) // 125%
+        val rungs = CheckBudgetAlertsUseCase.rungs(warnPercent = 80, overPercent = 110)
+        val alreadyRaised = setOf(
+            CheckBudgetAlertsUseCase.notificationId("b1", month, BudgetAlertSlot.WARN),
+            CheckBudgetAlertsUseCase.notificationId("b1", month, BudgetAlertSlot.LIMIT),
+            CheckBudgetAlertsUseCase.notificationId("b1", month, BudgetAlertSlot.OVER),
+        )
+        val result = useCase(listOf(budget), txns, alreadyRaised, month, zone, rungs)
+        assertThat(result).isEmpty()
+    }
 }

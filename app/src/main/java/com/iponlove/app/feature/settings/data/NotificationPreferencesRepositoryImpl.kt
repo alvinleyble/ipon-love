@@ -4,6 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.iponlove.app.feature.settings.di.FinanceDataStore
 import com.iponlove.app.feature.settings.domain.repository.NotificationPreferencesRepository
 import kotlinx.coroutines.flow.Flow
@@ -28,8 +30,43 @@ class NotificationPreferencesRepositoryImpl @Inject constructor(
         dataStore.edit { p -> p[KEY_RECURRING_REMINDERS_ENABLED] = enabled }
     }
 
+    override fun observeBudgetWarnThresholdPercent(): Flow<Int> =
+        dataStore.data.map { prefs -> prefs[KEY_BUDGET_WARN_THRESHOLD] ?: 80 }
+
+    override suspend fun setBudgetWarnThresholdPercent(percent: Int) {
+        dataStore.edit { p -> p[KEY_BUDGET_WARN_THRESHOLD] = percent }
+    }
+
+    override fun observeBudgetOverAlertsEnabled(): Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[KEY_BUDGET_OVER_ENABLED] ?: false }
+
+    override suspend fun setBudgetOverAlertsEnabled(enabled: Boolean) {
+        dataStore.edit { p -> p[KEY_BUDGET_OVER_ENABLED] = enabled }
+    }
+
+    override fun observeBudgetOverThresholdPercent(): Flow<Int> =
+        dataStore.data.map { prefs -> prefs[KEY_BUDGET_OVER_THRESHOLD] ?: 120 }
+
+    override suspend fun setBudgetOverThresholdPercent(percent: Int) {
+        dataStore.edit { p -> p[KEY_BUDGET_OVER_THRESHOLD] = percent }
+    }
+
+    override fun observeMutedBudgetLines(): Flow<Set<String>> =
+        dataStore.data.map { prefs -> prefs[KEY_MUTED_BUDGET_LINES] ?: emptySet() }
+
+    override suspend fun setBudgetLineMuted(lineId: String, muted: Boolean) {
+        dataStore.edit { p ->
+            val current = p[KEY_MUTED_BUDGET_LINES] ?: emptySet()
+            p[KEY_MUTED_BUDGET_LINES] = if (muted) current + lineId else current - lineId
+        }
+    }
+
     private companion object {
         val KEY_BUDGET_ALERTS_ENABLED = booleanPreferencesKey("budget_alerts_enabled")
         val KEY_RECURRING_REMINDERS_ENABLED = booleanPreferencesKey("recurring_reminders_enabled")
+        val KEY_BUDGET_WARN_THRESHOLD = intPreferencesKey("budget_warn_threshold_percent")
+        val KEY_BUDGET_OVER_ENABLED = booleanPreferencesKey("budget_over_alerts_enabled")
+        val KEY_BUDGET_OVER_THRESHOLD = intPreferencesKey("budget_over_threshold_percent")
+        val KEY_MUTED_BUDGET_LINES = stringSetPreferencesKey("muted_budget_lines")
     }
 }

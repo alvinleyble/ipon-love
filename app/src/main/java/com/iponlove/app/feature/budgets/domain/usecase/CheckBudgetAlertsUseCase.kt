@@ -47,6 +47,7 @@ class CheckBudgetAlertsUseCase @Inject constructor() {
         alreadyRaisedIds: Set<String>,
         currentMonth: String,
         zone: ZoneId = ZoneId.systemDefault(),
+        rungs: List<Pair<BudgetAlertSlot, Int>> = RUNGS,
     ): List<BudgetAlertResult> {
         val results = mutableListOf<BudgetAlertResult>()
         for (budget in budgets) {
@@ -54,7 +55,7 @@ class CheckBudgetAlertsUseCase @Inject constructor() {
             if (budget.amount <= BigDecimal.ZERO) continue
             val spent = BudgetProgressCalculator.spent(budget, transactions, zone)
             val percent = (spent.divide(budget.amount, 4, java.math.RoundingMode.HALF_UP) * BigDecimal(100)).toInt()
-            for ((slot, threshold) in RUNGS) {
+            for ((slot, threshold) in rungs) {
                 if (percent >= threshold) {
                     val id = notificationId(budget.id, currentMonth, slot)
                     if (id !in alreadyRaisedIds) {
@@ -67,12 +68,8 @@ class CheckBudgetAlertsUseCase @Inject constructor() {
     }
 
     companion object {
-        /**
-         * The rungs currently armed, warn-before-limit so a budget crossing straight to 100 %
-         * raises both in a sensible order. The percentages stay hardcoded here; making warn
-         * user-chosen and adding the opt-in `over` rung is Items 2-4 (ADR-0054), which only
-         * has to change this map — the id shape below is already final.
-         */
+        /** Pre-Item-2-4 default (warn fixed at 80, limit at 100, no over) — used when no explicit
+         *  [rungs] is passed. Real runtime callers always build one via [rungs] instead. */
         val RUNGS: List<Pair<BudgetAlertSlot, Int>> = listOf(
             BudgetAlertSlot.WARN to 80,
             BudgetAlertSlot.LIMIT to 100,
@@ -84,5 +81,19 @@ class CheckBudgetAlertsUseCase @Inject constructor() {
         /** Deterministic inbox id, so phone and web raising the same rung merge (ADR-0053). */
         fun notificationId(budgetId: String, month: String, slot: BudgetAlertSlot) =
             "$ID_PREFIX$budgetId:$month:${slot.key}"
+
+        /**
+         * Builds the three-rung map from the user's chosen thresholds (ADR-0054 decisions 2/4).
+         * [warnPercent] is the user-chosen warn rung (5-100); at exactly 100 it is dropped so it
+         * doesn't fire alongside the fixed `limit` rung at the same instant. [overPercent] is
+         * `null` when the opt-in over toggle is off — the `over` rung isn't checked at all then.
+         */
+        fun rungs(warnPercent: Int, overPercent: Int?): List<Pair<BudgetAlertSlot, Int>> {
+            val result = mutableListOf<Pair<BudgetAlertSlot, Int>>()
+            if (warnPercent < 100) result += BudgetAlertSlot.WARN to warnPercent
+            result += BudgetAlertSlot.LIMIT to 100
+            if (overPercent != null) result += BudgetAlertSlot.OVER to overPercent
+            return result
+        }
     }
 }

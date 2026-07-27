@@ -7,6 +7,7 @@ import com.iponlove.app.core.entitlement.CapCheck
 import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.budgets.domain.model.Budget
+import com.iponlove.app.feature.budgets.domain.usecase.BudgetLineId
 import com.iponlove.app.feature.budgets.domain.usecase.BudgetRowsCalculator
 import com.iponlove.app.feature.budgets.domain.usecase.CheckBudgetCapUseCase
 import com.iponlove.app.feature.budgets.domain.usecase.DeleteBudgetUseCase
@@ -22,7 +23,9 @@ import com.iponlove.app.feature.categories.domain.usecase.AnalysisExclusion
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObserveMutedBudgetLinesUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetBudgetLineMutedUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveCombinedTransactionsForBudgetsUseCase
@@ -51,6 +54,8 @@ class BudgetsViewModel @Inject constructor(
     observePairingState: ObservePairingStateUseCase,
     private val observePrivacyMode: ObservePrivacyModeUseCase,
     private val setPrivacyMode: SetPrivacyModeUseCase,
+    private val observeMutedBudgetLines: ObserveMutedBudgetLinesUseCase,
+    private val setBudgetLineMuted: SetBudgetLineMutedUseCase,
     private val upsertBudget: UpsertBudgetUseCase,
     private val upsertSharedBudget: UpsertSharedBudgetUseCase,
     private val deleteBudget: DeleteBudgetUseCase,
@@ -109,8 +114,9 @@ class BudgetsViewModel @Inject constructor(
                     else -> PairInfo(isPaired = false, coupleId = null)
                 }
             }
-            combine(dataFlow, controlsFlow, pairingFlow, observePrivacyMode()) { data, controls, pairing, privacyModeOn ->
-                buildUiState(data, controls, pairing, privacyModeOn)
+            combine(dataFlow, controlsFlow, pairingFlow, observePrivacyMode(), observeMutedBudgetLines()) {
+                data, controls, pairing, privacyModeOn, mutedLines ->
+                buildUiState(data, controls, pairing, privacyModeOn, mutedLines)
             }
         }.stateIn(
             scope = viewModelScope,
@@ -123,6 +129,7 @@ class BudgetsViewModel @Inject constructor(
         controls: BudgetControls,
         pairing: PairInfo,
         privacyModeOn: Boolean,
+        mutedLines: Set<String>,
     ): BudgetsUiState {
         val monthKey = controls.month.toString()
         val categoryNames = data.categories.associate { it.id to it.name }
@@ -142,7 +149,7 @@ class BudgetsViewModel @Inject constructor(
             combinedTransactions = AnalysisExclusion.retainAnalyzable(data.combinedTransactions, excludedIds) { it.categoryId },
             categoryNames = categoryNames,
             monthKey = monthKey,
-        ).map { it.toRow() }
+        ).map { it.toRow(mutedLines) }
 
         return BudgetsUiState(
             isLoading = false,
@@ -164,7 +171,7 @@ class BudgetsViewModel @Inject constructor(
         )
     }
 
-    private fun BudgetRowsCalculator.Row.toRow(): BudgetRow = BudgetRow(
+    private fun BudgetRowsCalculator.Row.toRow(mutedLines: Set<String>): BudgetRow = BudgetRow(
         id = id,
         categoryId = categoryId,
         title = title,
@@ -177,6 +184,7 @@ class BudgetsViewModel @Inject constructor(
         rolloverEnabled = rolloverEnabled,
         carriedAmount = carriedAmount,
         isShared = isShared,
+        isMuted = BudgetLineId.of(categoryId, isShared) in mutedLines,
     )
 
     fun togglePrivacyMode() {
@@ -297,6 +305,13 @@ class BudgetsViewModel @Inject constructor(
 
     fun delete(id: String) {
         viewModelScope.launch { deleteBudget(id) }
+    }
+
+    /** Toggles this row's line mute (ADR-0054 decisions 6-8) — local, per-device, survives months. */
+    fun toggleMute(row: BudgetRow) {
+        viewModelScope.launch {
+            setBudgetLineMuted(BudgetLineId.of(row.categoryId, row.isShared), !row.isMuted)
+        }
     }
 
     /** Resets this month's carried-in balance for this row's category (see use case doc). */

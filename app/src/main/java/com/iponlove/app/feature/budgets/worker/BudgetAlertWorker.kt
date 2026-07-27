@@ -6,8 +6,12 @@ import androidx.work.CoroutineWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkerParameters
 import com.iponlove.app.MainActivity
+import com.iponlove.app.feature.budgets.data.BudgetOverAlertBacklogStore
+import com.iponlove.app.feature.budgets.domain.model.Budget
 import com.iponlove.app.feature.budgets.domain.usecase.BudgetAlertCopy
+import com.iponlove.app.feature.budgets.domain.usecase.BudgetLineId
 import com.iponlove.app.feature.budgets.domain.usecase.CheckBudgetAlertsUseCase
+import com.iponlove.app.feature.budgets.domain.usecase.BudgetAlertSlot
 import com.iponlove.app.feature.budgets.domain.usecase.yearMonthKey
 import com.iponlove.app.feature.budgets.domain.repository.BudgetRepository
 import com.iponlove.app.feature.categories.domain.repository.CategoryRepository
@@ -21,6 +25,10 @@ import com.iponlove.app.feature.notifications.domain.usecase.PruneExpiredNotific
 import com.iponlove.app.feature.notifications.domain.usecase.RecordNotificationUseCase
 import com.iponlove.app.feature.notifications.presentation.SystemNotificationPresenter
 import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetAlertsEnabledUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetOverAlertsEnabledUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetOverThresholdUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObserveBudgetWarnThresholdUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObserveMutedBudgetLinesUseCase
 import com.iponlove.app.feature.transactions.domain.repository.TransactionRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -44,6 +52,11 @@ class BudgetAlertWorker @AssistedInject constructor(
     private val observePairingState: ObservePairingStateUseCase,
     private val checkBudgetAlerts: CheckBudgetAlertsUseCase,
     private val observeBudgetAlertsEnabled: ObserveBudgetAlertsEnabledUseCase,
+    private val observeBudgetWarnThreshold: ObserveBudgetWarnThresholdUseCase,
+    private val observeBudgetOverAlertsEnabled: ObserveBudgetOverAlertsEnabledUseCase,
+    private val observeBudgetOverThreshold: ObserveBudgetOverThresholdUseCase,
+    private val observeMutedBudgetLines: ObserveMutedBudgetLinesUseCase,
+    private val overAlertBacklogStore: BudgetOverAlertBacklogStore,
     private val recordNotification: RecordNotificationUseCase,
     private val getRaisedNotificationIds: GetRaisedNotificationIdsUseCase,
     private val pruneExpiredNotifications: PruneExpiredNotificationsUseCase,
@@ -56,11 +69,10 @@ class BudgetAlertWorker @AssistedInject constructor(
         runCatching { pruneExpiredNotifications() }
 
         // The Budgets category switch is a full gate: off means silent everywhere, no inbox row
-        // and no push (ADR-0053 decision 5 / ADR-0054 decision 1). This deliberately drops the
-        // old "mark fired even when suppressed" seeding — with the inbox authoritative, flipping
-        // the switch back on surfaces the budgets that are *actually* over right now rather than
-        // pretending the crossings never happened. Items 2-4 revisit this for the opt-in `over`
-        // rung, where seeding-while-off is the recommended behavior.
+        // and no push (ADR-0053 decision 5 / ADR-0054 decision 1). No seeding here — with the
+        // inbox authoritative, flipping the switch back on surfaces the budgets that are
+        // *actually* over right now rather than pretending the crossings never happened. The
+        // opt-in `over` rung below is the one exception (ADR-0054 consequences).
         if (!observeBudgetAlertsEnabled().first()) return Result.success()
 
         val now = Instant.now()
@@ -88,20 +100,50 @@ class BudgetAlertWorker @AssistedInject constructor(
         // not trip a budget alert either. observeAllCategories() covers both owners' flags, so the
         // shared/combined path excludes the partner's reimbursables too (parity with the Budgets tab).
         val excludedIds = AnalysisExclusion.excludedIds(categoryRepository.observeAllCategories().first())
+        val ownTransactions = AnalysisExclusion.retainAnalyzable(transactions, excludedIds) { it.categoryId }
+        val combinedTransactionsFiltered =
+            AnalysisExclusion.retainAnalyzable(combinedTransactions, excludedIds) { it.categoryId }
+
+        // A muted budget line (ADR-0054 decisions 6-8) is excluded entirely — none of its three
+        // rungs are even checked, matching "mute = total silence for that budget".
+        val mutedLines = observeMutedBudgetLines().first()
+        val checkedBudgets = budgets.excludingMuted(mutedLines)
+        val checkedSharedBudgets = sharedBudgets.excludingMuted(mutedLines)
+
+        val warnPercent = observeBudgetWarnThreshold().first()
+        val overEnabled = observeBudgetOverAlertsEnabled().first()
+        val overPercent = observeBudgetOverThreshold().first()
+
+        // While the opt-in over rung is off, keep the backlog matched to whichever budgets are
+        // over *right now* — so enabling it later doesn't blast the user with pre-existing
+        // crossings (ADR-0054 consequences, "seed the over slot as fired while off").
+        if (!overEnabled) {
+            val overRungOnly = listOf(BudgetAlertSlot.OVER to overPercent)
+            val currentlyOver = (
+                checkBudgetAlerts(checkedBudgets, ownTransactions, emptySet(), currentCalendarMonth, rungs = overRungOnly) +
+                    checkBudgetAlerts(checkedSharedBudgets, combinedTransactionsFiltered, emptySet(), currentCalendarMonth, rungs = overRungOnly)
+                ).map { it.notificationId }.toSet()
+            overAlertBacklogStore.sync(currentlyOver)
+        }
+
+        val rungs = CheckBudgetAlertsUseCase.rungs(warnPercent, if (overEnabled) overPercent else null)
+        val overBacklog = if (overEnabled) overAlertBacklogStore.current() else emptySet()
 
         // One query for the whole category's already-raised ids (read, unread, and dismissed
         // alike — a dismissed alert must never fire again), instead of a round trip per candidate.
-        val alreadyRaised = getRaisedNotificationIds(CheckBudgetAlertsUseCase.ID_PREFIX)
+        val alreadyRaised = getRaisedNotificationIds(CheckBudgetAlertsUseCase.ID_PREFIX) + overBacklog
         val alerts = checkBudgetAlerts(
-            budgets = budgets,
-            transactions = AnalysisExclusion.retainAnalyzable(transactions, excludedIds) { it.categoryId },
+            budgets = checkedBudgets,
+            transactions = ownTransactions,
             alreadyRaisedIds = alreadyRaised,
             currentMonth = currentCalendarMonth,
+            rungs = rungs,
         ) + checkBudgetAlerts(
-            budgets = sharedBudgets,
-            transactions = AnalysisExclusion.retainAnalyzable(combinedTransactions, excludedIds) { it.categoryId },
+            budgets = checkedSharedBudgets,
+            transactions = combinedTransactionsFiltered,
             alreadyRaisedIds = alreadyRaised,
             currentMonth = currentCalendarMonth,
+            rungs = rungs,
         )
 
         for (alert in alerts) {
@@ -144,3 +186,7 @@ class BudgetAlertWorker @AssistedInject constructor(
         fun buildRequest() = OneTimeWorkRequestBuilder<BudgetAlertWorker>().build()
     }
 }
+
+/** Drops any budget whose (category, scope) line is muted (ADR-0054 decisions 6-8). */
+private fun List<Budget>.excludingMuted(mutedLines: Set<String>): List<Budget> =
+    filterNot { BudgetLineId.of(it.categoryId, it.isShared) in mutedLines }

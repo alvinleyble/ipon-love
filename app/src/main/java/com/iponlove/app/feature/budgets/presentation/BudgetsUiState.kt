@@ -50,6 +50,8 @@ data class BudgetRow(
     val carriedAmount: BigDecimal,
     /** Couple-owned (Item 35): renders a "Shared" badge; its spend counts both partners. */
     val isShared: Boolean = false,
+    /** Locally muted (ADR-0054 decisions 6-8) — no rung fires for this line, on this device. */
+    val isMuted: Boolean = false,
 )
 
 /**
