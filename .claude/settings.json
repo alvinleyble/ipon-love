@@ -95,6 +95,7 @@
       "Bash(adb shell 'sleep *)",
       "Bash($ADB shell 'sleep *)",
       "Bash(adb shell sleep *)",
+      "Bash(sleep *)",
       "Bash(git -C /Users/lovzay/ipon-love status*)",
       "Bash($HOME/Library/Android/sdk/emulator/emulator -avd *)",
       "Bash($HOME/Library/Android/sdk/emulator/emulator -list-avds)",
@@ -110,8 +111,23 @@
       "Bash(rm -f /tmp/ipon-love-wrap-force.lock)",
       "Bash(claude mcp list)",
       "Bash(awk '/CREATE TABLE.*)",
+      "Bash(adb devices *)",
+      "Bash(mkdir -p /private/tmp/claude-501/*)",
+      "Bash(adb shell svc *)",
+      "Bash(adb -s * shell svc *)",
+      "Bash($ADB shell svc *)",
+      "Bash(adb emu network *)",
+      "Bash(adb -s * emu network *)",
+      "Bash(adb shell cmd uimode night *)",
+      "Bash(adb -s * shell cmd uimode night *)",
+      "Bash($ADB shell cmd uimode night *)",
+      "Bash(./gradlew installProdDebug*)",
+      "Bash(.claude/scripts/uidump.sh*)",
+      "Bash(/Users/lovzay/ipon-love/.claude/scripts/uidump.sh*)",
       "mcp__supabase__get_logs",
-      "mcp__clickup__clickup_get_task"
+      "mcp__clickup__clickup_get_task",
+      "Skill(fewer-permission-prompts)",
+      "Skill(fewer-permission-prompts:*)"
     ]
   },
   "hooks": {
@@ -123,6 +139,12 @@
             "type": "command",
             "command": "/Users/lovzay/ipon-love/.claude/hooks/wrap-force-gate.sh",
             "if": "Bash(git *)"
+          },
+          {
+            "type": "command",
+            "command": "/Users/lovzay/ipon-love/.claude/hooks/pretest-commit-gate.sh",
+            "if": "Bash(git *)",
+            "timeout": 320
           }
         ]
       },
@@ -142,6 +164,18 @@
           {
             "type": "command",
             "command": "/Users/lovzay/ipon-love/.claude/hooks/book-lock-arm.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/lovzay/ipon-love/.claude/hooks/build-progress-reminder.sh",
+            "if": "Bash(git *)"
           }
         ]
       }

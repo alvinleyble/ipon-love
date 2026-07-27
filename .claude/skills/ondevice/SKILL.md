@@ -29,7 +29,12 @@ CLAUDE.md requires verifying UI changes by running the app, not eyeballing code.
 
 ## Drive the UI — DON'T eyeball coordinates
 
-- Small `FilterChip`s / dialog buttons get missed by guessed taps. Instead: `adb shell uiautomator dump /sdcard/ui.xml`, `adb pull /sdcard/ui.xml /tmp/`, grep the element's `bounds="[x1,y1][x2,y2]"` by its `text=`, and tap the center with `adb shell input tap <cx> <cy>`.
+- Small `FilterChip`s / dialog buttons get missed by guessed taps. **Use `.claude/scripts/uidump.sh`** — it dumps, pulls, and parses the hierarchy in one allowlisted call, so it never prompts:
+  - `.claude/scripts/uidump.sh` — every element with text/content-desc, printed as `<cx> <cy> | <label> [clickable]`
+  - `.claude/scripts/uidump.sh --grep Budget` — filter to matching labels (case-insensitive)
+  - `.claude/scripts/uidump.sh --tap "Clear all"` — find the element and tap its centre in one step (prefers a `clickable="true"` match, since Compose often marks the parent rather than the label)
+  - add `-s <serial>` for a specific device
+- **Do NOT hand-roll the old three-step loop** (`uiautomator dump && adb pull && python3 -c '…'`). Every segment of a compound command must match the allowlist for the line to pass, and `python3 -c` can never be allowlisted — that loop is what made dispatched runs raise a permission prompt on nearly every UI step.
 - **keyevent 4 (Back) gotcha:** it closes the *dialog* if the soft keyboard isn't actually up. Only use it to dismiss a keyboard you're sure is shown. Otherwise the Save button sits just above the keyboard (~y 1790 on these dialogs) — tap it directly.
 - Account/category/budget/transaction editors are `AlertDialog`s; the pickers inside are scrollable `FilterChip` rows.
 
