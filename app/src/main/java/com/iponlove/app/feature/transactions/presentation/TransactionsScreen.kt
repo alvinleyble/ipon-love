@@ -66,7 +66,6 @@ import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.core.ui.theme.LeafShapes
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
-import com.iponlove.app.feature.export.presentation.ExportSheet
 import com.iponlove.app.feature.recurring.presentation.components.ComingUpCard
 import com.iponlove.app.feature.recurring.presentation.components.PendingConfirmationsCard
 import com.iponlove.app.feature.transactions.domain.model.TransactionFilter
@@ -134,7 +133,6 @@ private fun TransactionsContent(
     StartTourOnFirstVisit(TutorialTours.RECORDS)
     val colors = LocalPlayfulColors.current
     var filterSheetOpen by remember { mutableStateOf(false) }
-    var exportSheetOpen by remember { mutableStateOf(false) }
     var overflowOpen by remember { mutableStateOf(false) }
     Scaffold(
         containerColor = Color.Transparent,
@@ -174,8 +172,9 @@ private fun TransactionsContent(
                             )
                         }
                         // Overflow (v1.7.0 Item 6 decision 2): Recurring (occasional, navigational)
-                        // moves off the surface to join Export here, keeping the title row to two
-                        // direct icons + ⋮ rather than four glyphs.
+                        // moves off the surface into the ⋮ menu, keeping the title row to two
+                        // direct icons + ⋮ rather than three glyphs. Export moved to Settings
+                        // (v1.7.1 Item 7).
                         Box {
                             IconButton(
                                 onClick = { overflowOpen = true },
@@ -194,10 +193,6 @@ private fun TransactionsContent(
                                 DropdownMenuItem(
                                     text = { Text("Recurring rules") },
                                     onClick = { overflowOpen = false; onOpenRecurring() },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Export…") },
-                                    onClick = { overflowOpen = false; exportSheetOpen = true },
                                 )
                             }
                         }
@@ -310,16 +305,6 @@ private fun TransactionsContent(
                     filterSheetOpen = false
                 },
                 onDismiss = { filterSheetOpen = false },
-            )
-        }
-
-        // Export sheet (v1.7.0 Item 6, re-grilled 2026-07-24) — fully self-contained: its own
-        // filter + date range, decoupled from Records' own applied filter and viewed month.
-        if (exportSheetOpen) {
-            ExportSheet(
-                onDismiss = { exportSheetOpen = false },
-                // Slice 2: tapping a locked PDF/ZIP routes to the paywall (EXPORT_WITH_ATTACHMENTS).
-                onOpenPremium = onOpenPremium,
             )
         }
     }

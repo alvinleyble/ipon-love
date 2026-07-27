@@ -28,6 +28,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,6 +47,7 @@ import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.relativeTimeLabel
 import com.iponlove.app.core.ui.theme.LeafShapes
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
+import com.iponlove.app.feature.export.presentation.ExportSheet
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import java.time.Instant
@@ -71,6 +75,7 @@ fun PersonalizeScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val colors = LocalPlayfulColors.current
+    var exportSheetOpen by remember { mutableStateOf(false) }
 
     // Couple-scoped Settings tour — no-ops until paired (ADR-0038); anchors to the Couple entry.
     StartTourOnFirstVisit(TutorialTours.COUPLE_SETTINGS)
@@ -166,6 +171,14 @@ fun PersonalizeScreen(
                 index = 0,
                 onClick = onOpenFinance,
             )
+            // Relocated from Records' overflow menu (v1.7.1 Item 7) — same self-contained
+            // ExportSheet, just a Settings entry point instead.
+            SettingsRow(
+                headline = "Export",
+                supporting = "CSV, PDF or ZIP of your transactions",
+                index = 1,
+                onClick = { exportSheetOpen = true },
+            )
 
             Spacer(Modifier.height(14.dp))
             SettingsSectionHeader("Couple")
@@ -231,6 +244,15 @@ fun PersonalizeScreen(
             ) {
                 Text("Sign out", color = MaterialTheme.colorScheme.error)
             }
+        }
+
+        // Export sheet (v1.7.0 Item 6, relocated here from Records' overflow menu — v1.7.1 Item 7).
+        if (exportSheetOpen) {
+            ExportSheet(
+                onDismiss = { exportSheetOpen = false },
+                // Slice 2: tapping a locked PDF/ZIP routes to the paywall (EXPORT_WITH_ATTACHMENTS).
+                onOpenPremium = onOpenPremium,
+            )
         }
     }
 }
