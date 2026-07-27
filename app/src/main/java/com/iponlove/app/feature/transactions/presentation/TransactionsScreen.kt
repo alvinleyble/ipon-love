@@ -1,5 +1,8 @@
 package com.iponlove.app.feature.transactions.presentation
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -38,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,6 +79,7 @@ import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.presentation.components.TransactionFilterSheet
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
+import com.iponlove.app.feature.widget.presentation.BalanceWidgetReceiver
 
 /**
  * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 6a): a transparent-container [Scaffold] with a
@@ -110,6 +117,7 @@ fun TransactionsScreen(
         onTogglePrivacyMode = viewModel::togglePrivacyMode,
         onApplyFilter = viewModel::applyFilter,
         onClearFilter = viewModel::clearFilter,
+        onWidgetNudgeCardShown = viewModel::onWidgetNudgeCardShown,
     )
 }
 
@@ -129,11 +137,23 @@ private fun TransactionsContent(
     onTogglePrivacyMode: () -> Unit = {},
     onApplyFilter: (TransactionFilter) -> Unit = {},
     onClearFilter: () -> Unit = {},
+    onWidgetNudgeCardShown: () -> Unit = {},
 ) {
     StartTourOnFirstVisit(TutorialTours.RECORDS)
     val colors = LocalPlayfulColors.current
+    val context = LocalContext.current
     var filterSheetOpen by remember { mutableStateOf(false) }
     var overflowOpen by remember { mutableStateOf(false) }
+    // Latched locally so the card doesn't vanish mid-visit the instant onWidgetNudgeCardShown's
+    // DataStore write flows back through state.showWidgetNudgeCard as false (Item 11) — appearing
+    // is what starts the 30-day cooldown, not tapping ✕, so the card must outlive that write.
+    var widgetNudgeVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(state.showWidgetNudgeCard) {
+        if (state.showWidgetNudgeCard) {
+            widgetNudgeVisible = true
+            onWidgetNudgeCardShown()
+        }
+    }
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -229,6 +249,25 @@ private fun TransactionsContent(
                 onOpenPremium = onOpenPremium,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
+            // Widget-adoption nudge (Item 11) — non-adopters only, once per ~30-day cooldown.
+            if (widgetNudgeVisible) {
+                WidgetNudgeCard(
+                    onOpen = {
+                        val manager = AppWidgetManager.getInstance(context)
+                        val provider = ComponentName(context, BalanceWidgetReceiver::class.java)
+                        if (manager.isRequestPinAppWidgetSupported) {
+                            manager.requestPinAppWidget(provider, null, null)
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Long-press your home screen, then choose Widgets to add Love, Ipon.",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                    },
+                    onDismiss = { widgetNudgeVisible = false },
+                )
+            }
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = onSync,
@@ -331,6 +370,48 @@ private fun RecordsFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
             tint = colors.onAccent,
             modifier = Modifier.size(27.dp).rotate(4f),
         )
+    }
+}
+
+/** Occasional discovery tip toward the home-screen widgets (Item 11) — same card shape as
+ *  Analysis' `PairingNudgeCard`. In-app only, no OS push, no notification-inbox row. */
+@Composable
+private fun WidgetNudgeCard(onOpen: () -> Unit, onDismiss: () -> Unit) {
+    val colors = LocalPlayfulColors.current
+    PlayfulCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .clickable(onClick = onOpen),
+        surface = PlayfulSurface.Blush,
+        shape = LeafShapes.Card,
+        contentPadding = 4.dp,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp)) {
+                Text(
+                    "Try the Love, Ipon widget",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.onBlush,
+                )
+                Text(
+                    "Check your balance or log an expense right from your home screen.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onBlushSecondary,
+                )
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Dismiss",
+                    tint = colors.onBlush,
+                )
+            }
+        }
     }
 }
 

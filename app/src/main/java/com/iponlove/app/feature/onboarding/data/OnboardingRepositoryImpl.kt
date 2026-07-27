@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import com.iponlove.app.feature.onboarding.di.OnboardingDataStore
 import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +30,13 @@ class OnboardingRepositoryImpl @Inject constructor(
         dataStore.edit { it[KEY_PAIRING_CARD_DISMISSED] = true }
     }
 
+    override fun observeWidgetNudgeLastShownAt(): Flow<Long?> =
+        dataStore.data.map { it[KEY_WIDGET_NUDGE_LAST_SHOWN_AT] }
+
+    override suspend fun recordWidgetNudgeShown() {
+        dataStore.edit { it[KEY_WIDGET_NUDGE_LAST_SHOWN_AT] = System.currentTimeMillis() }
+    }
+
     override suspend fun reset() {
         dataStore.edit { it.clear() }
     }
@@ -36,5 +44,6 @@ class OnboardingRepositoryImpl @Inject constructor(
     private companion object {
         val KEY_ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val KEY_PAIRING_CARD_DISMISSED = booleanPreferencesKey("pairing_card_dismissed")
+        val KEY_WIDGET_NUDGE_LAST_SHOWN_AT = longPreferencesKey("widget_nudge_last_shown_at")
     }
 }

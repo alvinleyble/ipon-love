@@ -21,6 +21,13 @@ interface OnboardingRepository {
 
     suspend fun dismissPairingCard()
 
-    /** Clears both flags — called on sign-out/account-switch, never mid-session. */
+    /** Epoch millis the widget-adoption nudge card ([com.iponlove.app.feature.transactions.presentation.TransactionsScreen])
+     *  was last shown, or null if never (Item 11). Composing the card is what stamps this —
+     *  there is no separate dismiss-vs-shown distinction. */
+    fun observeWidgetNudgeLastShownAt(): Flow<Long?>
+
+    suspend fun recordWidgetNudgeShown()
+
+    /** Clears all flags — called on sign-out/account-switch, never mid-session. */
     suspend fun reset()
 }

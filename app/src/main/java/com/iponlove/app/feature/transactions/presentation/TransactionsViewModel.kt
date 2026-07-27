@@ -15,12 +15,15 @@ import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
+import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.model.TransactionFilter
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.DeleteTransactionUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveHasAnyTransactionUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
+import com.iponlove.app.feature.widget.domain.usecase.CheckWidgetAdoptionUseCase
+import com.iponlove.app.feature.widget.domain.usecase.WidgetNudgeVisibility
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +32,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -50,6 +54,8 @@ class TransactionsViewModel @Inject constructor(
     private val analytics: Analytics,
     observePrivacyMode: ObservePrivacyModeUseCase,
     private val setPrivacyMode: SetPrivacyModeUseCase,
+    private val checkWidgetAdoption: CheckWidgetAdoptionUseCase,
+    private val onboardingRepository: OnboardingRepository,
 ) : ViewModel() {
 
     private val isRefreshing = MutableStateFlow(false)
@@ -72,6 +78,20 @@ class TransactionsViewModel @Inject constructor(
     /** The applied Records filter (v1.7.0 Item 7). Session-scoped, deliberately NOT persisted and
      *  independent of [viewedMonth] — the lens survives month-stepping and dies with the ViewModel. */
     private val filter = MutableStateFlow(TransactionFilter.NONE)
+
+    /** Widget-adoption nudge visibility (Item 11) — kept as its own combine, mirroring Analysis'
+     *  `showPairingCard`, so the main state combine below doesn't grow past Kotlin's typed 5-flow
+     *  [combine] overload. The adoption check is a one-shot suspend call re-run on each fresh
+     *  collection (Glance exposes no reactive adoption signal); [onWidgetNudgeCardShown] stamping
+     *  "now" then makes this recompute false on the *next* subscription, not this one — the
+     *  screen's own local latch (not this flow) is what keeps the card visible for the rest of
+     *  the current visit. */
+    private val showWidgetNudgeCard: Flow<Boolean> = combine(
+        flow { emit(checkWidgetAdoption()) },
+        onboardingRepository.observeWidgetNudgeLastShownAt(),
+    ) { adopted, lastShownAt ->
+        WidgetNudgeVisibility.shouldShow(adopted, lastShownAt, System.currentTimeMillis())
+    }
 
     /**
      * The filter applied *upstream* of the main combine (which is already at its 5-flow ceiling):
@@ -155,6 +175,10 @@ class TransactionsViewModel @Inject constructor(
             .combine(observePrivacyMode()) { state, privacyModeOn ->
                 state.copy(privacyModeEnabled = privacyModeOn)
             }
+            // Widget-adoption nudge card (Item 11) — same trailing-.combine escape hatch as above.
+            .combine(showWidgetNudgeCard) { state, show ->
+                state.copy(showWidgetNudgeCard = show)
+            }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -219,6 +243,13 @@ class TransactionsViewModel @Inject constructor(
      *  empty-state inline action. */
     fun clearFilter() {
         filter.value = TransactionFilter.NONE
+    }
+
+    /** Stamps the widget-adoption nudge card (Item 11) as shown *now* — called by the card's own
+     *  composition, not a dismiss action, so simply appearing (whether or not the user taps ✕)
+     *  starts the 30-day non-naggy cooldown. */
+    fun onWidgetNudgeCardShown() {
+        viewModelScope.launch { onboardingRepository.recordWidgetNudgeShown() }
     }
 
     private companion object {

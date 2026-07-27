@@ -43,6 +43,10 @@ data class TransactionsUiState(
     val filterableCategories: List<FilterOption> = emptyList(),
     /** Active (non-archived) accounts offered as filter chips (decision 9). */
     val filterableAccounts: List<FilterOption> = emptyList(),
+    /** Widget-adoption nudge card visibility (Item 11) — non-adopter + cooldown-elapsed gate.
+     *  The screen latches this locally once true so the card doesn't vanish mid-visit the moment
+     *  [TransactionsViewModel.onWidgetNudgeCardShown] stamps it as shown. */
+    val showWidgetNudgeCard: Boolean = false,
 )
 
 /** A pickable id/label pair for the filter sheet's category and account chip sections. */
