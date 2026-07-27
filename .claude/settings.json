@@ -122,6 +122,8 @@
       "Bash(adb -s * shell cmd uimode night *)",
       "Bash($ADB shell cmd uimode night *)",
       "Bash(./gradlew installProdDebug*)",
+      "Bash(git add *)",
+      "Bash(chmod +x .claude/scripts/*)",
       "Bash(.claude/scripts/uidump.sh*)",
       "Bash(/Users/lovzay/ipon-love/.claude/scripts/uidump.sh*)",
       "mcp__supabase__get_logs",

@@ -38,6 +38,13 @@ CLAUDE.md requires verifying UI changes by running the app, not eyeballing code.
 - **keyevent 4 (Back) gotcha:** it closes the *dialog* if the soft keyboard isn't actually up. Only use it to dismiss a keyboard you're sure is shown. Otherwise the Save button sits just above the keyboard (~y 1790 on these dialogs) — tap it directly.
 - Account/category/budget/transaction editors are `AlertDialog`s; the pickers inside are scrollable `FilterChip` rows.
 
+## Seed test data via the DB — don't tap it in
+
+Building a scenario through the UI (create category → create budget → create transaction, repeat) costs ~30 taps each and dominated the cost of the v1.7.1 Item 6 verification run. Seed the **server** instead, then pull-to-refresh in the app: the client still pulls the rows and still recomputes everything, so the logic under test is untouched — only the data entry is skipped.
+
+- `supabase/seeds/budget_alert_scenario.sql` — puts one budget at an exact % spent, for budget-alert/notification work. Edit the params block at the top, run it through the Supabase MCP (`execute_sql`), then pull-to-refresh. Re-running replaces rather than accumulates; cleanup snippet is in the file's header.
+- Same trick generalises: for any scenario needing pre-existing rows, write the SQL rather than driving the UI. Reserve UI driving for the behaviour you're actually verifying.
+
 ## Inspect the on-device DB
 
 - Device has no `sqlite3` and the DB is WAL. Pull all three files with `dd` under `run-as` (not `cat`/`exec-out` — they corrupt binary). Issue **three separate `adb` calls, never a `for` loop** — a loop's command string starts with `for`, not `adb`, so it can't match the allowlist and prompts every time:
