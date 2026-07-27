@@ -158,6 +158,15 @@
             "command": "/Users/lovzay/ipon-love/.claude/hooks/book-gate.sh"
           }
         ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/lovzay/ipon-love/.claude/hooks/wrap-after-ondevice-gate.sh"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
