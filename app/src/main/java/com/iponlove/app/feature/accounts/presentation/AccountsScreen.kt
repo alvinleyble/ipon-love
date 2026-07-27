@@ -453,7 +453,7 @@ private fun AccountCard(
             )
             Box {
                 IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                    Icon(Icons.Filled.MoreVert, contentDescription = "More options", tint = colors.textSecondary)
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     // Share/un-share is a couple-only capability (ADR-0018), shown only when paired.

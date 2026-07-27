@@ -87,6 +87,7 @@ fun GoalDetailScreen(
     onEditGoal: (String) -> Unit,
     viewModel: GoalDetailViewModel = hiltViewModel(),
 ) {
+    val colors = LocalPlayfulColors.current
     val state by viewModel.uiState.collectAsState()
     var menuOpen by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
@@ -111,7 +112,7 @@ fun GoalDetailScreen(
                     if (state.canManage) {
                         Box {
                             IconButton(onClick = { menuOpen = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                                Icon(Icons.Filled.MoreVert, contentDescription = "More options", tint = colors.textSecondary)
                             }
                             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                                 DropdownMenuItem(
