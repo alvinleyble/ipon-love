@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
@@ -71,6 +70,7 @@ import com.iponlove.app.core.ui.EntityChipRow
 import com.iponlove.app.core.ui.EntityGrid
 import com.iponlove.app.core.ui.EntityPickerOption
 import com.iponlove.app.core.ui.PlayfulCard
+import com.iponlove.app.core.ui.PlayfulChip
 import com.iponlove.app.core.ui.PlayfulDialog
 import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.PrivacyEyeAction
@@ -122,19 +122,7 @@ fun RecurringScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    IconButton(
-                        onClick = viewModel::toggleViewMode,
-                        modifier = Modifier.coachMarkTarget(TutorialTargets.RECURRING_CALENDAR),
-                    ) {
-                        if (state.viewMode == RecurringViewMode.LIST) {
-                            Icon(Icons.Filled.DateRange, contentDescription = "Calendar view")
-                        } else {
-                            Icon(Icons.Filled.List, contentDescription = "List view")
-                        }
-                    }
-                    PrivacyEyeAction()
-                },
+                actions = { PrivacyEyeAction() },
             )
         },
         floatingActionButton = {
@@ -146,49 +134,74 @@ fun RecurringScreen(
             }
         },
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            when {
-                state.isLoading ->
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp, vertical = 4.dp)
+                    .coachMarkTarget(TutorialTargets.RECURRING_CALENDAR),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                PlayfulChip(
+                    label = "Recurring",
+                    selected = state.viewMode == RecurringViewMode.LIST,
+                    onClick = { viewModel.selectViewMode(RecurringViewMode.LIST) },
+                    modifier = Modifier.weight(1f),
+                )
+                PlayfulChip(
+                    label = "Calendar",
+                    selected = state.viewMode == RecurringViewMode.CALENDAR,
+                    onClick = { viewModel.selectViewMode(RecurringViewMode.CALENDAR) },
+                    modifier = Modifier.weight(1f),
+                    trailing = if (state.calendarLocked) {
+                        { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                    } else null,
+                )
+            }
+            Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+                when {
+                    state.isLoading ->
+                        CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-                state.viewMode == RecurringViewMode.CALENDAR ->
-                    RecurringCalendarView(
-                        state = state,
-                        onPrev = viewModel::prevMonth,
-                        onNext = viewModel::nextMonth,
-                        onDayClick = viewModel::selectDay,
-                        onLockedTap = { onOpenPremium(viewModel.onCalendarLockedTap()) },
-                    )
-
-                !state.canAdd ->
-                    EmptyState(
-                        title = "Set up an account and category first",
-                        body = "Recurring rules need an account to charge and a category to file under.",
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-
-                state.items.isEmpty() ->
-                    EmptyState(
-                        title = "No recurring rules yet",
-                        body = "Tap + to automate a salary, bill, or subscription.",
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
-                        RecurringRow(
-                            item = item,
-                            index = index,
-                            onClick = { viewModel.startEdit(item.id) },
-                            onPause = { viewModel.pause(item.id) },
-                            onResume = { viewModel.resume(item.id) },
-                            onSkipNext = { viewModel.skipNext(item.id) },
-                            onDelete = { viewModel.delete(item.id) },
+                    state.viewMode == RecurringViewMode.CALENDAR ->
+                        RecurringCalendarView(
+                            state = state,
+                            onPrev = viewModel::prevMonth,
+                            onNext = viewModel::nextMonth,
+                            onDayClick = viewModel::selectDay,
+                            onLockedTap = { onOpenPremium(viewModel.onCalendarLockedTap()) },
                         )
+
+                    !state.canAdd ->
+                        EmptyState(
+                            title = "Set up an account and category first",
+                            body = "Recurring rules need an account to charge and a category to file under.",
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+
+                    state.items.isEmpty() ->
+                        EmptyState(
+                            title = "No recurring rules yet",
+                            body = "Tap + to automate a salary, bill, or subscription.",
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+
+                    else -> LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
+                            RecurringRow(
+                                item = item,
+                                index = index,
+                                onClick = { viewModel.startEdit(item.id) },
+                                onPause = { viewModel.pause(item.id) },
+                                onResume = { viewModel.resume(item.id) },
+                                onSkipNext = { viewModel.skipNext(item.id) },
+                                onDelete = { viewModel.delete(item.id) },
+                            )
+                        }
                     }
                 }
             }

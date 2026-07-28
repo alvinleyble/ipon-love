@@ -213,14 +213,8 @@ class RecurringViewModel @Inject constructor(
         return source
     }
 
-    fun toggleViewMode() {
-        calendarNav.update {
-            it.copy(
-                viewMode = if (it.viewMode == RecurringViewMode.LIST) RecurringViewMode.CALENDAR
-                           else RecurringViewMode.LIST,
-                selectedDay = null,
-            )
-        }
+    fun selectViewMode(mode: RecurringViewMode) {
+        calendarNav.update { it.copy(viewMode = mode, selectedDay = null) }
     }
 
     fun prevMonth() = calendarNav.update { it.copy(month = it.month.minusMonths(1), selectedDay = null) }
