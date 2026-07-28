@@ -1,6 +1,7 @@
 ---
 name: wrap
 description: Close out a finished vertical slice in the Love, Ipon repo. Use after a slice compiles green and is ready to record — runs the JVM unit tests, then drives the two-commit ritual (code commit first, then a docs commit that references the code commit's sha). Stages and drafts each, STOPPING for explicit permission before every commit. Never commits or pushes on its own.
+model: sonnet
 ---
 
 # /wrap — close out a green slice

@@ -1,6 +1,7 @@
 ---
 name: wrap-force
 description: Close out a finished vertical slice in the Love, Ipon repo, same as /wrap, but commits both the code and the docs directly instead of stopping for permission at each commit. Use only when Alvin explicitly wants the two-commit ritual run end-to-end without a pause. Still never runs git push on its own.
+model: sonnet
 ---
 
 # /wrap-force — close out a green slice, no commit stops
