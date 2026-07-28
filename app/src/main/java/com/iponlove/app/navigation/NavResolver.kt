@@ -46,10 +46,20 @@ object NavResolver {
         return NavRegistry.all.map { it.id }.filter { it !in onBar }
     }
 
-    /** The NavHost start destination route: the first resolved pin, falling back to Records. */
+    /**
+     * The NavHost start destination route: the first resolved **navigable** pin, falling back to
+     * Records.
+     *
+     * The navigable filter is load-bearing, not defensive (ADR-0058): an overlay module like
+     * Calculator is pinnable and can therefore sit first on the bar, but it owns no graph — handing
+     * its route to the NavHost as a start destination would crash on launch, every launch, for as
+     * long as it held that slot. Home falls through to the next real pin instead; the pin itself
+     * still renders and still spawns its bubble.
+     */
     fun startRoute(config: NavConfig): String =
         visiblePinIds(config)
-            .firstOrNull()
-            ?.let { NavRegistry.byId[it]?.route }
+            .mapNotNull { NavRegistry.byId[it] }
+            .firstOrNull { it.navigable }
+            ?.route
             ?: NavRegistry.RECORDS.route
 }

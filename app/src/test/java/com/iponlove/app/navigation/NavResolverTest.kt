@@ -95,4 +95,20 @@ class NavResolverTest {
         val config = NavConfig(listOf("combined", "manage"))
         assertThat(NavResolver.startRoute(config)).isEqualTo(NavRegistry.MANAGE.route)
     }
+
+    @Test
+    fun startRoute_skipsANonNavigableFirstPin() {
+        // Calculator is pinnable, so it can legally hold the first slot — but it is an overlay
+        // module with no graph (ADR-0058). Handing its route to the NavHost as a start destination
+        // would crash on launch, every launch, for as long as it sat there.
+        val config = NavConfig(listOf("calculator", "records", "manage"))
+        assertThat(NavResolver.startRoute(config)).isEqualTo(NavRegistry.RECORDS.route)
+    }
+
+    @Test
+    fun startRoute_stillPinsANonNavigableModuleToTheBar() {
+        // ...and it keeps its pin while doing so: only *home* skips it, the bar does not.
+        val config = NavConfig(listOf("calculator", "records", "manage"))
+        assertThat(NavResolver.visiblePinIds(config)).containsExactly("calculator", "records", "manage").inOrder()
+    }
 }

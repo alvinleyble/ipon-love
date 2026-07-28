@@ -5,8 +5,10 @@ import org.junit.Test
 
 class NavRestorePolicyTest {
 
-    private val known = setOf("analysis", "records", "settings", "manage")
-    private val isKnown: (String) -> Boolean = known::contains
+    // Restorable == navigable. Calculator is deliberately absent: it is still a registry module,
+    // but an overlay one with no graph (ADR-0058).
+    private val restorable = setOf("analysis", "records", "settings", "manage")
+    private val isKnown: (String) -> Boolean = restorable::contains
     private val window = 5 * 60 * 1000L // 5 minutes
     private val home = "analysis"
     private val now = 1_000_000L
@@ -35,6 +37,16 @@ class NavRestorePolicyTest {
     fun unknownModule_doesNotRestore() {
         // e.g. a module id removed/renamed since it was persisted by an older build.
         val saved = SavedNavLocation("legacy_module", backgroundedAt = now - 10_000L)
+        assertThat(restore(saved)).isNull()
+    }
+
+    @Test
+    fun nonNavigableModule_doesNotRestore() {
+        // The ADR-0058 upgrade trap: a device backgrounded on the Calculator *screen* before that
+        // release still has "calculator" on disk, and it is still a registry entry — so a
+        // membership test would pass it through and hand the NavHost a deleted graph route on the
+        // very first launch after updating. Only navigability rules it out.
+        val saved = SavedNavLocation("calculator", backgroundedAt = now - 10_000L)
         assertThat(restore(saved)).isNull()
     }
 

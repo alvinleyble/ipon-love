@@ -83,7 +83,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.iponlove.app.feature.analysis.presentation.AnalysisScreen
 import com.iponlove.app.feature.applock.presentation.AppLockSetupScreen
-import com.iponlove.app.feature.calculator.presentation.CalculatorScreen
+import com.iponlove.app.feature.calculator.presentation.CalculatorViewModel
+import com.iponlove.app.feature.calculator.presentation.components.CalculatorBubble
+import com.iponlove.app.feature.calculator.presentation.rememberCalculatorBubbleState
 import com.iponlove.app.feature.couple.presentation.CoupleScreen
 import com.iponlove.app.feature.feedback.presentation.BetaFeedbackScreen
 import com.iponlove.app.feature.help.presentation.HelpScreen
@@ -222,6 +224,32 @@ private fun IponAppContent(
         currentDestination?.hierarchy?.any { it.route == module.graphRoute() } == true
     }?.id
 
+    // Calculator is the registry's one *overlay* module (ADR-0058). Its session state lives here at
+    // the shell — not in any screen — which is what lets the bubble outlive tab switches, rotation
+    // and backgrounding, and its nav entry acts on that state instead of routing anywhere.
+    val calculatorBubble = rememberCalculatorBubbleState()
+    val calculatorViewModel: CalculatorViewModel = hiltViewModel()
+    val calculatorLocked by calculatorViewModel.locked.collectAsState()
+
+    /**
+     * The single entry point for "the user picked a registry module" — bar pin, More cell, widget
+     * deep link, notification deep link. Routing every one of them through here is what keeps a
+     * non-navigable module from ever reaching [switchTab] with a route the NavHost doesn't declare.
+     */
+    fun openModule(dest: NavDestination) {
+        if (dest.navigable) {
+            navController.switchTab(dest)
+            return
+        }
+        // Locked ⇒ the real paywall, not a shrunken upsell squeezed into a 288dp bubble (decision
+        // 6). Dormant today: `locked` is false until the enforcement flip, so this is the live path.
+        if (calculatorLocked) {
+            navController.navigate(subscriptionRoute(calculatorViewModel.onUpsellTap()))
+        } else {
+            calculatorBubble.toggle()
+        }
+    }
+
     // Persist where we are as the app is backgrounded (v1.6.6 Item 39). onStop is the last reliable
     // in-process moment before the ROM may force-stop us; the disk write survives the kill so a
     // cold relaunch can restore the module below — rememberSaveable can't, since force-stop drops
@@ -235,7 +263,7 @@ private fun IponAppContent(
     // switchTab lands on the module's root (Manage defaults to its Accounts sub-tab).
     LaunchedEffect(deepLinkRoute) {
         val dest = deepLinkRoute?.let { NavRegistry.byId[it] } ?: return@LaunchedEffect
-        navController.switchTab(dest)
+        openModule(dest)
         onDeepLinkHandled()
     }
 
@@ -311,8 +339,11 @@ private fun IponAppContent(
                 moreModifier = Modifier.coachMarkTarget(TutorialTargets.MORE, coachState),
                 firstPins = visiblePins.take(splitIndex),
                 lastPins = visiblePins.drop(splitIndex),
+                // An overlay module's pin never shows the active pill (ADR-0058 decision 8):
+                // isInGraph is permanently false for it, which is the honest answer — an open
+                // bubble is not a navigation state, and the pill means "where you are".
                 isSelected = { isInGraph(it) },
-                onPinClick = { navController.switchTab(it) },
+                onPinClick = { openModule(it) },
                 onAddClick = { navController.navigate(ADD_TRANSACTION_ROUTE) },
                 onMoreClick = { showMore = true },
                 moreSelected = moreSelected,
@@ -395,12 +426,8 @@ private fun IponAppContent(
                 }
             }
 
-            // Calculator: single-node graph.
-            navigation(startDestination = NavRegistry.CALCULATOR.route, route = NavRegistry.CALCULATOR.graphRoute()) {
-                composable(NavRegistry.CALCULATOR.route) {
-                    CalculatorScreen(onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) })
-                }
-            }
+            // Calculator has no graph at all — it is an overlay module (ADR-0058): tapping it
+            // spawns CalculatorBubble over the current screen instead of navigating anywhere.
 
             // Savings: root + goal editor + goal detail.
             navigation(startDestination = NavRegistry.SAVINGS.route, route = NavRegistry.SAVINGS.graphRoute()) {
@@ -549,13 +576,20 @@ private fun IponAppContent(
                     onOpenDeepLink = { route ->
                         NavRegistry.byId[route]?.let { dest ->
                             navController.popBackStack()
-                            navController.switchTab(dest)
+                            openModule(dest)
                         }
                     },
                 )
             }
         }
     }
+        // The calculator bubble floats above every route (add/edit transaction included — the
+        // highest-value moment, where a computed total is about to be typed) but *below* the
+        // coach marks, so a first-run tooltip is never obscured. Everything that owns its own
+        // window — the app-lock Dialog, dialogs, the More sheet — covers it for free (ADR-0058).
+        if (calculatorBubble.open) {
+            CalculatorBubble(state = calculatorBubble)
+        }
         // Coach-mark overlay draws above the Scaffold (bar included), sharing its coordinate root
         // so it can anchor to the tagged bar targets. Transparent to touches outside its tooltip.
         CoachMarkOverlay(
@@ -572,7 +606,7 @@ private fun IponAppContent(
             modules = state.moreModuleIds.mapNotNull { NavRegistry.byId[it] },
             onModule = { dest ->
                 showMore = false
-                navController.switchTab(dest)
+                openModule(dest)
             },
             onEditNavbar = {
                 showMore = false

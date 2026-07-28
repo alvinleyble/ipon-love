@@ -19,9 +19,14 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The shared full-panel soft-gate wall (S9): a centered lock + explanation + "Get Premium" CTA,
- * shown in place of a whole gated module (e.g. the Calculator) while it's locked. For per-element
- * soft gates (a locked palette swatch, a blurred calendar) the surface renders its own inline lock
- * affordance instead; this is the "entire module is Premium" shape.
+ * shown in place of a whole gated module while it's locked. For per-element soft gates (a locked
+ * palette swatch, a blurred calendar) the surface renders its own inline lock affordance instead;
+ * this is the "entire module is Premium" shape.
+ *
+ * Currently unused by any shipped surface: the Calculator was its one consumer until ADR-0058 made
+ * that module a bubble with no full screen to wall off (a locked user now goes straight to the
+ * paywall at spawn time). Kept as the designed S9 primitive for the next whole-module gate — it is
+ * `fillMaxSize()` by construction, which is precisely why the bubble could not host it.
  */
 @Composable
 fun FeatureLockedPanel(

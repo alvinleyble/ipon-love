@@ -26,6 +26,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
  *
  * [pinnable] = false means the module can never sit on the bottom bar — it lives permanently in
  * the More sheet so it stays reachable without ever consuming a precious pin slot (ADR-0017).
+ *
+ * [navigable] = false marks an **overlay module** (ADR-0058): it keeps its registry entry — so it
+ * stays pinnable, listed in the More sheet, and orderable in the navbar editor — but it owns no
+ * nav graph at all. Tapping it acts on the *current* screen (Calculator spawns its bubble) instead
+ * of navigating, so its [route] is never handed to the [NavHost][androidx.navigation.NavHost].
+ * Anything that turns a module id into a destination must consult this, not mere registry
+ * membership: [NavResolver.startRoute] and [NavRestorePolicy] both would otherwise start the
+ * NavHost on a route that doesn't exist.
  */
 data class NavDestination(
     val id: String,
@@ -34,6 +42,7 @@ data class NavDestination(
     val route: String,
     val requiresPaired: Boolean = false,
     val pinnable: Boolean = true,
+    val navigable: Boolean = true,
 )
 
 /**
@@ -58,7 +67,12 @@ object NavRegistry {
     val COMBINED = NavDestination("combined", "Combined", Icons.Filled.People, "combined", requiresPaired = true)
     val PARTNER_DEBT = NavDestination("partner_debt", "Debts", Icons.Filled.Handshake, "partner_debt", requiresPaired = true)
     val SETTINGS = NavDestination("settings", "Settings", Icons.Filled.Settings, "settings")
-    val CALCULATOR = NavDestination("calculator", "Calculator", Icons.Filled.Calculate, "calculator")
+    // Calculator is the registry's only *overlay* module (ADR-0058): tapping it spawns the
+    // floating bubble over whatever screen you're on, so it has no nav graph and its route is
+    // never navigated to. It stays a first-class registry entry so it keeps its pin, its More
+    // sheet cell, and its navbar-editor row.
+    val CALCULATOR =
+        NavDestination("calculator", "Calculator", Icons.Filled.Calculate, "calculator", navigable = false)
     // Shared savings goals — own pinnable module, in More by default (ADR-0025), not a Manage tab.
     val SAVINGS = NavDestination("savings", "Savings", Icons.Filled.Savings, "savings")
 

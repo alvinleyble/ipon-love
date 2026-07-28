@@ -83,7 +83,10 @@ class NavbarViewModel @Inject constructor(
             homeModuleId = homeModuleId,
             now = SystemClock.elapsedRealtime(),
             windowMs = RESTORE_WINDOW_MS,
-            isKnownModule = NavRegistry.byId::containsKey,
+            // Navigable, not merely known (ADR-0058): Calculator is still a registry entry but its
+            // graph is gone, and a device backgrounded on it before that release has "calculator"
+            // on disk — `containsKey` would pass it through and start the NavHost on a dead route.
+            isRestorableModule = { NavRegistry.byId[it]?.navigable == true },
         )
 
     companion object {
