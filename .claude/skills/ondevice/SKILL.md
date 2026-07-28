@@ -18,7 +18,10 @@ CLAUDE.md requires verifying UI changes by running the app, not eyeballing code.
 ## Emulator (only if not using Alvin's real device)
 
 - **HARD RULE: always use `Medium_Phone`, which boots as `emulator-5554`.** Never `Medium_Phone_2`, never `Pixel_Tablet`, even though all three currently exist (`emulator -list-avds` to check the live list). Screenshot coordinates, tap coordinates, and any `-s <serial>` in commands below all assume this specific device.
-- Boot dies between sessions — re-boot each time as a **`run_in_background` Bash task**: `emulator -avd Medium_Phone -no-snapshot-save -no-boot-anim`.
+- **Fast-boot from a logged-in snapshot** instead of paying a cold boot + fresh login on every dispatch:
+  - One-time setup (or whenever the snapshot is missing/stale — app data has drifted too far from a clean baseline): boot cold — `emulator -avd Medium_Phone -no-boot-anim` (no `-no-snapshot-save`) — log in with one of the `test-account-credentials` accounts, then `adb emu avd snapshot save loggedin`.
+  - Every normal dispatched run after that, as a **`run_in_background` Bash task**: `emulator -avd Medium_Phone -no-snapshot-save -snapshot loggedin -no-boot-anim`. `-no-snapshot-save` here protects the *snapshot* — nothing the test run mutates gets written back into it, so `loggedin` stays a clean baseline for the next dispatch.
+  - If a scenario specifically needs a fresh/unauthenticated device (onboarding, first-login flows), cold-boot instead — don't force those through the snapshot.
 - Wait for boot as a second `run_in_background` Bash task, using this **exact** command (it's allowlisted verbatim — do not rephrase it, a different string won't match): `until adb shell getprop sys.boot_completed | grep -q 1; do sleep 2; done`
 - If more than one emulator/device is attached, target the phone explicitly: `adb -s emulator-5554 ...` / `uidump.sh -s emulator-5554`.
 
@@ -27,6 +30,7 @@ CLAUDE.md requires verifying UI changes by running the app, not eyeballing code.
 - `adb shell am force-stop com.iponlove.app.staging` then `adb shell am start -n com.iponlove.app.staging/com.iponlove.app.MainActivity`.
 - Confirm it's up: `adb shell dumpsys activity activities | grep ResumedActivity` shows the app. The first `screencap` after launch often catches the splash — wait ~2s and re-shoot.
 - Screenshot: `adb exec-out screencap -p > /tmp/x.png`, then Read it. PNG pixels == device coords 1:1 — check the actual resolution with `adb shell wm size` rather than assuming (differs by AVD; don't carry over a tablet's dimensions onto `Medium_Phone`).
+- **Don't `Read` every screenshot back into context.** `uidump.sh`'s text dump is cheap and confirms state between steps; only `Read` a PNG when verifying something inherently visual (layout, color, a rendered chart) that the text dump can't tell you.
 
 ## Drive the UI — DON'T eyeball coordinates
 
@@ -39,6 +43,7 @@ CLAUDE.md requires verifying UI changes by running the app, not eyeballing code.
 - **Do NOT hand-roll the old three-step loop** (`uiautomator dump && adb pull && python3 -c '…'`). Every segment of a compound command must match the allowlist for the line to pass, and `python3 -c` can never be allowlisted — that loop is what made dispatched runs raise a permission prompt on nearly every UI step.
 - **keyevent 4 (Back) gotcha:** it closes the *dialog* if the soft keyboard isn't actually up. Only use it to dismiss a keyboard you're sure is shown. Otherwise the Save button sits just above the keyboard (~y 1790 on these dialogs) — tap it directly.
 - Account/category/budget/transaction editors are `AlertDialog`s; the pickers inside are scrollable `FilterChip` rows.
+- **Check for silent crashes/ANRs, not just visible failures.** A tap that no-ops on screen can look identical to one that crashed the activity underneath a respawn. After driving a scenario, before declaring it a pass: `adb logcat -d | grep -E "FATAL EXCEPTION|ANR in"`.
 
 ## Seed test data via the DB — don't tap it in
 
@@ -62,6 +67,17 @@ Building a scenario through the UI (create category → create budget → create
 ## Accounts
 
 - Use a real paired staging account for couples/sharing flows (`test-account-credentials` memory: `testdev2–5@iponlove.com`, and `testdev15@iponlove.com` is a paired couple). Re-login is needed each fresh emulator boot.
+
+## Report format (dispatched runs)
+
+When this skill runs inside a dispatched subagent (`ondevice-model-dispatch` memory), close with a fixed-shape report instead of free prose — Alvin isn't watching live, so this needs to be scannable without re-reading the transcript:
+
+- **Scenario:** what slice/behavior was under test
+- **Golden path:** pass/fail + what was checked
+- **Edge cases:** pass/fail per case checked
+- **DB check:** query + result, if one was run
+- **Crash/ANR check:** clean, or paste the matching logcat line(s)
+- **Screenshots:** file paths only (don't re-embed) unless something looks visually wrong and needs Alvin's eyes
 
 ## Notes
 
