@@ -2,7 +2,9 @@
 
 **Status: SKELETON — to be filled + frozen by grilling [W2](web-phase-0-prep.md#w2--freeze-the-cross-platform-contract-determinism--sync-protocol--money-math).** Sections below are stubs with the questions each must answer and pointers to the authoritative Android source. Do **not** treat any value here as final until its section is marked ✅ FROZEN.
 
-**What this is:** the single spec that binds every client (Android now, web in Q4 2026, any future client) to identical behavior on the shared Supabase backend. The two clients converge **only** if the web client reproduces these rules exactly. Every rule here fails *silently* when violated — no crash, just duplicated rows or centavo-divergent numbers days later. This doc is to the multi-client sync layer what `subscription-paywall-design.md` is to the paywall: the frozen reference a second team builds against.
+**Architecture update (2026-07-28, see [W10](web-phase-0-prep.md#w10--extract-domaindatasync-layer-into-a-kotlin-multiplatform-shared-module)):** the web app will share the logic these sections describe via a Kotlin Multiplatform module, rather than hand-reimplementing it in TypeScript. **This doc still matters, but its job changes:** for §1/§1b/§2/§3/§4/§5/§6 — once the corresponding logic moves into the shared module — being "reproduced exactly" stops being a discipline problem (a human/AI carefully matching a spec) and becomes a fact of the code (one implementation, two compile targets). This doc is still the authoritative *description* of those invariants (onboarding reference, audit trail, and it still governs the period before extraction happens), but it is no longer the last line of defense against drift for whatever gets shared. §7 (image compression) and §9 (atomic writes) are the sections most likely to stay genuinely platform-specific even after extraction — those keep the original "must hand-match" stakes.
+
+**What this is (for whatever isn't/can't be shared, and until W10 is built):** the single spec that binds every client to identical behavior on the shared Supabase backend. Where two independent implementations exist, they converge **only** if the second reproduces these rules exactly — every rule here fails *silently* when violated, no crash, just duplicated rows or centavo-divergent numbers days later. This doc is to the multi-client sync layer what `subscription-paywall-design.md` is to the paywall: the frozen reference a second implementation builds against, for as long as a second implementation exists.
 
 **Authority:** where this doc and the code disagree, the code (`supabase/schema.sql` + the cited Android sources) is authoritative *until a section is frozen here* — freezing means we've committed to the value as the contract and any client (incl. Android) that drifts is the bug.
 
@@ -129,6 +131,19 @@ Both push and pull process tables in FK order; upserts are idempotent by `id`; a
 
 ---
 
+## 9. Atomic multi-row writes — Android has a primitive web doesn't
+
+*Status: ⬜ not frozen — a genuine architecture gap, not just a data-format one.* Source: v1.7.1 Item 10 / ADR-0055, `LocalTransactionRunner`.
+
+Android's debt-overpay cascade (2026-07-28) became the app's **first true atomic multi-row write** — one EXPENSE transaction + N `DebtPayment` rows must commit all-or-nothing, since a partial write would leave the ledger overstating what reached the debts. It's implemented via `RoomDatabase.withTransaction`, wrapped behind a small `LocalTransactionRunner` seam (originally built for Reset-finances, ADR-0037; reused here with no new infra).
+
+**This has no client-side equivalent on web.** `@supabase/supabase-js` issues independent REST calls per table — there is no client-side "wrap these N inserts in one transaction" primitive against PostgREST. If web ever needs the same all-or-nothing guarantee (this feature, or a future one shaped like it), the write must move **server-side**: a Postgres `SECURITY DEFINER` RPC function that performs the whole multi-row write in one SQL transaction, called once from the client. That's a different shape than the Android implementation (client-orchestrated vs. server-orchestrated) — so this is *not* just "port the Kotlin logic to TypeScript."
+
+- **To pin at grill:** whether to (a) leave this Android-only for now (web reads the resulting rows fine, just can't author an equivalent grouped settlement), or (b) build the RPC now so both clients can write it. Either way, **any future "all-or-nothing across tables" feature must be designed with an RPC from the start if web needs to author it** — don't assume the Android pattern ports.
+- **Ties to:** [W8](web-phase-0-prep.md#w8--web-app-greenfield-foundational-design)'s open tensions.
+
+---
+
 ## Conformance checklist (fill as sections freeze)
 
 - [ ] §1 Deterministic UUIDs — algorithm + namespace + all name strings + test vectors
@@ -139,3 +154,5 @@ Both push and pull process tables in FK order; upserts are idempotent by `id`; a
 - [ ] §6 Seeding — server "already onboarded?" predicate + tombstone rule
 - [ ] §7 Images — bucket/path convention + auth scheme + storage RLS/CORS
 - [ ] §8 Entitlement — validating RPC contract + offline read + web purchase flow
+- [ ] §9 Atomic multi-row writes — RPC-vs-Android-only decision for grouped writes
+- [x] §1b Notification-inbox composite ids — ✅ already confirmed live (schema + build, no grill needed, just adopt as-is)

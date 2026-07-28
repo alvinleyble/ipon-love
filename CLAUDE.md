@@ -173,7 +173,7 @@ When in doubt: favor thin, composable layers over shortcuts. Three constraints t
 - Password vault
 - Voice recording
 - ~~CSV / PDF export~~ — **no longer out of scope** (2026-07-23): un-shelved and grilled as a *general* export facility (CSV / PDF / ZIP, receipt photos included, share-sheet delivery) — see `docs/build/v1.7.0.md` Item 6. CSV is free; PDF/ZIP sit behind `EXPORT_WITH_ATTACHMENTS`.
-- iOS (dropped from roadmap — web app is the planned cross-platform target instead, see Post-V1 Horizon)
+- iOS (off the active roadmap — web app is the near-term cross-platform target, see Post-V1 Horizon. Not permanently dropped: revisit in a couple of years once the $99/yr Apple Developer fee is affordable — keep web-app architecture decisions from foreclosing an eventual iOS target)
 - Custom fonts (typography only — category/account icon customization already shipped in V1.3; themes remain color-only otherwise)
 - Profile / couple photo upload (avatars are accent color + initials in V1)
 

@@ -10,15 +10,26 @@
 
 ---
 
-## Current state (as of 2026-07-26)
+## Current state (as of 2026-07-28, later)
 
-**Track opened 2026-07-26** out of a "what must change in the base app before the web app?" audit (see the Origin note below). **Nothing built or grilled yet** — this is the initial scaffold. Phase 0 (design + base-app prep) is the active phase: [`web-phase-0-prep.md`](web-phase-0-prep.md), **8 items booked, all awaiting a grill/decision.**
+**Track opened 2026-07-26** out of a "what must change in the base app before the web app?" audit (see the Origin note below). Phase 0 (design + base-app prep) is the active phase: [`web-phase-0-prep.md`](web-phase-0-prep.md), **10 items booked (W1–W10)**, all awaiting a formal grill except W8/W10 whose *direction* is now locked (below).
 
-**Do first (highest leverage, both need a grill):**
-- **W1 — lock the entitlement columns.** On Android the self-writable `is_premium` column is an accepted advisory risk (ADR-0044); on web it becomes one-line piracy from dev tools. Backend/schema change, should land regardless of web timing. Opus/high when grilled (cross-ADR: 0044 + couple governance + a new validating RPC).
-- **W2 — freeze the cross-platform contract.** The determinism + sync-protocol rules the web client must reproduce bit-for-bit (v5-UUID schemes, LWW clock offset, FK order, money rounding). Skeleton stubbed in [`cross-platform-contract.md`](cross-platform-contract.md); grill fills + freezes it. This is the artifact that de-risks the whole Q4 build.
+**Architecture direction LOCKED 2026-07-28 (conversation, not a formal `/grill` — W8 still needs one to stress-test edges): the web app shares its domain/data/sync layer with Android via Kotlin Multiplatform (Kotlin/JS target), with a native React/Tailwind UI on top — not a from-scratch TypeScript reimplementation of the sync/money/dedup logic.** This is the single most consequential decision in the track so far — it changes what several other items mean:
+- **W2's role shrinks.** The cross-platform contract doc still documents the invariants, but for whatever moves into the shared module, "matches exactly" stops being a spec a second team must hand-follow and becomes a fact of the code (one implementation, two compile targets). It stays load-bearing for what genuinely can't be shared (image compression, atomic writes) and for the period before the extraction happens.
+- **W8's stack proposal was rewritten** — the web repo now owns UI + wiring only (Next.js/React/Tailwind/shadcn, unchanged from the earlier draft); all domain/sync/money logic is consumed from the shared module instead of reimplemented in TypeScript. The earlier advice to use `decimal.js`/a `uuid` npm package/Dexie-ported sync is superseded (kept in the doc only as a record of what not to do).
+- **New W10** books the actual extraction work — explicitly **not scheduled now**. No mobile code needs to change today; the domain layer's existing "zero Android imports" discipline (a house rule already, originally for JVM-testability) already produces the shape this needs. The only "prep" is holding that line on new native features, which isn't a new ask.
+- **Partly driven by a longer-horizon consideration, not just Q4 web:** Alvin expects to afford the $99/yr Apple Developer fee in a couple of years — the same shared module extends to an `iosMain` target later with no redo, if `commonMain` is built with multiplatform-safe types (`kotlinx-datetime`, `kotlin-bignum`) and clean `expect`/`actual` boundaries from the start. No iOS-specific work needed yet.
 
-Everything else in Phase 0 (W3–W8) is booked with the design tension captured; none is build-ready.
+**Do first regardless of the above (highest leverage, both need a grill):**
+- **W1 — lock the entitlement columns.** On Android the self-writable `is_premium` column is an accepted advisory risk (ADR-0044); on web (or any second client) it becomes one-line piracy from dev tools. Backend/schema change, should land regardless of web timing or tech stack — orthogonal to the KMP decision. Opus/high when grilled (cross-ADR: 0044 + couple governance + a new validating RPC).
+- **W2 — freeze the cross-platform contract** for whatever doesn't move into the shared module (see above).
+
+**Notification-submodule fallout (still current, from the native v1.7.1 batch landing since the track opened):**
+- **The notification inbox is now BUILT and live** (v1.7.1 Item 6, [ADR-0053](../adr/0053-notification-inbox-synced-source-of-truth.md), Room v30, Supabase migration #22) — deliberately built **synced now**, with the ADR's own stated reason being that the web app is imminent. [`cross-platform-contract.md` §1b](cross-platform-contract.md#1b-notification-inbox-composite-ids--a-second-distinct-scheme--built--live-v171-item-6--adr-0053) records its id scheme.
+- **ADR-0053 itself names a deferred question** — server-side notification generation — booked as **W9**.
+- **The debt-overpay cascade** (v1.7.1 Item 10, ADR-0055) is the app's first atomic multi-row write, with no client-side web equivalent (`@supabase/supabase-js` has no transaction primitive) — this stays true regardless of the KMP decision, since Room's transaction API doesn't cross to web either way. Tracked in [`cross-platform-contract.md` §9](cross-platform-contract.md#9-atomic-multi-row-writes--android-has-a-primitive-web-doesnt).
+
+Everything else in Phase 0 (W1, W3–W7, W9) is booked with the design tension captured; none is build-ready yet.
 
 ---
 
@@ -43,7 +54,7 @@ Full discussion is preserved in [`web-phase-0-prep.md`](web-phase-0-prep.md) per
 
 | Phase | What | Doc |
 |---|---|---|
-| Phase 0 | Design + base-app/backend prep (W1–W8) — make a second client safe; design the web app itself. **Active, nothing grilled yet.** | [web-phase-0-prep.md](web-phase-0-prep.md) |
+| Phase 0 | Design + base-app/backend prep (W1–W10) — make a second client safe; design the web app itself. **Active; W8/W10's architecture direction locked, formal grill still pending.** | [web-phase-0-prep.md](web-phase-0-prep.md) |
 
 New phases get their own doc and a row here once Phase 0's shape is known.
 
