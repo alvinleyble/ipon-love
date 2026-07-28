@@ -4,8 +4,8 @@ import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.feature.user.data.local.UserEntity
 import com.iponlove.app.feature.user.data.remote.UserDto
 import com.iponlove.app.feature.user.data.toDomain
-import com.iponlove.app.feature.user.data.toDto
 import com.iponlove.app.feature.user.data.toEntity
+import com.iponlove.app.feature.user.data.toPushDto
 import org.junit.Test
 import java.time.Instant
 
@@ -33,8 +33,8 @@ class UserMotifMapperTest {
     )
 
     @Test
-    fun entityToDto_carriesMotif() {
-        assertThat(entity("leaf").toDto().avatarMotif).isEqualTo("leaf")
+    fun entityToPushDto_carriesMotif() {
+        assertThat(entity("leaf").toPushDto().avatarMotif).isEqualTo("leaf")
     }
 
     @Test
@@ -60,7 +60,7 @@ class UserMotifMapperTest {
 
     @Test
     fun nullMotif_roundTripsAsNull() {
-        assertThat(entity(null).toDto().avatarMotif).isNull()
+        assertThat(entity(null).toPushDto().avatarMotif).isNull()
         assertThat(entity(null).toDomain().avatarMotif).isNull()
     }
 }

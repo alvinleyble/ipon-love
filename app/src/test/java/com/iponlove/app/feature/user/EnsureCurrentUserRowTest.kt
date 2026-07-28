@@ -7,6 +7,8 @@ import com.iponlove.app.feature.user.data.UserRepositoryImpl
 import com.iponlove.app.feature.user.data.local.UserDao
 import com.iponlove.app.feature.user.data.local.UserEntity
 import com.iponlove.app.feature.user.data.remote.UserDto
+import com.iponlove.app.feature.user.data.remote.UserEntitlementWrite
+import com.iponlove.app.feature.user.data.remote.UserPushDto
 import com.iponlove.app.feature.user.data.remote.UserRemoteSource
 import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
 import kotlinx.coroutines.flow.Flow
@@ -120,7 +122,8 @@ private class FakeUserRemoteSource(
     private val throws: Boolean = false,
 ) : UserRemoteSource {
     var fetchSelfCalled = false
-    override suspend fun push(rows: List<UserDto>): List<String> = emptyList()
+    override suspend fun push(rows: List<UserPushDto>): List<String> = emptyList()
+    override suspend fun writeEntitlement(write: UserEntitlementWrite) = Unit
     override suspend fun pull(cursor: Long, limit: Int): List<UserDto> = emptyList()
     override suspend fun fetchSelf(userId: String): UserDto? {
         fetchSelfCalled = true

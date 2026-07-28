@@ -72,8 +72,12 @@ create table users (
     -- users_select same-couple policy below — NOT redacted, by design (D2).
     is_premium             boolean not null default false,
     premium_until          timestamptz,           -- null = never expires (one-time model, D7)
-    entitlement_source     text not null default 'NONE',  -- PLAY | GRANT | NONE (ADR-0044 §4)
+    entitlement_source     text not null default 'NONE'
+        constraint users_entitlement_source_check check (entitlement_source in ('PLAY', 'GRANT', 'NONE')),
     entitlement_checked_at timestamptz,           -- last-reconcile diagnostic; never read by a gate
+    -- These four are WRITE-LOCKED for clients (ADR-0060): `authenticated` has no UPDATE
+    -- privilege on them, only on the profile columns allowlisted further down. The sole
+    -- write path is set_self_entitlement(). See the grant + function near the RPCs below.
     created_at   timestamptz not null default now(),
     updated_at   timestamptz not null default now(),
     server_rev   bigint
@@ -498,6 +502,18 @@ create policy users_insert on users for insert
     with check (id = auth.uid());
 create policy users_update on users for update
     using (id = auth.uid()) with check (id = auth.uid());
+
+-- users_update is row-scoped but says nothing about WHICH columns, so the privilege layer
+-- carries that half (ADR-0060). Note the shape: a column-level `revoke update (col)` is a
+-- SILENT NO-OP against a table-level grant, so the table grant is dropped and the writable
+-- columns handed back — an ALLOWLIST. A new users column is unwritable by the client until
+-- it is added here, and the symptom of forgetting is a field that quietly stops syncing.
+-- The four entitlement columns are deliberately absent: set_self_entitlement() owns them.
+revoke update on users from authenticated;
+grant update (
+    id, display_name, avatar_url, accent_color, avatar_motif,
+    couple_id, created_at, updated_at, server_rev
+) on users to authenticated;
 
 -- ---- couples ---------------------------------------------------------------
 -- Members read/update their own couple. Joining a couple is NOT done here —
@@ -937,6 +953,69 @@ begin
     end if;
 end;
 $$;
+
+-- The sole write path for the four entitlement columns (ADR-0060). SECURITY DEFINER runs as
+-- the owner, so it is unaffected by the revoke above — which is what makes it the only door.
+--
+-- PASSTHROUGH by design: it writes what the client reports and validates nothing about the
+-- purchase, so a forged call still sets is_premium (ADR-0060 §5). Real Play receipt validation
+-- is deferred and must land before enforcement flip-day, the web purchase path (W7), or AI.
+--
+-- Called on EVERY dirty users push (the profile upsert can't carry entitlement any more), so
+-- the no-change early return is load-bearing: without it an accent-colour edit would bump
+-- server_rev and make the partner re-pull the row every time.
+create or replace function set_self_entitlement(
+    p_is_premium    boolean,
+    p_premium_until timestamptz,
+    p_source        text,
+    p_checked_at    timestamptz,
+    p_updated_at    timestamptz
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_current users%rowtype;
+begin
+    if p_source not in ('PLAY', 'GRANT', 'NONE') then
+        raise exception 'invalid entitlement_source: %', p_source;
+    end if;
+
+    select * into v_current from users where id = auth.uid();
+    if not found then
+        return;   -- new signup: the ordinary upsert creates the row with column defaults
+    end if;
+
+    -- A beta comp is never overwritten by a client's Play state (ADR-0044 §4). Mirrors
+    -- EntitlementRepositoryImpl's early return; enforced here too because the web client
+    -- will have its own reconcile loop.
+    if v_current.entitlement_source = 'GRANT' and p_source <> 'GRANT' then
+        return;
+    end if;
+
+    if v_current.is_premium              is not distinct from p_is_premium
+       and v_current.premium_until       is not distinct from p_premium_until
+       and v_current.entitlement_source  is not distinct from p_source then
+        return;
+    end if;
+
+    update users
+       set is_premium             = p_is_premium,
+           premium_until          = p_premium_until,
+           entitlement_source     = p_source,
+           entitlement_checked_at = p_checked_at,
+           -- ADR-0001 keeps updated_at client-stamped; greatest() floors it so a skewed
+           -- client stamp can't move the LWW key backwards.
+           updated_at             = greatest(p_updated_at, v_current.updated_at)
+     where id = auth.uid();
+end;
+$$;
+
+grant execute on function
+    set_self_entitlement(boolean, timestamptz, text, timestamptz, timestamptz)
+    to authenticated;
 
 -- Dissolve the caller's couple: both leave, shared budgets soft-deleted, shared
 -- notes + savings goals revert to private-to-owner, shared accounts & categories

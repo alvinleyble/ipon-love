@@ -3,13 +3,21 @@ package com.iponlove.app.feature.user
 import com.google.common.truth.Truth.assertThat
 import com.iponlove.app.feature.user.data.local.UserEntity
 import com.iponlove.app.feature.user.data.remote.UserDto
-import com.iponlove.app.feature.user.data.toDto
+import com.iponlove.app.feature.user.data.remote.UserPushDto
+import com.iponlove.app.feature.user.data.toEntitlementWrite
 import com.iponlove.app.feature.user.data.toEntity
+import com.iponlove.app.feature.user.data.toPushDto
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 import org.junit.Test
 import java.time.Instant
 
-/** Entitlement columns must round-trip through sync (Entity↔Dto) so a purchase/grant reaches
- *  the partner (D2 / ADR-0044) and self-push never nulls them. */
+/**
+ * Entitlement must still arrive from the server on pull (D2 / ADR-0044 — a purchase/grant has
+ * to reach the partner), while the ordinary push must NOT carry it (ADR-0060 — the four columns
+ * are write-locked, and the privilege check rejects a statement that merely names them).
+ */
 class UserEntitlementMapperTest {
 
     private val ts = Instant.ofEpochMilli(1_000)
@@ -46,31 +54,66 @@ class UserEntitlementMapperTest {
         assertThat(e.entitlementCheckedAt).isNull()
     }
 
+    /**
+     * The load-bearing assertion of ADR-0060. Postgres rejects an UPDATE that *names* a locked
+     * column even when the value is unchanged, so this is asserted on the serialized wire shape
+     * — the thing the database actually sees — not just on the Kotlin type.
+     */
     @Test
-    fun entityToDto_carriesEntitlement() {
+    fun pushPayload_omitsAllFourEntitlementColumns() {
         val dto = entity(
             isPremium = true,
             premiumUntil = premiumTs,
             entitlementSource = "PLAY",
             entitlementCheckedAt = ts,
-        ).toDto()
+        ).toPushDto()
 
-        assertThat(dto.isPremium).isTrue()
-        assertThat(dto.premiumUntil).isEqualTo(premiumTs)
-        assertThat(dto.entitlementSource).isEqualTo("PLAY")
-        assertThat(dto.entitlementCheckedAt).isEqualTo(ts)
+        val keys = Json.encodeToJsonElement<UserPushDto>(dto).jsonObject.keys
+
+        assertThat(keys).containsNoneOf(
+            "is_premium", "premium_until", "entitlement_source", "entitlement_checked_at",
+        )
     }
 
+    /**
+     * The other half: the ordinary profile columns must still ride the push, or a profile edit
+     * would silently stop syncing. Every one of these is in the database's UPDATE allowlist —
+     * this test and that grant have to be kept in step.
+     *
+     * A motif is set explicitly because `avatarMotif` is the one field with a default, and
+     * kotlinx omits defaults; that is pre-existing wire behaviour, unchanged by ADR-0060.
+     */
     @Test
-    fun grant_roundTrips_entityToDtoToEntity() {
-        // A beta comp: is_premium=true, never-expires, source=GRANT (ADR-0044 §4).
-        val original = entity(isPremium = true, premiumUntil = null, entitlementSource = "GRANT")
+    fun pushPayload_stillCarriesProfileColumns() {
+        val dto = entity().copy(avatarMotif = "leaf").toPushDto()
 
-        val roundTripped = original.toDto().toEntity()
+        val keys = Json.encodeToJsonElement<UserPushDto>(dto).jsonObject.keys
 
-        assertThat(roundTripped).isEqualTo(original)
+        assertThat(keys).containsExactly(
+            "id", "display_name", "avatar_url", "accent_color", "avatar_motif",
+            "couple_id", "created_at", "updated_at", "server_rev",
+        )
     }
 
+    /** Entitlement still leaves the device — via the RPC payload instead of the upsert. */
+    @Test
+    fun entitlementWrite_carriesTheGrant() {
+        val write = entity(
+            isPremium = true,
+            premiumUntil = null,
+            entitlementSource = "GRANT",
+            entitlementCheckedAt = ts,
+        ).toEntitlementWrite()
+
+        assertThat(write.isPremium).isTrue()
+        assertThat(write.premiumUntil).isNull()
+        assertThat(write.source).isEqualTo("GRANT")
+        assertThat(write.checkedAt).isEqualTo(ts)
+        // The row's LWW key travels with it so the server write keeps ADR-0001's ordering.
+        assertThat(write.updatedAt).isEqualTo(ts)
+    }
+
+    /** Reads are untouched by ADR-0060 — pull still brings the partner's entitlement down. */
     @Test
     fun dtoToEntity_isServerCanonical_pendingSyncFalse() {
         val dto = UserDto(
