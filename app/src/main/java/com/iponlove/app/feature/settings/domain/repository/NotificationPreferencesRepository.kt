@@ -11,6 +11,14 @@ interface NotificationPreferencesRepository {
     fun observeRecurringRemindersEnabled(): Flow<Boolean>
     suspend fun setRecurringRemindersEnabled(enabled: Boolean)
 
+    /**
+     * Opt-in off-app delivery for the recurring reminder (ADR-0056 decision 7) — **default OFF**.
+     * When on, a periodic sweep wakes the app to check; when off the periodic work does not exist
+     * at all rather than existing-and-suppressed. Device-global like every other preference here.
+     */
+    fun observeOffAppRecurringRemindersEnabled(): Flow<Boolean>
+    suspend fun setOffAppRecurringRemindersEnabled(enabled: Boolean)
+
     /** "Partner logs a new debt" alerts (Item 9 grill) — one toggle, default ON. */
     fun observePartnerDebtAlertsEnabled(): Flow<Boolean>
     suspend fun setPartnerDebtAlertsEnabled(enabled: Boolean)

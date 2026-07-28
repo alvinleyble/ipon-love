@@ -74,6 +74,7 @@ import com.iponlove.app.feature.settings.data.ThemeDraftRepository
 import com.iponlove.app.feature.settings.domain.model.ThemePreferences
 import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 import com.iponlove.app.feature.settings.domain.usecase.ObserveCurrencySymbolUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObserveRecurringSweepArmedUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
 import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
@@ -85,6 +86,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -115,6 +117,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var themeDraft: ThemeDraftRepository
     @Inject lateinit var accountSwitchGuard: AccountSwitchGuard
     @Inject lateinit var premiumGate: PremiumGate
+    @Inject lateinit var observeRecurringSweepArmed: ObserveRecurringSweepArmedUseCase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -265,6 +268,25 @@ class MainActivity : FragmentActivity() {
                             Widgets.updateAll(applicationContext)
                         }
                         LaunchedEffect(current.userId) { watchUnpair() }
+                        // Bring the opt-in off-app sweep in line with the stored preference
+                        // (ADR-0056 decision 8). Idempotent both ways: KEEP never resets an
+                        // already-running schedule's timer, and passing `false` tears down a
+                        // schedule orphaned by a cancel that didn't land. The preference is
+                        // device-global, so a different account signing in inherits it.
+                        //
+                        // Deliberately its OWN effect rather than the tail of the login effect
+                        // above: that one awaits syncEngine.sync() and then the unguarded
+                        // materializeRecurringRules(), so anything appended after them is silently
+                        // skipped whenever either throws or the effect is cancelled. Sitting there
+                        // is what stopped the sweep re-arming after a sign-out/sign-in round trip
+                        // (found on-device). Reconciling the schedule reads two DataStore flags and
+                        // needs neither sync nor materialization, so nothing justifies the coupling.
+                        LaunchedEffect(current.userId) {
+                            RecurringReminderWorker.setPeriodicEnabled(
+                                applicationContext,
+                                observeRecurringSweepArmed().first(),
+                            )
+                        }
                         // Keep IponApp always composed — never a branch swap. Swapping the
                         // NavHost out on lock tears down the NavController and every nav-scoped
                         // ViewModel, destroying in-progress drafts app-wide on unlock (ADR-0023).

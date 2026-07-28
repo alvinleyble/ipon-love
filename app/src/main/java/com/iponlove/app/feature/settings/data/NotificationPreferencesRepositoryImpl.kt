@@ -30,6 +30,15 @@ class NotificationPreferencesRepositoryImpl @Inject constructor(
         dataStore.edit { p -> p[KEY_RECURRING_REMINDERS_ENABLED] = enabled }
     }
 
+    // Default OFF (ADR-0056 decision 7): this is the first thing in the app that makes it wake
+    // itself on a schedule, which should be a choice rather than something that appears in an update.
+    override fun observeOffAppRecurringRemindersEnabled(): Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[KEY_OFF_APP_RECURRING_REMINDERS] ?: false }
+
+    override suspend fun setOffAppRecurringRemindersEnabled(enabled: Boolean) {
+        dataStore.edit { p -> p[KEY_OFF_APP_RECURRING_REMINDERS] = enabled }
+    }
+
     override fun observePartnerDebtAlertsEnabled(): Flow<Boolean> =
         dataStore.data.map { prefs -> prefs[KEY_PARTNER_DEBT_ALERTS_ENABLED] ?: true }
 
@@ -71,6 +80,7 @@ class NotificationPreferencesRepositoryImpl @Inject constructor(
     private companion object {
         val KEY_BUDGET_ALERTS_ENABLED = booleanPreferencesKey("budget_alerts_enabled")
         val KEY_RECURRING_REMINDERS_ENABLED = booleanPreferencesKey("recurring_reminders_enabled")
+        val KEY_OFF_APP_RECURRING_REMINDERS = booleanPreferencesKey("off_app_recurring_reminders_enabled")
         val KEY_PARTNER_DEBT_ALERTS_ENABLED = booleanPreferencesKey("partner_debt_alerts_enabled")
         val KEY_BUDGET_WARN_THRESHOLD = intPreferencesKey("budget_warn_threshold_percent")
         val KEY_BUDGET_OVER_ENABLED = booleanPreferencesKey("budget_over_alerts_enabled")

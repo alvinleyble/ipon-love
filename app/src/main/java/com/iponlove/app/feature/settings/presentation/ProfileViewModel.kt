@@ -18,6 +18,7 @@ import com.iponlove.app.feature.auth.domain.usecase.GetLinkedGoogleIdentityUseCa
 import com.iponlove.app.feature.auth.domain.usecase.LinkGoogleIdentityUseCase
 import com.iponlove.app.feature.auth.domain.usecase.RefreshSessionUseCase
 import com.iponlove.app.feature.auth.presentation.message
+import com.iponlove.app.feature.recurring.worker.RecurringReminderWorker
 import com.iponlove.app.feature.settings.domain.usecase.DeleteUserAccountUseCase
 import com.iponlove.app.feature.settings.domain.usecase.PreviewResetFinancesUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ResetFinancesUseCase
@@ -330,6 +331,10 @@ class ProfileViewModel @Inject constructor(
             // Stop background sync before the destructive call so it can't race the teardown
             // (mirrors AuthViewModel.signOut).
             WorkManager.getInstance(context).cancelUniqueWork(SyncWorker.WORK_NAME)
+            // Same reason as the sign-out cancel (ADR-0056 decision 8): the periodic schedule lives
+            // in WorkManager's database, so deleting the account without this leaves the phone
+            // waking every six hours for an account that no longer exists.
+            RecurringReminderWorker.cancelPeriodic(context)
             try {
                 deleteUserAccount(password)
                 // Success tears down the session → the app root's auth gate navigates to login;

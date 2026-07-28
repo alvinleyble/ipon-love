@@ -23,6 +23,7 @@ import com.iponlove.app.feature.auth.domain.usecase.SignInUseCase
 import com.iponlove.app.feature.auth.domain.usecase.SignInWithGoogleUseCase
 import com.iponlove.app.feature.auth.domain.usecase.SignOutUseCase
 import com.iponlove.app.feature.auth.domain.usecase.SignUpUseCase
+import com.iponlove.app.feature.recurring.worker.RecurringReminderWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -184,6 +185,10 @@ class AuthViewModel @Inject constructor(
     fun signOut() {
         viewModelScope.launch {
             WorkManager.getInstance(context).cancelUniqueWork(SyncWorker.WORK_NAME)
+            // A periodic request survives the session in WorkManager's own database — without this
+            // a signed-out phone keeps waking every six hours forever (ADR-0056 decision 8). The
+            // preference itself is device-global, so the next sign-in re-arms it from the stored value.
+            RecurringReminderWorker.cancelPeriodic(context)
             val flushed = runCatching { syncEngine.pushOnly() }.isSuccess
             if (flushed) {
                 performSignOut()

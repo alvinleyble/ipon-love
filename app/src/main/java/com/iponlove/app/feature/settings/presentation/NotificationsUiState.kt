@@ -16,6 +16,17 @@ data class NotificationsUiState(
     val budgetOverThresholdPercent: Int = 120,
     /** Recurring due-date reminders (ADR-0052 decision 4) — one combined toggle, default ON. */
     val recurringRemindersEnabled: Boolean = true,
+    /**
+     * Opt-in off-app delivery for the recurring reminder (ADR-0056 decision 7) — **default OFF**.
+     * Sub-row of [recurringRemindersEnabled]: greyed out, not hidden, when that master is off, so
+     * its stored value survives and resumes when the master comes back on.
+     */
+    val offAppRecurringRemindersEnabled: Boolean = false,
+    /**
+     * OS-level notifications are denied, so every switch on this screen is a silent no-op
+     * (ADR-0056 decision 9). Drives the screen-level banner; re-read on every resume.
+     */
+    val notificationsBlocked: Boolean = false,
     /** "Partner logs a new debt" alerts (Item 9 grill) — default ON. */
     val partnerDebtAlertsEnabled: Boolean = true,
     /** Gates the Couple section entirely — hidden while unpaired, matching the Debt Tracker
