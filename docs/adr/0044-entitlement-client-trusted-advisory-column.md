@@ -40,6 +40,17 @@ Concretely:
 
 Opus for the `core/entitlement` state/reconcile/`Effective access` logic (cross-ADR: sync, redacting views, unpair, couples governance) — JVM-testable behind a billing interface per the Testing Policy; Sonnet for mechanical gate placement once the pattern is locked.
 
+## Amendment (2026-07-29) — the write path is locked; see [ADR-0060](0060-entitlement-columns-are-rpc-write-only.md)
+
+Decision 3's accepted spoof risk was justified on **two** legs: gated items have zero server cost, *and* self-asserting requires rooting the device or MITM'ing TLS. The web-app track (W1) showed the second leg does not survive a browser — `supabase.from('users').update({ is_premium: true })` from dev tools is the whole attack, and the forged row syncs back to the phone through our own engine.
+
+ADR-0060 therefore **revokes direct write access** to `is_premium` / `premium_until` / `entitlement_source` / `entitlement_checked_at` at the Postgres privilege layer, leaving one `SECURITY DEFINER` RPC as the sole write path (which also forces the client's full-row `users` upsert to stop carrying those columns). Everything else in this ADR stands unchanged — entitlement remains a client-maintained cache, advisory-only, fail-open on cold start, with asymmetric trust and the `GRANT` skip.
+
+Two corrections to the text above:
+
+- **Decision 3's prerequisite now has three triggers, not one.** Server-side purchase verification must precede the AI companion **and** enforcement flip-day **and** the web purchase path (W7) — whichever arrives first.
+- **ADR-0060 does not itself add that verification.** Its RPC is a passthrough: it writes what the client claims. The spoof surface narrows from "write any column" to "call the RPC correctly", but is not closed. The door is shut, not locked.
+
 ## As-built addendum (2026-07-13, flip re-grill)
 
 The Phase 1–2 build (S1–S10) implemented this ADR with four refinements the text above predates — all behavior-compatible, recorded here so the ADR matches the code:
