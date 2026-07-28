@@ -8,6 +8,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
+import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 
 /**
  * The privacy eye as a standard header action (Item 16) — a stateless component reading the
@@ -15,13 +16,19 @@ import com.iponlove.app.core.ui.theme.LocalPlayfulColors
  * header can drop this in without threading `isPrivacyModeOn`/`onTogglePrivacyMode` through that
  * feature's own ViewModel. Masking itself is global (house rule — the eye never does a local
  * reveal), so one shared control is correct wherever a header wants it.
+ *
+ * It carries the [TutorialTargets.PRIVACY_EYE] coach-mark anchor itself, so the one Analysis tour
+ * step about it resolves on every header that drops this in, with no per-screen wiring (Item 20).
  */
 @Composable
 fun PrivacyEyeAction(modifier: Modifier = Modifier) {
     val colors = LocalPlayfulColors.current
     val isPrivacyModeOn = LocalPrivacyMode.current
     val togglePrivacyMode = LocalTogglePrivacyMode.current
-    IconButton(onClick = togglePrivacyMode, modifier = modifier) {
+    IconButton(
+        onClick = togglePrivacyMode,
+        modifier = modifier.coachMarkTarget(TutorialTargets.PRIVACY_EYE),
+    ) {
         Icon(
             imageVector = if (isPrivacyModeOn) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
             contentDescription = if (isPrivacyModeOn) "Show amounts" else "Hide amounts",

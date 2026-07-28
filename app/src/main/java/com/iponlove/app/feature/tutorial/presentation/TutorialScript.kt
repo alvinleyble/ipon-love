@@ -29,6 +29,13 @@ object TutorialTargets {
     const val NOTES_ADD = "tutorial.notes.add"
     const val TXN_TYPE = "tutorial.txn.type"
 
+    /**
+     * The privacy eye. Anchored once, inside the shared `PrivacyEyeAction`, so it resolves on every
+     * header that uses it (Analysis, Manage, Recurring, Couple) — only the Analysis tour has a step
+     * for it (ADR-0059: the eye is a global control that isn't inferable from looking at it).
+     */
+    const val PRIVACY_EYE = "tutorial.privacy.eye"
+
     // Couple anchors
     const val COUPLE_TABS = "tutorial.couple.tabs"
     const val SETTINGS_COUPLE = "tutorial.settings.couple"
@@ -84,22 +91,30 @@ object TutorialScript {
             TutorialStep(
                 targetKey = TutorialTargets.MORE,
                 title = "Find everything else",
-                text = "Tap More to reach every other section — and \"Edit navbar\" in there lets you " +
-                    "customize which shortcuts sit on your bar.",
+                // Deliberately one longer bubble rather than a fourth step: a coach mark can't render
+                // over the More sheet (it's a ModalBottomSheet with its own window), and this step's
+                // advancesOnTap ends the tour the moment the sheet opens. The "right on top of
+                // whatever you're doing" clause is load-bearing — it's the only thing telling the
+                // user the Calculator tap won't navigate (ADR-0059).
+                text = "Tap More to reach every other section. Calculator opens right on top of " +
+                    "whatever you're doing, and \"Edit navbar\" lets you customize your shortcuts.",
                 advancesOnTap = true,
             ),
         ),
 
-        // TutorialTours.RECORDS was retired in v1.7.1 Item 17: its two steps were both anchored to
-        // the ⋮ overflow's "Recurring rules" entry, which Item 17 removed as redundant once
-        // Recurring became its own top-level module (Item 8) with its own TutorialTours.RECURRING
-        // tour below. Alvin's call: no replacement — Records has no first-visit tour now.
+        // The Records tour was retired in v1.7.1 Item 17 (its two steps were both anchored to the ⋮
+        // overflow's "Recurring rules" entry, which Item 17 removed as redundant once Recurring
+        // became its own top-level module) and its now-dead constant deleted in Item 20. Records
+        // having no tour is correct by design, not a gap — ADR-0059.
 
         TutorialTours.RECURRING to listOf(
             TutorialStep(
                 targetKey = TutorialTargets.RECURRING_CALENDAR,
                 title = "What's coming up",
-                text = "Switch to the calendar view to see every recurring rule laid out by date.",
+                // Deliberately NOT conditioned on entitlement: once enforcement flips this advertises
+                // a locked tab, and the blurred preview + upsell it lands on IS the sell
+                // (subscription-paywall-design §8.2). StepCondition stays about pairing (ADR-0059).
+                text = "Switch to the Calendar tab to see every recurring rule laid out by date.",
             ),
             TutorialStep(
                 targetKey = TutorialTargets.RECURRING_ADD,
@@ -120,6 +135,16 @@ object TutorialScript {
                 title = "Three ways to look",
                 text = "Switch between the Donut (by category), Flow (income vs. spending) and " +
                     "Calendar views.",
+            ),
+            TutorialStep(
+                targetKey = TutorialTargets.PRIVACY_EYE,
+                title = "Hide your amounts",
+                // "not just on this screen" is the entire reason this step exists — the eye toggles
+                // the GLOBAL privacy flag, never a local reveal. Do not trim that clause. It lives on
+                // Analysis (not Manage or Shell) because Analysis shows the most amounts, and because
+                // Shell's landing screen isn't guaranteed to be one that has this anchor.
+                text = "Tap the eye to mask every amount in the app — not just on this screen. " +
+                    "Handy when someone's looking over your shoulder.",
             ),
         ),
 

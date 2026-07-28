@@ -74,8 +74,10 @@ class TutorialViewModelTest {
 
     @Test
     fun seenTour_doesNotStart() {
-        val vm = vm(FakeTutorialRepository(setOf(TutorialTours.RECORDS)))
-        vm.maybeStartTour(TutorialTours.RECORDS)
+        // Must be a tour that HAS steps: this asserted the seen-set gate using the old RECORDS tour,
+        // which had zero steps, so it would have passed even with the gate deleted outright.
+        val vm = vm(FakeTutorialRepository(setOf(TutorialTours.MANAGE)))
+        vm.maybeStartTour(TutorialTours.MANAGE)
         assertThat(vm.uiState.value.active).isFalse()
     }
 
@@ -150,13 +152,15 @@ class TutorialViewModelTest {
 
     @Test
     fun replay_clearsSeenSet_andRestartsShell() {
-        val repo = FakeTutorialRepository(setOf(TutorialTours.SHELL, TutorialTours.RECORDS))
+        // A literal, not a constant: the point is that replay wipes the WHOLE set, including
+        // orphaned IDs from retired tours (e.g. the deleted "records" tour) that no longer exist.
+        val repo = FakeTutorialRepository(setOf(TutorialTours.SHELL, "records"))
         val vm = vm(repo)
 
         vm.replay()
 
         // Whole set wiped (shell re-marked only when the restarted shell tour finishes).
-        assertThat(repo.seen.value).doesNotContain(TutorialTours.RECORDS)
+        assertThat(repo.seen.value).doesNotContain("records")
         assertThat(vm.uiState.value.activeTourId).isEqualTo(TutorialTours.SHELL)
     }
 

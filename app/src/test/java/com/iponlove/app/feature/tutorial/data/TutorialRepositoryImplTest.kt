@@ -27,11 +27,11 @@ class TutorialRepositoryImplTest {
     @Test
     fun markTourSeen_addsToSet_andIsAdditive() = runTest {
         val repo = repo()
-        repo.markTourSeen(TutorialTours.RECORDS)
+        repo.markTourSeen(TutorialTours.NOTES)
         repo.markTourSeen(TutorialTours.ANALYSIS)
 
         assertThat(repo.observeSeenTours().first())
-            .containsExactly(TutorialTours.RECORDS, TutorialTours.ANALYSIS)
+            .containsExactly(TutorialTours.NOTES, TutorialTours.ANALYSIS)
     }
 
     @Test
@@ -52,10 +52,10 @@ class TutorialRepositoryImplTest {
         val repo = TutorialRepositoryImpl(ds)
 
         // Writing the explicit set must not drop the shell ID the upgrade earned via the boolean.
-        repo.markTourSeen(TutorialTours.RECORDS)
+        repo.markTourSeen(TutorialTours.NOTES)
 
         assertThat(repo.observeSeenTours().first())
-            .containsExactly(TutorialTours.SHELL, TutorialTours.RECORDS)
+            .containsExactly(TutorialTours.SHELL, TutorialTours.NOTES)
     }
 
     @Test
@@ -63,7 +63,7 @@ class TutorialRepositoryImplTest {
         val ds = PreferenceDataStoreFactory.create { tmpFolder.newFile("clear.preferences_pb") }
         ds.edit { it[booleanPreferencesKey("tutorial_seen")] = true }
         val repo = TutorialRepositoryImpl(ds)
-        repo.markTourSeen(TutorialTours.RECORDS)
+        repo.markTourSeen(TutorialTours.NOTES)
 
         repo.clearAllTours()
 

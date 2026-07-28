@@ -14,7 +14,10 @@ package com.iponlove.app.feature.tutorial.domain
 object TutorialTours {
     // Solo
     const val SHELL = "shell"
-    const val RECORDS = "records"
+    // RECORDS was deleted in v1.7.1 Item 20: Item 17 removed the ⋮ overflow both of its steps were
+    // anchored to, and under ADR-0059 Records needs no tour (nothing on it is uninferable). The
+    // orphan "records" left in existing seen-sets needs no migration — the gate is a Set<String>
+    // and an unknown member is never consulted.
     const val RECURRING = "recurring"
     const val ANALYSIS = "analysis"
     const val MANAGE = "manage"
