@@ -64,10 +64,10 @@ class TutorialViewModelTest {
     @Test
     fun unseenTour_startsAndShowsFirstStep() {
         val vm = vm()
-        vm.maybeStartTour(TutorialTours.RECORDS)
+        vm.maybeStartTour(TutorialTours.MANAGE)
 
         val state = vm.uiState.value
-        assertThat(state.activeTourId).isEqualTo(TutorialTours.RECORDS)
+        assertThat(state.activeTourId).isEqualTo(TutorialTours.MANAGE)
         assertThat(state.stepIndex).isEqualTo(0)
         assertThat(state.currentStep?.stepLabel).isEqualTo("1 of 2")
     }
@@ -82,9 +82,9 @@ class TutorialViewModelTest {
     @Test
     fun activeTourGuard_secondTourIgnored() {
         val vm = vm()
-        vm.maybeStartTour(TutorialTours.RECORDS)
+        vm.maybeStartTour(TutorialTours.MANAGE)
         vm.maybeStartTour(TutorialTours.ANALYSIS)
-        assertThat(vm.uiState.value.activeTourId).isEqualTo(TutorialTours.RECORDS)
+        assertThat(vm.uiState.value.activeTourId).isEqualTo(TutorialTours.MANAGE)
     }
 
     @Test
@@ -110,26 +110,26 @@ class TutorialViewModelTest {
     fun skip_marksOnlyCurrentTourSeen() {
         val repo = FakeTutorialRepository()
         val vm = vm(repo)
-        vm.maybeStartTour(TutorialTours.RECORDS)
+        vm.maybeStartTour(TutorialTours.MANAGE)
 
         vm.skip()
 
         assertThat(vm.uiState.value.active).isFalse()
-        assertThat(repo.seen.value).containsExactly(TutorialTours.RECORDS)
+        assertThat(repo.seen.value).containsExactly(TutorialTours.MANAGE)
     }
 
     @Test
     fun next_advancesThenFinishes_marksSeen() {
         val repo = FakeTutorialRepository()
         val vm = vm(repo)
-        vm.maybeStartTour(TutorialTours.RECORDS) // 2 steps
+        vm.maybeStartTour(TutorialTours.MANAGE) // 2 steps
 
         vm.next()
         assertThat(vm.uiState.value.stepIndex).isEqualTo(1)
 
         vm.next()
         assertThat(vm.uiState.value.active).isFalse()
-        assertThat(repo.seen.value).contains(TutorialTours.RECORDS)
+        assertThat(repo.seen.value).contains(TutorialTours.MANAGE)
     }
 
     @Test

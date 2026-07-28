@@ -359,11 +359,11 @@ private fun IponAppContent(
             // tab switches (saveState/restoreState) and re-tapping the tab pops it back to root.
 
             // Records: root only (Notes moved to its own top-level module — Item 13; Recurring
-            // moved to its own top-level module — Item 8).
+            // moved to its own top-level module — Item 8, and its Records-side ⋮ shortcut was
+            // dropped as redundant in Item 17).
             navigation(startDestination = NavRegistry.RECORDS.route, route = NavRegistry.RECORDS.graphRoute()) {
                 composable(NavRegistry.RECORDS.route) {
                     TransactionsScreen(
-                        onOpenRecurring = { navController.switchTab(NavRegistry.RECURRING) },
                         onAddTransaction = { navController.navigate(ADD_TRANSACTION_ROUTE) },
                         onEditTransaction = { id -> navController.navigate("$EDIT_TRANSACTION_ROUTE/$id") },
                         onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },

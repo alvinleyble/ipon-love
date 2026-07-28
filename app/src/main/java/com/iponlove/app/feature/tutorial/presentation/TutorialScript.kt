@@ -19,7 +19,6 @@ object TutorialTargets {
     const val MORE = "tutorial.more"
 
     // Solo module anchors
-    const val RECORDS_RECURRING = "tutorial.records.recurring"
     const val RECURRING_CALENDAR = "tutorial.recurring.calendar"
     const val RECURRING_ADD = "tutorial.recurring.add"
     const val ANALYSIS_PERIOD = "tutorial.analysis.period"
@@ -91,18 +90,10 @@ object TutorialScript {
             ),
         ),
 
-        TutorialTours.RECORDS to listOf(
-            TutorialStep(
-                targetKey = TutorialTargets.RECORDS_RECURRING,
-                title = "Recurring transactions",
-                text = "Tap here to set up transactions that repeat — salary, rent, subscriptions.",
-            ),
-            TutorialStep(
-                targetKey = TutorialTargets.RECORDS_RECURRING,
-                title = "Recurring calendar",
-                text = "Inside, a calendar lays out everything coming up so nothing sneaks up on you.",
-            ),
-        ),
+        // TutorialTours.RECORDS was retired in v1.7.1 Item 17: its two steps were both anchored to
+        // the ⋮ overflow's "Recurring rules" entry, which Item 17 removed as redundant once
+        // Recurring became its own top-level module (Item 8) with its own TutorialTours.RECURRING
+        // tour below. Alvin's call: no replacement — Records has no first-visit tour now.
 
         TutorialTours.RECURRING to listOf(
             TutorialStep(

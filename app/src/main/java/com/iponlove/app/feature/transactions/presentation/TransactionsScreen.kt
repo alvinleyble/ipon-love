@@ -64,8 +64,6 @@ import com.iponlove.app.core.ui.MonthStepperRow
 import com.iponlove.app.core.ui.PlayfulCard
 import com.iponlove.app.core.ui.PlayfulScreenTitle
 import com.iponlove.app.core.ui.PlayfulSurface
-import com.iponlove.app.core.ui.StartTourOnFirstVisit
-import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
 import com.iponlove.app.core.ui.money
@@ -77,25 +75,23 @@ import com.iponlove.app.feature.recurring.presentation.components.PendingConfirm
 import com.iponlove.app.feature.transactions.domain.model.TransactionFilter
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.presentation.components.TransactionFilterSheet
-import com.iponlove.app.feature.tutorial.domain.TutorialTours
-import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.widget.presentation.BalanceWidgetReceiver
 
 /**
  * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 6a): a transparent-container [Scaffold] with a
  * [PlayfulScreenTitle] (matching the Analysis/Savings standalone-screen pattern, since Records —
- * like those — owns its own top-level Scaffold rather than being hosted) carrying the Recurring
- * shortcut + the Item 15/25 privacy eye as trailing actions; a −4° accent squircle FAB replaces
- * the plain M3 one (matching Savings' `SavingsFab`). Rows are glass [PlayfulCard]s with alternating
- * leaf shapes and a category-tinted icon squircle (falling back to a letter avatar for transfers/
- * settlements/uncategorized rows, same fallback [com.iponlove.app.feature.accounts.presentation]'s
- * `AccountCard` uses); day groups get a heart date-header (the Combined/Slice-4 recipe). Amounts
- * use the derived `PlayfulColors.semantic` ramp, replacing the old hardcoded `IncomeColor`/
- * `colorScheme.error`.
+ * like those — owns its own top-level Scaffold rather than being hosted) carrying the filter icon
+ * as a leading action and the Item 16 privacy eye as a trailing action (v1.7.1 Item 17 — the ⋮
+ * overflow's sole entry, "Recurring rules," was dropped once Recurring became its own top-level
+ * module); a −4° accent squircle FAB replaces the plain M3 one (matching Savings' `SavingsFab`).
+ * Rows are glass [PlayfulCard]s with alternating leaf shapes and a category-tinted icon squircle
+ * (falling back to a letter avatar for transfers/settlements/uncategorized rows, same fallback
+ * [com.iponlove.app.feature.accounts.presentation]'s `AccountCard` uses); day groups get a heart
+ * date-header (the Combined/Slice-4 recipe). Amounts use the derived `PlayfulColors.semantic`
+ * ramp, replacing the old hardcoded `IncomeColor`/`colorScheme.error`.
  */
 @Composable
 fun TransactionsScreen(
-    onOpenRecurring: () -> Unit,
     onAddTransaction: () -> Unit,
     onEditTransaction: (String) -> Unit,
     onOpenPremium: (source: String) -> Unit = {},
@@ -104,7 +100,6 @@ fun TransactionsScreen(
     val state by viewModel.uiState.collectAsState()
     TransactionsContent(
         state = state,
-        onOpenRecurring = onOpenRecurring,
         onSync = viewModel::sync,
         onAdd = onAddTransaction,
         onEdit = onEditTransaction,
@@ -125,7 +120,6 @@ fun TransactionsScreen(
 @Composable
 private fun TransactionsContent(
     state: TransactionsUiState,
-    onOpenRecurring: () -> Unit,
     onSync: () -> Unit,
     onAdd: () -> Unit,
     onEdit: (String) -> Unit,
@@ -139,11 +133,9 @@ private fun TransactionsContent(
     onClearFilter: () -> Unit = {},
     onWidgetNudgeCardShown: () -> Unit = {},
 ) {
-    StartTourOnFirstVisit(TutorialTours.RECORDS)
     val colors = LocalPlayfulColors.current
     val context = LocalContext.current
     var filterSheetOpen by remember { mutableStateOf(false) }
-    var overflowOpen by remember { mutableStateOf(false) }
     // Latched locally so the card doesn't vanish mid-visit the instant onWidgetNudgeCardShown's
     // DataStore write flows back through state.showWidgetNudgeCard as false (Item 11) — appearing
     // is what starts the 30-day cooldown, not tapping ✕, so the card must outlive that write.
@@ -160,7 +152,7 @@ private fun TransactionsContent(
             Box(Modifier.statusBarsPadding().padding(top = 10.dp, bottom = 2.dp)) {
                 PlayfulScreenTitle(
                     title = "Records",
-                    actions = {
+                    leadingActions = {
                         // The filter icon carries an accent dot whenever a filter is applied — the
                         // user's only explanation for why rows are hidden (Item 7 decision 1). Gated
                         // on hasAnyTransactionEver: nothing to filter on a fresh install, but it
@@ -184,37 +176,14 @@ private fun TransactionsContent(
                                 }
                             }
                         }
+                    },
+                    actions = {
                         IconButton(onClick = onTogglePrivacyMode) {
                             Icon(
                                 imageVector = if (state.privacyModeEnabled) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                                 contentDescription = if (state.privacyModeEnabled) "Show amounts" else "Hide amounts",
                                 tint = colors.textSecondary,
                             )
-                        }
-                        // Overflow (v1.7.0 Item 6 decision 2): Recurring (occasional, navigational)
-                        // moves off the surface into the ⋮ menu, keeping the title row to two
-                        // direct icons + ⋮ rather than three glyphs. Export moved to Settings
-                        // (v1.7.1 Item 7).
-                        Box {
-                            IconButton(
-                                onClick = { overflowOpen = true },
-                                modifier = Modifier.coachMarkTarget(TutorialTargets.RECORDS_RECURRING),
-                            ) {
-                                Icon(
-                                    Icons.Filled.MoreVert,
-                                    contentDescription = "More",
-                                    tint = colors.textSecondary,
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = overflowOpen,
-                                onDismissRequest = { overflowOpen = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Recurring rules") },
-                                    onClick = { overflowOpen = false; onOpenRecurring() },
-                                )
-                            }
                         }
                     },
                 )
