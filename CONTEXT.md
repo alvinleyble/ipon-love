@@ -298,6 +298,14 @@ _Avoid_: reset tab, tab reset, go home
 A single step of the first-run tutorial: an anchored tooltip pointing at one real, on-screen UI target, advancing only when the user taps that actual target (not a generic "Next" button) — teaches muscle memory rather than playing a slideshow. Deliberately not a dimmed-cutout "spotlight" effect. The generic engine (target highlighting, tooltip rendering, step sequencing) lives in `core/ui/CoachMark.kt`; the Ipon-specific step script lives in `feature/tutorial/`. See ADR-0034.
 _Avoid_: spotlight, walkthrough step, tooltip tour
 
-**Tutorial gate (`tutorial_seen`)**:
-A local-only DataStore flag, independent of [[New-user gate]]/`isOnboardingDone`, that fires the first-run coach-mark tutorial once per local install. Naturally re-arms whenever local storage is cleared (covers both a brand-new user and an existing user who reinstalled/wiped storage, with one mechanism) — the opposite of onboarding's gate, which is deliberately keyed off synced server state to *avoid* re-triggering for a returning user. A manual "Replay tutorial" entry point in Settings re-runs the sequence without touching this flag. See ADR-0034.
-_Avoid_: onboarding flag, tutorial flag, has_seen_tutorial
+**Tour**:
+A named group of 2–3 [[Coach mark]]s taught together, identified by a stable string id in `TutorialTours`. A *module* tour fires lazily on first visit to its screen; the `shell` tour fires up front at app-shell mount; *paired-gated* tours (`PAIRED_TOURS`) additionally require the user to be paired, so an unpaired first visit leaves them unseen to fire later. Only one tour runs at a time (the active-tour guard); a tour that can't start stays unseen rather than being consumed. Not every module has one — see [[Discoverability triage]]. See ADR-0038.
+_Avoid_: walkthrough, tutorial (the whole feature), onboarding flow (that's [[New-user gate]])
+
+**Discoverability triage**:
+The rule deciding what earns a [[Coach mark]]: a step exists **only** where the interaction is not inferable from looking at the screen. A module having no [[Tour]] is therefore a valid, deliberate state, not a gap — Records, Settings and Calculator have none by design. Chosen over per-module completeness, which would coach-mark a new user on nearly every screen and make each future module a copy-writing obligation. Applied: the calculator bubble and the global privacy eye earn steps (a tap that doesn't navigate; a control whose effect is invisible where you tap it); the notification bell does not (a badged bell is a universal idiom). See ADR-0059.
+_Avoid_: tutorial coverage, tour completeness
+
+**Tutorial gate (seen-tour set)**:
+The local-only DataStore `Set<String>` of [[Tour]] ids the user has already been shown, independent of [[New-user gate]]/`isOnboardingDone`. A tour fires when its id is absent from the set; one key covers every tour, so adding a tour needs no new preference and an *unknown* member (e.g. the retired `"records"`) is simply never consulted — no migration. Naturally re-arms whenever local storage is cleared, covering both a brand-new user and one who reinstalled — the opposite of onboarding's gate, which is keyed off synced server state to *avoid* re-triggering a returning user. "Replay tutorial" in Settings clears the whole set. Replaced the original single `tutorial_seen` boolean of ADR-0034. See ADR-0038.
+_Avoid_: `tutorial_seen` (the superseded boolean), onboarding flag, has_seen_tutorial
