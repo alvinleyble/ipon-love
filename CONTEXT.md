@@ -38,9 +38,9 @@ _Avoid_: needs_sync, modified flag
 The starting balance stored on an Account (`opening_balance`). The only balance figure that syncs; current balance is derived from it plus the ledger, never stored authoritatively. See ADR-0007.
 _Avoid_: starting balance, initial balance, balance
 
-**Adjustment transaction**:
-A special transaction representing a manual balance correction, so "adjust balance" stays in the ledger rather than overwriting a stored balance. See ADR-0007.
-_Avoid_: balance adjustment, correction
+**Balance adjustment**:
+A dated ledger row recording the gap between what the app derived and what the account really holds — the mechanism ADR-0007 named so that reconciling a balance stays *in* the ledger instead of overwriting a stored figure. The user never does arithmetic: they type the **real** balance and the delta is derived, then written as an `INCOME` or `EXPENSE` row (by sign) carrying `is_adjustment`. Marked **on the row**, deliberately not filed under a built-in category the way a [[Transfer fee]] is — a correction is system-generated and uncategorizable by nature (the [[Settlement (debt)]] precedent), whereas a category flag is for money the user curates into a bucket (ADR-0049). It **counts toward** account balance and shows in Records, exports, and the couple feed; it is **excluded from** Analysis, Budgets, and both partners' spend totals — real money moved, but no one spent or earned anything. Always dated **now**, so it never reaches backward into a closed month. On an account with an empty ledger there is nothing to correct, so the same input edits [[Opening balance]] directly and no row is written. See ADR-0057.
+_Avoid_: adjustment transaction, correction, reconciliation, manual balance
 
 ### Couples
 
