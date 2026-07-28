@@ -14,9 +14,10 @@ import java.time.ZoneId
  * calendar month, and (for a category budget) within its category. An overall budget
  * (`categoryId == null`) counts every expense in the month.
  *
- * Partner-debt **settlement** legs (`isSettlement`, ADR-0019 #14) are excluded — a debt
- * repayment isn't spending, matching every Analysis calculator. Without this, a settlement
- * leg (which carries `categoryId = null`) would count against an overall budget.
+ * Partner-debt **settlement** legs (`isSettlement`, ADR-0019 #14) and **balance-correction**
+ * rows (`isAdjustment`, ADR-0057) are excluded — neither is spending, matching every Analysis
+ * calculator. Without this, either kind (both carry `categoryId = null`) would count against
+ * an overall budget.
  *
  * The month a transaction falls in is timezone-dependent, so [zone] is explicit for
  * determinism in tests (V1 is PH-only, so the app passes the system zone).
@@ -30,7 +31,7 @@ object BudgetProgressCalculator {
     ): BigDecimal =
         transactions.asSequence()
             .filter { it.type == TransactionType.EXPENSE }
-            .filter { !it.isSettlement }
+            .filter { !it.isSettlement && !it.isAdjustment }
             .filter { budget.categoryId == null || it.categoryId == budget.categoryId }
             .filter { yearMonthKey(it.date, zone) == budget.yearMonth }
             .fold(BigDecimal.ZERO) { running, txn -> running + txn.amount }

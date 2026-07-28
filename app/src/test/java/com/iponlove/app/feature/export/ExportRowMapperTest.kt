@@ -27,6 +27,7 @@ class ExportRowMapperTest {
         categoryId: String? = null,
         note: String? = null,
         isSettlement: Boolean = false,
+        isAdjustment: Boolean = false,
         isPrivate: Boolean = false,
     ) = Transaction(
         id = "t",
@@ -38,6 +39,7 @@ class ExportRowMapperTest {
         note = note,
         date = Instant.parse("2026-07-20T02:00:00Z"),
         isSettlement = isSettlement,
+        isAdjustment = isAdjustment,
         isPrivate = isPrivate,
     )
 
@@ -71,6 +73,15 @@ class ExportRowMapperTest {
             accountNames, categoryNames,
         )
         assertThat(row.category).isEqualTo("Debt settlement")
+    }
+
+    @Test
+    fun `balance-adjustment row is labelled and never uncategorized`() {
+        val row = ExportRowMapper.toRow(
+            txn(TransactionType.INCOME, "500.00", categoryId = null, isAdjustment = true),
+            accountNames, categoryNames,
+        )
+        assertThat(row.category).isEqualTo("Balance adjustment")
     }
 
     @Test

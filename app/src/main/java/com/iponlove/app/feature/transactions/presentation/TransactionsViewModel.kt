@@ -306,6 +306,18 @@ internal fun Transaction.toListItem(
             subtitle = "$accountName$noteSuffix",
             date = date,
         )
+        // Balance-correction rows (ADR-0057) show the label only — the auto "from → to" note is
+        // still written to `note` (surfaces on opening the row / in a CSV) but is deliberately not
+        // appended to the list subtitle, unlike every other categoryless branch here, so the list
+        // stays uncluttered (Alvin's call, against the initial recommendation).
+        isAdjustment -> TransactionListItem(
+            id = id,
+            type = type,
+            amount = amount,
+            title = "Balance adjustment",
+            subtitle = accountName,
+            date = date,
+        )
         else -> TransactionListItem(
             id = id,
             type = type,

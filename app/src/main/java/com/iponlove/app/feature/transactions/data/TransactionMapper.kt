@@ -17,6 +17,7 @@ fun TransactionEntity.toDomain(): Transaction = Transaction(
     date = date,
     isPrivate = isPrivate,
     isSettlement = isSettlement,
+    isAdjustment = isAdjustment,
     transferFeeTransactionId = transferFeeTransactionId,
 )
 
@@ -34,6 +35,7 @@ fun TransactionEntity.toDto(): TransactionDto = TransactionDto(
     isPrivate = isPrivate,
     recurringRuleId = recurringRuleId,
     isSettlement = isSettlement,
+    isAdjustment = isAdjustment,
     transferFeeTransactionId = transferFeeTransactionId,
     createdAt = createdAt,
     updatedAt = updatedAt,
@@ -58,6 +60,7 @@ fun TransactionDto.toEntity(): TransactionEntity = TransactionEntity(
     isPrivate = isPrivate,
     recurringRuleId = recurringRuleId,
     isSettlement = isSettlement,
+    isAdjustment = isAdjustment,
     transferFeeTransactionId = transferFeeTransactionId,
     createdAt = createdAt,
     updatedAt = updatedAt,

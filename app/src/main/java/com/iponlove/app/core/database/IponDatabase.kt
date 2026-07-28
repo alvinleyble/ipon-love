@@ -68,7 +68,7 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AnalyticsEventEntity::class,
         NotificationEntity::class,
     ],
-    version = 30,
+    version = 31,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 10, to = 11),
@@ -99,6 +99,8 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AutoMigration(from = 28, to = 29),
         // v30: notifications table auto-created (notification inbox, v1.7.1 Item 6 / ADR-0053).
         AutoMigration(from = 29, to = 30),
+        // v31: transactions.isAdjustment (balance-correction ledger row, Item 13); default 0.
+        AutoMigration(from = 30, to = 31),
     ],
 )
 @TypeConverters(IponConverters::class)

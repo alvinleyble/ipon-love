@@ -18,7 +18,8 @@ import java.time.Instant
  *
  * [transactions] is assumed pre-filtered to shared, non-deleted rows and pre-sorted by the
  * query (date desc); the entry order is preserved. Spend counts EXPENSE only — TRANSFER,
- * INCOME, and settlement legs are not spending, consistent with AnalysisCalculator.
+ * INCOME, settlement legs, and balance corrections are not spending, consistent with
+ * AnalysisCalculator.
  */
 object CombinedLedgerCalculator {
 
@@ -59,6 +60,9 @@ object CombinedLedgerCalculator {
         // Settlement legs carry categoryId = null + isSettlement = true by design (ADR-0019 #14 /
         // ADR-0042); label them off the flag instead of falling to "Uncategorized", matching Records.
         t.isSettlement -> "Debt settlement"
+        // Balance-correction rows (ADR-0057) stay in the feed (a shared-account correction moves
+        // the partner's balance too) but are labelled off the flag, matching Records.
+        t.isAdjustment -> "Balance adjustment"
         t.type == TransactionType.TRANSFER -> "Transfer"
         else -> t.categoryId?.let { names[it] } ?: "Uncategorized"
     }
@@ -76,6 +80,7 @@ object CombinedLedgerCalculator {
             val t = owned.transaction
             if (t.type != TransactionType.EXPENSE) continue
             if (t.isSettlement) continue // repayment legs aren't spend — consistent with the Analysis calculators
+            if (t.isAdjustment) continue // corrections aren't spend either (ADR-0057) — feed-visible, totals-excluded
             if (t.date < startInclusive || t.date >= endExclusive) continue
             expense += t.amount
         }

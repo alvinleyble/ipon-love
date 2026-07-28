@@ -171,6 +171,7 @@ create table transactions (
     -- Receipt photos live in the transaction_images child table (up to 3 per row); the old
     -- single attachment_url column was dropped in 2026-07-07_transaction_images.sql.
     is_settlement     boolean not null default false,                      -- partner-debt settlement leg: counts toward balance, excluded from Analysis (ADR-0019 #14)
+    is_adjustment     boolean not null default false,                      -- manual balance correction: counts toward balance + visible in Records/Combined feed, excluded from Analysis/Budgets/Combined spend totals (ADR-0057)
     transfer_fee_transaction_id uuid,                                      -- linked "Transfer fees" expense row for this transfer's fee (ADR-0031). No FK: same pull-order tolerance as the rest of this table (a pulled batch can arrive out of dependency order), and the client owns the cascade.
     created_at        timestamptz not null default now(),
     updated_at        timestamptz not null default now(),
@@ -645,6 +646,7 @@ create view partner_transactions with (security_invoker = false) as
         t.is_private,
         t.is_deleted,
         t.is_settlement,
+        t.is_adjustment,
         t.updated_at,
         t.server_rev
         -- Receipts cross via partner_transaction_images (below), not this view.

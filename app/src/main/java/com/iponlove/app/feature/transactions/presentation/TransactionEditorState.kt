@@ -23,6 +23,14 @@ data class TransactionEditorState(
     val note: String = "",
     val isPrivate: Boolean = false,
     val date: Instant = Instant.now(),
+    /**
+     * True when this is a manual balance-correction row (ADR-0057) loaded for edit — never set
+     * by anything in this editor itself (there is no "mark as adjustment" toggle; only
+     * [com.iponlove.app.feature.accounts.domain.usecase.AdjustAccountBalanceUseCase] creates one).
+     * Carried through so re-saving an existing adjustment row doesn't silently strip the flag —
+     * the same bug class v1.7.1 Item 15 fixed for `isSettlement`. Hides the category picker.
+     */
+    val isAdjustment: Boolean = false,
     val errors: Set<TransactionError> = emptySet(),
     /**
      * Receipt photos in the draft (up to [TransactionImage.MAX]). Each carries either a

@@ -45,15 +45,26 @@ data class PendingAccountDelete(
  * Editor form state. [source] is the account being edited (null for a new one); it is
  * kept so a save preserves the fields the form doesn't touch (position, icon, color,
  * archived) instead of resetting them.
+ *
+ * [balanceText] doubles as two different fields depending on [hasTransactions] (ADR-0057): for a
+ * new account or one with an empty ledger it's the starting `opening_balance`; for one with real
+ * activity it's a **target** balance, pre-filled from [baselineBalance] (the derived figure at
+ * the moment the editor opened) and corrected via a marked ledger row on Save rather than
+ * rewriting `opening_balance` (LWW-unsafe once an account has activity).
  */
 data class AccountEditorState(
     val source: Account? = null,
     val name: String = "",
     val type: AccountType = AccountType.EWALLET,
-    val openingBalanceText: String = "",
+    val balanceText: String = "",
     val icon: String? = null,
     val color: String? = null,
     val nameError: Boolean = false,
+    /** True when [source] already has ledger rows — decides which of the two Save paths above runs. */
+    val hasTransactions: Boolean = false,
+    /** The derived current balance the field was pre-filled with; the delta baseline Save computes
+     *  against — captured once at open time, not re-read live (ADR-0057's concurrency decision). */
+    val baselineBalance: BigDecimal = BigDecimal.ZERO,
 ) {
     val isEditing: Boolean get() = source != null
 }

@@ -37,6 +37,8 @@ data class TransactionEntity(
     // attachmentLocalPath columns were dropped in Room v23 (DeleteReceiptColumnsMigration).
     /** A partner-debt settlement leg (ADR-0019 #14): counts toward balance, excluded from Analysis. */
     @ColumnInfo(defaultValue = "0") val isSettlement: Boolean = false,
+    /** A manual balance-correction row (ADR-0057): counts toward balance, excluded from Analysis/Budgets. */
+    @ColumnInfo(defaultValue = "0") val isAdjustment: Boolean = false,
     /** Linked "Transfer fees" expense row for this TRANSFER's fee, if any (ADR-0031). */
     val transferFeeTransactionId: String? = null,
     val createdAt: Instant,

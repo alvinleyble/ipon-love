@@ -25,6 +25,7 @@ class UpsertTransactionUseCase @Inject constructor(
             toAccountId = normalized.toAccountId,
             categoryId = normalized.categoryId,
             isSettlement = normalized.isSettlement,
+            isAdjustment = normalized.isAdjustment,
         )
         require(errors.isEmpty()) { "Invalid transaction: $errors" }
 

@@ -8,6 +8,7 @@ import com.iponlove.app.core.entitlement.CapCheck
 import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.model.AccountType
+import com.iponlove.app.feature.accounts.domain.usecase.AdjustAccountBalanceUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.ArchiveAccountUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.CheckAccountCapUseCase
 import com.iponlove.app.feature.accounts.domain.usecase.DeleteAccountUseCase
@@ -52,6 +53,7 @@ class AccountsViewModel @Inject constructor(
     private val reorderAccounts: ReorderAccountsUseCase,
     private val checkAccountCap: CheckAccountCapUseCase,
     private val countTransactionsForAccount: CountTransactionsForAccountUseCase,
+    private val adjustAccountBalance: AdjustAccountBalanceUseCase,
     private val analytics: Analytics,
     observePrivacyMode: ObservePrivacyModeUseCase,
     private val setPrivacyMode: SetPrivacyModeUseCase,
@@ -118,15 +120,26 @@ class AccountsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Opens the editor for [account]. Whether Save later corrects the ledger (ADR-0057) instead
+     * of `opening_balance` depends on [AccountEditorState.hasTransactions], which needs an async
+     * count — so the editor opens once that resolves, not synchronously like the other fields.
+     */
     fun startEdit(account: Account) {
-        editor.value = AccountEditorState(
-            source = account,
-            name = account.name,
-            type = account.type,
-            openingBalanceText = account.openingBalance.toPlainString(),
-            icon = account.icon,
-            color = account.color,
-        )
+        viewModelScope.launch {
+            val hasTransactions = countTransactionsForAccount(account.id) > 0
+            val currentBalance = uiState.value.balances[account.id] ?: account.openingBalance
+            editor.value = AccountEditorState(
+                source = account,
+                name = account.name,
+                type = account.type,
+                balanceText = currentBalance.toPlainString(),
+                icon = account.icon,
+                color = account.color,
+                hasTransactions = hasTransactions,
+                baselineBalance = currentBalance,
+            )
+        }
     }
 
     fun cancelEdit() {
@@ -137,7 +150,7 @@ class AccountsViewModel @Inject constructor(
 
     fun onTypeChange(value: AccountType) = editor.update { it?.copy(type = value) }
 
-    fun onOpeningBalanceChange(value: String) = editor.update { it?.copy(openingBalanceText = value) }
+    fun onBalanceChange(value: String) = editor.update { it?.copy(balanceText = value) }
 
     fun onIconChange(value: String?) = editor.update { it?.copy(icon = value) }
 
@@ -149,23 +162,33 @@ class AccountsViewModel @Inject constructor(
             editor.value = state.copy(nameError = true)
             return
         }
-        val balance = state.openingBalanceText.trim().toBigDecimalOrNull() ?: BigDecimal.ZERO
-        val account = state.source?.copy(
-            name = state.name.trim(),
-            type = state.type,
-            openingBalance = balance,
-            icon = state.icon,
-            color = state.color,
-        ) ?: Account(
-            id = UUID.randomUUID().toString(),
-            name = state.name.trim(),
-            type = state.type,
-            openingBalance = balance,
-            icon = state.icon,
-            color = state.color,
-        )
+        // Unlike every other money input, this field accepts negatives (cards/overdrafts).
+        val typed = state.balanceText.trim().toBigDecimalOrNull() ?: BigDecimal.ZERO
         viewModelScope.launch {
-            upsertAccount(account)
+            if (state.source != null && state.hasTransactions) {
+                // Existing account with ledger rows: the field is a target balance, corrected via
+                // a marked row (a no-op delta writes nothing) — opening_balance is untouched.
+                adjustAccountBalance(state.source.id, state.source.isShared, state.baselineBalance, typed)
+                upsertAccount(
+                    state.source.copy(name = state.name.trim(), type = state.type, icon = state.icon, color = state.color),
+                )
+            } else {
+                val account = state.source?.copy(
+                    name = state.name.trim(),
+                    type = state.type,
+                    openingBalance = typed,
+                    icon = state.icon,
+                    color = state.color,
+                ) ?: Account(
+                    id = UUID.randomUUID().toString(),
+                    name = state.name.trim(),
+                    type = state.type,
+                    openingBalance = typed,
+                    icon = state.icon,
+                    color = state.color,
+                )
+                upsertAccount(account)
+            }
             editor.value = null
             Widgets.updateAll(context)
         }

@@ -297,7 +297,9 @@ private fun EditorForm(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth(),
             )
-        } else {
+        } else if (!editor.isAdjustment) {
+            // Balance-adjustment rows (ADR-0057) are system-generated with no category — a
+            // shown-but-empty picker would read as an error the user can't clear.
             FieldLabel("Category")
             EntityGrid(
                 options = categoryOptions,

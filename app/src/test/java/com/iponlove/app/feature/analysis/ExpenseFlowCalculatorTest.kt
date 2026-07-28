@@ -91,6 +91,18 @@ class ExpenseFlowCalculatorTest {
     }
 
     @Test
+    fun adjustmentExpensesAreExcluded() {
+        val transactions = listOf(
+            txn("real", TransactionType.EXPENSE, "200.00", categoryId = "cat-1", date = june(3)),
+            txn("adjust", TransactionType.EXPENSE, "900.00", categoryId = null, date = june(5), isAdjustment = true),
+        )
+
+        val data = ExpenseFlowCalculator.calculate(transactions, juneWindow, zone, reg, LocalDate.of(2025, 1, 1))
+
+        assertThat(data.cumulativeByBucket[29]).isEqualTo(BigDecimal("200.00"))
+    }
+
+    @Test
     fun transactionsOutsideWindowAreIgnored() {
         val transactions = listOf(
             txn("before", TransactionType.EXPENSE, "999.00", categoryId = "cat-1", date = Instant.parse("2026-05-31T23:59:59Z")),

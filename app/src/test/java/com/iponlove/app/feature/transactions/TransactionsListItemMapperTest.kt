@@ -38,6 +38,22 @@ class TransactionsListItemMapperTest {
     }
 
     @Test
+    fun `balance-adjustment row titles as Balance adjustment with no note suffix`() {
+        val item = txn(
+            id = "t6",
+            type = TransactionType.INCOME,
+            amount = "500.00",
+            categoryId = null,
+            isAdjustment = true,
+        ).copy(note = "₱9,500.00 → ₱10,000.00").toListItem(accountNames, categoryNames)
+
+        assertThat(item.title).isEqualTo("Balance adjustment")
+        // The auto-note is deliberately not appended to the subtitle (Alvin's call, ADR-0057) —
+        // unlike the settlement branch above, which does append it.
+        assertThat(item.subtitle).isEqualTo("Wallet")
+    }
+
+    @Test
     fun `normal category-less expense still reads Uncategorized`() {
         val item = txn(
             id = "t3",

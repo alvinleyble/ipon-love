@@ -69,6 +69,24 @@ class AnalysisCalculatorTest {
     }
 
     @Test
+    fun adjustmentRowsAreExcludedFromTotalsAndBreakdown() {
+        val transactions = listOf(
+            txn("income", TransactionType.INCOME, "5000.00", date = june(2)),
+            txn("spend", TransactionType.EXPENSE, "1200.00", categoryId = "cat-1", date = june(3)),
+            // A balance correction (ADR-0057): real money moved, but not spending/income.
+            txn("adjust-up", TransactionType.INCOME, "500.00", categoryId = null, date = june(4), isAdjustment = true),
+            txn("adjust-down", TransactionType.EXPENSE, "300.00", categoryId = null, date = june(5), isAdjustment = true),
+        )
+
+        val result = AnalysisCalculator.analyze(transactions, juneWindow)
+
+        assertThat(result.totalIncome).isEqualTo(BigDecimal("5000.00"))
+        assertThat(result.totalExpense).isEqualTo(BigDecimal("1200.00"))
+        assertThat(result.net).isEqualTo(BigDecimal("3800.00"))
+        assertThat(result.expenseByCategory.map { it.categoryId }).containsExactly("cat-1")
+    }
+
+    @Test
     fun transfersAreIgnoredEverywhere() {
         val transactions = listOf(
             txn("t1", TransactionType.TRANSFER, "300.00", accountId = "acc-1", toAccountId = "acc-2", date = june(5)),

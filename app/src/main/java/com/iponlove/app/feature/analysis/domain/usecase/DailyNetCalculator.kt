@@ -37,8 +37,8 @@ object DailyNetCalculator {
 
         for (t in transactions) {
             if (t.date < window.startInclusive || t.date >= window.endExclusive) continue
-            // Debt-settlement legs aren't spend/income (ADR-0019 #14).
-            if (t.isSettlement) continue
+            // Debt-settlement legs (ADR-0019 #14) and balance corrections (ADR-0057) aren't spend/income.
+            if (t.isSettlement || t.isAdjustment) continue
             val dayIdx = t.date.atZone(zone).toLocalDate().dayOfMonth - 1
             when (t.type) {
                 TransactionType.INCOME -> dailyIncome[dayIdx] = dailyIncome[dayIdx] + t.amount

@@ -50,6 +50,22 @@ class DailyNetCalculatorTest {
     }
 
     @Test
+    fun adjustmentRowsAreExcludedFromBothDays() {
+        val transactions = listOf(
+            txn("income", TransactionType.INCOME, "5000.00", date = june(1)),
+            txn("spend", TransactionType.EXPENSE, "300.00", categoryId = "cat-1", date = june(1)),
+            // A balance correction (ADR-0057) moves balance but isn't net income/expense.
+            txn("adjust-up", TransactionType.INCOME, "900.00", categoryId = null, date = june(1), isAdjustment = true),
+            txn("adjust-down", TransactionType.EXPENSE, "700.00", categoryId = null, date = june(1), isAdjustment = true),
+        )
+
+        val data = DailyNetCalculator.calculate(transactions, juneWindow, zone)
+
+        assertThat(data.incomeByDay[0]).isEqualTo(BigDecimal("5000.00"))
+        assertThat(data.expenseByDay[0]).isEqualTo(BigDecimal("300.00"))
+    }
+
+    @Test
     fun juneStartsOnMonday_firstWeekdayOffsetIsOne() {
         // 2026-06-01 is a Monday → Sun-first offset = 1 (Sunday=0, Monday=1)
         val data = DailyNetCalculator.calculate(emptyList(), juneWindow, zone)

@@ -27,6 +27,7 @@ object TransactionValidator {
         toAccountId: String?,
         categoryId: String?,
         isSettlement: Boolean = false,
+        isAdjustment: Boolean = false,
         isPrivate: Boolean = false,
         // True when this transaction touches a couple-owned account (source or transfer
         // destination). Such activity must stay non-private so the joint balance is computable
@@ -41,9 +42,11 @@ object TransactionValidator {
 
         when (type) {
             TransactionType.INCOME, TransactionType.EXPENSE ->
-                // Settlement legs (ADR-0019 #14) are system-generated repayments with no
-                // user-chosen category, so the category requirement is waived for them.
-                if (!isSettlement && categoryId.isNullOrBlank()) errors += TransactionError.CATEGORY_REQUIRED
+                // Settlement legs (ADR-0019 #14) and balance-adjustment rows (ADR-0057) are
+                // system-generated with no user-chosen category, so both waive the requirement.
+                if (!isSettlement && !isAdjustment && categoryId.isNullOrBlank()) {
+                    errors += TransactionError.CATEGORY_REQUIRED
+                }
 
             TransactionType.TRANSFER ->
                 when {

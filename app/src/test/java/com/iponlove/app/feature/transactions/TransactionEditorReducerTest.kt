@@ -21,6 +21,7 @@ class TransactionEditorReducerTest {
         paidForPartner: Boolean = false,
         amountOwedText: String = "",
         transferFeeText: String = "",
+        isAdjustment: Boolean = false,
     ) = TransactionEditorState(
         id = "txn-1",
         type = type,
@@ -32,6 +33,7 @@ class TransactionEditorReducerTest {
         paidForPartner = paidForPartner,
         amountOwedText = amountOwedText,
         transferFeeText = transferFeeText,
+        isAdjustment = isAdjustment,
     )
 
     @Test
@@ -99,6 +101,16 @@ class TransactionEditorReducerTest {
         assertThat(result).isInstanceOf(BuildResult.Ready::class.java)
         assertThat((result as BuildResult.Ready).amountOwed).isNull()
         assertThat(result.transaction.amount).isEqualTo(BigDecimal("100"))
+    }
+
+    @Test
+    fun build_adjustmentRow_roundTripsFlagAndSkipsCategoryRequirement() {
+        // Mirrors v1.7.1 Item 15's isSettlement bug fix: re-saving a loaded adjustment row must
+        // not silently strip the flag, and the categoryless row must not fail validation.
+        val start = draft(categoryId = null, isAdjustment = true)
+        val result = TransactionEditorReducer.build(start, emptySet(), canPayForPartner = false)
+        assertThat(result).isInstanceOf(BuildResult.Ready::class.java)
+        assertThat((result as BuildResult.Ready).transaction.isAdjustment).isTrue()
     }
 
     @Test

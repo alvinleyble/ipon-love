@@ -27,6 +27,17 @@ class PartnerTransactionMapperTest {
     }
 
     @Test
+    fun isAdjustment_carriedThroughToEntity() {
+        val entity = partnerDto(
+            id = "t", type = TransactionType.INCOME, amount = BigDecimal("500.00"),
+            accountId = "acc-p", categoryId = null, isPrivate = false, isDeleted = false,
+            serverRev = 1, isAdjustment = true,
+        ).toEntity()
+
+        assertThat(entity.isAdjustment).isTrue()
+    }
+
+    @Test
     fun redactedRow_nullContent_mapsToSafeDefaults_withoutCrashing() {
         // A private/deleted partner txn arrives with content nulled (ADR-0005); the syncer
         // purges it, but the mapper must still total the row without throwing.
@@ -52,6 +63,7 @@ private fun partnerDto(
     isPrivate: Boolean,
     isDeleted: Boolean,
     serverRev: Long?,
+    isAdjustment: Boolean = false,
 ) = PartnerTransactionDto(
     id = id,
     userId = "partner-1",
@@ -62,6 +74,7 @@ private fun partnerDto(
     categoryId = categoryId,
     note = null,
     date = if (type == null) null else Instant.ofEpochMilli(1_000),
+    isAdjustment = isAdjustment,
     isPrivate = isPrivate,
     isDeleted = isDeleted,
     updatedAt = Instant.ofEpochMilli(2_000),

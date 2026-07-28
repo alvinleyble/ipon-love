@@ -23,6 +23,7 @@ fun PartnerTransactionDto.toEntity(): TransactionEntity = TransactionEntity(
     isPrivate = isPrivate,
     recurringRuleId = null,
     isSettlement = isSettlement,
+    isAdjustment = isAdjustment,
     createdAt = updatedAt,
     updatedAt = updatedAt,
     isDeleted = isDeleted,

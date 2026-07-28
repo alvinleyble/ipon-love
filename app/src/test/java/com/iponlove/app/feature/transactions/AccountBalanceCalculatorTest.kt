@@ -43,6 +43,16 @@ class AccountBalanceCalculatorTest {
     }
 
     @Test
+    fun adjustmentRows_stillMoveBalance() {
+        // Unlike Analysis, balance derivation counts adjustment rows — money really moved (ADR-0057).
+        val txns = listOf(
+            txn("adjust", TransactionType.INCOME, "500.00", accountId = "acc-1", categoryId = null, isAdjustment = true),
+        )
+        val balance = AccountBalanceCalculator.balanceOf("acc-1", bd("9500.00"), txns)
+        assertThat(balance).isEqualTo(bd("10000.00"))
+    }
+
+    @Test
     fun transfer_movesBetweenSourceAndDestination() {
         val txns = listOf(
             txn("t1", TransactionType.TRANSFER, "100.00", accountId = "acc-1", toAccountId = "acc-2"),

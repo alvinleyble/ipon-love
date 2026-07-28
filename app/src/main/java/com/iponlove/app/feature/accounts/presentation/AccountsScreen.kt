@@ -213,7 +213,7 @@ fun AccountsBody(
             editor = editor,
             onNameChange = viewModel::onNameChange,
             onTypeChange = viewModel::onTypeChange,
-            onBalanceChange = viewModel::onOpeningBalanceChange,
+            onBalanceChange = viewModel::onBalanceChange,
             onIconChange = viewModel::onIconChange,
             onColorChange = viewModel::onColorChange,
             onSave = viewModel::save,
@@ -530,11 +530,18 @@ private fun AccountEditorDialog(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
+                // On create, or on an account with an empty ledger, this is the starting balance.
+                // Once an account has real activity, it's a target — Save records a marked
+                // correction row for the difference instead of rewriting opening_balance
+                // (ADR-0057). Archived accounts are frozen: the field is shown but not editable.
+                val archived = editor.source?.isArchived == true
                 OutlinedTextField(
-                    value = editor.openingBalanceText,
+                    value = editor.balanceText,
                     onValueChange = onBalanceChange,
-                    label = { Text("Opening balance (${currencyGlyph()})") },
+                    label = { Text("Balance (${currencyGlyph()})") },
                     singleLine = true,
+                    readOnly = archived,
+                    enabled = !archived,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )

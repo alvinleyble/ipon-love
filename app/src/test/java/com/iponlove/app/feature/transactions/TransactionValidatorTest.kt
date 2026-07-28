@@ -15,10 +15,12 @@ class TransactionValidatorTest {
         accountId: String? = "acc-1",
         toAccountId: String? = null,
         categoryId: String? = "cat-1",
+        isAdjustment: Boolean = false,
         isPrivate: Boolean = false,
         touchesSharedAccount: Boolean = false,
     ) = TransactionValidator.validate(
         type, BigDecimal(amount), accountId, toAccountId, categoryId,
+        isAdjustment = isAdjustment,
         isPrivate = isPrivate,
         touchesSharedAccount = touchesSharedAccount,
     )
@@ -67,6 +69,14 @@ class TransactionValidatorTest {
             .contains(TransactionError.CATEGORY_REQUIRED)
         assertThat(validate(TransactionType.INCOME, categoryId = null))
             .contains(TransactionError.CATEGORY_REQUIRED)
+    }
+
+    @Test
+    fun adjustmentRow_withoutCategory_doesNotRequireCategory() {
+        assertThat(validate(TransactionType.EXPENSE, categoryId = null, isAdjustment = true))
+            .doesNotContain(TransactionError.CATEGORY_REQUIRED)
+        assertThat(validate(TransactionType.INCOME, categoryId = null, isAdjustment = true))
+            .doesNotContain(TransactionError.CATEGORY_REQUIRED)
     }
 
     @Test

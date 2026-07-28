@@ -88,6 +88,24 @@ class BudgetProgressCalculatorTest {
     }
 
     @Test
+    fun overallBudget_excludesBalanceAdjustmentRows() {
+        val transactions = listOf(
+            txn("t1", TransactionType.EXPENSE, "1000.00", categoryId = "cat-1", date = june(5)),
+            // A balance-correction row (ADR-0057): a real EXPENSE with no category and
+            // isAdjustment=true. It's a correction, not spending — must not consume the budget.
+            txn("adjust", TransactionType.EXPENSE, "2000.00", categoryId = null, date = june(8), isAdjustment = true),
+        )
+
+        val spent = BudgetProgressCalculator.spent(
+            budget = budget("b", categoryId = null, yearMonth = "2026-06"),
+            transactions = transactions,
+            zone = zone,
+        )
+
+        assertThat(spent).isEqualTo(BigDecimal("1000.00"))
+    }
+
+    @Test
     fun noMatchingTransactions_returnsZero() {
         val transactions = listOf(
             txn("t1", TransactionType.EXPENSE, "1000.00", categoryId = "cat-9", date = june(5)),

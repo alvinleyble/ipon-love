@@ -29,8 +29,9 @@ object AnalysisCalculator {
 
         for (t in transactions) {
             if (t.date < window.startInclusive || t.date >= window.endExclusive) continue
-            // Debt-settlement legs move money but aren't spending/income (ADR-0019 #14).
-            if (t.isSettlement) continue
+            // Debt-settlement legs (ADR-0019 #14) and balance corrections (ADR-0057) move money
+            // but aren't spending/income.
+            if (t.isSettlement || t.isAdjustment) continue
             when (t.type) {
                 TransactionType.INCOME -> income += t.amount
                 TransactionType.EXPENSE -> {

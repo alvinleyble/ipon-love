@@ -122,6 +122,36 @@ class CombinedLedgerCalculatorTest {
     }
 
     @Test
+    fun adjustmentRows_areTitledBalanceAdjustment_notUncategorized() {
+        val transactions = listOf(
+            owned("me", txn("a1", TransactionType.INCOME, "500.00", categoryId = null, isAdjustment = true, date = june(5))),
+        )
+
+        val ledger = CombinedLedgerCalculator.analyze(
+            transactions, emptyMap(), emptyMap(), me, partner, monthStart, monthEnd,
+        )
+
+        assertThat(ledger.entries.map { it.title }).containsExactly("Balance adjustment")
+    }
+
+    @Test
+    fun monthlySpend_excludesAdjustmentExpenseRows() {
+        val transactions = listOf(
+            owned("me", txn("real", TransactionType.EXPENSE, "100.00", date = june(5))),
+            owned("me", txn("adjust", TransactionType.EXPENSE, "500.00", isAdjustment = true, date = june(6))),
+        )
+
+        val ledger = CombinedLedgerCalculator.analyze(
+            transactions, emptyMap(), emptyMap(), me, partner, monthStart, monthEnd,
+        )
+
+        // Only the genuine purchase counts; the correction is excluded (matches Analysis) but is
+        // still present in ledger.entries (feed-visible per ADR-0057's Combined split decision).
+        assertThat(ledger.members.single { it.isMine }.monthlyExpense).isEqualTo(BigDecimal("100.00"))
+        assertThat(ledger.entries).hasSize(2)
+    }
+
+    @Test
     fun withoutPartner_onlyMyChipIsEmitted_butStreamStillMerges() {
         val transactions = listOf(
             owned("me", txn("t1", TransactionType.EXPENSE, "100.00", date = june(5))),

@@ -17,7 +17,8 @@ import java.time.temporal.ChronoUnit
  *
  * Short ranges (DAY/WEEK/MONTH/QUARTER) bucket per day; long ranges (SEMI_ANNUAL/ANNUAL/
  * ALL_TIME) bucket per month. Only EXPENSE transactions inside the bucket range count; INCOME,
- * TRANSFER and debt-settlement legs (ADR-0019 #14) are ignored. Each entry is the running sum
+ * TRANSFER, debt-settlement legs (ADR-0019 #14) and balance corrections (ADR-0057) are ignored.
+ * Each entry is the running sum
  * from the first bucket through that one, so entry[N] >= entry[N-1].
  *
  * ALL_TIME is special: its window end is unbounded ([Instant.MAX]), so the bucket range runs
@@ -58,7 +59,7 @@ object ExpenseFlowCalculator {
         val daily = Array(bucketCount) { BigDecimal.ZERO }
         for (t in transactions) {
             if (t.type != TransactionType.EXPENSE) continue
-            if (t.isSettlement) continue
+            if (t.isSettlement || t.isAdjustment) continue
             val date = t.date.atZone(zone).toLocalDate()
             if (date < rangeStart || date >= rangeEndExclusive) continue
             val idx = when (mode) {

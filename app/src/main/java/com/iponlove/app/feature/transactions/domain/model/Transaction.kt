@@ -35,6 +35,16 @@ data class Transaction(
      */
     val isSettlement: Boolean = false,
     /**
+     * True for a manual balance correction row (ADR-0057): the user typed a target balance and
+     * this row carries the signed delta. It moves real money — so
+     * [com.iponlove.app.feature.transactions.domain.usecase.AccountBalanceCalculator] counts it —
+     * but like [isSettlement] it is not spending/income, so Analysis and Budgets exclude it, and
+     * it carries no category. Unlike [isSettlement], it stays out of Combined *spend totals* while
+     * still appearing in the Combined *feed* (a shared-account correction moves the partner's
+     * balance too, so hiding it entirely would leave them with an unexplained balance jump).
+     */
+    val isAdjustment: Boolean = false,
+    /**
      * Set only on a TRANSFER row with a non-zero fee (ADR-0031): the id of the linked EXPENSE
      * row that carries the fee (auto-categorized under "Transfer fees" so it's real, groupable
      * spend in Analysis — unlike [isSettlement], which is deliberately excluded there). Null

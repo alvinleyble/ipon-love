@@ -104,6 +104,7 @@ object TransactionEditorReducer {
             accountId = state.accountId,
             toAccountId = toAccountId,
             categoryId = categoryId,
+            isAdjustment = state.isAdjustment,
             isPrivate = state.isPrivate,
             touchesSharedAccount = touchesShared,
         )
@@ -119,6 +120,7 @@ object TransactionEditorReducer {
             note = state.note.trim().ifBlank { null },
             date = state.date,
             isPrivate = state.isPrivate,
+            isAdjustment = state.isAdjustment,
         )
 
         // Transfer fee (ADR-0031): blank = no fee (zero); otherwise must be >= 0.

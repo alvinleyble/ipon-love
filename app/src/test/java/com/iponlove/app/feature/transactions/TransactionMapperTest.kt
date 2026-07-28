@@ -64,4 +64,13 @@ class TransactionMapperTest {
         assertThat(entity.toDto().transferFeeTransactionId).isEqualTo("fee-1")
         assertThat(entity.toDto().toEntity().transferFeeTransactionId).isEqualTo("fee-1")
     }
+
+    @Test
+    fun isAdjustment_carriedThroughDomainDtoAndEntity() {
+        val entity = transactionEntity(id = "t").copy(isAdjustment = true)
+
+        assertThat(entity.toDomain().isAdjustment).isTrue()
+        assertThat(entity.toDto().isAdjustment).isTrue()
+        assertThat(entity.toDto().toEntity().isAdjustment).isTrue()
+    }
 }

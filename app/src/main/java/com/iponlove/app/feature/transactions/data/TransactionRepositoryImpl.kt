@@ -103,6 +103,7 @@ class TransactionRepositoryImpl @Inject constructor(
                 isPrivate = transaction.isPrivate,
                 recurringRuleId = existing?.recurringRuleId,
                 isSettlement = transaction.isSettlement,
+                isAdjustment = transaction.isAdjustment,
                 transferFeeTransactionId = transaction.transferFeeTransactionId,
                 createdAt = existing?.createdAt ?: updatedAt,
                 updatedAt = updatedAt,
