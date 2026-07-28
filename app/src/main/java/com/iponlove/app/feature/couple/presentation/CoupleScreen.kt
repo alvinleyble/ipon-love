@@ -128,6 +128,7 @@ fun CoupleScreen(
                         label = label,
                         selected = pagerState.currentPage == index,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }

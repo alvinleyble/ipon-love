@@ -255,6 +255,7 @@ private fun AnalysisTabLayout(
                     selected = pagerState.currentPage == index,
                     // Tapping Calendar snaps to it; the LaunchedEffect above forces 1M.
                     onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
