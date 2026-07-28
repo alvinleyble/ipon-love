@@ -104,6 +104,7 @@ object TransactionEditorReducer {
             accountId = state.accountId,
             toAccountId = toAccountId,
             categoryId = categoryId,
+            isSettlement = state.isSettlement,
             isAdjustment = state.isAdjustment,
             isPrivate = state.isPrivate,
             touchesSharedAccount = touchesShared,
@@ -120,6 +121,7 @@ object TransactionEditorReducer {
             note = state.note.trim().ifBlank { null },
             date = state.date,
             isPrivate = state.isPrivate,
+            isSettlement = state.isSettlement,
             isAdjustment = state.isAdjustment,
         )
 

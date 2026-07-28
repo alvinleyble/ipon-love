@@ -154,6 +154,7 @@ class AddTransactionViewModel @Inject constructor(
                             isPrivate = t.isPrivate,
                             date = t.date,
                             isAdjustment = t.isAdjustment,
+                            isSettlement = t.isSettlement,
                             images = getTransactionImages(t.id),
                             transferFeeText = feeAmountText,
                         ),
@@ -300,6 +301,7 @@ class AddTransactionViewModel @Inject constructor(
         saved[KEY_PRIVATE] = state.isPrivate
         saved[KEY_DATE] = state.date.toEpochMilli()
         saved[KEY_IS_ADJUSTMENT] = state.isAdjustment
+        saved[KEY_IS_SETTLEMENT] = state.isSettlement
         // Persist the receipt-image draft as three parallel string lists (SavedStateHandle has no
         // typed-list support for a domain model); blank encodes null.
         saved[KEY_IMAGE_IDS] = ArrayList(state.images.map { it.id })
@@ -314,7 +316,7 @@ class AddTransactionViewModel @Inject constructor(
     private fun clearDraft() {
         listOf(
             KEY_ID, KEY_IS_EDITING, KEY_TYPE, KEY_AMOUNT, KEY_ACCOUNT, KEY_TO_ACCOUNT,
-            KEY_CATEGORY, KEY_NOTE, KEY_PRIVATE, KEY_DATE, KEY_IS_ADJUSTMENT, KEY_IMAGE_IDS,
+            KEY_CATEGORY, KEY_NOTE, KEY_PRIVATE, KEY_DATE, KEY_IS_ADJUSTMENT, KEY_IS_SETTLEMENT, KEY_IMAGE_IDS,
             KEY_IMAGE_PATHS, KEY_IMAGE_URLS, KEY_PAID_FOR_PARTNER, KEY_AMOUNT_OWED, KEY_TRANSFER_FEE,
             KEY_LINKED_FEE_ID,
         ).forEach { saved.remove<Any>(it) }
@@ -335,6 +337,7 @@ class AddTransactionViewModel @Inject constructor(
             isPrivate = saved[KEY_PRIVATE] ?: false,
             date = (saved.get<Long>(KEY_DATE))?.let { Instant.ofEpochMilli(it) } ?: Instant.now(),
             isAdjustment = saved[KEY_IS_ADJUSTMENT] ?: false,
+            isSettlement = saved[KEY_IS_SETTLEMENT] ?: false,
             images = hydrateImages(id),
             paidForPartner = saved[KEY_PAID_FOR_PARTNER] ?: false,
             amountOwedText = saved[KEY_AMOUNT_OWED] ?: "",
@@ -372,6 +375,7 @@ class AddTransactionViewModel @Inject constructor(
         private const val KEY_PRIVATE = "draft_private"
         private const val KEY_DATE = "draft_date"
         private const val KEY_IS_ADJUSTMENT = "draft_is_adjustment"
+        private const val KEY_IS_SETTLEMENT = "draft_is_settlement"
         private const val KEY_IMAGE_IDS = "draft_image_ids"
         private const val KEY_IMAGE_PATHS = "draft_image_paths"
         private const val KEY_IMAGE_URLS = "draft_image_urls"

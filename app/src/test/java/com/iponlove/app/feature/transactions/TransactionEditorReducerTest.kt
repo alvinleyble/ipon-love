@@ -22,6 +22,7 @@ class TransactionEditorReducerTest {
         amountOwedText: String = "",
         transferFeeText: String = "",
         isAdjustment: Boolean = false,
+        isSettlement: Boolean = false,
     ) = TransactionEditorState(
         id = "txn-1",
         type = type,
@@ -34,6 +35,7 @@ class TransactionEditorReducerTest {
         amountOwedText = amountOwedText,
         transferFeeText = transferFeeText,
         isAdjustment = isAdjustment,
+        isSettlement = isSettlement,
     )
 
     @Test
@@ -111,6 +113,16 @@ class TransactionEditorReducerTest {
         val result = TransactionEditorReducer.build(start, emptySet(), canPayForPartner = false)
         assertThat(result).isInstanceOf(BuildResult.Ready::class.java)
         assertThat((result as BuildResult.Ready).transaction.isAdjustment).isTrue()
+    }
+
+    @Test
+    fun build_settlementRow_roundTripsFlagAndSkipsCategoryRequirement() {
+        // v1.7.1 Item 15: editing a debt-settlement leg used to silently strip isSettlement,
+        // reclassifying it as real spend/income in Analysis, Budgets, and Combined.
+        val start = draft(categoryId = null, isSettlement = true)
+        val result = TransactionEditorReducer.build(start, emptySet(), canPayForPartner = false)
+        assertThat(result).isInstanceOf(BuildResult.Ready::class.java)
+        assertThat((result as BuildResult.Ready).transaction.isSettlement).isTrue()
     }
 
     @Test

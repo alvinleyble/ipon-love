@@ -31,6 +31,12 @@ data class TransactionEditorState(
      * the same bug class v1.7.1 Item 15 fixed for `isSettlement`. Hides the category picker.
      */
     val isAdjustment: Boolean = false,
+    /**
+     * True when this is a debt-settlement leg (ADR-0019 #14) loaded for edit — carried through
+     * so re-saving an existing settlement row doesn't silently strip the flag (v1.7.1 Item 15).
+     * Hides the category picker, same as [isAdjustment].
+     */
+    val isSettlement: Boolean = false,
     val errors: Set<TransactionError> = emptySet(),
     /**
      * Receipt photos in the draft (up to [TransactionImage.MAX]). Each carries either a
