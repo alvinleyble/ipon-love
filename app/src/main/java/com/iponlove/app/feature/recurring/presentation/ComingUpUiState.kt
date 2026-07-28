@@ -11,8 +11,13 @@ import com.iponlove.app.feature.recurring.domain.model.UpcomingOccurrence
  *  - nothing, when there's nothing upcoming (both tiers self-hide on an empty window);
  *  - the full preview, when unlocked (the dormant/premium path — byte-identical pre-flip);
  *  - a compact upsell teaser (item count only, no amounts), when locked.
+ *
+ * [collapsed] (Item 19) only hides the occurrence rows — the header (with count) always renders
+ * so the card stays discoverable and re-expandable. Persisted, not `remember`-only; ignored by
+ * the locked teaser, which has nothing to collapse.
  */
 data class ComingUpUiState(
     val items: List<UpcomingOccurrence> = emptyList(),
     val locked: Boolean = false,
+    val collapsed: Boolean = false,
 )

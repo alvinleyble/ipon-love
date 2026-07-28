@@ -1,5 +1,10 @@
 package com.iponlove.app.feature.recurring.presentation.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.HorizontalDivider
@@ -21,6 +27,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,10 +37,12 @@ import com.iponlove.app.core.ui.PlayfulSurface
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.theme.LeafShapes
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
+import com.iponlove.app.core.ui.theme.LocalReducedMotion
 import com.iponlove.app.feature.recurring.domain.model.UpcomingOccurrence
 import com.iponlove.app.feature.recurring.presentation.ComingUpViewModel
+import com.iponlove.app.feature.recurring.presentation.comingUpDueLabel
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
-import java.time.format.DateTimeFormatter
+import java.time.LocalDate
 
 /**
  * The Records "Coming up" preview (Item 37, Slice 2) — the premium forecast layer's forward
@@ -65,6 +74,10 @@ fun ComingUpCard(
     }
 
     val colors = LocalPlayfulColors.current
+    val reduced = LocalReducedMotion.current
+    val dur = if (reduced) 0 else 200
+    val chevronRotation by animateFloatAsState(if (state.collapsed) -90f else 0f, tween(dur), label = "comingUpChevron")
+
     PlayfulCard(
         modifier = modifier.fillMaxWidth(),
         surface = PlayfulSurface.Glass,
@@ -72,7 +85,10 @@ fun ComingUpCard(
         contentPadding = 16.dp,
     ) {
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { viewModel.toggleCollapsed() },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Icon(
                     imageVector = Icons.Filled.Schedule,
                     contentDescription = null,
@@ -81,15 +97,30 @@ fun ComingUpCard(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Coming up",
+                    text = "Coming up · ${state.items.size}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = colors.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (state.collapsed) "Expand" else "Collapse",
+                    tint = colors.textSecondary,
+                    modifier = Modifier.rotate(chevronRotation),
                 )
             }
-            state.items.forEach { item ->
-                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = colors.hairline)
-                UpcomingRow(item)
+            AnimatedVisibility(
+                visible = !state.collapsed,
+                enter = expandVertically(tween(dur)),
+                exit = shrinkVertically(tween(dur)),
+            ) {
+                Column {
+                    state.items.forEach { item ->
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = colors.hairline)
+                        UpcomingRow(item)
+                    }
+                }
             }
         }
     }
@@ -110,7 +141,7 @@ private fun UpcomingRow(item: UpcomingOccurrence) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "$kindLabel due ${item.date.format(DATE_FORMAT)}",
+                text = "$kindLabel due ${comingUpDueLabel(item.date, LocalDate.now())}",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textSecondary,
             )
@@ -160,5 +191,3 @@ private fun ComingUpTeaser(count: Int, onClick: () -> Unit, modifier: Modifier =
         }
     }
 }
-
-private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d")

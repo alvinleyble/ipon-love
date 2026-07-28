@@ -37,6 +37,13 @@ class OnboardingRepositoryImpl @Inject constructor(
         dataStore.edit { it[KEY_WIDGET_NUDGE_LAST_SHOWN_AT] = System.currentTimeMillis() }
     }
 
+    override fun observeComingUpCollapsed(): Flow<Boolean> =
+        dataStore.data.map { it[KEY_COMING_UP_COLLAPSED] ?: false }
+
+    override suspend fun setComingUpCollapsed(collapsed: Boolean) {
+        dataStore.edit { it[KEY_COMING_UP_COLLAPSED] = collapsed }
+    }
+
     override suspend fun reset() {
         dataStore.edit { it.clear() }
     }
@@ -45,5 +52,6 @@ class OnboardingRepositoryImpl @Inject constructor(
         val KEY_ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val KEY_PAIRING_CARD_DISMISSED = booleanPreferencesKey("pairing_card_dismissed")
         val KEY_WIDGET_NUDGE_LAST_SHOWN_AT = longPreferencesKey("widget_nudge_last_shown_at")
+        val KEY_COMING_UP_COLLAPSED = booleanPreferencesKey("coming_up_collapsed")
     }
 }

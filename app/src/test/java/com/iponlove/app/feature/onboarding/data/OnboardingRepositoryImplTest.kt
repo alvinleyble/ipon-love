@@ -58,7 +58,36 @@ class OnboardingRepositoryImplTest {
     }
 
     @Test
-    fun reset_clearsOnboardingDone_pairingCardDismissed_andWidgetNudgeLastShownAt() = runTest {
+    fun observeComingUpCollapsed_defaultsFalse() = runTest {
+        repo().observeComingUpCollapsed().test {
+            assertThat(awaitItem()).isFalse()
+            cancel()
+        }
+    }
+
+    @Test
+    fun setComingUpCollapsed_reflectedByObserve() = runTest {
+        val repo = repo()
+        repo.setComingUpCollapsed(true)
+        repo.observeComingUpCollapsed().test {
+            assertThat(awaitItem()).isTrue()
+            cancel()
+        }
+    }
+
+    @Test
+    fun setComingUpCollapsed_canBeUnset() = runTest {
+        val repo = repo()
+        repo.setComingUpCollapsed(true)
+        repo.setComingUpCollapsed(false)
+        repo.observeComingUpCollapsed().test {
+            assertThat(awaitItem()).isFalse()
+            cancel()
+        }
+    }
+
+    @Test
+    fun reset_clearsOnboardingDone_pairingCardDismissed_widgetNudgeLastShownAt_andComingUpCollapsed() = runTest {
         // LocalDataWiper calls this on sign-out/account-switch (ADR-0024 addendum) so a
         // different account signing in on the same device still gets the guided onboarding
         // graph, including starter-template seeding — not a permanently-tripped device flag.
@@ -66,6 +95,7 @@ class OnboardingRepositoryImplTest {
         repo.setOnboardingDone()
         repo.dismissPairingCard()
         repo.recordWidgetNudgeShown()
+        repo.setComingUpCollapsed(true)
 
         repo.reset()
 
@@ -76,6 +106,10 @@ class OnboardingRepositoryImplTest {
         }
         repo.observeWidgetNudgeLastShownAt().test {
             assertThat(awaitItem()).isNull()
+            cancel()
+        }
+        repo.observeComingUpCollapsed().test {
+            assertThat(awaitItem()).isFalse()
             cancel()
         }
     }

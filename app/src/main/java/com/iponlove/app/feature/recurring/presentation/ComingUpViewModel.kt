@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.entitlement.PremiumGate
 import com.iponlove.app.core.entitlement.Scope
+import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
 import com.iponlove.app.feature.recurring.domain.usecase.ObserveUpcomingUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -29,14 +31,16 @@ class ComingUpViewModel @Inject constructor(
     observeUpcoming: ObserveUpcomingUseCase,
     premiumGate: PremiumGate,
     private val analytics: Analytics,
+    private val onboardingRepository: OnboardingRepository,
 ) : ViewModel() {
 
     val uiState: StateFlow<ComingUpUiState> =
         combine(
             observeUpcoming(windowEnd = { today -> today.plusDays(COMING_UP_WINDOW_DAYS) }),
             premiumGate.observeLocked(Scope.INDIVIDUAL),
-        ) { upcoming, locked ->
-            ComingUpUiState(items = upcoming.take(PREVIEW_LIMIT), locked = locked)
+            onboardingRepository.observeComingUpCollapsed(),
+        ) { upcoming, locked, collapsed ->
+            ComingUpUiState(items = upcoming.take(PREVIEW_LIMIT), locked = locked, collapsed = collapsed)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -51,11 +55,18 @@ class ComingUpViewModel @Inject constructor(
         return source
     }
 
+    /** Toggles the card's collapsed state (Item 19) and persists the choice. */
+    fun toggleCollapsed() {
+        viewModelScope.launch {
+            onboardingRepository.setComingUpCollapsed(!uiState.value.collapsed)
+        }
+    }
+
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
 
         /** How far ahead the preview looks. Short by design — a glance, not a full schedule. */
-        const val COMING_UP_WINDOW_DAYS = 14L
+        const val COMING_UP_WINDOW_DAYS = 7L
 
         /** Cap the preview rows so a busy schedule doesn't push the ledger off-screen. */
         const val PREVIEW_LIMIT = 5

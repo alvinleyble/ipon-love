@@ -28,6 +28,12 @@ interface OnboardingRepository {
 
     suspend fun recordWidgetNudgeShown()
 
+    /** True once the signed-in account has collapsed the Records "Coming up" card (Item 19).
+     *  Default = expanded (false) — an opt-out, not an opt-in. */
+    fun observeComingUpCollapsed(): Flow<Boolean>
+
+    suspend fun setComingUpCollapsed(collapsed: Boolean)
+
     /** Clears all flags — called on sign-out/account-switch, never mid-session. */
     suspend fun reset()
 }
