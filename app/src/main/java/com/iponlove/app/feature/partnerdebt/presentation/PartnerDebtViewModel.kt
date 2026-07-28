@@ -17,8 +17,6 @@ import com.iponlove.app.feature.partnerdebt.domain.usecase.DeletePartnerDebtUseC
 import com.iponlove.app.feature.partnerdebt.domain.usecase.ObservePartnerDebtBoardUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.SettleDebtsUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.UpsertPartnerDebtUseCase
-import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
-import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,8 +46,6 @@ class PartnerDebtViewModel @Inject constructor(
     private val addSettlementIncome: AddSettlementIncomeUseCase,
     private val deleteDebt: DeletePartnerDebtUseCase,
     private val checkDebtCap: CheckPartnerDebtCapUseCase,
-    observePrivacyMode: ObservePrivacyModeUseCase,
-    private val setPrivacyMode: SetPrivacyModeUseCase,
     private val analytics: Analytics,
 ) : ViewModel() {
 
@@ -94,10 +90,6 @@ class PartnerDebtViewModel @Inject constructor(
                 upsell = upsellState,
             )
         }
-            // Trailing stage — the main combine is already at its 5-flow ceiling (Slice 4's precedent).
-            .combine(observePrivacyMode()) { state, privacyOn ->
-                state.copy(privacyModeEnabled = privacyOn)
-            }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -279,11 +271,6 @@ class PartnerDebtViewModel @Inject constructor(
 
     fun removeDebt(id: String) {
         viewModelScope.launch { deleteDebt(id) }
-    }
-
-    /** Toggle the global amount-masking flag (masking is app-wide, per `feedback-privacy-eye-is-global`). */
-    fun togglePrivacyMode() {
-        viewModelScope.launch { setPrivacyMode(!uiState.value.privacyModeEnabled) }
     }
 
     private inline fun updateAddDebt(transform: (DebtDialog.AddDebt) -> DebtDialog.AddDebt) =

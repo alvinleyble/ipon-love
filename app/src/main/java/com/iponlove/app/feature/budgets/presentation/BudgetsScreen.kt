@@ -22,8 +22,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -87,8 +85,6 @@ fun BudgetsBody(
             label = state.monthLabel,
             onPrevious = viewModel::previousMonth,
             onNext = viewModel::nextMonth,
-            isPrivacyModeOn = state.privacyModeEnabled,
-            onTogglePrivacyMode = viewModel::togglePrivacyMode,
         )
         Box(modifier = Modifier.fillMaxSize()) {
             when {
@@ -148,8 +144,6 @@ private fun MonthStepper(
     label: String,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
-    isPrivacyModeOn: Boolean,
-    onTogglePrivacyMode: () -> Unit,
 ) {
     val colors = LocalPlayfulColors.current
     Row(
@@ -179,13 +173,6 @@ private fun MonthStepper(
             )
         }
         Spacer(Modifier.weight(1f))
-        IconButton(onClick = onTogglePrivacyMode) {
-            Icon(
-                imageVector = if (isPrivacyModeOn) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                contentDescription = if (isPrivacyModeOn) "Show amounts" else "Hide amounts",
-                tint = colors.textSecondary,
-            )
-        }
     }
 }
 

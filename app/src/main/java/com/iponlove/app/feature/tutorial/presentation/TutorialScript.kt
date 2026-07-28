@@ -201,7 +201,7 @@ object TutorialScript {
             TutorialStep(
                 targetKey = TutorialTargets.COUPLE_TABS,
                 title = "Your combined view",
-                text = "Combined shows the spending you and your partner share, side by side.",
+                text = "Spending shows the money you and your partner share, side by side.",
             ),
             TutorialStep(
                 targetKey = TutorialTargets.COUPLE_TABS,
@@ -252,7 +252,7 @@ object TutorialScript {
             TutorialStep(
                 targetKey = TutorialTargets.MORE,
                 title = "You're paired! 🎉",
-                text = "Couple features just unlocked. Tap More to open your Combined view and explore " +
+                text = "Couple features just unlocked. Tap More to open your Spending view and explore " +
                     "everything you now share.",
             ),
         ),

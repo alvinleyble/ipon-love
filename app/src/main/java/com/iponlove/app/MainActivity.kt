@@ -51,6 +51,7 @@ import com.iponlove.app.core.sync.SyncEngine
 import com.iponlove.app.core.sync.SyncWorker
 import com.iponlove.app.core.ui.LocalCurrencySymbol
 import com.iponlove.app.core.ui.LocalPrivacyMode
+import com.iponlove.app.core.ui.LocalTogglePrivacyMode
 import com.iponlove.app.feature.budgets.worker.BudgetAlertWorker
 import com.iponlove.app.feature.partnerdebt.worker.PartnerDebtNotificationWorker
 import com.iponlove.app.feature.recurring.worker.RecurringReminderWorker
@@ -77,6 +78,7 @@ import com.iponlove.app.feature.settings.domain.usecase.ObserveCurrencySymbolUse
 import com.iponlove.app.feature.settings.domain.usecase.ObserveRecurringSweepArmedUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveThemePreferencesUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.user.domain.usecase.EnsureCurrentUserRowUseCase
 import com.iponlove.app.feature.widget.presentation.Widgets
 import com.iponlove.app.navigation.IponApp
@@ -108,6 +110,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var shouldShowOnboarding: ShouldShowOnboardingUseCase
     @Inject lateinit var observeThemePreferences: ObserveThemePreferencesUseCase
     @Inject lateinit var observePrivacyMode: ObservePrivacyModeUseCase
+    @Inject lateinit var setPrivacyMode: SetPrivacyModeUseCase
     @Inject lateinit var observeCurrencySymbol: ObserveCurrencySymbolUseCase
     @Inject lateinit var observeAppLock: ObserveAppLockUseCase
     @Inject lateinit var appLockManager: AppLockManager
@@ -194,6 +197,7 @@ class MainActivity : FragmentActivity() {
 
             CompositionLocalProvider(
                 LocalPrivacyMode provides privacyModeOn,
+                LocalTogglePrivacyMode provides { lifecycleScope.launch { setPrivacyMode(!privacyModeOn) } },
                 LocalCurrencySymbol provides currencySymbol,
             ) {
             IponTheme(themePreferences = themePreferences) {

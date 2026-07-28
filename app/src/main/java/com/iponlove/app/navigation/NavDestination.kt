@@ -64,7 +64,7 @@ object NavRegistry {
     val NOTES = NavDestination("notes", "Notes", Icons.Filled.Description, "notes")
     val RECURRING = NavDestination("recurring", "Recurring", Icons.Filled.Repeat, "recurring")
     val COUPLE = NavDestination("couple", "Couple", Icons.Filled.Favorite, "couple", requiresPaired = true)
-    val COMBINED = NavDestination("combined", "Combined", Icons.Filled.People, "combined", requiresPaired = true)
+    val COMBINED = NavDestination("combined", "Spending", Icons.Filled.People, "combined", requiresPaired = true)
     val PARTNER_DEBT = NavDestination("partner_debt", "Debts", Icons.Filled.Handshake, "partner_debt", requiresPaired = true)
     val SETTINGS = NavDestination("settings", "Settings", Icons.Filled.Settings, "settings")
     // Calculator is the registry's only *overlay* module (ADR-0058): tapping it spawns the

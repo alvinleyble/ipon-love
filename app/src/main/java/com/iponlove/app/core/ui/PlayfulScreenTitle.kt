@@ -25,20 +25,23 @@ import com.iponlove.app.feature.notifications.presentation.InboxBell
 
 /**
  * The Playful Pop screen title (v1.6.7 Item 8): a bold 30sp title with a small tilted accent heart
- * beside it, plus an optional trailing [actions] slot (e.g. a privacy eye). Colors from the derived
- * [LocalPlayfulColors].
+ * beside it, plus optional [leadingActions] and trailing [actions] slots (e.g. a privacy eye).
+ * Colors from the derived [LocalPlayfulColors].
  *
  * Every top-level module's title bar goes through here, so the **notification bell** is rendered
  * here too rather than added screen by screen — that is what makes ADR-0053's "bell on every
- * top-level screen" a single rollout. It leads the action cluster (bell first, then the screen's
- * own [actions]) so per-screen icons keep their existing order, and it self-hides wherever no
- * inbox is provided. Set [showInboxBell] to false for a title bar that should not carry it.
+ * top-level screen" a single rollout. The action cluster renders [leadingActions] (e.g. Records'
+ * filter icon, or Analysis' net-assets figure — Item 16/17), then the bell, then the screen's own
+ * trailing [actions] (e.g. the privacy eye) — so a screen wanting something to the *left* of the
+ * bell isn't limited to the trailing slot. It self-hides wherever nothing is provided. Set
+ * [showInboxBell] to false for a title bar that should not carry it.
  */
 @Composable
 fun PlayfulScreenTitle(
     title: String,
     modifier: Modifier = Modifier,
     showInboxBell: Boolean = true,
+    leadingActions: (@Composable () -> Unit)? = null,
     actions: (@Composable () -> Unit)? = null,
 ) {
     val colors = LocalPlayfulColors.current
@@ -62,8 +65,9 @@ fun PlayfulScreenTitle(
             tint = colors.accent,
             modifier = Modifier.size(20.dp).rotate(-8f),
         )
-        if (actions != null || showInboxBell) {
+        if (actions != null || showInboxBell || leadingActions != null) {
             Spacer(Modifier.weight(1f))
+            leadingActions?.invoke()
             if (showInboxBell) InboxBell()
             actions?.invoke()
         }

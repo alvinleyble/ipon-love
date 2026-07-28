@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.PlayfulChip
 import com.iponlove.app.core.ui.PlayfulScreenTitle
+import com.iponlove.app.core.ui.PrivacyEyeAction
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.playfulBackground
@@ -76,7 +77,7 @@ fun ManageScreen(
         containerColor = Color.Transparent,
         topBar = {
             Box(Modifier.statusBarsPadding().padding(top = 10.dp, bottom = 2.dp)) {
-                PlayfulScreenTitle(title = "Manage")
+                PlayfulScreenTitle(title = "Manage", actions = { PrivacyEyeAction() })
             }
         },
         floatingActionButton = {

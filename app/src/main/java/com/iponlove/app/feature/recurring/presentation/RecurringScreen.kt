@@ -73,6 +73,7 @@ import com.iponlove.app.core.ui.EntityPickerOption
 import com.iponlove.app.core.ui.PlayfulCard
 import com.iponlove.app.core.ui.PlayfulDialog
 import com.iponlove.app.core.ui.PlayfulSurface
+import com.iponlove.app.core.ui.PrivacyEyeAction
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.currencyGlyph
@@ -132,6 +133,7 @@ fun RecurringScreen(
                             Icon(Icons.Filled.List, contentDescription = "List view")
                         }
                     }
+                    PrivacyEyeAction()
                 },
             )
         },

@@ -21,8 +21,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -78,8 +76,8 @@ private const val PARTNER_NAME_DISPLAY_MAX = 15
  * provides the scaffold and an Add-debt FAB (visible only on this tab while paired).
  * The dialogs are rendered here so the ViewModel stays the sole owner of dialog state.
  *
- * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 6e): the net summary became a Glass leaf hero
- * (semantic-tinted amount + the Item 7 privacy eye), debt rows are owner-tinted [PlayfulCard]s with
+ * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 6e): the net summary became a semantic-tinted
+ * Glass leaf hero, debt rows are owner-tinted [PlayfulCard]s with
  * a [HeartTippedProgress] bar, and the three editor dialogs adopt 6-PD's [PlayfulDialog]. The
  * owner tint uses each side's ADR-0014 accent color (mine for debts I owe, my partner's for theirs).
  * The [CoupleScreen] host chrome converts in the same commit, as this is the last Couple tab.
@@ -109,11 +107,7 @@ fun PartnerDebtBody(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
-                    NetSummaryCard(
-                        net = state.net,
-                        isPrivacyModeOn = state.privacyModeEnabled,
-                        onTogglePrivacyMode = viewModel::togglePrivacyMode,
-                    )
+                    NetSummaryCard(net = state.net)
                 }
                 if (state.debts.isEmpty()) {
                     item {
@@ -190,14 +184,12 @@ fun PartnerDebtBody(
  * The net-balance hero (v1.6.7 Item 8 Slice 6e): a Glass leaf-squircle [PlayfulCard] with a
  * translucent heart accent, the direction sentence, and the amount tinted by net direction —
  * `semantic.negative` when I owe, `semantic.income` when I'm owed (a Glass hero, not a fixed
- * accent→deepPlum gradient, so this red/green net cue survives the reskin). Carries the Item 7
- * privacy eye (masking is global — [PartnerDebtViewModel.togglePrivacyMode]).
+ * accent→deepPlum gradient, so this red/green net cue survives the reskin). The privacy eye moved
+ * to the [CoupleScreen] host header (Item 16) — [money] still masks the amount here.
  */
 @Composable
 private fun NetSummaryCard(
     net: DebtNet?,
-    isPrivacyModeOn: Boolean,
-    onTogglePrivacyMode: () -> Unit,
 ) {
     val colors = LocalPlayfulColors.current
     PlayfulCard(
@@ -217,22 +209,12 @@ private fun NetSummaryCard(
                 .rotate(-10f),
         )
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Net balance",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.textSecondary,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = onTogglePrivacyMode) {
-                    Icon(
-                        imageVector = if (isPrivacyModeOn) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        contentDescription = if (isPrivacyModeOn) "Show amounts" else "Hide amounts",
-                        tint = colors.textSecondary,
-                    )
-                }
-            }
+            Text(
+                text = "Net balance",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = colors.textSecondary,
+            )
             val partner = (net?.counterpartName ?: "your partner").ellipsize(PARTNER_NAME_DISPLAY_MAX)
             when (net?.direction) {
                 NetDirection.I_OWE -> {

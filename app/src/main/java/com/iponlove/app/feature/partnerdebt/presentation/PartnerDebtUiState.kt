@@ -28,8 +28,6 @@ data class PartnerDebtUiState(
     val dialog: DebtDialog? = null,
     /** Non-null while the count-cap upsell sheet is showing (S7; only ever set under enforcement). */
     val upsell: UpsellPrompt? = null,
-    /** Global amount-masking flag (Item 7 / Item 15). Drives the hero's privacy eye icon. */
-    val privacyModeEnabled: Boolean = false,
 )
 
 /** A pickable account for the settle / receive sheets. */

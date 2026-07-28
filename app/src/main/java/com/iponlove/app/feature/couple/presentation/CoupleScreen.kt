@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.iponlove.app.core.ui.PlayfulChip
 import com.iponlove.app.core.ui.PlayfulScreenTitle
+import com.iponlove.app.core.ui.PrivacyEyeAction
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.playfulBackground
@@ -79,7 +80,7 @@ fun CoupleScreen(
             containerColor = Color.Transparent,
             topBar = {
                 Box(Modifier.statusBarsPadding().padding(top = 10.dp, bottom = 2.dp)) {
-                    PlayfulScreenTitle(title = "Couple")
+                    PlayfulScreenTitle(title = "Couple", actions = { PrivacyEyeAction() })
                 }
             },
         ) { padding ->
@@ -95,7 +96,7 @@ fun CoupleScreen(
 
     val debtState by debtViewModel.uiState.collectAsState()
 
-    val tabLabels = listOf("Combined", "Debts")
+    val tabLabels = listOf("Spending", "Debts")
     val pagerState = rememberPagerState(pageCount = { tabLabels.size })
     val scope = rememberCoroutineScope()
 
@@ -105,7 +106,7 @@ fun CoupleScreen(
         containerColor = Color.Transparent,
         topBar = {
             Box(Modifier.statusBarsPadding().padding(top = 10.dp, bottom = 2.dp)) {
-                PlayfulScreenTitle(title = "Couple")
+                PlayfulScreenTitle(title = "Couple", actions = { PrivacyEyeAction() })
             }
         },
         floatingActionButton = {

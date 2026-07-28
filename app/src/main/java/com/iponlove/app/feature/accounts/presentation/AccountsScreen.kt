@@ -25,8 +25,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -120,8 +118,6 @@ fun AccountsBody(
                 netAssets = state.netAssets,
                 accountCount = state.accounts.count { !it.isArchived },
                 sharedCount = state.accounts.count { it.isShared && !it.isArchived },
-                isPrivacyModeOn = state.privacyModeEnabled,
-                onTogglePrivacyMode = viewModel::togglePrivacyMode,
             )
         }
 
@@ -312,8 +308,6 @@ private fun AccountsHero(
     netAssets: BigDecimal,
     accountCount: Int,
     sharedCount: Int,
-    isPrivacyModeOn: Boolean,
-    onTogglePrivacyMode: () -> Unit,
 ) {
     val colors = LocalPlayfulColors.current
     PlayfulGradientCard(
@@ -332,33 +326,22 @@ private fun AccountsHero(
                 .rotate(-10f),
         )
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Net assets",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.onAccent.copy(alpha = 0.85f),
-                    )
-                    Text(
-                        text = money(netAssets),
-                        style = TextStyle(
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-1).sp,
-                            color = colors.onAccent,
-                        ),
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
-                }
-                IconButton(onClick = onTogglePrivacyMode) {
-                    Icon(
-                        imageVector = if (isPrivacyModeOn) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        contentDescription = if (isPrivacyModeOn) "Show amounts" else "Hide amounts",
-                        tint = colors.onAccent,
-                    )
-                }
-            }
+            Text(
+                text = "Net assets",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = colors.onAccent.copy(alpha = 0.85f),
+            )
+            Text(
+                text = money(netAssets),
+                style = TextStyle(
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-1).sp,
+                    color = colors.onAccent,
+                ),
+                modifier = Modifier.padding(top = 2.dp),
+            )
             Text(
                 text = "$accountCount accounts · $sharedCount shared",
                 style = MaterialTheme.typography.labelMedium,

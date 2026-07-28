@@ -44,8 +44,6 @@ data class AnalysisUiState(
      * read-only in the Analysis top bar. Period-independent: unaffected by [period]/[periodLabel].
      */
     val netAssets: BigDecimal = BigDecimal.ZERO,
-    /** Global Privacy mode (Item 15) — drives the Net-assets header's eye icon. */
-    val privacyModeEnabled: Boolean = false,
     /** Unpaired + not-yet-dismissed — shows the pairing nudge card (ADR-0024). */
     val showPairingCard: Boolean = false,
     /**

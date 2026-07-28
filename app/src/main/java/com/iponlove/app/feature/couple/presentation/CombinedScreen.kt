@@ -22,12 +22,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.MaterialTheme
@@ -78,11 +74,11 @@ private val VolunteerActivism = msRounded("volunteer_activism", "M549-53q8 2 17 
  *
  * Restyled for "Playful Pop" (v1.6.7 Item 8 Slice 4): the You/Partner spend cards became an
  * overlapping blush/deepPlum leaf-card split with an accent knot + a two-color split bar; the
- * shared-budget summary and transaction rows moved onto [PlayfulCard]. The "Spending · $monthLabel"
- * header also picked up its Item 7 privacy eye in the same commit (pulled in early — Combined's own
- * eye, not Debts/Budgets/Savings/Records, which stay on Item 7's own slice). [CoupleScreen]'s
+ * shared-budget summary and transaction rows moved onto [PlayfulCard]. [CoupleScreen]'s
  * TopAppBar/tab-row host is deliberately left untouched, same as the Manage host was left for
- * Accounts (Slice 3) — it converts once, when Debts is also restyled.
+ * Accounts (Slice 3) — it converts once, when Debts is also restyled. The privacy eye now lives on
+ * that host's [PlayfulScreenTitle] instead of a per-body header row (Item 16) — [money] still masks
+ * the amounts here.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -132,12 +128,9 @@ fun CombinedBody(
                         item {
                             CombinedBanner(
                                 coupleName = state.coupleName ?: "Us",
-                                monthLabel = state.monthLabel,
                                 members = state.members,
                                 bannerUrl = state.coupleBannerUrl,
                                 bannerUnlocked = state.bannerUnlocked,
-                                isPrivacyModeOn = state.privacyModeEnabled,
-                                onTogglePrivacyMode = viewModel::togglePrivacyMode,
                             )
                         }
                         if (state.sharedBudgets.isNotEmpty()) {
@@ -286,45 +279,26 @@ private fun SharedBudgetsSummaryCard(
 }
 
 /**
- * The couple banner section on the Combined view (v1.7.0 Item 9 Slice B, layout "C"): a
- * "Spending · month" header row + privacy eye on the screen background, then the shared identity
- * hero ([CoupleBanner] — gradient + both avatars + couple name, plus a circle photo straddling the
- * top edge when Item 10 is unlocked) with a [SpendStrip] folded in below it as a darkened continuation
- * of the same gradient, replacing the old You/Partner spend cards. Both members present → hero +
- * strip; the brief unresolved-partner transient reuses the single-accent wash and hides the strip
- * (decision 8). The eye toggles the global privacy flag — [money] masks the amounts, while the %
- * and split bar (a ratio, not a peso figure) stay visible.
+ * The couple banner section on the Combined view (v1.7.0 Item 9 Slice B, layout "C"): the shared
+ * identity hero ([CoupleBanner] — gradient + both avatars + couple name, plus a circle photo
+ * straddling the top edge when Item 10 is unlocked) with a [SpendStrip] folded in below it as a
+ * darkened continuation of the same gradient, replacing the old You/Partner spend cards. Both
+ * members present → hero + strip; the brief unresolved-partner transient reuses the single-accent
+ * wash and hides the strip (decision 8). [money] masks the strip's peso figures under the global
+ * privacy eye (now on the [CoupleScreen] host header, Item 16), while the % and split bar (a
+ * ratio, not a peso figure) stay visible. The month is shown by [MonthStepperRow] above, not here
+ * — the former "Spending · month" row was removed in the same Item 16 change.
  */
 @Composable
 private fun CombinedBanner(
     coupleName: String,
-    monthLabel: String,
     members: List<MemberSpend>,
     bannerUrl: String?,
     bannerUnlocked: Boolean,
-    isPrivacyModeOn: Boolean,
-    onTogglePrivacyMode: () -> Unit,
 ) {
-    val colors = LocalPlayfulColors.current
     val me = members.firstOrNull { it.isMine }
     val partner = members.firstOrNull { !it.isMine }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "Spending · $monthLabel",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = colors.textSecondary,
-                modifier = Modifier.weight(1f),
-            )
-            IconButton(onClick = onTogglePrivacyMode) {
-                Icon(
-                    imageVector = if (isPrivacyModeOn) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                    contentDescription = if (isPrivacyModeOn) "Show amounts" else "Hide amounts",
-                    tint = colors.textSecondary,
-                )
-            }
-        }
         CoupleBanner(
             coupleName = coupleName,
             currentMotifKey = me?.avatarMotif,

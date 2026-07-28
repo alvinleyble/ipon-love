@@ -26,6 +26,12 @@ private const val MASKED_AMOUNT = "•••••"
  *  once app-wide from [com.iponlove.app.MainActivity]; defaults false for previews/tests. */
 val LocalPrivacyMode = staticCompositionLocalOf { false }
 
+/** Write-side counterpart to [LocalPrivacyMode] (Item 16) — flips the global Privacy mode flag.
+ *  Provided once app-wide from [com.iponlove.app.MainActivity], wired to
+ *  `SetPrivacyModeUseCase`, so any header can drop a [PrivacyEyeAction] in without threading the
+ *  flag through that feature's own ViewModel. Defaults to a no-op for previews/tests. */
+val LocalTogglePrivacyMode = staticCompositionLocalOf<() -> Unit> { {} }
+
 /** The user's chosen display-currency symbol (Item 18) — provided once app-wide from
  *  [com.iponlove.app.MainActivity]; defaults to PHP for previews/tests. */
 val LocalCurrencySymbol = staticCompositionLocalOf { CurrencySymbol.DEFAULT }

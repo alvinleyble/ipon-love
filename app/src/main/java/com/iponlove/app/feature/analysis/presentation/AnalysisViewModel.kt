@@ -23,8 +23,6 @@ import com.iponlove.app.feature.couple.domain.model.PairingState
 import com.iponlove.app.feature.couple.domain.usecase.ObservePairingStateUseCase
 import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
 import com.iponlove.app.feature.recurring.domain.usecase.ObserveUpcomingUseCase
-import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
-import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
 import com.iponlove.app.feature.user.domain.model.User
 import com.iponlove.app.feature.user.domain.usecase.ObserveCurrentUserUseCase
@@ -56,9 +54,7 @@ class AnalysisViewModel @Inject constructor(
     observeCurrentUser: ObserveCurrentUserUseCase,
     observePairingState: ObservePairingStateUseCase,
     observeNetAssets: ObserveNetAssetsUseCase,
-    observePrivacyMode: ObservePrivacyModeUseCase,
     observeUpcoming: ObserveUpcomingUseCase,
-    private val setPrivacyMode: SetPrivacyModeUseCase,
     private val onboardingRepository: OnboardingRepository,
     private val premiumGate: PremiumGate,
     private val analytics: Analytics,
@@ -259,9 +255,6 @@ class AnalysisViewModel @Inject constructor(
                     )
                 }
             }
-            .combine(observePrivacyMode()) { state, privacyModeOn ->
-                state.copy(privacyModeEnabled = privacyModeOn)
-            }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -270,12 +263,6 @@ class AnalysisViewModel @Inject constructor(
 
     fun dismissPairingCard() {
         viewModelScope.launch { onboardingRepository.dismissPairingCard() }
-    }
-
-    /** The Net-assets header's eye icon — flips the same global Privacy mode (Item 15) as every
-     *  other entry point (Settings switch, Accounts eye icon); all write through to one flag. */
-    fun togglePrivacyMode() {
-        viewModelScope.launch { setPrivacyMode(!uiState.value.privacyModeEnabled) }
     }
 
     /** Switch granularity, keeping the same anchor date (the window snaps around it). */

@@ -25,8 +25,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,6 +60,7 @@ import com.iponlove.app.core.ui.PlayfulCard
 import com.iponlove.app.core.ui.PlayfulChip
 import com.iponlove.app.core.ui.PlayfulScreenTitle
 import com.iponlove.app.core.ui.PlayfulSurface
+import com.iponlove.app.core.ui.PrivacyEyeAction
 import com.iponlove.app.core.ui.StartTourOnFirstVisit
 import com.iponlove.app.core.ui.coachMarkTarget
 import com.iponlove.app.core.ui.money
@@ -92,7 +91,6 @@ fun AnalysisScreen(
         onNext = viewModel::next,
         onOpenCouple = onOpenCouple,
         onDismissPairingCard = viewModel::dismissPairingCard,
-        onTogglePrivacyMode = viewModel::togglePrivacyMode,
         // Locked extended-range tap: log the funnel touchpoint, then route to the paywall.
         onExtendedRangeUpsell = { onOpenPremium(viewModel.onExtendedRangeUpsell()) },
         // Locked ← at the DEEP_HISTORY −12mo wall: same treatment, its own analytics source.
@@ -111,7 +109,6 @@ private fun AnalysisContent(
     onNext: () -> Unit,
     onOpenCouple: () -> Unit,
     onDismissPairingCard: () -> Unit,
-    onTogglePrivacyMode: () -> Unit = {},
     onExtendedRangeUpsell: () -> Unit = {},
     onDeepHistoryUpsell: () -> Unit = {},
     onForecastUpsell: () -> Unit = {},
@@ -147,11 +144,13 @@ private fun AnalysisContent(
             Box(Modifier.statusBarsPadding().padding(top = 10.dp, bottom = 2.dp)) {
                 PlayfulScreenTitle(
                     title = "Analysis",
-                    actions = {
+                    leadingActions = {
                         val colors = LocalPlayfulColors.current
                         // Net-assets figure retained (Item 14 parity) — recreated in the Playful
                         // style per the pure-reskin hard rule; masks under the global privacy eye.
-                        Column(horizontalAlignment = Alignment.End) {
+                        // Sits left of the bell/eye (Item 16 reorder), via PlayfulScreenTitle's
+                        // leadingActions slot.
+                        Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(end = 8.dp)) {
                             Text(
                                 text = "Net assets",
                                 style = MaterialTheme.typography.labelSmall,
@@ -164,14 +163,8 @@ private fun AnalysisContent(
                                 color = colors.textPrimary,
                             )
                         }
-                        IconButton(onClick = onTogglePrivacyMode) {
-                            Icon(
-                                imageVector = if (state.privacyModeEnabled) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = if (state.privacyModeEnabled) "Show amounts" else "Hide amounts",
-                                tint = colors.textSecondary,
-                            )
-                        }
                     },
+                    actions = { PrivacyEyeAction() },
                 )
             }
         },
