@@ -192,6 +192,14 @@ _Avoid_: trailing window, rolling period, lookback window
 The app lock rendered as an opaque full-screen layer *above* an always-composed app, rather than a branch that replaces it. Preserves navigation state and ViewModels across a lock so in-progress drafts survive; drafts also use `SavedStateHandle` for process death. See ADR-0023.
 _Avoid_: lock screen route, lock gate
 
+**Overlay module**:
+A `NavRegistry` entry with **no [[Module graph]]** — tapping its pin or More-sheet row *acts on the current screen* instead of navigating anywhere. It is still a module in every other sense (pinnable, listed in the More sheet and the navbar editor), so `isInGraph` is permanently false for it and the bottom bar's active pill never points at it. Calculator is the only one; a `navigable = false` flag marks it. See ADR-0058.
+_Avoid_: action module, non-navigable module, pseudo-module
+
+**Calculator bubble**:
+The floating, draggable calculator that an [[Overlay module]] tap spawns over whatever screen is showing. Collapsed it is a pill **displaying the running value** (so the number stays readable while browsing); expanded it is a compact keypad. Strictly in-app — it is *not* a `SYSTEM_ALERT_WINDOW` draw-over-other-apps bubble and needs no runtime permission. **Collapse and close are different verbs**: collapsing keeps the value, closing clears it. Lives for the app session (survives navigation, rotation, backgrounding and an [[Lock overlay|app-lock]] unlock), never past process death. See ADR-0058.
+_Avoid_: chathead (implies a Messenger-style system overlay, which this deliberately is not), floating window, calculator widget
+
 **Onboarding**:
 The first-run-only flow for a brand-new account: value-prop → pair-or-solo → starter-template picker → home (pairing before templates). See ADR-0024.
 _Avoid_: setup wizard, intro, tutorial
@@ -279,7 +287,7 @@ A hard, non-dismissable block shown to beta testers whenever their installed `ve
 _Avoid_: force update, version check
 
 **Module graph**:
-The per-module nested `NavGraph` every pinnable module (Records, Analysis, Manage, Couple, Settings, Calculator, Savings) is wrapped in, uniformly — even ones with only a single screen today. Switching tabs saves/restores each module's own back stack independently, so leaving a module mid-flow (e.g. Records → Recurring) and returning later resumes exactly there, not at the module's root. Add/Edit Transaction is a deliberate exception: a standalone route outside every module graph, since it's reached from the global ⊕ button as well as from inside Records. See ADR-0033.
+The per-module nested `NavGraph` every *navigable* module (Records, Analysis, Manage, Couple, Settings, Savings, Notes, Recurring) is wrapped in, uniformly — even ones with only a single screen today. Calculator is the sole exception: it is an [[Overlay module]] and has no graph at all (ADR-0058). Switching tabs saves/restores each module's own back stack independently, so leaving a module mid-flow (e.g. Records → Recurring) and returning later resumes exactly there, not at the module's root. Add/Edit Transaction is a deliberate exception: a standalone route outside every module graph, since it's reached from the global ⊕ button as well as from inside Records. See ADR-0033.
 _Avoid_: tab graph, nested graph (ambiguous with Android's generic term), sub-graph
 
 **Reset-to-root**:
