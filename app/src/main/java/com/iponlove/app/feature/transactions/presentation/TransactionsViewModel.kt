@@ -13,8 +13,6 @@ import com.iponlove.app.core.sync.SyncEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
-import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
-import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepository
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.model.TransactionFilter
@@ -52,8 +50,6 @@ class TransactionsViewModel @Inject constructor(
     private val syncEngine: SyncEngine,
     private val premiumGate: PremiumGate,
     private val analytics: Analytics,
-    observePrivacyMode: ObservePrivacyModeUseCase,
-    private val setPrivacyMode: SetPrivacyModeUseCase,
     private val checkWidgetAdoption: CheckWidgetAdoptionUseCase,
     private val onboardingRepository: OnboardingRepository,
 ) : ViewModel() {
@@ -169,12 +165,6 @@ class TransactionsViewModel @Inject constructor(
                         MonthWindow.canStepBack(viewedMonth.value, LocalDate.now(ZONE), locked),
                 )
             }
-            // Records' privacy eye (v1.6.7 Item 8 Slice 6a) — the top-level combine above is
-            // already at its 5-flow ceiling (matching the Item 9/25/Combined precedent), so this
-            // rides a trailing .combine like deepHistoryLocked just above.
-            .combine(observePrivacyMode()) { state, privacyModeOn ->
-                state.copy(privacyModeEnabled = privacyModeOn)
-            }
             // Widget-adoption nudge card (Item 11) — same trailing-.combine escape hatch as above.
             .combine(showWidgetNudgeCard) { state, show ->
                 state.copy(showWidgetNudgeCard = show)
@@ -225,12 +215,6 @@ class TransactionsViewModel @Inject constructor(
             deleteTransaction(id)
             Widgets.updateAll(context)
         }
-    }
-
-    /** Flips the *global* Privacy mode (Item 15) — not a local reveal. Matches the
-     *  Accounts/Combined eye wiring (see the `feedback-privacy-eye-is-global` convention). */
-    fun togglePrivacyMode() {
-        viewModelScope.launch { setPrivacyMode(!uiState.value.privacyModeEnabled) }
     }
 
     /** Commits the sheet's draft filter (v1.7.0 Item 7). Session-scoped — reflows the list upstream

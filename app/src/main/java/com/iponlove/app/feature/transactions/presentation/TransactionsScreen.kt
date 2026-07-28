@@ -28,8 +28,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -64,6 +62,7 @@ import com.iponlove.app.core.ui.MonthStepperRow
 import com.iponlove.app.core.ui.PlayfulCard
 import com.iponlove.app.core.ui.PlayfulScreenTitle
 import com.iponlove.app.core.ui.PlayfulSurface
+import com.iponlove.app.core.ui.PrivacyEyeAction
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
 import com.iponlove.app.core.ui.money
@@ -109,7 +108,6 @@ fun TransactionsScreen(
         // Locked ← at the DEEP_HISTORY −12mo wall: log the touchpoint, then route to the paywall.
         onDeepHistoryUpsell = { onOpenPremium(viewModel.onDeepHistoryUpsell()) },
         onOpenPremium = onOpenPremium,
-        onTogglePrivacyMode = viewModel::togglePrivacyMode,
         onApplyFilter = viewModel::applyFilter,
         onClearFilter = viewModel::clearFilter,
         onWidgetNudgeCardShown = viewModel::onWidgetNudgeCardShown,
@@ -128,7 +126,6 @@ private fun TransactionsContent(
     onNextMonth: () -> Unit,
     onDeepHistoryUpsell: () -> Unit = {},
     onOpenPremium: (source: String) -> Unit = {},
-    onTogglePrivacyMode: () -> Unit = {},
     onApplyFilter: (TransactionFilter) -> Unit = {},
     onClearFilter: () -> Unit = {},
     onWidgetNudgeCardShown: () -> Unit = {},
@@ -177,15 +174,7 @@ private fun TransactionsContent(
                             }
                         }
                     },
-                    actions = {
-                        IconButton(onClick = onTogglePrivacyMode) {
-                            Icon(
-                                imageVector = if (state.privacyModeEnabled) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = if (state.privacyModeEnabled) "Show amounts" else "Hide amounts",
-                                tint = colors.textSecondary,
-                            )
-                        }
-                    },
+                    actions = { PrivacyEyeAction() },
                 )
             }
         },

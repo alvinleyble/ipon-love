@@ -27,9 +27,6 @@ data class TransactionsUiState(
      * "unlock older history" affordance routing to the paywall. Always true while dormant.
      */
     val canGoToPreviousMonth: Boolean = true,
-    /** Item 15/25's global Privacy mode (v1.6.7 Item 8 Slice 6a) — the Records eye toggles this,
-     *  same flag every other masked-amount surface reads (Accounts, Analysis, Combined, …). */
-    val privacyModeEnabled: Boolean = false,
     /** The currently-*applied* filter (v1.7.0 Item 7) — seeds the sheet's draft and drives the
      *  title-row active dot. [TransactionFilter.NONE] = unfiltered. */
     val appliedFilter: TransactionFilter = TransactionFilter.NONE,
