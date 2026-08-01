@@ -66,6 +66,12 @@ New phases get their own doc and a row here once Phase 0's shape is known.
 
 ---
 
+## Marketing site (separate initiative, not a Phase 0 item)
+
+**Opened 2026-07-31**, own repo/stack/timeline, unblocked by anything in this track — see [`site/site-build-progress.md`](site/site-build-progress.md). Assessed low-risk, no grill needed, direct build. W8's stack notes already anticipate marketing/legal pages folding into the eventual Next.js app-shell repo (SSG) — that's a fold-in question to revisit once W8 actually ships, not a reason to wait on it now.
+
+---
+
 ## Relationship to the native track
 
 - **Shared:** the Supabase schema (`supabase/schema.sql`), the `docs/adr/` numbering, all sync semantics (ADR-0001/0002/0003/0005/0009/0012), the entitlement model (ADR-0044), the notification inbox (ADR-0053 — already built *synced* partly *because* the web app is imminent).
