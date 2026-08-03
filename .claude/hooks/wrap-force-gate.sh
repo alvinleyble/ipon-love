@@ -23,11 +23,26 @@ if echo "$cmd" | grep -qE '[;&|`]|\$\('; then
   exit 0
 fi
 
-# Must be exactly `git add ...` or `git commit ...`, optionally with
-# `-C /Users/lovzay/ipon-love`. Never push, reset, clean, branch -D, etc.
-if ! echo "$cmd" | grep -Eq '^git( -C /Users/lovzay/ipon-love)? (add|commit) '; then
-  exit 0
-fi
+# Must be exactly `git add ...` or `git commit ...`, optionally with a `-C`
+# pointing at THIS checkout. Never push, reset, clean, branch -D, etc.
+# The `-C` path is resolved at runtime rather than hardcoded, so the repo can
+# be relocated (or run from a worktree) without silently disarming the gate —
+# same ${CLAUDE_PROJECT_DIR} pattern the other hooks in here already use.
+# A `-C` naming any OTHER repo falls through to the normal permission prompt.
+proj="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}"
+rest="$cmd"
+case "$cmd" in
+  "git -C "*)
+    argpath="${cmd#git -C }"
+    argpath="${argpath%% *}"
+    [ -n "$proj" ] && [ "$argpath" = "$proj" ] || exit 0
+    rest="git ${cmd#git -C "$argpath" }"
+    ;;
+esac
+case "$rest" in
+  "git add "*|"git commit "*) ;;
+  *) exit 0 ;;
+esac
 
 [ -f "$LOCK" ] || exit 0
 

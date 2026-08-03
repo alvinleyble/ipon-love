@@ -96,7 +96,7 @@
       "Bash($ADB shell 'sleep *)",
       "Bash(adb shell sleep *)",
       "Bash(sleep *)",
-      "Bash(git -C /Users/lovzay/ipon-love status*)",
+      "Bash(git status*)",
       "Bash($HOME/Library/Android/sdk/emulator/emulator -avd *)",
       "Bash($HOME/Library/Android/sdk/emulator/emulator -list-avds)",
       "Bash($HOME/Library/Android/sdk/platform-tools/adb shell input *)",
@@ -106,7 +106,7 @@
       "Bash(./gradlew bundleProdRelease*)",
       "Bash(adb shell wm size)",
       "Bash(adb -s * shell wm size)",
-      "Bash(git -C /Users/lovzay/ipon-love diff*)",
+      "Bash(git diff*)",
       "Bash(touch /tmp/ipon-love-wrap-force.lock)",
       "Bash(rm -f /tmp/ipon-love-wrap-force.lock)",
       "Bash(claude mcp list)",
@@ -127,11 +127,10 @@
       "Bash(git add *)",
       "Bash(chmod +x .claude/scripts/*)",
       "Bash(.claude/scripts/uidump.sh*)",
-      "Bash(/Users/lovzay/ipon-love/.claude/scripts/uidump.sh*)",
       "Bash(grep -n *)",
       "Bash(grep -rn *)",
       "Bash(grep -E *)",
-      "Bash(find /Users/lovzay/ipon-love *)",
+      "Bash(find . *)",
       "mcp__supabase__get_logs",
       "mcp__clickup__clickup_get_task",
       "Skill(fewer-permission-prompts)",
@@ -145,12 +144,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/lovzay/ipon-love/.claude/hooks/wrap-force-gate.sh",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/wrap-force-gate.sh",
             "if": "Bash(git *)"
           },
           {
             "type": "command",
-            "command": "/Users/lovzay/ipon-love/.claude/hooks/pretest-commit-gate.sh",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pretest-commit-gate.sh",
             "if": "Bash(git *)",
             "timeout": 320
           }
@@ -161,7 +160,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/lovzay/ipon-love/.claude/hooks/book-gate.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/book-gate.sh"
           }
         ]
       },
@@ -170,7 +169,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/lovzay/ipon-love/.claude/hooks/wrap-after-ondevice-gate.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/wrap-after-ondevice-gate.sh"
           }
         ]
       }
@@ -180,7 +179,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/lovzay/ipon-love/.claude/hooks/book-lock-arm.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/book-lock-arm.sh"
           }
         ]
       }
@@ -191,7 +190,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/lovzay/ipon-love/.claude/hooks/build-progress-reminder.sh",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/build-progress-reminder.sh",
             "if": "Bash(git *)"
           }
         ]
@@ -202,11 +201,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/lovzay/ipon-love/.claude/hooks/ondevice-completion-nudge.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/ondevice-completion-nudge.sh"
           },
           {
             "type": "command",
-            "command": "/Users/lovzay/ipon-love/.claude/hooks/ondevice-crash-check-nudge.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/ondevice-crash-check-nudge.sh"
           }
         ]
       }
