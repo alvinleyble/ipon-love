@@ -1,6 +1,8 @@
 # Cross-Platform Client Contract (Android ⇄ Web)
 
-**Status: SKELETON — to be filled + frozen by grilling [W2](web-phase-0-prep.md#w2--freeze-the-cross-platform-contract-determinism--sync-protocol--money-math).** Sections below are stubs with the questions each must answer and pointers to the authoritative Android source. Do **not** treat any value here as final until its section is marked ✅ FROZEN.
+**Status: GRILLED 2026-08-03, FILL PASS PENDING.** [W2](web-phase-0-prep.md#w2--freeze-the-cross-platform-contract-determinism--sync-protocol--money-math)'s grill settled the two questions that needed a judgment call — **§9** (frozen below: Android-only, plus the forward rule) and the **§7 scope ruling** (everything freezes except the allowed web origin). The remaining sections need no further decisions; they are **code archaeology** — read the cited Android sources, write down what is already true, and produce conformance vectors. Sections still marked `⬜` are stubs carrying the questions each must answer and pointers to the authoritative source. Do **not** treat any value here as final until its section is marked ✅ FROZEN.
+
+**The load-bearing deliverable is the conformance vectors, not this prose** (W2 grill, 2026-08-03). `DeterministicUuid` is *not* `commonMain`-ready — it is Android-free but JVM-bound (`ByteBuffer`, `MessageDigest`, `java.util.UUID`), so the shared-module extraction **rewrites** it onto different SHA-1 and UUID primitives rather than moving it. A rewrite that byte-orders the namespace differently silently produces different ids, i.e. duplicate rows instead of merged ones. The vectors are the only mechanism that catches that, and they must exist before [W10](web-phase-0-prep.md#w10--extract-domaindatasync-layer-into-a-kotlin-multiplatform-shared-module) phase 2.
 
 **Architecture update (2026-07-28, see [W10](web-phase-0-prep.md#w10--extract-domaindatasync-layer-into-a-kotlin-multiplatform-shared-module)):** the web app will share the logic these sections describe via a Kotlin Multiplatform module, rather than hand-reimplementing it in TypeScript. **This doc still matters, but its job changes:** for §1/§1b/§2/§3/§4/§5/§6 — once the corresponding logic moves into the shared module — being "reproduced exactly" stops being a discipline problem (a human/AI carefully matching a spec) and becomes a fact of the code (one implementation, two compile targets). This doc is still the authoritative *description* of those invariants (onboarding reference, audit trail, and it still governs the period before extraction happens), but it is no longer the last line of defense against drift for whatever gets shared. §7 (image compression) and §9 (atomic writes) are the sections most likely to stay genuinely platform-specific even after extraction — those keep the original "must hand-match" stakes.
 
@@ -118,6 +120,7 @@ Both push and pull process tables in FK order; upserts are idempotent by `id`; a
 - Attachments store a `storage_url` (not a local path); files live in **private** buckets, fronted by authenticated URLs.
 - Web must replicate compression + bucket/path naming, use authenticated access, and needs storage RLS/CORS that admits the web origin.
 - **To pin at grill:** the exact bucket/path naming convention; compression target params; the authenticated-URL scheme; storage-policy changes needed for web; the orphan-cleanup contract.
+- **Scope ruling (2026-08-03 grill):** everything above freezes from the existing Android sources **except the specific web origin** admitted by storage RLS/CORS, which cannot be pinned until hosting is chosen (Vercel vs. Cloudflare Pages, still open in [W8](web-phase-0-prep.md#w8--web-app-greenfield-foundational-design)). Record that one line as explicitly pending rather than inventing a value; it is the sole sanctioned `⬜` remaining once this section is filled.
 
 ---
 
@@ -133,14 +136,25 @@ Both push and pull process tables in FK order; upserts are idempotent by `id`; a
 
 ## 9. Atomic multi-row writes — Android has a primitive web doesn't
 
-*Status: ⬜ not frozen — a genuine architecture gap, not just a data-format one.* Source: v1.7.1 Item 10 / ADR-0055, `LocalTransactionRunner`.
+*Status: ✅ **FROZEN 2026-08-03** (W2 grill) — grouped multi-row settlement stays Android-only; the forward-looking rule below is the binding part.* Source: v1.7.1 Item 10 / ADR-0055, `LocalTransactionRunner`; decision recorded in [ADR-0063](../adr/0063-web-v1-is-online-only.md).
 
 Android's debt-overpay cascade (2026-07-28) became the app's **first true atomic multi-row write** — one EXPENSE transaction + N `DebtPayment` rows must commit all-or-nothing, since a partial write would leave the ledger overstating what reached the debts. It's implemented via `RoomDatabase.withTransaction`, wrapped behind a small `LocalTransactionRunner` seam (originally built for Reset-finances, ADR-0037; reused here with no new infra).
 
 **This has no client-side equivalent on web.** `@supabase/supabase-js` issues independent REST calls per table — there is no client-side "wrap these N inserts in one transaction" primitive against PostgREST. If web ever needs the same all-or-nothing guarantee (this feature, or a future one shaped like it), the write must move **server-side**: a Postgres `SECURITY DEFINER` RPC function that performs the whole multi-row write in one SQL transaction, called once from the client. That's a different shape than the Android implementation (client-orchestrated vs. server-orchestrated) — so this is *not* just "port the Kotlin logic to TypeScript."
 
-- **To pin at grill:** whether to (a) leave this Android-only for now (web reads the resulting rows fine, just can't author an equivalent grouped settlement), or (b) build the RPC now so both clients can write it. Either way, **any future "all-or-nothing across tables" feature must be designed with an RPC from the start if web needs to author it** — don't assume the Android pattern ports.
-- **Ties to:** [W8](web-phase-0-prep.md#w8--web-app-greenfield-foundational-design)'s open tensions.
+**✅ Decision (2026-08-03 grill): leave it Android-only. Do not build the RPC now.**
+
+The question turned out to depend on an upstream one — whether web has any local database at all — which the same grill settled as **online-only** ([ADR-0063](../adr/0063-web-v1-is-online-only.md)). With no browser-local store, web cannot mirror Android's local-transaction approach, so authoring grouped settlements on web would require the `SECURITY DEFINER` RPC. That was judged not worth building yet:
+
+- **The gap is convenience, not correctness.** ADR-0055's own analysis establishes that the money end-state is identical no matter how a lump is spread across same-direction debts — only *which labeled debt reads as paid* changes. A web user settling three debts one at a time reaches exactly the same financial position, losing the single grouped expense line and the tick-order choice, nothing more.
+- **Android must not switch to the RPC either.** Android is offline-first; routing this write through a server function would require connectivity at settle time, which is a regression, not a unification. So "one implementation for both clients" is not actually on the table here — only "Android-only now" or "two implementations."
+- **Web still reads grouped settlements correctly** — the rows are ordinary transactions and debt payments; only authoring is unavailable.
+
+**Frozen forward-looking rule (the binding part):** any *future* feature requiring an all-or-nothing write across multiple tables **must be designed as a server-side `SECURITY DEFINER` RPC from the start if web needs to author it**. The Android `RoomDatabase.withTransaction` pattern does not port to a browser client, so "build it Android-style and port later" is never available for that class of feature — the port is a re-architecture, not a translation.
+
+**Revisit trigger:** web needing to author grouped settlement (or any second all-or-nothing feature) is what justifies building the RPC; at that point expect two implementations (Android local transaction + server RPC) and budget for keeping them consistent.
+
+- **Ties to:** [W8](web-phase-0-prep.md#w8--web-app-greenfield-foundational-design) (its offline-first tension, now resolved), [ADR-0063](../adr/0063-web-v1-is-online-only.md).
 
 ---
 
@@ -152,7 +166,7 @@ Android's debt-overpay cascade (2026-07-28) became the app's **first true atomic
 - [ ] §4 Money math — rounding/scale per derived site + decimal-lib mandate + vectors
 - [ ] §5 Conflict resolution — note conflict-copy algo + partner purge triggers + RPC shapes
 - [ ] §6 Seeding — server "already onboarded?" predicate + tombstone rule
-- [ ] §7 Images — bucket/path convention + auth scheme + storage RLS/CORS
+- [ ] §7 Images — bucket/path convention + auth scheme + storage RLS/CORS *(allowed web origin deliberately pending the hosting choice — see the scope ruling in §7)*
 - [ ] §8 Entitlement — validating RPC contract + offline read + web purchase flow
-- [ ] §9 Atomic multi-row writes — RPC-vs-Android-only decision for grouped writes
+- [x] §9 Atomic multi-row writes — ✅ **FROZEN 2026-08-03**: Android-only, no RPC now, plus the forward rule that future all-or-nothing features are server-side from the start ([ADR-0063](../adr/0063-web-v1-is-online-only.md))
 - [x] §1b Notification-inbox composite ids — ✅ already confirmed live (schema + build, no grill needed, just adopt as-is)
