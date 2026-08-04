@@ -10,3 +10,5 @@
 Validation is non-negative only — no ceiling, no "must be less than the transferred principal" rule; a larger-than-principal fee is implausible but not corrupting if it ever occurred.
 
 **Rejected:** a plain `transferFee` field on the transfer row (simpler, matches how transfers work today, but invisible to Analysis — doesn't satisfy the actual requirement); reusing the `is_settlement` linked-transaction pattern as-is (wrong Analysis visibility and wrong cascade semantics for this use case).
+
+**Clarified by [ADR-0065](0065-settlement-delete-retires-debt-payment-group.md), 2026-08-05.** Decision 2's "settlement legs deliberately don't track their parent transaction" is about `PartnerDebt.sourceTransactionId` — the paid-on-behalf link that *creates* a debt — not about `DebtPayment.payorTxnId`/`receiverTxnId`, the links a settlement's own EXPENSE/INCOME legs carry. Deleting a settlement leg *does* now retire the payment rows it backs (ADR-0065); this sentence was never a ruling on that question and is unchanged by ADR-0065's decision.
