@@ -129,11 +129,14 @@ ksp {
 
 // Belt-and-suspenders for the signingConfigs guard above: fail the build loudly, before any task
 // runs, if a task that actually produces a release artifact was requested (directly or via an
-// aggregate like `build`) without the keystore properties present. Scoped to just assemble*/bundle*
-// Release (the public "produces a signed APK/AAB" task surface) so it doesn't false-positive on
-// signing-agnostic Release-variant tasks like lintRelease or a release unit-test run — those must
-// stay runnable on a keystore-less CI runner. Never let a release artifact task silently go unsigned.
-val releaseArtifactTaskName = Regex("^(assemble|bundle)[A-Za-z0-9]*Release$")
+// aggregate like `build`) without the keystore properties present. Scoped to the four verbs that
+// write or deploy a release artifact — assemble*/bundle* (the public anchors) plus the package*
+// tasks they delegate the actual APK/AAB writing to and install*, which depends on the packaged
+// APK rather than on the assemble anchor. It still doesn't false-positive on signing-agnostic
+// Release-variant tasks like lintRelease or a release unit-test run (neither starts with those
+// verbs) — those must stay runnable on a keystore-less CI runner. Never let a release artifact
+// task silently go unsigned.
+val releaseArtifactTaskName = Regex("^(assemble|bundle|package|install)[A-Za-z0-9]*Release(Bundle)?$")
 gradle.taskGraph.whenReady {
     if (!hasReleaseSigningProps && allTasks.any { it.name.matches(releaseArtifactTaskName) }) {
         throw GradleException(
