@@ -2,8 +2,12 @@
 <!-- Static widget-picker preview of the tall (account-breakdown) form. Not rendered at runtime;
      the live widget is drawn by Glance in BalanceWidget.kt (Item 33). The account color dots use
      ImageView (not <View>), since only whitelisted RemoteViews classes inflate in the launcher's
-     widget picker — a bare <View> made the picker show "Can't load widget" (Item 36). -->
+     widget picker — a bare <View> made the picker show "Can't load widget" (Item 36).
+     The dots keep android:tint (UseAppTint suppressed): app:tint only takes effect when
+     AppCompat inflates an AppCompatImageView, and RemoteViews inflates the framework
+     ImageView, so app:tint would silently drop the dot colors here. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -38,7 +42,8 @@
             android:layout_height="10dp"
             android:src="@drawable/widget_preview_dot"
             android:tint="#4CAF50"
-            android:contentDescription="@null" />
+            android:contentDescription="@null"
+            tools:ignore="UseAppTint" />
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -66,7 +71,8 @@
             android:layout_height="10dp"
             android:src="@drawable/widget_preview_dot"
             android:tint="#2196F3"
-            android:contentDescription="@null" />
+            android:contentDescription="@null"
+            tools:ignore="UseAppTint" />
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -94,7 +100,8 @@
             android:layout_height="10dp"
             android:src="@drawable/widget_preview_dot"
             android:tint="#9C27B0"
-            android:contentDescription="@null" />
+            android:contentDescription="@null"
+            tools:ignore="UseAppTint" />
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"

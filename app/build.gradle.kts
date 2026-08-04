@@ -18,6 +18,17 @@ val localProps = Properties().apply {
 }
 fun prop(key: String) = localProps.getProperty(key, "")
 
+// Release signing needs a real keystore; a fresh checkout has no local.properties. Configure the
+// signingConfig only when all four are present, and refuse any task that would produce a release
+// artifact otherwise, rather than let AGP fall through to an unsigned/debug-signed release build.
+val releaseSigningPropertyKeys = listOf(
+    "RELEASE_STORE_FILE",
+    "RELEASE_STORE_PASSWORD",
+    "RELEASE_KEY_ALIAS",
+    "RELEASE_KEY_PASSWORD",
+)
+val hasReleaseSigningProps = releaseSigningPropertyKeys.all { prop(it).isNotBlank() }
+
 android {
     namespace = "com.iponlove.app"
     compileSdk = 37
@@ -62,17 +73,21 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = file(prop("RELEASE_STORE_FILE"))
-            storePassword = prop("RELEASE_STORE_PASSWORD")
-            keyAlias = prop("RELEASE_KEY_ALIAS")
-            keyPassword = prop("RELEASE_KEY_PASSWORD")
+        if (hasReleaseSigningProps) {
+            create("release") {
+                storeFile = file(prop("RELEASE_STORE_FILE"))
+                storePassword = prop("RELEASE_STORE_PASSWORD")
+                keyAlias = prop("RELEASE_KEY_ALIAS")
+                keyPassword = prop("RELEASE_KEY_PASSWORD")
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigningProps) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -110,6 +125,26 @@ kotlin {
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+// Belt-and-suspenders for the signingConfigs guard above: fail the build loudly, before any task
+// runs, if a task that actually produces a release artifact was requested (directly or via an
+// aggregate like `build`) without the keystore properties present. Scoped to the four verbs that
+// write or deploy a release artifact — assemble*/bundle* (the public anchors) plus the package*
+// tasks they delegate the actual APK/AAB writing to and install*, which depends on the packaged
+// APK rather than on the assemble anchor. It still doesn't false-positive on signing-agnostic
+// Release-variant tasks like lintRelease or a release unit-test run (neither starts with those
+// verbs) — those must stay runnable on a keystore-less CI runner. Never let a release artifact
+// task silently go unsigned.
+val releaseArtifactTaskName = Regex("^(assemble|bundle|package|install)[A-Za-z0-9]*Release(Bundle)?$")
+gradle.taskGraph.whenReady {
+    if (!hasReleaseSigningProps && allTasks.any { it.name.matches(releaseArtifactTaskName) }) {
+        throw GradleException(
+            "Cannot build a release artifact: local.properties is missing one or more of " +
+                "${releaseSigningPropertyKeys.joinToString()}. Add them (see README.md) " +
+                "before running a release build. Refusing to produce an unsigned release artifact."
+        )
+    }
 }
 
 dependencies {

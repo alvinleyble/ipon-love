@@ -72,6 +72,13 @@ STAGING_SUPABASE_ANON_KEY=your_anon_key
 # Prod (leave blank until prod project is created)
 PROD_SUPABASE_URL=
 PROD_SUPABASE_ANON_KEY=
+
+# Release signing — only needed to build a release APK/AAB. Debug builds, lint and the
+# JVM unit tests run fine without these; a release build fails loudly if any is missing.
+RELEASE_STORE_FILE=
+RELEASE_STORE_PASSWORD=
+RELEASE_KEY_ALIAS=
+RELEASE_KEY_PASSWORD=
 ```
 
 3. Build and install:
