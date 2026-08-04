@@ -57,6 +57,8 @@ class ShouldShowOnboardingUseCaseTest {
         override suspend fun dismissPairingCard() = Unit
         override fun observeWidgetNudgeLastShownAt(): Flow<Long?> = flowOf(null)
         override suspend fun recordWidgetNudgeShown() = Unit
+        override fun observeComingUpCollapsed(): Flow<Boolean> = flowOf(false)
+        override suspend fun setComingUpCollapsed(collapsed: Boolean) = Unit
         override suspend fun reset() { onboardingDone = false }
     }
 

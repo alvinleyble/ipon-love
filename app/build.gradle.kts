@@ -18,6 +18,17 @@ val localProps = Properties().apply {
 }
 fun prop(key: String) = localProps.getProperty(key, "")
 
+// Release signing needs a real keystore; a fresh checkout has no local.properties. Configure the
+// signingConfig only when all four are present, and refuse any task that would produce a release
+// artifact otherwise, rather than let AGP fall through to an unsigned/debug-signed release build.
+val releaseSigningPropertyKeys = listOf(
+    "RELEASE_STORE_FILE",
+    "RELEASE_STORE_PASSWORD",
+    "RELEASE_KEY_ALIAS",
+    "RELEASE_KEY_PASSWORD",
+)
+val hasReleaseSigningProps = releaseSigningPropertyKeys.all { prop(it).isNotBlank() }
+
 android {
     namespace = "com.iponlove.app"
     compileSdk = 37
@@ -62,17 +73,21 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = file(prop("RELEASE_STORE_FILE"))
-            storePassword = prop("RELEASE_STORE_PASSWORD")
-            keyAlias = prop("RELEASE_KEY_ALIAS")
-            keyPassword = prop("RELEASE_KEY_PASSWORD")
+        if (hasReleaseSigningProps) {
+            create("release") {
+                storeFile = file(prop("RELEASE_STORE_FILE"))
+                storePassword = prop("RELEASE_STORE_PASSWORD")
+                keyAlias = prop("RELEASE_KEY_ALIAS")
+                keyPassword = prop("RELEASE_KEY_PASSWORD")
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigningProps) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -110,6 +125,19 @@ kotlin {
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+// Belt-and-suspenders for the signingConfigs guard above: fail the build loudly, before any task
+// runs, if a release artifact was actually requested (directly or via an aggregate like `build`)
+// without the keystore properties present. Never let a release task silently execute unsigned.
+gradle.taskGraph.whenReady {
+    if (!hasReleaseSigningProps && allTasks.any { it.name.contains("Release") }) {
+        throw GradleException(
+            "Cannot build a release artifact: local.properties is missing one or more of " +
+                "${releaseSigningPropertyKeys.joinToString()}. Add them (see README.md) " +
+                "before running a release build. Refusing to produce an unsigned release artifact."
+        )
+    }
 }
 
 dependencies {
