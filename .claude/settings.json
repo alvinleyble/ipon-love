@@ -48,6 +48,7 @@
       "Bash(emulator -list-avds)",
       "Bash(emulator -avd *)",
       "Bash(until adb shell getprop sys.boot_completed | grep -q 1; do sleep 2; done)",
+      "Bash(until adb -s * shell getprop sys.boot_completed | grep -q 1; do sleep 2; done)",
       "Bash(export PATH=\"$HOME/Library/Android/sdk/*)",
       "Bash(ADB=$HOME/Library/Android/sdk/platform-tools/adb)",
       "Bash(D=~/Library/Android/sdk/platform-tools/adb)",

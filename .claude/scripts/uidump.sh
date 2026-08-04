@@ -26,7 +26,7 @@
 set -u
 
 ADB="${ADB_BIN:-adb}"
-SERIAL=""
+SERIAL="${ANDROID_SERIAL:-${IPON_LOVE_EMULATOR_SERIAL:-}}"
 MODE="list"
 NEEDLE=""
 
@@ -39,6 +39,10 @@ while [ $# -gt 0 ]; do
     *)       echo "uidump.sh: unknown argument '$1'" >&2; exit 2 ;;
   esac
 done
+
+if [ -z "$SERIAL" ]; then
+  SERIAL="emulator-5556"
+fi
 
 if [ -n "$SERIAL" ]; then
   ADB="$ADB -s $SERIAL"

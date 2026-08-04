@@ -106,6 +106,15 @@ The per-commit gate is: **build compiles green**, and **domain + data logic has 
 - JDK 21 (Android Studio JBR), `compileSdk = 37` (android-37.0 stable platform), `targetSdk = 35`. AGP 9.2.1 / Gradle 9.6 / Kotlin 2.2.10 (built-in via AGP).
 - CI: `.github/workflows/unit-tests.yml` runs `./gradlew testStagingDebugUnitTest` (JDK 17) on every PR into `main`. No signing/secrets — keep it that way.
 
+## Emulator Device Allocation (dispatched workers)
+- **`emulator-5554` (`Medium_Phone`) is the captain's device.** Dispatched/automated agents MUST NOT target it.
+- **`emulator-5556` (`Medium_Phone_2`) is the dispatched-worker default.** Same geometry as `Medium_Phone` — tap/screenshot coordinates carry over unchanged.
+- **`Pixel_Tablet` is forbidden for all automated runs** (different geometry, coordinates don't transfer).
+- Pass target via `ANDROID_SERIAL` or `IPON_LOVE_EMULATOR_SERIAL` env var, or explicit `-s <serial>`. The `/ondevice` skill defaults to `emulator-5556` when neither is set.
+- Full recipe (snapshot fast-boot, headless/headed toggle, `uidump.sh` driving, DB pull, report format) is in `.claude/skills/ondevice/SKILL.md`.
+- **Supabase MCP is registered globally/workspace-wide** — no per-worktree re-registration needed for dispatched workers.
+- **`local.properties` is shared via the worktree mechanism** from the primary checkout — dispatched workers in a worktree have it automatically. If missing in a CI/clean checkout, Gradle will fail at configure time; populate it from the Supabase dashboard credentials (the anon key is public — not the service role key).
+
 ---
 
 ## Key Conventions
