@@ -131,6 +131,36 @@ class PartnerDebtRepositoryImpl @Inject constructor(
         syncTrigger.requestPush()
     }
 
+    override suspend fun retirePaymentsForPayorTxn(payorTxnId: String) {
+        val group = dao.paymentsForPayorTxn(payorTxnId)
+        if (group.isEmpty()) return
+        group.forEach { payment ->
+            dao.upsertPayment(
+                payment.copy(
+                    isDeleted = true,
+                    updatedAt = clock.stamp(payment.updatedAt),
+                    pendingSync = true,
+                ),
+            )
+        }
+        syncTrigger.requestPush()
+    }
+
+    override suspend fun clearReceiverStamp(receiverTxnId: String) {
+        val group = dao.paymentsForReceiverTxn(receiverTxnId)
+        if (group.isEmpty()) return
+        group.forEach { payment ->
+            dao.upsertPayment(
+                payment.copy(
+                    receiverTxnId = null,
+                    updatedAt = clock.stamp(payment.updatedAt),
+                    pendingSync = true,
+                ),
+            )
+        }
+        syncTrigger.requestPush()
+    }
+
     override suspend fun purgeCoupleDebts() {
         dao.deleteAllPayments()
         dao.deleteAllDebts()

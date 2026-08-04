@@ -2,6 +2,7 @@ package com.iponlove.app.feature.partnerdebt.di
 
 import com.iponlove.app.core.sync.TableSyncer
 import com.iponlove.app.feature.partnerdebt.data.PartnerDebtRepositoryImpl
+import com.iponlove.app.feature.partnerdebt.data.PartnerDebtSettlementDeletionEffects
 import com.iponlove.app.feature.partnerdebt.data.remote.DebtPaymentRemoteSource
 import com.iponlove.app.feature.partnerdebt.data.remote.PartnerDebtRemoteSource
 import com.iponlove.app.feature.partnerdebt.data.remote.SupabaseDebtPaymentRemoteSource
@@ -9,6 +10,7 @@ import com.iponlove.app.feature.partnerdebt.data.remote.SupabasePartnerDebtRemot
 import com.iponlove.app.feature.partnerdebt.data.sync.DebtPaymentTableSyncer
 import com.iponlove.app.feature.partnerdebt.data.sync.PartnerDebtTableSyncer
 import com.iponlove.app.feature.partnerdebt.domain.repository.PartnerDebtRepository
+import com.iponlove.app.feature.transactions.domain.usecase.SettlementDeletionEffects
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -22,6 +24,10 @@ interface PartnerDebtModule {
 
     @Binds
     fun partnerDebtRepository(impl: PartnerDebtRepositoryImpl): PartnerDebtRepository
+
+    /** Delete-path reconciliation seam owned by `transactions` (ADR-0065); partner-debt is its only implementer. */
+    @Binds
+    fun settlementDeletionEffects(impl: PartnerDebtSettlementDeletionEffects): SettlementDeletionEffects
 
     @Binds
     @Singleton

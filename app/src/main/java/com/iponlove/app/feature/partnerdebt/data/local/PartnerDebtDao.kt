@@ -52,6 +52,14 @@ interface PartnerDebtDao {
     suspend fun paymentsForPayorTxn(payorTxnId: String): List<DebtPaymentEntity>
 
     /**
+     * Every active payment stamped with the lender's settlement income (mirror of
+     * [paymentsForPayorTxn]) — used to clear the receiver stamp when that income row is
+     * deleted (ADR-0065).
+     */
+    @Query("SELECT * FROM partner_debt_payments WHERE receiverTxnId = :receiverTxnId AND isDeleted = 0")
+    suspend fun paymentsForReceiverTxn(receiverTxnId: String): List<DebtPaymentEntity>
+
+    /**
      * Active netting payments touching [debtId] — either attached to it or referencing it
      * as the counter-debt. Used to cascade soft-delete when the parent debt is deleted.
      */

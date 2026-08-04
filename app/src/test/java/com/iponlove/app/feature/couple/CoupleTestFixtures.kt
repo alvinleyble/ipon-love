@@ -144,6 +144,8 @@ internal class CountingPartnerDebtRepo : PartnerDebtRepository {
     override suspend fun deleteDebt(id: String) = Unit
     override suspend fun upsertPayment(payment: DebtPayment) = Unit
     override suspend fun stampReceiverTxn(paymentId: String, receiverTxnId: String) = Unit
+    override suspend fun retirePaymentsForPayorTxn(payorTxnId: String) = Unit
+    override suspend fun clearReceiverStamp(receiverTxnId: String) = Unit
     override suspend fun purgeCoupleDebts() { purgeCount++ }
 }
 
