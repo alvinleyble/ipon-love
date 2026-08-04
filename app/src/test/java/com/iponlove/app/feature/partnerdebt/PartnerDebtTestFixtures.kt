@@ -45,6 +45,9 @@ class FakePartnerDebtDao : PartnerDebtDao {
     override suspend fun paymentsForPayorTxn(payorTxnId: String): List<DebtPaymentEntity> =
         payments.values.filter { it.payorTxnId == payorTxnId && !it.isDeleted }
 
+    override suspend fun paymentsForReceiverTxn(receiverTxnId: String): List<DebtPaymentEntity> =
+        payments.values.filter { it.receiverTxnId == receiverTxnId && !it.isDeleted }
+
     override suspend fun nettingPaymentsForDebt(debtId: String): List<DebtPaymentEntity> =
         payments.values.filter {
             (it.debtId == debtId || it.counterDebtId == debtId) && it.isNetting && !it.isDeleted

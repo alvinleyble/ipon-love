@@ -6,6 +6,10 @@ import com.iponlove.app.core.sync.LocalTransactionRunner
 import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.feature.accounts.FakeAccountDao
 import com.iponlove.app.feature.accounts.accountEntity
+import com.iponlove.app.feature.partnerdebt.FakePartnerDebtDao
+import com.iponlove.app.feature.partnerdebt.data.PartnerDebtRepositoryImpl
+import com.iponlove.app.feature.partnerdebt.data.PartnerDebtSettlementDeletionEffects
+import com.iponlove.app.feature.partnerdebt.debtPaymentEntity
 import com.iponlove.app.feature.settings.data.ResetFinancesRepositoryImpl
 import com.iponlove.app.feature.transactions.FakeTransactionDao
 import com.iponlove.app.feature.transactions.transactionEntity
@@ -113,5 +117,55 @@ class ResetFinancesRepositoryImplTest {
         repository.reset()
 
         assertThat(transactionRunCount).isEqualTo(1)
+    }
+
+    @Test
+    fun reset_retiresSettlementPayments_forWipedTransactions_inTheSameAtomicPass() = runTest {
+        val debtDao = FakePartnerDebtDao()
+        val debtRepository = PartnerDebtRepositoryImpl(debtDao, clock)
+        val repositoryWithDebts = ResetFinancesRepositoryImpl(
+            transactionRunner = transactionRunner,
+            transactionDao = transactionDao,
+            accountDao = accountDao,
+            clock = clock,
+            currentUser = currentUser,
+            settlementEffects = PartnerDebtSettlementDeletionEffects(debtRepository),
+        )
+        // A lump settlement split across two debts (ADR-0055) — the whole group must retire.
+        transactionDao.store["txn-pay"] = transactionEntity(id = "txn-pay", userId = "user-1", isSettlement = true)
+        debtDao.payments["p-1"] = debtPaymentEntity(id = "p-1", debtId = "d-1", payorTxnId = "txn-pay")
+        debtDao.payments["p-2"] = debtPaymentEntity(id = "p-2", debtId = "d-2", payorTxnId = "txn-pay")
+        // An ordinary transaction — proves non-settlement wipes never touch the debt tables.
+        transactionDao.store["t-plain"] = transactionEntity(id = "t-plain", userId = "user-1")
+
+        repositoryWithDebts.reset()
+
+        assertThat(debtDao.payments.getValue("p-1").isDeleted).isTrue()
+        assertThat(debtDao.payments.getValue("p-1").pendingSync).isTrue()
+        assertThat(debtDao.payments.getValue("p-2").isDeleted).isTrue()
+        // Both the transaction wipe and the debt-payment retirement ran under one runner call.
+        assertThat(transactionRunCount).isEqualTo(1)
+    }
+
+    @Test
+    fun reset_ignoresPartnerOwnedSettlementTransactions() = runTest {
+        val debtDao = FakePartnerDebtDao()
+        val debtRepository = PartnerDebtRepositoryImpl(debtDao, clock)
+        val repositoryWithDebts = ResetFinancesRepositoryImpl(
+            transactionRunner = transactionRunner,
+            transactionDao = transactionDao,
+            accountDao = accountDao,
+            clock = clock,
+            currentUser = currentUser,
+            settlementEffects = PartnerDebtSettlementDeletionEffects(debtRepository),
+        )
+        // Not owned by user-1 — activeOwnedBy(userId) excludes it, so it's never wiped here.
+        transactionDao.store["t-partner-settle"] =
+            transactionEntity(id = "t-partner-settle", userId = "partner", isSettlement = true)
+        debtDao.payments["p-partner"] = debtPaymentEntity(id = "p-partner", debtId = "d", payorTxnId = "t-partner-settle")
+
+        repositoryWithDebts.reset()
+
+        assertThat(debtDao.payments.getValue("p-partner").isDeleted).isFalse()
     }
 }

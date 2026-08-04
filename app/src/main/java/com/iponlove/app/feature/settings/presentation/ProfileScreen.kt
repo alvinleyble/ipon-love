@@ -535,6 +535,12 @@ private fun ResetFinancesDialog(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Text(
+                        "Any debts you've settled with your partner will show as outstanding " +
+                            "again on the Partner Debt Tracker, for both of you.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 Text(
                     "Enter your password to confirm.",

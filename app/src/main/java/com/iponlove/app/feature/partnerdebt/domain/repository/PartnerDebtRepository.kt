@@ -50,6 +50,26 @@ interface PartnerDebtRepository {
     suspend fun stampReceiverTxn(payorTxnId: String, receiverTxnId: String)
 
     /**
+     * Soft delete (ADR-0010) every active payment the payor's settlement expense [payorTxnId]
+     * backs — the inverse of the write
+     * [com.iponlove.app.feature.partnerdebt.domain.usecase.SettleDebtsUseCase] performs
+     * (ADR-0065). Deleting that expense means the money it recorded is gone from the ledger,
+     * so the debts it paid down
+     * must read as outstanding again. A lump split across several debts (ADR-0055) retires the
+     * whole group, not just one payment. No-op (idempotent) once the group is already retired.
+     */
+    suspend fun retirePaymentsForPayorTxn(payorTxnId: String)
+
+    /**
+     * Clear [DebtPayment.receiverTxnId] on every active payment stamped with the lender's
+     * settlement income [receiverTxnId] — the inverse of [stampReceiverTxn] (ADR-0065). Deleting
+     * that income means the receiver leg never happened, so the board must re-offer "add to my
+     * account" instead of believing it's done. Only the stamp is cleared — [DebtPayment.amount]
+     * and [DebtPayment.debtId] are untouched. No-op (idempotent) once already cleared.
+     */
+    suspend fun clearReceiverStamp(receiverTxnId: String)
+
+    /**
      * Hard-delete every debt and payment on unpair (ADR-0008). RLS hides them the instant
      * the couple dissolves, so the device can never receive their tombstones — it purges
      * locally off the same signal shared budgets use. No cursor reset: the global

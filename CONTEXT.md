@@ -113,7 +113,7 @@ A transaction logged with the "Paid for Partner" toggle: it records the normal e
 _Avoid_: covered, fronted
 
 **Settlement (debt)**:
-Repaying a partner debt as real money movement: two ledger legs — the payor's outflow (their account) and the receiver's inflow (their account, an optional inline affordance on the debt board). Both legs are EXPENSE/INCOME flagged `is_settlement` so balances move but Analysis excludes them. Distinct from a bare [[Partner debt payment]], which need not touch any account. See ADR-0019.
+Repaying a partner debt as real money movement: two ledger legs — the payor's outflow (their account) and the receiver's inflow (their account, an optional inline affordance on the debt board). Both legs are EXPENSE/INCOME flagged `is_settlement` so balances move but Analysis excludes them. Distinct from a bare [[Partner debt payment]], which need not touch any account. Deleting a leg **reverses** it: deleting the payor's EXPENSE retires the whole `DebtPayment` group it backed (the affected debts read as outstanding again, on both boards), and deleting the receiver's INCOME clears its stamp so the inflow can be re-added. See ADR-0019, ADR-0065.
 _Avoid_: payback transaction, repayment transfer
 
 **Overpay cascade**:
@@ -137,7 +137,7 @@ _Avoid_: progress, balance, total saved (as a stored column)
 ### Transactions
 
 **Transfer fee**:
-An optional fee on a `TRANSFER` transaction, represented as a second, linked `EXPENSE` transaction (not a plain field on the transfer row) auto-assigned to a dedicated built-in category so it's groupable in Analysis. Deliberately **not** modeled like a partner-debt settlement leg (ADR-0019) despite the surface similarity — it does **not** carry `is_settlement` (that flag makes Analysis *exclude* a row; a transfer fee must be *included*, since it's real incidental spending, not a repayment), and it **cascades** with its parent transfer (editing the fee amount or deleting the transfer updates/soft-deletes the linked expense too) rather than being fire-and-forget like the debt link — an orphaned fee-expense after its parent transfer is deleted would silently corrupt balance and Analysis totals. See ADR-0031.
+An optional fee on a `TRANSFER` transaction, represented as a second, linked `EXPENSE` transaction (not a plain field on the transfer row) auto-assigned to a dedicated built-in category so it's groupable in Analysis. Deliberately **not** modeled like a partner-debt settlement leg (ADR-0019) despite the surface similarity — it does **not** carry `is_settlement` (that flag makes Analysis *exclude* a row; a transfer fee must be *included*, since it's real incidental spending, not a repayment), and it **cascades** with its parent transfer (editing the fee amount or deleting the transfer updates/soft-deletes the linked expense too) rather than being fire-and-forget like the debt-*creation* link (`sourceTransactionId`; a settlement leg's own `payorTxnId`/`receiverTxnId` links do cascade on delete — ADR-0065) — an orphaned fee-expense after its parent transfer is deleted would silently corrupt balance and Analysis totals. See ADR-0031.
 _Avoid_: settlement leg, linked debt, transfer expense
 
 **Receipt scan**:

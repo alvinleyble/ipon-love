@@ -33,6 +33,7 @@ A second grill realization: because each debt floors at zero and the net is unch
 ## Consequences
 
 - **First atomic multi-row write in the codebase** (decision 7). A future agent extending debt settlement should preserve the single-transaction guarantee, not revert to the sequential best-effort pattern the rest of the debt feature uses — the shared expense makes partial writes unsafe here specifically.
+- **The atomicity invariant only covered the write path — [ADR-0065](0065-settlement-delete-retires-debt-payment-group.md) closes the matching gap on delete.** Nothing reversed this decision's write until then: deleting the payor EXPENSE left its `DebtPayment` group fully credited, overstating what reached the debts in the opposite direction (the money gone, the debt still marked paid). ADR-0065 retires the payment group atomically with the transaction delete, so the invariant this decision built now holds both ways.
 - **The UI-layer overpay block is removed** but replaced by a *domain-meaningful* ceiling (the ticked-debts total), not by unbounded overpayment. `RecordDebtPaymentUseCase`'s existing overpay tolerance is now actually exercised through the allocation path.
 - **Auto-netting is untouched** and must stay a distinct path (decision 8). The user never sees the word "netting"; the cascade surfaces only `remaining` values.
 - **No schema/Room migration** — grouping (both payor and receiver legs) is derived from the existing `payorTxnId`; the atomic write reuses existing DAO upserts inside one transaction.
