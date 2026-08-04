@@ -128,10 +128,14 @@ ksp {
 }
 
 // Belt-and-suspenders for the signingConfigs guard above: fail the build loudly, before any task
-// runs, if a release artifact was actually requested (directly or via an aggregate like `build`)
-// without the keystore properties present. Never let a release task silently execute unsigned.
+// runs, if a task that actually produces a release artifact was requested (directly or via an
+// aggregate like `build`) without the keystore properties present. Scoped to just assemble*/bundle*
+// Release (the public "produces a signed APK/AAB" task surface) so it doesn't false-positive on
+// signing-agnostic Release-variant tasks like lintRelease or a release unit-test run — those must
+// stay runnable on a keystore-less CI runner. Never let a release artifact task silently go unsigned.
+val releaseArtifactTaskName = Regex("^(assemble|bundle)[A-Za-z0-9]*Release$")
 gradle.taskGraph.whenReady {
-    if (!hasReleaseSigningProps && allTasks.any { it.name.contains("Release") }) {
+    if (!hasReleaseSigningProps && allTasks.any { it.name.matches(releaseArtifactTaskName) }) {
         throw GradleException(
             "Cannot build a release artifact: local.properties is missing one or more of " +
                 "${releaseSigningPropertyKeys.joinToString()}. Add them (see README.md) " +
