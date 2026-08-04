@@ -86,7 +86,7 @@ feature_x/
 - **One concern per change.** Prefer "build the Accounts feature" over bundling multiple features.
 - **Keep the build green.** Run a build after each slice; never let compile errors pile up across features.
 - **Commit after each green slice.** Each working feature = one commit — it's the undo button when an AI edit goes wrong.
-- **HARD RULE — never commit or push without my explicit permission.** Stage and propose, but do not run `git commit` or `git push` until I say so each time. Permission granted once does not carry over to the next commit/push.
+- **HARD RULE — the merge to `main` is the gate, not the commit.** (Amended 2026-08-04: this rule narrowed from a per-commit gate to a per-merge gate — the merge gate below is what replaced it, and it survives intact.) A dispatched agent working on its own `fm/*` branch may run `git commit` and `git push` on that branch, and may open a pull request, without asking per commit. But merging to `main` still requires my explicit permission, every time — permission to merge one pull request never carries over to the next. Nothing may push to `main` directly, ever; branch and PR only. In my own interactive sessions, working with an assistant directly in my copy, the old behavior stands: stage and propose, don't commit on my behalf.
 - **Verify UI by running the app**, not by eyeballing the code.
 
 ## Testing Policy
