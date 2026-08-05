@@ -17,6 +17,8 @@ import com.iponlove.app.feature.onboarding.domain.repository.OnboardingRepositor
 import com.iponlove.app.feature.transactions.domain.model.Transaction
 import com.iponlove.app.feature.transactions.domain.model.TransactionFilter
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
+import com.iponlove.app.feature.transactions.domain.usecase.BulkDeletePlan
+import com.iponlove.app.feature.transactions.domain.usecase.BulkDeleteTransactionsUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.DeleteTransactionUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveHasAnyTransactionUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.ObserveTransactionsUseCase
@@ -47,6 +49,7 @@ class TransactionsViewModel @Inject constructor(
     observeCategories: ObserveCategoriesUseCase,
     observeHasAnyTransaction: ObserveHasAnyTransactionUseCase,
     private val deleteTransaction: DeleteTransactionUseCase,
+    private val bulkDeleteTransactions: BulkDeleteTransactionsUseCase,
     private val syncEngine: SyncEngine,
     private val premiumGate: PremiumGate,
     private val analytics: Analytics,
@@ -89,6 +92,20 @@ class TransactionsViewModel @Inject constructor(
         WidgetNudgeVisibility.shouldShow(adopted, lastShownAt, System.currentTimeMillis())
     }
 
+    /** Records' multi-select (Item 7 / ADR-0064). Empty = not in selection mode. Session-scoped
+     *  like [filter], and cleared by anything that changes which rows are on screen — see
+     *  [clearSelection]'s callers — so a delete can never reach a ticked row the user can't see. */
+    private val selectedIds = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Non-null while the bulk-delete confirmation is up. Held here rather than in the composable
+     *  because the counts it names come from a suspend read (`BulkDeleteTransactionsUseCase.plan`). */
+    private val pendingBulkDelete = MutableStateFlow<BulkDeletePlan?>(null)
+
+    /** Folded into the state through the single trailing [combine] below — paired first so the two
+     *  selection flows cost one `.combine`, not two. */
+    private val selection: Flow<Selection> =
+        combine(selectedIds, pendingBulkDelete) { ids, plan -> Selection(ids, plan) }
+
     /**
      * The filter applied *upstream* of the main combine (which is already at its 5-flow ceiling):
      * grouping runs over already-filtered rows, and [FilteredTransactions] carries the applied
@@ -127,18 +144,22 @@ class TransactionsViewModel @Inject constructor(
             val today = LocalDate.now(ZONE)
             val isCurrentMonth = YearMonth.from(month) == YearMonth.from(today)
 
+            val dayGroups = DayGrouping.groupByDay(
+                items = transactions.map {
+                    it.toListItem(accountNames, categoryNames, categoryIcons, categoryColors)
+                },
+                dateOf = { it.date },
+                zone = ZONE,
+                today = today,
+                isCurrentMonth = isCurrentMonth,
+            )
+
             TransactionsUiState(
                 isLoading = false,
                 monthLabel = month.format(MONTH_FORMAT),
-                dayGroups = DayGrouping.groupByDay(
-                    items = transactions.map {
-                        it.toListItem(accountNames, categoryNames, categoryIcons, categoryColors)
-                    },
-                    dateOf = { it.date },
-                    zone = ZONE,
-                    today = today,
-                    isCurrentMonth = isCurrentMonth,
-                ),
+                dayGroups = dayGroups,
+                // Select-all's whole reach (Item 7): the rendered rows, nothing else.
+                visibleIds = dayGroups.flatMap { group -> group.items.map { it.id } },
                 hasAnyTransactionEver = hasAnyEver,
                 // `accounts` is now archived-inclusive (see the combine above), so gate Add on an
                 // *active* account existing — the Add screen's account picker excludes archived.
@@ -169,6 +190,13 @@ class TransactionsViewModel @Inject constructor(
             .combine(showWidgetNudgeCard) { state, show ->
                 state.copy(showWidgetNudgeCard = show)
             }
+            // Multi-select (Item 7) — same escape hatch again.
+            .combine(selection) { state, sel ->
+                state.copy(
+                    selectedIds = sel.selectedIds,
+                    pendingBulkDelete = sel.pendingBulkDelete,
+                )
+            }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -178,6 +206,7 @@ class TransactionsViewModel @Inject constructor(
     fun previousMonth() {
         // Backstop for the DEEP_HISTORY back-wall (the ← is also lock-affordanced in the UI).
         if (!MonthWindow.canStepBack(viewedMonth.value, LocalDate.now(ZONE), deepHistoryLocked.value)) return
+        clearSelection()
         viewedMonth.value = MonthWindow.step(viewedMonth.value, forward = false)
     }
 
@@ -192,6 +221,7 @@ class TransactionsViewModel @Inject constructor(
     fun nextMonth() {
         val current = viewedMonth.value
         if (MonthWindow.canStepForward(current, LocalDate.now(ZONE))) {
+            clearSelection()
             viewedMonth.value = MonthWindow.step(current, forward = true)
         }
     }
@@ -220,13 +250,67 @@ class TransactionsViewModel @Inject constructor(
     /** Commits the sheet's draft filter (v1.7.0 Item 7). Session-scoped — reflows the list upstream
      *  of the main combine, survives month-stepping, and is never persisted. */
     fun applyFilter(filter: TransactionFilter) {
+        clearSelection()
         this.filter.value = filter
     }
 
     /** Resets the Records filter to unfiltered — used by the sheet's Clear and the "No matches"
      *  empty-state inline action. */
     fun clearFilter() {
+        clearSelection()
         filter.value = TransactionFilter.NONE
+    }
+
+    // ---- multi-select (v1.7.3 Item 7 / ADR-0064) ----
+
+    /** Long-press on a row: enter selection mode with that row ticked. */
+    fun startSelection(id: String) {
+        selectedIds.value = RecordsSelection.begin(id)
+    }
+
+    /** Tap on a row while in selection mode. Unticking the last row exits — no separate flag. */
+    fun toggleSelection(id: String) {
+        selectedIds.value = RecordsSelection.toggle(selectedIds.value, id)
+    }
+
+    /** Select-all / clear-all over the currently rendered, post-filter rows only — never history
+     *  outside the viewed month (ADR-0064 decision 6). */
+    fun toggleSelectAll() {
+        selectedIds.value = RecordsSelection.toggleAll(selectedIds.value, uiState.value.visibleIds)
+    }
+
+    /** The ✕, the system back gesture, and anything that changes which rows are on screen. */
+    fun clearSelection() {
+        selectedIds.value = emptySet()
+        pendingBulkDelete.value = null
+    }
+
+    /** Opens the confirmation, which needs a read to know what the delete would really touch. */
+    fun requestBulkDelete() {
+        val ids = selectedIds.value
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            val plan = bulkDeleteTransactions.plan(ids)
+            // Nothing live left behind the ticks (a sync retired them first): don't put up a
+            // confirmation for a delete that would write nothing — just drop out of selection.
+            if (plan.isEmpty) clearSelection() else pendingBulkDelete.value = plan
+        }
+    }
+
+    fun dismissBulkDelete() {
+        pendingBulkDelete.value = null
+    }
+
+    /** Deletes the whole selection in one atomic pass, then exits selection mode. */
+    fun confirmBulkDelete() {
+        val ids = selectedIds.value
+        pendingBulkDelete.value = null
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            bulkDeleteTransactions(ids)
+            selectedIds.value = emptySet()
+            Widgets.updateAll(context)
+        }
     }
 
     /** Stamps the widget-adoption nudge card (Item 11) as shown *now* — called by the card's own
@@ -253,6 +337,12 @@ private data class FilteredTransactions(
     val transactions: List<Transaction>,
     val filter: TransactionFilter,
     val hadRowsBeforeFilter: Boolean,
+)
+
+/** Pairs the two multi-select flows (Item 7) so they fold in through one trailing `.combine`. */
+private data class Selection(
+    val selectedIds: Set<String>,
+    val pendingBulkDelete: BulkDeletePlan?,
 )
 
 /**

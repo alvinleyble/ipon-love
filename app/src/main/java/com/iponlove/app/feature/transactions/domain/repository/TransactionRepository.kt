@@ -57,6 +57,13 @@ interface TransactionRepository {
 
     suspend fun getTransaction(id: String): Transaction?
 
+    /**
+     * The still-active rows for [ids], in one read — feeds Records' bulk delete (v1.7.3 Item 7),
+     * which has to inspect a whole selection before it writes anything. Already-tombstoned and
+     * unknown ids are simply absent from the result.
+     */
+    suspend fun getActiveTransactions(ids: Collection<String>): List<Transaction>
+
     /** Active transactions referencing [categoryId] — feeds the category delete-confirm count (Item 5). */
     suspend fun countByCategory(categoryId: String): Int
 

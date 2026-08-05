@@ -79,6 +79,7 @@ internal class CountingTransactionRepo : TransactionRepository {
     override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = emptyFlow()
     override fun observeBalanceLedger(): Flow<List<Transaction>> = emptyFlow()
     override suspend fun getTransaction(id: String): Transaction? = null
+    override suspend fun getActiveTransactions(ids: Collection<String>): List<Transaction> = emptyList()
     override suspend fun countByCategory(categoryId: String): Int = 0
     override suspend fun countByAccount(accountId: String): Int = 0
     override suspend fun upsertTransaction(transaction: Transaction) = Unit

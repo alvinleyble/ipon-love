@@ -82,6 +82,9 @@ class TransactionRepositoryImpl @Inject constructor(
 
     override suspend fun getTransaction(id: String): Transaction? = dao.getById(id)?.toDomain()
 
+    override suspend fun getActiveTransactions(ids: Collection<String>): List<Transaction> =
+        if (ids.isEmpty()) emptyList() else dao.getActiveByIds(ids.toList()).map { it.toDomain() }
+
     override suspend fun countByCategory(categoryId: String): Int = dao.countByCategory(categoryId)
 
     override suspend fun countByAccount(accountId: String): Int = dao.countByAccount(accountId)
