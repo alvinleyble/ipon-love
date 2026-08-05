@@ -202,6 +202,14 @@ Notes on the shape, so a port doesn't "tidy" it:
 - **`NOTIFICATIONS` is last** because nothing depends on it and it must never delay a financial row's push (ADR-0053).
 - **Intra-table ordering is out of scope.** §3 is table-level only. The parents-before-children clause that the subcategories item briefly proposed for `categories` is **not** part of this freeze (that item was deferred the same day); it is preserved in ADR-0061 decision 7 and gets re-added only if that item is un-deferred.
 
+#### ⬜ Booked amendment — a 24th entry, `TRANSACTION_DRAFTS` (not yet in code)
+
+**Design-locked 2026-08-05, captain-approved, unbuilt.** [ADR-0066](../adr/0066-transaction-drafts-parking-area.md) / [v1.7.3 Item 8](../build/v1.7.3.md#item-8--transaction-drafts-a-parking-area-inside-records-third-exit-from-the-new-transaction-form) adds a `transaction_drafts` table, which becomes **`SyncTable` #24, appended after `NOTIFICATIONS`** — a pure append, so **ordinals 1–23 above are unchanged**. It earns the same last-place argument `NOTIFICATIONS` has: nothing depends on it, and it must never delay a financial row's push.
+
+**The table above stays at 23 entries until the code exists** — this section's source of truth is the enum's declaration order, and per this document's own rule a not-yet-built change is *booked*, never edited quietly into a frozen list. Move the row into the table, delete this block, and update the conformance checklist when Item 8 Slice 1 lands.
+
+For a porting client: `transaction_drafts` is **owned, own-user-only** (RLS `user_id = auth.uid()`, no redacting view — a partner can never see a draft), rows carry ordinary **v4 random** ids per §1.5, and **promotion to a real transaction writes the `transactions` row *before* retiring the draft** (the draft's id is the transaction's id, so a re-run is an idempotent upsert; the reverse order loses data). §1, §1b, §5.3 and §9 are unaffected — checked, not overlooked.
+
 ### 3.2 Push
 
 - **Sequential, in the order above.** A parent must land on the server before its child, or RLS/FK rejects the child.
@@ -469,7 +477,7 @@ Supabase Storage must admit the web app's origin for browser `fetch`/`XHR` of ob
 
 - **Upload is a pre-sync step, not part of the row write.** A row is created locally with a `localPath` and no `storage_url`; the uploader runs before each push, uploads, stamps the URL, then deletes the local file. A failure leaves the row untouched for the next sync to retry — it must never fail the whole sync.
 - **A soft-deleted, never-uploaded row is hard-deleted locally** (plus its file) rather than pushed — it never needs to reach the server.
-- Android additionally sweeps `filesDir/receipts` for compressed files that never got a row. **That is an Android-local concern with no web equivalent** (a browser holds the blob in memory).
+- Android additionally sweeps `filesDir/receipts` for compressed files that never got a row. **That is an Android-local concern with no web equivalent** (a browser holds the blob in memory). ⬜ *Booked, unbuilt (2026-08-05, [ADR-0066](../adr/0066-transaction-drafts-parking-area.md) decision 6): that sweep gains a second exclusion set — files referenced by a parked **transaction draft**, which has no `transaction_images` row and would otherwise be deleted before the user returns. Still Android-local: draft receipt photos are deliberately **not** synced (they cross only on promotion), so a web client sees a draft's `receipt_count` but never its file, and has nothing to sweep.*
 - **Web's orphan case is the inverse and is web's own to handle:** an object uploaded to Storage whose row insert then fails leaves an unreferenced object. Frozen rule: **upload first, write the row second, and on row-write failure delete the just-uploaded object best-effort.** A leaked object is unreadable to anyone but its owner and is not a data-integrity problem, so best-effort is sufficient; what is *not* acceptable is a row pointing at an object that was never uploaded.
 - Couple-banner replacement deletes the previous object best-effort; `unpair()` and `delete_account()` delete the couple's banner objects server-side.
 
@@ -560,7 +568,7 @@ The question turned out to depend on an upstream one — whether web has any loc
 - [x] **§1 Deterministic UUIDs** — ✅ FROZEN 2026-08-05: v5/SHA-1, namespace `9d8f6c2e-…`, MSB-first namespace bytes + UTF-8 name, all six name schemas, the 17-key starter catalog, and 23 name→UUID vectors asserted in `CrossPlatformContractConformanceTest`.
 - [x] **§1b Notification-inbox composite ids** — ✅ FROZEN (already live; adopted as-is): `budget:{id}:{yyyy-MM}:{slot}` / `recurring:{occurrenceId}` / `debt:{debtId}`, create-if-absent, 60-day hard-delete sweep.
 - [x] **§2 LWW write rule** — ✅ FROZEN 2026-08-05: `max(now + offset, prev + 1ms)` with strict-after tie-break and ms granularity; offset from `get_server_time()`, recalibrated after every full sync, persisted, default 0; `pending_sync` local-only.
-- [x] **§3 FK order** — ✅ FROZEN 2026-08-05: the 23-entry `SyncTable` ordering (supersedes ADR-0009's nine); push sequential with per-table failure isolation, pull parallel; per-table `server_rev > cursor`, page 500, post-commit advance.
+- [x] **§3 FK order** — ✅ FROZEN 2026-08-05: the 23-entry `SyncTable` ordering (supersedes ADR-0009's nine); push sequential with per-table failure isolation, pull parallel; per-table `server_rev > cursor`, page 500, post-commit advance. ⬜ *One booked, unbuilt amendment: a 24th entry (`TRANSACTION_DRAFTS`) appended after `NOTIFICATIONS`, ordinals 1–23 unchanged — see §3.1.*
 - [x] **§4 Money math** — ✅ FROZEN 2026-08-05: `numeric(14,2)`, decimal-library mandate, per-site scale/rounding table (incl. the truncating budget percent and `avg × buckets` projection), PH-local calendar boundaries, and 16 worked vectors.
 - [x] **§5 Conflict resolution** — ✅ FROZEN 2026-08-05: LWW with strict-`>` tie-break; the 9-step note conflict-copy algorithm; the eight partner purge predicates; the set→null unpair purge + cursor reset; `EnsureCurrentUserRow`; all eight RPC signatures with verbatim error messages.
 - [x] **§6 Seeding** — ✅ FROZEN 2026-08-05: the four-clause `shouldShowOnboarding` predicate, owned-and-non-deleted counts read from *server* state, web may seed but must use the guard.
