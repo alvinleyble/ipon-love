@@ -133,7 +133,7 @@ Full rationale in `docs/adr/`. These are the rules most likely to be violated by
 
 **ADR-0005 — Partner data goes through redacting views.** Never query partner base tables directly. A partner row arriving flagged private, deleted, or unshared means purge the local Room copy, not upsert it.
 
-**ADR-0009 — FK push/pull order.** Always process tables in this order (both push and pull): `users → couples → accounts → categories → recurring_rules → transactions → budgets → notes → note_images` (partner variants follow their owned counterparts). Upserts are idempotent by `id`; an interrupted sync just resumes.
+**ADR-0009 — FK push order.** **The authoritative ordering is the `SyncTable` enum's declaration order (23 entries), frozen as [cross-platform-contract.md §3](docs/web/cross-platform-contract.md#3-fk-pushpull-order) — ADR-0009's original nine-table list is stale in *shape*, not just length, so do not use it.** Push is sequential in that order with per-table failure isolation; **pull is parallel**, so the ordering is a push guarantee. Upserts are idempotent by `id`; the per-table `server_rev > cursor` advance is post-commit, so an interrupted sync re-pulls rather than skips.
 
 **ADR-0014 — Personalize screen.** Live preview is local ViewModel state only — do not persist on tap. Save/Apply writes to DataStore. Couple attribution color (blue/pink in combined view) is stored as `accent_color` on the `users` row, chosen during the pairing flow — it is separate from the personal theme palette.
 
