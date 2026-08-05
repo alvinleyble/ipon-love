@@ -29,6 +29,7 @@ biometric = "1.1.0"
 billing = "9.1.0"
 credentials = "1.6.0"
 googleid = "1.2.0"
+mlkitTextRecognition = "16.0.1"
 
 [libraries]
 # Core / lifecycle
@@ -99,6 +100,10 @@ billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", versi
 androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
 androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
+
+# Receipt scan (v1.7.3 Item 2, ADR-0062 decision 1) — bundled Text Recognition v2, Latin script.
+# Not the Play-Services-delivered variant: works offline on first launch, no "getting ready" state.
+mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

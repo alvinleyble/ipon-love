@@ -35,4 +35,16 @@ enum class Feature {
      * the chosen photo with no re-upload. Ships dormant (kill-switch OFF).
      */
     COUPLE_BANNER_PHOTO,
+
+    /**
+     * Photographing or picking a receipt to prefill a transaction (v1.7.3 Item 2). Soft gate,
+     * **individual** scope, consumed via `PremiumGate.observeLocked(Scope.INDIVIDUAL)` at both
+     * entry buttons (camera and gallery — gating only one would leave a free bypass, ADR-0062
+     * decision 3). **Reversed from the original "never gated" design** (ADR-0062 decision 6,
+     * captain's ruling 2026-08-03): this is convenience layered on recording, not recording
+     * itself — manual entry stays untouched and fully capable. `PlanLimits.maxReceiptPhotos`
+     * still separately governs how many photos an unlocked scan can attach, unchanged. Ships
+     * dormant (kill-switch OFF, `AppConfig.DORMANT`).
+     */
+    RECEIPT_SCANNING,
 }

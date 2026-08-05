@@ -86,6 +86,23 @@ fun FinanceScreen(
             )
 
             Spacer(Modifier.height(24.dp))
+            SettingsSectionHeader("Receipts")
+            Spacer(Modifier.height(10.dp))
+            SettingsRow(
+                headline = "Save scans to gallery",
+                // The switch exists because gallery photos sync to Google Photos, so grocery and
+                // pharmacy receipts would land in a backed-up, possibly shared camera roll —
+                // that should be a choice, not a surprise (ADR-0062 decision 7).
+                supporting = "Keep a copy of scanned receipts in Pictures/Love, Ipon",
+                trailing = {
+                    Switch(
+                        checked = state.receiptGalleryCopyEnabled,
+                        onCheckedChange = viewModel::setReceiptGalleryCopy,
+                    )
+                },
+            )
+
+            Spacer(Modifier.height(24.dp))
             SettingsSectionHeader("Privacy")
             Spacer(Modifier.height(10.dp))
             SettingsRow(

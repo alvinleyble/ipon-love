@@ -8,6 +8,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iponlove.app.core.analytics.Analytics
 import com.iponlove.app.core.entitlement.CapCheck
+import com.iponlove.app.core.entitlement.PremiumGate
+import com.iponlove.app.core.entitlement.Scope
 import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
@@ -16,25 +18,35 @@ import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCa
 import com.iponlove.app.feature.couple.domain.model.CoupleMembers
 import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.PaidOnBehalfUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObserveReceiptGalleryCopyEnabledUseCase
+import com.iponlove.app.feature.transactions.data.ReceiptScanFileStore
+import com.iponlove.app.feature.transactions.domain.model.ReceiptScanResult
 import com.iponlove.app.feature.transactions.domain.model.TransactionImage
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.CheckReceiptPhotoCapUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.CompressReceiptUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.GetTransactionImagesUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.GetTransactionUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.SaveReceiptToGalleryUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.SaveTransactionImagesUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.SaveTransferUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.ScanReceiptUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.UpsertTransactionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
+import java.time.ZoneOffset
 import java.util.UUID
 import javax.inject.Inject
 
@@ -59,6 +71,11 @@ class AddTransactionViewModel @Inject constructor(
     private val getTransactionImages: GetTransactionImagesUseCase,
     private val saveTransactionImages: SaveTransactionImagesUseCase,
     private val checkReceiptPhotoCap: CheckReceiptPhotoCapUseCase,
+    private val scanReceipt: ScanReceiptUseCase,
+    private val receiptScanFileStore: ReceiptScanFileStore,
+    private val saveReceiptToGallery: SaveReceiptToGalleryUseCase,
+    private val observeGalleryCopyEnabled: ObserveReceiptGalleryCopyEnabledUseCase,
+    private val premiumGate: PremiumGate,
     private val analytics: Analytics,
 ) : ViewModel() {
 
@@ -69,6 +86,15 @@ class AddTransactionViewModel @Inject constructor(
     private val editor = MutableStateFlow<TransactionEditorState?>(null)
     private val missing = MutableStateFlow(false)
     private val upsell = MutableStateFlow<UpsellPrompt?>(null)
+    private val scan = MutableStateFlow(ReceiptScanUiState())
+
+    /**
+     * The in-flight (or gallery-copy-pending) `cacheDir/scans` capture, mirrored into
+     * [SavedStateHandle] because it must survive process death: `ACTION_IMAGE_CAPTURE` hands off
+     * to a separate camera process, and without this a restored draft cannot find its own capture
+     * and would silently skip decision 7's Save-time gallery write (ADR-0062 decision 9).
+     */
+    private var scanTempPath: String? = null
 
     // Which cap raised the current upsell — the analytics source for its "Get Premium" tap.
     private var upsellSource: String? = null
@@ -87,6 +113,15 @@ class AddTransactionViewModel @Inject constructor(
         val categories: List<Category>,
         val members: CoupleMembers?,
     )
+
+    /**
+     * Scan state folded together with its soft gate (`Feature.RECEIPT_SCANNING`, individual
+     * scope). Reactive rather than one-shot so an enforcement flip or a purchase re-locks the two
+     * entry buttons live; **false throughout while dormant**, so nothing changes pre-flip.
+     */
+    private val scanState = combine(scan, premiumGate.observeLocked(Scope.INDIVIDUAL)) { state, locked ->
+        state.copy(locked = locked)
+    }
 
     val uiState: StateFlow<AddTransactionUiState> =
         combine(
@@ -114,6 +149,8 @@ class AddTransactionViewModel @Inject constructor(
         }.combine(upsell) { state, upsellState ->
             // Outer combine: the primary one is already at Kotlin's 5-flow typed max.
             state.copy(upsell = upsellState)
+        }.combine(scanState) { state, scanUiState ->
+            state.copy(scan = scanUiState)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -121,6 +158,12 @@ class AddTransactionViewModel @Inject constructor(
         )
 
     init {
+        // Restored before the editor branches below: a capture that was in flight when the
+        // process died is redelivered through ActivityResultRegistry, and without its path the
+        // result would arrive with nothing to read (ADR-0062 decision 9).
+        scanTempPath = saved[KEY_SCAN_TEMP_PATH]
+        saved.get<String>(KEY_SCAN_PREVIEW)?.let { path -> scan.update { it.copy(previewPath = path) } }
+
         val restored = hydrateFromSaved()
         when {
             restored != null -> {
@@ -208,24 +251,193 @@ class AddTransactionViewModel @Inject constructor(
             // Free-tier media cap (S8): with enforcement off, or under the cap, this returns
             // Allowed and the receipt is added exactly as before. Free = 1 photo, premium = 3.
             when (val check = checkReceiptPhotoCap(current.images.size)) {
-                CapCheck.Allowed -> {
-                    val imageId = UUID.randomUUID().toString()
-                    val localPath = compressReceipt(uri, imageId)
-                    mutate { state ->
-                        state.copy(
-                            images = state.images + TransactionImage(
-                                id = imageId,
-                                transactionId = state.id,
-                                localPath = localPath,
-                                url = null,
-                                position = state.images.size,
-                            ),
-                        )
-                    }
-                }
+                CapCheck.Allowed -> attachReceipt(uri)
                 is CapCheck.Blocked -> raiseUpsell("receipt_photos", "receipt photos", check)
             }
         }
+    }
+
+    /**
+     * Compresses [uri] into `filesDir/receipts` and appends it to the draft, returning the local
+     * path. Shared by the manual attach path and the scan flow.
+     *
+     * The decode/rotate/re-encode runs on IO, not the caller's Main dispatcher. That was a
+     * pre-existing main-thread bitmap operation on the manual path; this slice makes it routine —
+     * every scan hits it, with a full-resolution camera frame, on the low-RAM budget-Android
+     * devices this feature targets — so it is corrected here for the same reason the ADR corrects
+     * the EXIF bug alongside it.
+     */
+    private suspend fun attachReceipt(uri: Uri): String {
+        val imageId = UUID.randomUUID().toString()
+        val localPath = withContext(Dispatchers.IO) { compressReceipt(uri, imageId) }
+        mutate { state ->
+            state.copy(
+                images = state.images + TransactionImage(
+                    id = imageId,
+                    transactionId = state.id,
+                    localPath = localPath,
+                    url = null,
+                    position = state.images.size,
+                ),
+            )
+        }
+        return localPath
+    }
+
+    // --- Receipt scan (v1.7.3 Item 2, ADR-0062) -------------------------------------------------
+
+    /**
+     * The `Scan receipt` button. Mints a `cacheDir/scans` target and hands its [FileProvider][androidx.core.content.FileProvider]
+     * Uri to [launchCamera], which the screen wires to `TakePicture`. **No `CAMERA` permission is
+     * involved** — `ACTION_IMAGE_CAPTURE` only requires one if the app declares it, and this
+     * design deliberately never does (decision 2).
+     *
+     * The lock is checked by the *screen* against `state.scan.locked` before calling this, the
+     * same shape the Recurring calendar gate uses.
+     */
+    fun onScanTap(launchCamera: (Uri) -> Unit) {
+        if (editor.value == null) return
+        // Release any previous capture first — one is still held whenever the last scan failed, or
+        // succeeded with the gallery-copy toggle ON. Without this, scanning twice in a row strands
+        // the first file until the sweep, which is the leak class v1.7.0 Item 14 already paid to
+        // fix. This makes onScanTap the single owner of the temp's replacement.
+        releaseScanTemp()
+        val capture = receiptScanFileStore.newCapture()
+        setScanTempPath(capture.file.absolutePath)
+        scan.update { it.copy(failure = null, amountNotFound = false) }
+        launchCamera(capture.uri)
+    }
+
+    /** Deletes the current `cacheDir/scans` capture, if any, and forgets it. */
+    private fun releaseScanTemp() {
+        scanTempPath?.let { receiptScanFileStore.delete(it) }
+        setScanTempPath(null)
+    }
+
+    /** The `From gallery` button. Same feature from a different source — gated identically, since
+     *  gating only the camera leg would leave a free bypass (decision 3). */
+    fun onScanFromGalleryTap(launchPicker: () -> Unit) {
+        if (editor.value == null) return
+        scan.update { it.copy(failure = null, amountNotFound = false) }
+        launchPicker()
+    }
+
+    /** `TakePicture` result. A cancelled capture leaves nothing behind; the age-based sweep is the
+     *  backstop if the process died instead. */
+    fun onCaptureTaken(success: Boolean) {
+        val path = scanTempPath
+        if (!success || path == null) {
+            releaseScanTemp()
+            return
+        }
+        processScan(receiptScanFileStore.uriFor(File(path)), fromCamera = true)
+    }
+
+    /** A scan sourced from the picker — covers the GCash/Maya/GrabPay confirmation screenshot
+     *  case, the cleanest read this app's receipts get. */
+    fun onScanImagePicked(uri: Uri) = processScan(uri, fromCamera = false)
+
+    /**
+     * capture → recognise → parse → *then* compress (decision 4). OCR runs on the full-resolution
+     * image because the 1080px/JPEG-85 storage size sits below what reliably reads thermal print.
+     */
+    private fun processScan(uri: Uri, fromCamera: Boolean) {
+        if (editor.value == null) return
+        scan.update { it.copy(inProgress = true, failure = null, amountNotFound = false) }
+        viewModelScope.launch {
+            val result = runCatching { scanReceipt(uri) }.getOrNull()
+            if (result == null || result.isEmpty) {
+                // Nothing usable — stay in the camera (decision 8). The temp file is kept so a
+                // retake can delete it deliberately rather than leaving it to the sweep.
+                scan.update {
+                    it.copy(
+                        inProgress = false,
+                        previewPath = null,
+                        failure = if (result == null) {
+                            ReceiptScanFailure.NO_TEXT
+                        } else {
+                            ReceiptScanFailure.NOTHING_USABLE
+                        },
+                    )
+                }
+                return@launch
+            }
+
+            applyScan(result)
+            // The photo rides the existing cap path unchanged; the scan gate above is what
+            // differentiates the feature now, not maxReceiptPhotos (decision 6's reversal).
+            val current = editor.value
+            val preview = if (current != null && current.images.size < TransactionImage.MAX &&
+                checkReceiptPhotoCap(current.images.size) == CapCheck.Allowed
+            ) {
+                attachReceipt(uri)
+            } else {
+                null
+            }
+
+            // Decision 9, owner (1): the temp dies here, unless the gallery-copy toggle is ON —
+            // then decision 7's Save-time write holds it, because that write must source the
+            // full-resolution original rather than the downgraded re-encode.
+            val holdForGalleryCopy = fromCamera && observeGalleryCopyEnabled().first()
+            if (!holdForGalleryCopy) releaseScanTemp()
+
+            setScanPreview(preview)
+            scan.update {
+                it.copy(
+                    inProgress = false,
+                    failure = null,
+                    amountNotFound = result.amount == null,
+                    dateGuessed = result.dateIsAmbiguous,
+                )
+            }
+        }
+    }
+
+    /** A **partial** read is not a failure (decision 8): each field fills in only if it was found,
+     *  and anything already typed survives. `Type` is forced to EXPENSE — a receipt is never
+     *  income — through the reducer, so the fields that don't apply are normalised with it. */
+    private fun applyScan(result: ReceiptScanResult) {
+        mutate { state ->
+            val expense = TransactionEditorReducer.onType(state, TransactionType.EXPENSE)
+            expense.copy(
+                amountText = result.amount?.toPlainString() ?: expense.amountText,
+                note = result.merchant ?: expense.note,
+                // Matches the DatePicker's own convention (UTC midnight = a calendar day).
+                date = result.date?.atStartOfDay(ZoneOffset.UTC)?.toInstant() ?: expense.date,
+            )
+        }
+    }
+
+    /** Retake, from the failed-read prompt — the actual fix for a bad frame, and the reason no
+     *  cropping or edge detection is built (decision 8). */
+    fun onRetakeScan(launchCamera: (Uri) -> Unit) {
+        setScanPreview(null)
+        scan.update { it.copy(failure = null, amountNotFound = false, dateGuessed = false) }
+        onScanTap(launchCamera)
+    }
+
+    /** "Enter manually" — dismisses the prompt and leaves the form as it is. */
+    fun onDismissScanFailure() {
+        releaseScanTemp()
+        scan.update { it.copy(failure = null) }
+    }
+
+    /** A tap on a locked scan button — logs the §10.10 funnel touchpoint before the screen routes
+     *  to the paywall. Unreachable while the gate is dormant. */
+    fun onScanUpsellTap(): String {
+        val source = "receipt_scanning"
+        analytics.log("upsell_tap", source = source)
+        return source
+    }
+
+    private fun setScanTempPath(path: String?) {
+        scanTempPath = path
+        if (path == null) saved.remove<String>(KEY_SCAN_TEMP_PATH) else saved[KEY_SCAN_TEMP_PATH] = path
+    }
+
+    private fun setScanPreview(path: String?) {
+        if (path == null) saved.remove<String>(KEY_SCAN_PREVIEW) else saved[KEY_SCAN_PREVIEW] = path
+        scan.update { it.copy(previewPath = path) }
     }
 
     private fun raiseUpsell(source: String, entityLabel: String, blocked: CapCheck.Blocked) {
@@ -279,11 +491,27 @@ class AddTransactionViewModel @Inject constructor(
                 // Reconcile the draft's receipt images to transaction_images rows now that the
                 // parent transaction exists (deferred persistence — see SaveTransactionImagesUseCase).
                 saveTransactionImages(result.transaction.id, s.images)
+                writeGalleryCopy()
                 clearDraft()
                 Widgets.updateAll(context)
                 onDone()
             }
         }
+    }
+
+    /**
+     * The `Pictures/Love, Ipon` copy, written **on Save and never at capture** (ADR-0062 decision
+     * 7, pinned 2026-08-03): writing at capture would pollute the gallery with abandoned scans the
+     * moment a user backs out of an unsaved draft — worse than the v1.7.0 Item 14 leak it would
+     * repeat, since a file there sits outside every sweep the app owns and may already have synced
+     * to Google Photos. Camera leg only: a picked image is already in the gallery.
+     *
+     * The temp file is released either way, so this is also the last of decision 9's three owners.
+     */
+    private suspend fun writeGalleryCopy() {
+        val path = scanTempPath ?: return
+        if (observeGalleryCopyEnabled().first()) saveReceiptToGallery(path)
+        releaseScanTemp()
     }
 
     // --- SavedStateHandle draft persistence (survives process death) ---
@@ -318,9 +546,11 @@ class AddTransactionViewModel @Inject constructor(
             KEY_ID, KEY_IS_EDITING, KEY_TYPE, KEY_AMOUNT, KEY_ACCOUNT, KEY_TO_ACCOUNT,
             KEY_CATEGORY, KEY_NOTE, KEY_PRIVATE, KEY_DATE, KEY_IS_ADJUSTMENT, KEY_IS_SETTLEMENT, KEY_IMAGE_IDS,
             KEY_IMAGE_PATHS, KEY_IMAGE_URLS, KEY_PAID_FOR_PARTNER, KEY_AMOUNT_OWED, KEY_TRANSFER_FEE,
-            KEY_LINKED_FEE_ID,
+            KEY_LINKED_FEE_ID, KEY_SCAN_TEMP_PATH, KEY_SCAN_PREVIEW,
         ).forEach { saved.remove<Any>(it) }
         existingTransferFeeId = null
+        scanTempPath = null
+        scan.value = ReceiptScanUiState()
     }
 
     private fun hydrateFromSaved(): TransactionEditorState? {
@@ -383,6 +613,8 @@ class AddTransactionViewModel @Inject constructor(
         private const val KEY_AMOUNT_OWED = "draft_amount_owed"
         private const val KEY_TRANSFER_FEE = "draft_transfer_fee"
         private const val KEY_LINKED_FEE_ID = "draft_linked_fee_id"
+        private const val KEY_SCAN_TEMP_PATH = "draft_scan_temp_path"
+        private const val KEY_SCAN_PREVIEW = "draft_scan_preview"
 
         private const val STOP_TIMEOUT_MS = 5_000L
     }

@@ -10,6 +10,7 @@ import com.iponlove.app.core.sync.SyncClock
 import com.iponlove.app.core.sync.data.ClockOffsetStore
 import com.iponlove.app.feature.export.data.ExportFileWriter
 import com.iponlove.app.feature.notifications.presentation.SystemNotificationPresenter
+import com.iponlove.app.feature.transactions.data.ReceiptScanFileStore
 import com.iponlove.app.feature.transactions.domain.usecase.CleanupOrphanedReceiptsUseCase
 import com.iponlove.app.feature.widget.data.WidgetSessionHintWriter
 import dagger.hilt.android.HiltAndroidApp
@@ -34,6 +35,7 @@ class IponApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject lateinit var widgetSessionHintWriter: WidgetSessionHintWriter
     @Inject lateinit var cleanupOrphanedReceipts: CleanupOrphanedReceiptsUseCase
     @Inject lateinit var exportFileWriter: ExportFileWriter
+    @Inject lateinit var receiptScanFileStore: ReceiptScanFileStore
 
     // Coil asks for this lazily on first image load; every AsyncImage in the app then goes
     // through the auth-attaching loader (private Storage buckets — see StorageAuthInterceptor).
@@ -60,6 +62,10 @@ class IponApp : Application(), Configuration.Provider, ImageLoaderFactory {
         appScope.launch { cleanupOrphanedReceipts() }
         // Clear any leftover temp export files — a share is a transmission, not a stored doc (Item 6).
         appScope.launch { exportFileWriter.sweep() }
+        // Age-based sweep of abandoned cacheDir/scans captures — never unconditional, so it can't
+        // delete an in-flight capture redelivered after a process death behind the camera
+        // (v1.7.3 Item 2, ADR-0062 decision 9).
+        appScope.launch { receiptScanFileStore.sweep() }
     }
 
     override val workManagerConfiguration: Configuration

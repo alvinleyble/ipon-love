@@ -12,4 +12,6 @@ data class FinanceUiState(
     val currencySymbol: CurrencySymbol = CurrencySymbol.DEFAULT,
     /** Global Privacy mode (Item 15) — masks money app-wide when on. */
     val privacyModeEnabled: Boolean = false,
+    /** Whether a scanned receipt also lands in `Pictures/Love, Ipon` (v1.7.3 Item 2). Default ON. */
+    val receiptGalleryCopyEnabled: Boolean = true,
 )
