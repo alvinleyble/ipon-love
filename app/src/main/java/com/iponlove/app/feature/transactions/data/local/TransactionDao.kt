@@ -97,6 +97,14 @@ interface TransactionDao {
     suspend fun getById(id: String): TransactionEntity?
 
     /**
+     * The still-active rows behind a Records multi-select (v1.7.3 Item 7 / ADR-0064) — one read
+     * instead of N. Tombstones are filtered out here because the domain [Transaction] carries no
+     * `isDeleted`, so a bulk delete must never plan over an already-retired row.
+     */
+    @Query("SELECT * FROM transactions WHERE id IN (:ids) AND isDeleted = 0")
+    suspend fun getActiveByIds(ids: List<String>): List<TransactionEntity>
+
+    /**
      * How many active transactions reference [categoryId] — the exact count shown in the
      * delete-confirm (v1.6.7 Item 5) so deleting a category discloses how many rows would drop
      * to "Uncategorized". No owner filter: for a shared category the combined view / Analysis

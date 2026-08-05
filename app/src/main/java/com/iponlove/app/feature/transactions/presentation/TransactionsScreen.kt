@@ -3,9 +3,11 @@ package com.iponlove.app.feature.transactions.presentation
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,10 +26,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -66,6 +73,7 @@ import com.iponlove.app.core.ui.PrivacyEyeAction
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
 import com.iponlove.app.core.ui.money
+import com.iponlove.app.core.ui.onPlayfulSurface
 import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.core.ui.theme.LeafShapes
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
@@ -73,6 +81,7 @@ import com.iponlove.app.feature.recurring.presentation.components.ComingUpCard
 import com.iponlove.app.feature.recurring.presentation.components.PendingConfirmationsCard
 import com.iponlove.app.feature.transactions.domain.model.TransactionFilter
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
+import com.iponlove.app.feature.transactions.domain.usecase.BulkDeletePlan
 import com.iponlove.app.feature.transactions.presentation.components.TransactionFilterSheet
 import com.iponlove.app.feature.widget.presentation.BalanceWidgetReceiver
 
@@ -111,6 +120,13 @@ fun TransactionsScreen(
         onApplyFilter = viewModel::applyFilter,
         onClearFilter = viewModel::clearFilter,
         onWidgetNudgeCardShown = viewModel::onWidgetNudgeCardShown,
+        onStartSelection = viewModel::startSelection,
+        onToggleSelection = viewModel::toggleSelection,
+        onToggleSelectAll = viewModel::toggleSelectAll,
+        onClearSelection = viewModel::clearSelection,
+        onRequestBulkDelete = viewModel::requestBulkDelete,
+        onDismissBulkDelete = viewModel::dismissBulkDelete,
+        onConfirmBulkDelete = viewModel::confirmBulkDelete,
     )
 }
 
@@ -129,6 +145,13 @@ private fun TransactionsContent(
     onApplyFilter: (TransactionFilter) -> Unit = {},
     onClearFilter: () -> Unit = {},
     onWidgetNudgeCardShown: () -> Unit = {},
+    onStartSelection: (String) -> Unit = {},
+    onToggleSelection: (String) -> Unit = {},
+    onToggleSelectAll: () -> Unit = {},
+    onClearSelection: () -> Unit = {},
+    onRequestBulkDelete: () -> Unit = {},
+    onDismissBulkDelete: () -> Unit = {},
+    onConfirmBulkDelete: () -> Unit = {},
 ) {
     val colors = LocalPlayfulColors.current
     val context = LocalContext.current
@@ -143,43 +166,34 @@ private fun TransactionsContent(
             onWidgetNudgeCardShown()
         }
     }
+    // Back exits selection mode before it can leave Records (Item 7) — same escape as the ✕.
+    BackHandler(enabled = state.selectionMode, onBack = onClearSelection)
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
             Box(Modifier.statusBarsPadding().padding(top = 10.dp, bottom = 2.dp)) {
-                PlayfulScreenTitle(
-                    title = "Records",
-                    leadingActions = {
-                        // The filter icon carries an accent dot whenever a filter is applied — the
-                        // user's only explanation for why rows are hidden (Item 7 decision 1). Gated
-                        // on hasAnyTransactionEver: nothing to filter on a fresh install, but it
-                        // stays available in an empty *month* so a filter can be ruled out.
-                        if (state.hasAnyTransactionEver) {
-                            IconButton(onClick = { filterSheetOpen = true }) {
-                                Box(contentAlignment = Alignment.TopEnd) {
-                                    Icon(
-                                        Icons.Filled.FilterList,
-                                        contentDescription = "Filter transactions",
-                                        tint = colors.textSecondary,
-                                    )
-                                    if (state.filterIsActive) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .clip(LeafShapes.IconSquircle)
-                                                .background(colors.accent),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    actions = { PrivacyEyeAction() },
-                )
+                // The contextual bar replaces the title row outright rather than trying to
+                // coexist with the filter/bell/eye actions v1.7.1 Item 17 tidied (Item 7).
+                if (state.selectionMode) {
+                    SelectionTopBar(
+                        selectedCount = state.selectedIds.size,
+                        allVisibleSelected = state.allVisibleSelected,
+                        onClose = onClearSelection,
+                        onToggleSelectAll = onToggleSelectAll,
+                        onDelete = onRequestBulkDelete,
+                    )
+                } else {
+                    RecordsTopBar(
+                        showFilterAction = state.hasAnyTransactionEver,
+                        filterIsActive = state.filterIsActive,
+                        onOpenFilter = { filterSheetOpen = true },
+                    )
+                }
             }
         },
         floatingActionButton = {
-            if (state.canAdd) {
+            // Adding a row mid-selection makes no sense — the bar's 🗑 is the only action here.
+            if (state.canAdd && !state.selectionMode) {
                 RecordsFab(onClick = onAdd)
             }
         },
@@ -278,7 +292,14 @@ private fun TransactionsContent(
                                 TransactionRow(
                                     item = item,
                                     index = index,
-                                    onClick = { onEdit(item.id) },
+                                    selectionMode = state.selectionMode,
+                                    isSelected = item.id in state.selectedIds,
+                                    // Tap means edit outside selection mode, tick inside it.
+                                    onClick = {
+                                        if (state.selectionMode) onToggleSelection(item.id)
+                                        else onEdit(item.id)
+                                    },
+                                    onLongClick = { onStartSelection(item.id) },
                                     onDelete = { onDelete(item.id) },
                                 )
                             }
@@ -286,6 +307,14 @@ private fun TransactionsContent(
                     }
                 }
             }
+        }
+
+        state.pendingBulkDelete?.let { plan ->
+            BulkDeleteConfirmDialog(
+                plan = plan,
+                onConfirm = onConfirmBulkDelete,
+                onDismiss = onDismissBulkDelete,
+            )
         }
 
         if (filterSheetOpen) {
@@ -305,6 +334,136 @@ private fun TransactionsContent(
             )
         }
     }
+}
+
+/** Records' ordinary title row. Extracted when multi-select gave it a sibling (Item 7), so the
+ *  two top bars read as the alternatives they are rather than one nested inside the other. */
+@Composable
+private fun RecordsTopBar(
+    showFilterAction: Boolean,
+    filterIsActive: Boolean,
+    onOpenFilter: () -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
+    PlayfulScreenTitle(
+        title = "Records",
+        leadingActions = {
+            // The filter icon carries an accent dot whenever a filter is applied — the user's only
+            // explanation for why rows are hidden (v1.7.0 Item 7 decision 1). Gated on
+            // hasAnyTransactionEver: nothing to filter on a fresh install, but it stays available
+            // in an empty *month* so a filter can be ruled out.
+            if (showFilterAction) {
+                IconButton(onClick = onOpenFilter) {
+                    Box(contentAlignment = Alignment.TopEnd) {
+                        Icon(
+                            Icons.Filled.FilterList,
+                            contentDescription = "Filter transactions",
+                            tint = colors.textSecondary,
+                        )
+                        if (filterIsActive) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(LeafShapes.IconSquircle)
+                                    .background(colors.accent),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        actions = { PrivacyEyeAction() },
+    )
+}
+
+/**
+ * The contextual bar Records wears while rows are ticked (v1.7.3 Item 7): `✕  N selected … ☑ 🗑`.
+ * It stands in for [PlayfulScreenTitle] rather than sharing the row with the filter/bell/eye
+ * actions, so the only things reachable mid-selection are the three that act on the selection.
+ */
+@Composable
+private fun SelectionTopBar(
+    selectedCount: Int,
+    allVisibleSelected: Boolean,
+    onClose: () -> Unit,
+    onToggleSelectAll: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val colors = LocalPlayfulColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onClose) {
+            Icon(Icons.Filled.Close, contentDescription = "Exit selection", tint = colors.textPrimary)
+        }
+        Text(
+            text = "$selectedCount selected",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.ExtraBold,
+            color = colors.textPrimary,
+        )
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onToggleSelectAll) {
+            Icon(
+                imageVector = if (allVisibleSelected) Icons.Filled.Deselect else Icons.Filled.SelectAll,
+                // Select-all only ever reaches this month's post-filter rows (ADR-0064 decision 6),
+                // and the label says so — "all" here must not read as "all history".
+                contentDescription = if (allVisibleSelected) "Clear selection" else "Select all shown",
+                tint = colors.textPrimary,
+            )
+        }
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Filled.Delete, contentDescription = "Delete selected", tint = colors.accent)
+        }
+    }
+}
+
+/**
+ * The one thing standing between a mis-tapped selection and the loss (Item 7 Q5 — there is
+ * deliberately no undo). It names the real row count, which can exceed what was ticked when a
+ * transfer drags its linked fee in (ADR-0031), and warns about settlement rows, whose deletion now
+ * puts the debt back to outstanding on both partners' boards (ADR-0065).
+ */
+@Composable
+private fun BulkDeleteConfirmDialog(
+    plan: BulkDeletePlan,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (plan.rowCount == 1) "Delete 1 record?" else "Delete ${plan.rowCount} records?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "This can't be undone.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (plan.untickedFeeCount > 0) {
+                    Text(
+                        text = if (plan.untickedFeeCount == 1) {
+                            "That includes 1 linked transfer fee you didn't select."
+                        } else {
+                            "That includes ${plan.untickedFeeCount} linked transfer fees you didn't select."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (plan.settlementCount > 0) {
+                    Text(
+                        "Any debts you've settled with your partner will show as outstanding " +
+                            "again on the Partner Debt Tracker, for both of you.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Delete") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 /** The center −4° squircle FAB, matching the global add-transaction FAB's identity language
@@ -397,22 +556,35 @@ private fun DayHeader(label: String) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TransactionRow(
     item: TransactionListItem,
     index: Int,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    selectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onLongClick: () -> Unit = {},
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val colors = LocalPlayfulColors.current
-    val squircleColor = parseHexColor(item.categoryColor) ?: colors.accent
-    val squircleInk = if (item.categoryColor != null) Color.White else colors.onAccent
-    val imageVector = item.categoryIcon?.let { CATEGORY_ICONS[it] }
+    // A ticked row lifts onto the Blush surface and swaps its category squircle for an accent
+    // check — the tick shares the icon's slot, so the row keeps its height while the state reads
+    // at a glance. Inks follow the surface so the swap stays legible in every palette.
+    val surface = if (isSelected) PlayfulSurface.Blush else PlayfulSurface.Glass
+    val primaryInk = onPlayfulSurface(surface)
+    val secondaryInk = if (isSelected) colors.onBlushSecondary else colors.textSecondary
+    val tertiaryInk = if (isSelected) colors.onBlushSecondary else colors.textTertiary
+    val squircleColor = if (isSelected) colors.accent else parseHexColor(item.categoryColor) ?: colors.accent
+    val squircleInk = if (!isSelected && item.categoryColor != null) Color.White else colors.onAccent
+    val imageVector = if (isSelected) Icons.Filled.Check else item.categoryIcon?.let { CATEGORY_ICONS[it] }
 
     PlayfulCard(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        surface = PlayfulSurface.Glass,
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        surface = surface,
         shape = LeafShapes.leafFor(index, 22.dp, 9.dp),
         contentPadding = 14.dp,
     ) {
@@ -446,21 +618,21 @@ private fun TransactionRow(
                     item.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = colors.textPrimary,
+                    color = primaryInk,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = item.subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = colors.textSecondary,
+                    color = secondaryInk,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = formatShortDate(item.date),
                     style = MaterialTheme.typography.labelSmall,
-                    color = colors.textTertiary,
+                    color = tertiaryInk,
                 )
             }
             Text(
@@ -469,19 +641,23 @@ private fun TransactionRow(
                 fontWeight = FontWeight.ExtraBold,
                 color = item.amountColor(),
             )
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(
-                        Icons.Filled.MoreVert,
-                        contentDescription = "More options",
-                        tint = colors.textSecondary,
-                    )
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text("Delete") },
-                        onClick = { menuOpen = false; onDelete() },
-                    )
+            // The per-row kebab stands down in selection mode: a single-row delete sitting next to
+            // a ticked selection is exactly the ambiguity the contextual bar exists to remove.
+            if (!selectionMode) {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = "More options",
+                            tint = colors.textSecondary,
+                        )
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            onClick = { menuOpen = false; onDelete() },
+                        )
+                    }
                 }
             }
         }

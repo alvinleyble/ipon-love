@@ -2,6 +2,7 @@ package com.iponlove.app.feature.transactions.presentation
 
 import com.iponlove.app.core.date.DayGrouping
 import com.iponlove.app.feature.transactions.domain.model.TransactionFilter
+import com.iponlove.app.feature.transactions.domain.usecase.BulkDeletePlan
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import java.math.BigDecimal
 import java.time.Instant
@@ -44,7 +45,22 @@ data class TransactionsUiState(
      *  The screen latches this locally once true so the card doesn't vanish mid-visit the moment
      *  [TransactionsViewModel.onWidgetNudgeCardShown] stamps it as shown. */
     val showWidgetNudgeCard: Boolean = false,
-)
+    /** Ticked rows in multi-select mode (v1.7.3 Item 7). Empty = not in selection mode; there is
+     *  deliberately no separate flag, so unticking the last row exits (ADR-0064 decision 6). */
+    val selectedIds: Set<String> = emptySet(),
+    /** Every row id currently rendered by [dayGroups] — the exact, and only, set select-all may
+     *  tick (ADR-0064 decision 6: never all history). Derived here so the bound is inspectable in
+     *  the ViewModel rather than assembled ad hoc in the composable. */
+    val visibleIds: List<String> = emptyList(),
+    /** Non-null while the bulk-delete confirmation is up — carries the counts it names. */
+    val pendingBulkDelete: BulkDeletePlan? = null,
+) {
+    val selectionMode: Boolean get() = selectedIds.isNotEmpty()
+
+    /** True when every visible row is ticked — flips the select-all affordance to "clear". */
+    val allVisibleSelected: Boolean
+        get() = visibleIds.isNotEmpty() && selectedIds.containsAll(visibleIds)
+}
 
 /** A pickable id/label pair for the filter sheet's category and account chip sections. */
 data class FilterOption(val id: String, val label: String)

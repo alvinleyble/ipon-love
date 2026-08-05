@@ -44,6 +44,8 @@ class PaidOnBehalfUseCaseTest {
         override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = flowOf(false)
         override fun observeBalanceLedger(): Flow<List<Transaction>> = flowOf(emptyList())
         override suspend fun getTransaction(id: String): Transaction? = upserted.lastOrNull { it.id == id }
+        override suspend fun getActiveTransactions(ids: Collection<String>): List<Transaction> =
+            ids.mapNotNull { id -> upserted.lastOrNull { it.id == id } }
         override suspend fun countByCategory(categoryId: String): Int = 0
         override suspend fun countByAccount(accountId: String): Int = 0
         override suspend fun upsertTransaction(transaction: Transaction) { upserted += transaction }
