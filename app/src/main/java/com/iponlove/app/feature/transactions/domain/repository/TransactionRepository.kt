@@ -64,6 +64,19 @@ interface TransactionRepository {
      */
     suspend fun getActiveTransactions(ids: Collection<String>): List<Transaction>
 
+    /**
+     * The user's own recent note-bearing expenses, most recent first, capped at [limit] — the
+     * corpus receipt-scan category/account inference matches a merchant against (v1.7.3 Item 2
+     * Slice 2, ADR-0062 decision 5). Own rows only; empty when signed out.
+     */
+    suspend fun getOwnExpenseHistory(limit: Int): List<Transaction>
+
+    /**
+     * The user's own active expenses within [startInclusive, endExclusive) — the candidate set the
+     * duplicate-scan warning narrows by amount and calendar day (ADR-0062 Consequences).
+     */
+    suspend fun getOwnExpensesBetween(startInclusive: Instant, endExclusive: Instant): List<Transaction>
+
     /** Active transactions referencing [categoryId] — feeds the category delete-confirm count (Item 5). */
     suspend fun countByCategory(categoryId: String): Int
 

@@ -54,6 +54,11 @@ class ObserveNetAssetsUseCaseTest {
         override fun observeCombinedTransactionsUnbounded(): Flow<List<Transaction>> = TODO("not needed")
         override fun observeHasAnyCombinedTransaction(): Flow<Boolean> = TODO("not needed")
         override suspend fun getTransaction(id: String): Transaction? = TODO("not needed")
+        override suspend fun getOwnExpenseHistory(limit: Int): List<Transaction> = emptyList()
+        override suspend fun getOwnExpensesBetween(
+            startInclusive: Instant,
+            endExclusive: Instant,
+        ): List<Transaction> = emptyList()
         override suspend fun getActiveTransactions(ids: Collection<String>): List<Transaction> = TODO("not needed")
         override suspend fun countByCategory(categoryId: String): Int = TODO("not needed")
         override suspend fun countByAccount(accountId: String): Int = TODO("not needed")

@@ -14,6 +14,7 @@ import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.accounts.domain.usecase.ObserveAccountsUseCase
 import com.iponlove.app.feature.categories.domain.model.Category
+import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.couple.domain.model.CoupleMembers
 import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
@@ -25,8 +26,10 @@ import com.iponlove.app.feature.transactions.domain.model.TransactionImage
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.CheckReceiptPhotoCapUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.CompressReceiptUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.FindDuplicateScanUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.GetTransactionImagesUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.GetTransactionUseCase
+import com.iponlove.app.feature.transactions.domain.usecase.InferFromReceiptHistoryUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.SaveReceiptToGalleryUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.SaveTransactionImagesUseCase
 import com.iponlove.app.feature.transactions.domain.usecase.SaveTransferUseCase
@@ -35,6 +38,7 @@ import com.iponlove.app.feature.transactions.domain.usecase.UpsertTransactionUse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -72,6 +76,8 @@ class AddTransactionViewModel @Inject constructor(
     private val saveTransactionImages: SaveTransactionImagesUseCase,
     private val checkReceiptPhotoCap: CheckReceiptPhotoCapUseCase,
     private val scanReceipt: ScanReceiptUseCase,
+    private val inferFromReceiptHistory: InferFromReceiptHistoryUseCase,
+    private val findDuplicateScan: FindDuplicateScanUseCase,
     private val receiptScanFileStore: ReceiptScanFileStore,
     private val saveReceiptToGallery: SaveReceiptToGalleryUseCase,
     private val observeGalleryCopyEnabled: ObserveReceiptGalleryCopyEnabledUseCase,
@@ -109,6 +115,10 @@ class AddTransactionViewModel @Inject constructor(
     private var upsellSource: String? = null
 
     private var latestAccounts: List<Account> = emptyList()
+    // Kept alongside [latestAccounts] so scan inference can check that an id it dug out of history
+    // still names a live, selectable option — a category deleted since that visit would otherwise
+    // be set on the draft with no chip to show for it, and a caption claiming it was.
+    private var latestCategories: List<Category> = emptyList()
     private var coupleId: String? = null
     private var myId: String? = null
     private var partnerId: String? = null
@@ -145,6 +155,7 @@ class AddTransactionViewModel @Inject constructor(
             missing,
         ) { accounts, categories, members, editorState, isMissing ->
             latestAccounts = accounts
+            latestCategories = categories
             coupleId = members?.me?.coupleId
             myId = members?.me?.id
             partnerId = members?.partner?.id
@@ -242,17 +253,47 @@ class AddTransactionViewModel @Inject constructor(
         setEditor(transform(current))
     }
 
-    fun onTypeChange(type: TransactionType) = mutate { TransactionEditorReducer.onType(it, type) }
-    fun onAmountChange(value: String) = mutate { it.copy(amountText = value, errors = emptySet()) }
-    fun onAccountChange(id: String) = mutate { TransactionEditorReducer.onAccount(it, id, sharedAccountIds()) }
+    // Every handler that invalidates something a scan said about the form retracts it here rather
+    // than leaving a stale claim on screen: a caption must describe the value actually shown, and
+    // the duplicate warning names a specific amount and day (ADR-0062 Slice 2).
+    fun onTypeChange(type: TransactionType) {
+        clearDuplicateWarning()
+        mutate { TransactionEditorReducer.onType(it, type) }
+    }
+
+    fun onAmountChange(value: String) {
+        clearDuplicateWarning()
+        mutate { it.copy(amountText = value, errors = emptySet()) }
+    }
+
+    fun onAccountChange(id: String) {
+        scan.update { it.copy(accountInferred = false) }
+        mutate { TransactionEditorReducer.onAccount(it, id, sharedAccountIds()) }
+    }
+
     fun onToAccountChange(id: String) = mutate { TransactionEditorReducer.onToAccount(it, id, sharedAccountIds()) }
-    fun onCategoryChange(id: String) = mutate { it.copy(categoryId = id, errors = emptySet()) }
+
+    fun onCategoryChange(id: String) {
+        scan.update { it.copy(categoryInferred = false) }
+        mutate { it.copy(categoryId = id, errors = emptySet()) }
+    }
+
     fun onNoteChange(value: String) = mutate { it.copy(note = value) }
     fun onPrivateChange(value: Boolean) = mutate { it.copy(isPrivate = value) }
     fun onPaidForPartnerChange(value: Boolean) = mutate { TransactionEditorReducer.onPaidForPartner(it, value) }
     fun onAmountOwedChange(value: String) = mutate { it.copy(amountOwedText = value, amountOwedError = false) }
     fun onTransferFeeChange(value: String) = mutate { TransactionEditorReducer.onTransferFee(it, value) }
-    fun onDateChange(date: Instant) = mutate { it.copy(date = date) }
+
+    fun onDateChange(date: Instant) {
+        clearDuplicateWarning()
+        // A hand-picked date is read, not guessed — so the "double-check it" caption retires too.
+        scan.update { it.copy(dateGuessed = false) }
+        mutate { it.copy(date = date) }
+    }
+
+    private fun clearDuplicateWarning() {
+        if (scan.value.duplicate != null) scan.update { it.copy(duplicate = null) }
+    }
 
     /**
      * Tap-time media-cap check (Item 28): consulted at the "Add photo" tap, *before* the system
@@ -280,7 +321,7 @@ class AddTransactionViewModel @Inject constructor(
             when (val check = checkReceiptPhotoCap(current.images.size)) {
                 // Same degradation the scan path takes: an undecodable pick or an OOM on a huge
                 // frame must not escape the scope and take the draft down with it.
-                CapCheck.Allowed -> runCatching { attachReceipt(uri) }
+                CapCheck.Allowed -> catchingNonCancellation { attachReceipt(uri) }
                 is CapCheck.Blocked -> raiseUpsell("receipt_photos", "receipt photos", check)
             }
         }
@@ -373,7 +414,11 @@ class AddTransactionViewModel @Inject constructor(
      */
     private fun processScan(uri: Uri, fromCamera: Boolean) {
         if (editor.value == null) return
-        scan.update { it.copy(inProgress = true, failure = null, amountNotFound = false) }
+        // A new read supersedes the last one's guesses, so they are withdrawn *before* it runs —
+        // otherwise a retake or a second scan at another merchant would find Category and Account
+        // already filled by the read it just replaced, and infer nothing.
+        retractInference()
+        scan.update { it.copy(inProgress = true, failure = null, amountNotFound = false, duplicate = null) }
         viewModelScope.launch {
             val result = runCatching { scanReceipt(uri) }.getOrNull()
             if (result == null || result.isEmpty) {
@@ -394,6 +439,13 @@ class AddTransactionViewModel @Inject constructor(
             }
 
             applyScan(result)
+            // Slice 2: what the receipt can't say — Category and Account — comes from the user's
+            // own history, and a same-amount/same-day row already on the books earns a warning.
+            // Both are local Room reads, so they run inside the same "Reading receipt…" spinner
+            // rather than making the form flicker in after it clears. A failure in either is not
+            // worth failing a successful read over: the fields are already filled.
+            catchingNonCancellation { inferFromHistory(result.merchant) }
+            catchingNonCancellation { checkForDuplicate() }
             // The photo rides the existing cap path unchanged; the scan gate above is what
             // differentiates the feature now, not maxReceiptPhotos (decision 6's reversal).
             val current = editor.value
@@ -403,7 +455,7 @@ class AddTransactionViewModel @Inject constructor(
             val preview = if (current != null && current.images.size < TransactionImage.MAX &&
                 checkReceiptPhotoCap(current.images.size) == CapCheck.Allowed
             ) {
-                runCatching { attachReceipt(uri) }.getOrNull()
+                catchingNonCancellation { attachReceipt(uri) }
             } else {
                 null
             }
@@ -440,6 +492,85 @@ class AddTransactionViewModel @Inject constructor(
             )
         }
     }
+
+    /**
+     * "Learns from you" (ADR-0062 decision 5): `Category` and `Account` come from the user's own
+     * past transactions at the same merchant, since neither appears on the receipt.
+     *
+     * Two rules keep a guess from doing damage. It **only fills a field the user left empty** —
+     * unlike the read fields, which overwrite, because those are verifiable against the photo shown
+     * above the form while these are not; an explicit choice must outrank a suggestion. And it
+     * **only sets an id that still names a live option**, so a category or account deleted since
+     * that visit doesn't leave the draft pointing at nothing with a caption vouching for it.
+     */
+    private suspend fun inferFromHistory(merchant: String?) {
+        // Nothing scanned to match on — the first visit to a merchant infers nothing by design,
+        // but writes the note that makes the *second* one work.
+        if (merchant == null) return
+        val match = inferFromReceiptHistory(merchant) ?: return
+
+        // Re-read after the suspending query, not before it: the user can pick an account while
+        // the read is in flight, and that choice must still outrank the suggestion.
+        val current = editor.value ?: return
+        val expenseCategoryIds = latestCategories
+            .filter { it.type == CategoryType.EXPENSE }
+            .mapTo(mutableSetOf()) { it.id }
+        val categoryId = match.categoryId
+            ?.takeIf { current.categoryId == null && it in expenseCategoryIds }
+        val accountId = match.accountId
+            ?.takeIf { current.accountId == null && latestAccounts.any { account -> account.id == it } }
+        if (categoryId == null && accountId == null) return
+
+        categoryId?.let { id -> mutate { it.copy(categoryId = id, errors = emptySet()) } }
+        // Through the reducer, not a bare copy: selecting a shared account forces the row
+        // non-private (ADR-0018), and an inferred selection is still a selection.
+        accountId?.let { id -> mutate { TransactionEditorReducer.onAccount(it, id, sharedAccountIds()) } }
+        scan.update {
+            it.copy(
+                inferredFrom = match.merchant,
+                categoryInferred = categoryId != null,
+                accountInferred = accountId != null,
+            )
+        }
+    }
+
+    /**
+     * Un-does the last scan's inference, on the draft as well as in the caption state — a value the
+     * app guessed and then stopped vouching for shouldn't be left sitting on the form. Only fields
+     * still flagged as inferred are cleared, so anything the user picked themselves survives.
+     */
+    private fun retractInference() {
+        val state = scan.value
+        if (state.categoryInferred) mutate { it.copy(categoryId = null) }
+        if (state.accountInferred) mutate { it.copy(accountId = null) }
+        scan.update { it.copy(inferredFrom = null, categoryInferred = false, accountInferred = false) }
+    }
+
+    /**
+     * The soft duplicate-scan warning (ADR-0062 Consequences) — scanning the same receipt twice
+     * produced two identical transactions with nothing said about it. Advisory only: this sets a
+     * banner and touches neither the draft nor Save.
+     */
+    private suspend fun checkForDuplicate() {
+        val current = editor.value ?: return
+        val amount = current.amountText.trim().toBigDecimalOrNull()?.takeIf { it.signum() > 0 } ?: return
+        val existing = findDuplicateScan(amount, current.date, current.id) ?: return
+        scan.update { it.copy(duplicate = DuplicateScanWarning(existing.amount, existing.date)) }
+    }
+
+    /**
+     * [runCatching] minus the one case it should never swallow. A cancelled `viewModelScope` (the
+     * user backed out mid-scan) raises `CancellationException`; catching it would let the rest of
+     * the pipeline run on against a ViewModel that is already being torn down.
+     */
+    private inline fun <T> catchingNonCancellation(block: () -> T): T? =
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            null
+        }
 
     /** Retake, from the failed-read prompt — the actual fix for a bad frame, and the reason no
      *  cropping or edge detection is built (decision 8). */
