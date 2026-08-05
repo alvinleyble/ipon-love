@@ -3,4 +3,6 @@
      under cacheDir is exposed — receipts/note images live in filesDir and are never shared this way. -->
 <paths>
     <cache-path name="exports" path="exports/" />
+    <!-- Receipt scan (v1.7.3 Item 2, ADR-0062 decision 9) — the full-res capture temp file. -->
+    <cache-path name="scans" path="scans/" />
 </paths>

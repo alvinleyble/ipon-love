@@ -202,6 +202,9 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
 
+    // Receipt scan OCR (v1.7.3 Item 2, ADR-0062 decision 1) — bundled, offline-capable
+    implementation(libs.mlkit.text.recognition)
+
     // Supabase (Auth + Postgrest) + Ktor engine — the cloud backend
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth)

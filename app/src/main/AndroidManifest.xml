@@ -7,6 +7,15 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!-- Receipt scan (v1.7.3 Item 2, ADR-0062 decision 7): the Pictures/Love, Ipon gallery-copy
+         write needs this only on API 26-28 (MediaStore writes need no permission on API 29+).
+         DO NOT declare android.permission.CAMERA here — ACTION_IMAGE_CAPTURE / TakePicture only
+         requires a runtime permission prompt if CAMERA is declared, and this design deliberately
+         avoids one (ADR-0062 decision 2). Adding it "for correctness" silently regresses that. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
     <!-- allowBackup off deliberately: Android's Auto Backup restores this app's private storage
          (DataStore prefs incl. the app-lock PIN, Room cache) on reinstall/device-transfer,
          before the app's own account-switch wipe ever runs — leaking one account's local state

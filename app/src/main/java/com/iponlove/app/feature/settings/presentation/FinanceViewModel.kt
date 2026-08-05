@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.iponlove.app.feature.settings.domain.model.CurrencySymbol
 import com.iponlove.app.feature.settings.domain.usecase.ObserveCurrencySymbolUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObservePrivacyModeUseCase
+import com.iponlove.app.feature.settings.domain.usecase.ObserveReceiptGalleryCopyEnabledUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetCurrencySymbolUseCase
 import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
+import com.iponlove.app.feature.settings.domain.usecase.SetReceiptGalleryCopyEnabledUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,8 +29,10 @@ import javax.inject.Inject
 class FinanceViewModel @Inject constructor(
     private val setPrivacyModeUseCase: SetPrivacyModeUseCase,
     private val setCurrencySymbolUseCase: SetCurrencySymbolUseCase,
+    private val setReceiptGalleryCopyEnabledUseCase: SetReceiptGalleryCopyEnabledUseCase,
     observePrivacyMode: ObservePrivacyModeUseCase,
     observeCurrencySymbol: ObserveCurrencySymbolUseCase,
+    observeReceiptGalleryCopyEnabled: ObserveReceiptGalleryCopyEnabledUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FinanceUiState())
@@ -38,10 +42,12 @@ class FinanceViewModel @Inject constructor(
         combine(
             observeCurrencySymbol(),
             observePrivacyMode(),
-        ) { currencySymbol, privacyModeOn ->
+            observeReceiptGalleryCopyEnabled(),
+        ) { currencySymbol, privacyModeOn, galleryCopyOn ->
             FinanceUiState(
                 currencySymbol = currencySymbol,
                 privacyModeEnabled = privacyModeOn,
+                receiptGalleryCopyEnabled = galleryCopyOn,
             )
         }.onEach { snapshot -> _uiState.update { snapshot } }
             .launchIn(viewModelScope)
@@ -57,5 +63,11 @@ class FinanceViewModel @Inject constructor(
      *  re-collects from the same DataStore flow. */
     fun setCurrencySymbol(symbol: CurrencySymbol) {
         viewModelScope.launch { setCurrencySymbolUseCase(symbol) }
+    }
+
+    /** Gallery copies of scanned receipts (v1.7.3 Item 2, ADR-0062 decision 7). Instant and
+     *  undrafted like the rest of this screen; read at Save time by the transaction editor. */
+    fun setReceiptGalleryCopy(enabled: Boolean) {
+        viewModelScope.launch { setReceiptGalleryCopyEnabledUseCase(enabled) }
     }
 }

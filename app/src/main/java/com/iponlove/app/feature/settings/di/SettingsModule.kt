@@ -8,6 +8,7 @@ import com.iponlove.app.feature.settings.data.AccountDeletionRepositoryImpl
 import com.iponlove.app.feature.settings.data.CurrencySymbolRepositoryImpl
 import com.iponlove.app.feature.settings.data.NotificationPreferencesRepositoryImpl
 import com.iponlove.app.feature.settings.data.PrivacyModeRepositoryImpl
+import com.iponlove.app.feature.settings.data.ReceiptPreferencesRepositoryImpl
 import com.iponlove.app.feature.settings.data.ResetFinancesRepositoryImpl
 import com.iponlove.app.feature.settings.data.ThemeRepositoryImpl
 import com.iponlove.app.feature.settings.data.remote.AccountDeletionRemoteSource
@@ -16,6 +17,7 @@ import com.iponlove.app.feature.settings.domain.repository.AccountDeletionReposi
 import com.iponlove.app.feature.settings.domain.repository.CurrencySymbolRepository
 import com.iponlove.app.feature.settings.domain.repository.NotificationPreferencesRepository
 import com.iponlove.app.feature.settings.domain.repository.PrivacyModeRepository
+import com.iponlove.app.feature.settings.domain.repository.ReceiptPreferencesRepository
 import com.iponlove.app.feature.settings.domain.repository.ResetFinancesRepository
 import com.iponlove.app.feature.settings.domain.repository.ThemeRepository
 import dagger.Binds
@@ -96,6 +98,12 @@ interface SettingsModule {
     fun bindNotificationPreferencesRepository(
         impl: NotificationPreferencesRepositoryImpl,
     ): NotificationPreferencesRepository
+
+    @Binds
+    @Singleton
+    fun bindReceiptPreferencesRepository(
+        impl: ReceiptPreferencesRepositoryImpl,
+    ): ReceiptPreferencesRepository
 
     @Binds
     @Singleton
