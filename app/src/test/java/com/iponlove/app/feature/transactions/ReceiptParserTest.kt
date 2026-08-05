@@ -83,6 +83,26 @@ class ReceiptParserTest {
     }
 
     @Test
+    fun `a basket count printed below the total never becomes the amount`() {
+        // The PH supermarket footer: "TOTAL ITEMS 3" carries the total keyword, sits later than
+        // the real total, and its bare integer passes the loose money shape.
+        assertThat(amountOf("TOTAL 750.00", "TOTAL ITEMS 3"))
+            .isEqualTo(BigDecimal("750.00"))
+    }
+
+    @Test
+    fun `quantity and piece-count footers are rejected too`() {
+        assertThat(amountOf("TOTAL 750.00", "TOTAL QTY 12", "NO. OF ITEMS 4", "TOTAL PCS 7"))
+            .isEqualTo(BigDecimal("750.00"))
+    }
+
+    @Test
+    fun `a count footer does not suppress a genuine total below it`() {
+        assertThat(amountOf("TOTAL ITEMS 3", "AMOUNT DUE 600.00"))
+            .isEqualTo(BigDecimal("600.00"))
+    }
+
+    @Test
     fun `a total printed without decimals is still read`() {
         assertThat(amountOf("TOTAL 750")).isEqualTo(BigDecimal("750"))
     }

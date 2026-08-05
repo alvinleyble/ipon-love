@@ -1,6 +1,8 @@
 package com.iponlove.app.feature.transactions.domain.usecase
 
 import com.google.common.truth.Truth.assertThat
+import com.iponlove.app.feature.transactions.domain.usecase.CleanupOrphanedReceiptsUseCase.Companion.MIN_AGE_MS
+import com.iponlove.app.feature.transactions.domain.usecase.CleanupOrphanedReceiptsUseCase.Companion.isOldEnough
 import com.iponlove.app.feature.transactions.domain.usecase.CleanupOrphanedReceiptsUseCase.Companion.orphanIds
 import org.junit.Test
 
@@ -47,5 +49,28 @@ class CleanupOrphanedReceiptsUseCaseTest {
     @Test
     fun `no files on disk yields no orphans`() {
         assertThat(orphanIds(diskIds = emptySet(), knownIds = setOf("known-1"))).isEmpty()
+    }
+
+    // --- Age guard (v1.7.3 Item 2, ADR-0062 decision 9) ------------------------------------------
+
+    @Test
+    fun `a receipt just attached to an unsaved draft is too young to sweep`() {
+        // The camera hand-off case: the draft holds this path with no row behind it yet, so it
+        // looks exactly like an orphan to the id predicate.
+        assertThat(isOldEnough(lastModifiedMs = NOW - 60_000L, nowMs = NOW)).isFalse()
+    }
+
+    @Test
+    fun `a file older than the guard is swept`() {
+        assertThat(isOldEnough(lastModifiedMs = NOW - MIN_AGE_MS - 1, nowMs = NOW)).isTrue()
+    }
+
+    @Test
+    fun `a file exactly at the guard is swept`() {
+        assertThat(isOldEnough(lastModifiedMs = NOW - MIN_AGE_MS, nowMs = NOW)).isTrue()
+    }
+
+    private companion object {
+        const val NOW = 1_800_000_000_000L
     }
 }

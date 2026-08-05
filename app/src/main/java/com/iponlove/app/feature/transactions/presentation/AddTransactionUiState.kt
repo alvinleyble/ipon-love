@@ -58,6 +58,12 @@ data class ReceiptScanUiState(
      * enforcement flip.
      */
     val locked: Boolean = false,
+    /**
+     * The Settings → Finance "Save scans to gallery" toggle (ADR-0062 decision 7). Read by the
+     * screen on API 26–28 only, where the copy needs `WRITE_EXTERNAL_STORAGE`: with the toggle off
+     * there is no copy to write, so there is no permission worth asking for.
+     */
+    val galleryCopyEnabled: Boolean = false,
 )
 
 /**

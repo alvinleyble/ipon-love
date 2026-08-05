@@ -121,8 +121,9 @@ fun AddTransactionScreen(
     val launchCamera: (Uri) -> Unit = { uri -> cameraLauncher.launch(uri) }
 
     // API 26-28 only: the Pictures/Love, Ipon copy needs WRITE_EXTERNAL_STORAGE there (declared
-    // with maxSdkVersion="28"). Asked once, just before the first capture, and the scan proceeds
-    // either way — the gallery copy is a convenience, never a gate on scanning.
+    // with maxSdkVersion="28"). Asked once, just before the first capture and only while the
+    // "Save scans to gallery" toggle is on, and the scan proceeds either way — the gallery copy is
+    // a convenience, never a gate on scanning.
     val storagePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { viewModel.onScanTap(launchCamera) }
@@ -130,7 +131,7 @@ fun AddTransactionScreen(
     val startScan: () -> Unit = {
         if (state.scan.locked) {
             onOpenPremium(viewModel.onScanUpsellTap())
-        } else if (needsLegacyGalleryPermission(context)) {
+        } else if (state.scan.galleryCopyEnabled && needsLegacyGalleryPermission(context)) {
             storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
         } else {
             viewModel.onScanTap(launchCamera)

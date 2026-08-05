@@ -67,10 +67,17 @@ object ReceiptParser {
         AMOUNT_EXCLUSIONS.any { normalized.startsWith(it) && normalized.endsWordAt(it.length) }
 
     private fun totalKeywordRank(normalized: String): Int? = when {
+        isCountLine(normalized) -> null
         STRONG_TOTAL_KEYWORDS.any { normalized.containsWord(it) } -> 2
         normalized.containsWord("total") -> 1
         else -> null
     }
+
+    /** `TOTAL ITEMS 3` / `TOTAL QTY 12` counts a basket, not money — and being printed *below* the
+     *  real total, the rank-1 tie-break would otherwise prefer it and prefill `3`. */
+    private fun isCountLine(normalized: String): Boolean =
+        COUNT_MARKERS.any { normalized.containsWord(it) } ||
+            normalized.contains(NUMBER_OF_PREFIX)
 
     /** The last money-shaped number on a line — the amount trails its label. A match immediately
      *  followed by `%` is skipped so a tax rate never reads as money. */
@@ -191,6 +198,13 @@ object ReceiptParser {
     /** Ranked above a bare `TOTAL`: these name what was actually paid after discounts/charges. */
     private val STRONG_TOTAL_KEYWORDS =
         listOf("amount due", "total due", "net amount", "amount payable", "grand total")
+
+    /** Words that make a `TOTAL …` line a basket count rather than money — see [isCountLine]. */
+    private val COUNT_MARKERS =
+        listOf("item", "items", "qty", "quantity", "pc", "pcs", "piece", "pieces", "count")
+
+    /** `NO. OF ITEMS` / `NO OF ITEMS` — the one count phrasing that isn't a single word. */
+    private val NUMBER_OF_PREFIX = Regex("""\bno\.?\s+of\b""")
 
     /** Checked against the *start* of the line only — see [parseAmount]. */
     private val AMOUNT_EXCLUSIONS =

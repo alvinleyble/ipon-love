@@ -8,6 +8,7 @@ import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.io.IOException
 import javax.inject.Inject
 
 /**
@@ -30,9 +31,7 @@ class CompressReceiptUseCase @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     operator fun invoke(uri: Uri, imageId: String): String {
-        val decoded = context.contentResolver.openInputStream(uri)!!.use { input ->
-            BitmapFactory.decodeStream(input)
-        }
+        val decoded = decodeSampled(uri) ?: throw IOException("Could not decode receipt image: $uri")
         val rotationDegrees = readRotationDegrees(uri)
         val oriented = applyRotation(decoded, rotationDegrees)
         val scaled = scaledDown(oriented)
@@ -45,6 +44,25 @@ class CompressReceiptUseCase @Inject constructor(
         if (oriented !== decoded) oriented.recycle()
         decoded.recycle()
         return file.absolutePath
+    }
+
+    /**
+     * Decodes bounds first and picks an [BitmapFactory.Options.inSampleSize] that lands the decode
+     * just above [MAX_EDGE], so a 12 MP camera frame never materialises at full resolution — a
+     * ~48 MB ARGB_8888 allocation that [applyRotation] would then double, on exactly the low-RAM
+     * devices this feature targets. Returns null when the source can't be opened or decoded.
+     */
+    private fun decodeSampled(uri: Uri): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            BitmapFactory.decodeStream(input, null, bounds)
+        } ?: return null
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight)
+        }
+        return context.contentResolver.openInputStream(uri)?.use { input ->
+            BitmapFactory.decodeStream(input, null, options)
+        }
     }
 
     private fun readRotationDegrees(uri: Uri): Int {
@@ -69,7 +87,7 @@ class CompressReceiptUseCase @Inject constructor(
     }
 
     private fun scaledDown(src: Bitmap): Bitmap {
-        val max = 1080
+        val max = MAX_EDGE
         if (src.width <= max && src.height <= max) return src
         val ratio = max.toFloat() / maxOf(src.width, src.height)
         return Bitmap.createScaledBitmap(
@@ -78,5 +96,21 @@ class CompressReceiptUseCase @Inject constructor(
             (src.height * ratio).toInt(),
             true,
         )
+    }
+
+    companion object {
+        const val MAX_EDGE = 1080
+
+        /** Largest power-of-two sample size that still leaves the longest edge at or above
+         *  [MAX_EDGE], so [scaledDown] does the final exact resize from a modest bitmap. */
+        fun sampleSizeFor(width: Int, height: Int, maxEdge: Int = MAX_EDGE): Int {
+            var sample = 1
+            var longest = maxOf(width, height)
+            while (longest / 2 >= maxEdge) {
+                longest /= 2
+                sample *= 2
+            }
+            return sample
+        }
     }
 }

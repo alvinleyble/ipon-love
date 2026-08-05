@@ -119,8 +119,12 @@ class AddTransactionViewModel @Inject constructor(
      * scope). Reactive rather than one-shot so an enforcement flip or a purchase re-locks the two
      * entry buttons live; **false throughout while dormant**, so nothing changes pre-flip.
      */
-    private val scanState = combine(scan, premiumGate.observeLocked(Scope.INDIVIDUAL)) { state, locked ->
-        state.copy(locked = locked)
+    private val scanState = combine(
+        scan,
+        premiumGate.observeLocked(Scope.INDIVIDUAL),
+        observeGalleryCopyEnabled(),
+    ) { state, locked, galleryCopyEnabled ->
+        state.copy(locked = locked, galleryCopyEnabled = galleryCopyEnabled)
     }
 
     val uiState: StateFlow<AddTransactionUiState> =
@@ -367,10 +371,13 @@ class AddTransactionViewModel @Inject constructor(
             // The photo rides the existing cap path unchanged; the scan gate above is what
             // differentiates the feature now, not maxReceiptPhotos (decision 6's reversal).
             val current = editor.value
+            // A compression failure (unreadable frame, OOM on a full-resolution capture) must not
+            // take the draft down with it: the read already landed, so degrade to "fields
+            // prefilled, photo not attached" rather than letting it escape the scope.
             val preview = if (current != null && current.images.size < TransactionImage.MAX &&
                 checkReceiptPhotoCap(current.images.size) == CapCheck.Allowed
             ) {
-                attachReceipt(uri)
+                runCatching { attachReceipt(uri) }.getOrNull()
             } else {
                 null
             }
@@ -461,6 +468,10 @@ class AddTransactionViewModel @Inject constructor(
     fun onRemoveImage(imageId: String) {
         editor.value?.images?.find { it.id == imageId }?.localPath?.let { path ->
             File(path).delete()
+            // Removing the scanned receipt from the strip must also drop the review preview above
+            // the form — it points at the file just deleted, and its "view" tap has nothing left
+            // to open.
+            if (path == scan.value.previewPath) setScanPreview(null)
         }
         mutate { it.copy(images = it.images.filterNot { image -> image.id == imageId }) }
     }
