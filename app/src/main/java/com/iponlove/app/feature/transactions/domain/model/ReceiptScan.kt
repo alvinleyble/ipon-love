@@ -46,3 +46,18 @@ data class ReceiptScanResult(
     /** True when nothing at all could be pulled off the receipt — the form opens blank. */
     val isEmpty: Boolean get() = amount == null && date == null && merchant == null
 }
+
+/**
+ * What the user's **own** past transactions say about a scanned merchant (ADR-0062 decision 5,
+ * Slice 2) — never a merchant table, never an LLM, and never a partner's rows ([ADR-0005]'s
+ * redacting views mean their category/account ids aren't usable on the user's own row anyway).
+ *
+ * [merchant] is the note as the user last wrote it, not the freshly-scanned string: it is what the
+ * caption names ("From your last SM Supermarket visit"), so it should read back as their own entry.
+ * Either id may be null — a merchant matched only on rows with no category still infers an account.
+ */
+data class MerchantHistoryMatch(
+    val merchant: String,
+    val categoryId: String?,
+    val accountId: String?,
+)
