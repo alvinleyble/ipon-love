@@ -39,6 +39,12 @@ A couples personal finance + notes Android app for the Philippine market. Users 
 
 ---
 
+## Development Workflow
+
+**HARD RULE FOR ALL WORKERS (including `no-mistakes` ships):** No code may be committed or PR'd for a feature slice until the Captain explicitly confirms that on-device testing is complete. When a slice is built and compiles green, you MUST pause, present the completed work, and explicitly wait for the Captain's on-device verification. Do not proceed to `git commit`, push, or open a PR until that confirmation is given.
+
+---
+
 ## Tech Stack
 - **Language:** Kotlin
 - **UI:** Jetpack Compose + Material 3 — no XML layouts ever
