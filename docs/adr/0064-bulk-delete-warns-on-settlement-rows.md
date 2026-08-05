@@ -22,7 +22,7 @@ Two ADRs pull in different directions. [ADR-0055](0055-debt-overpay-cascade-guid
 
 5. **Adjustment rows (`isAdjustment`, [ADR-0057](0057-balance-adjustment-marked-ledger-row.md)) are allowed with no warning and no special-casing.** ADR-0057 decision 1 designed a ledger row precisely so it fails diagnosably — "there are two dated rows in Records and either partner can delete one" is the documented repair path for a double reconciliation, not a hazard the ADR overlooked. Warning here would contradict that design.
 
-6. **This is the app's first multi-select pattern**, and its shape — long-press to enter selection, tick rows, act on the selection, scoped strictly to what's currently visible — is the precedent Notes, Recurring, and Budgets are expected to follow if they add multi-select later, rather than each inventing their own.
+6. **This is the app's first multi-select pattern** — **✅ built 2026-08-05 (`1e8cee7`, [v1.7.3 Item 7](../build/v1.7.3.md#item-7--multi-select-records-via-long-press-with-bulk-delete))** — and its shape — long-press to enter selection, tick rows, act on the selection, scoped strictly to what's currently visible — is the precedent Notes, Recurring, and Budgets are expected to follow if they add multi-select later, rather than each inventing their own.
 
 ## Consequences
 
