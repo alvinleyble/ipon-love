@@ -54,15 +54,16 @@ class CompressReceiptUseCase @Inject constructor(
      */
     private fun decodeSampled(uri: Uri): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            BitmapFactory.decodeStream(input, null, bounds)
-        } ?: return null
+        // A bounds pass returns null by contract, so only the stream can be null-checked here;
+        // the read itself is judged by outWidth/outHeight.
+        val boundsStream = context.contentResolver.openInputStream(uri) ?: return null
+        boundsStream.use { input -> BitmapFactory.decodeStream(input, null, bounds) }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         val options = BitmapFactory.Options().apply {
             inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight)
         }
-        return context.contentResolver.openInputStream(uri)?.use { input ->
-            BitmapFactory.decodeStream(input, null, options)
-        }
+        val decodeStream = context.contentResolver.openInputStream(uri) ?: return null
+        return decodeStream.use { input -> BitmapFactory.decodeStream(input, null, options) }
     }
 
     private fun readRotationDegrees(uri: Uri): Int {

@@ -96,6 +96,15 @@ class AddTransactionViewModel @Inject constructor(
      */
     private var scanTempPath: String? = null
 
+    /**
+     * `filesDir/receipts` files compressed for *this* draft that no `transaction_images` row owns
+     * yet. This ViewModel is their only owner until save, so it deletes them when the draft is
+     * abandoned — the startup sweep's age guard deliberately can't, since it cannot tell an
+     * abandoned file from a live draft's. Mirrored into [SavedStateHandle] so ownership survives
+     * process death; images loaded from the DB when editing are never in here.
+     */
+    private val unsavedImagePaths = mutableSetOf<String>()
+
     // Which cap raised the current upsell — the analytics source for its "Get Premium" tap.
     private var upsellSource: String? = null
 
@@ -166,6 +175,7 @@ class AddTransactionViewModel @Inject constructor(
         // process died is redelivered through ActivityResultRegistry, and without its path the
         // result would arrive with nothing to read (ADR-0062 decision 9).
         scanTempPath = saved[KEY_SCAN_TEMP_PATH]
+        saved.get<ArrayList<String>>(KEY_UNSAVED_IMAGE_PATHS)?.let { unsavedImagePaths += it }
         saved.get<String>(KEY_SCAN_PREVIEW)?.let { path -> scan.update { it.copy(previewPath = path) } }
 
         val restored = hydrateFromSaved()
@@ -209,6 +219,19 @@ class AddTransactionViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * The abandon path — backing out of the form without saving. Everything this draft compressed
+     * or captured dies with it, immediately, rather than lingering until a sweep: the startup
+     * sweeps exist for process death (where this never runs), not for a user who simply pressed
+     * back. A saved draft has already cleared both, so this is a no-op after Save.
+     */
+    override fun onCleared() {
+        unsavedImagePaths.forEach { File(it).delete() }
+        unsavedImagePaths.clear()
+        scanTempPath?.let { receiptScanFileStore.delete(it) }
+        super.onCleared()
     }
 
     private fun sharedAccountIds(): Set<String> =
@@ -255,7 +278,9 @@ class AddTransactionViewModel @Inject constructor(
             // Free-tier media cap (S8): with enforcement off, or under the cap, this returns
             // Allowed and the receipt is added exactly as before. Free = 1 photo, premium = 3.
             when (val check = checkReceiptPhotoCap(current.images.size)) {
-                CapCheck.Allowed -> attachReceipt(uri)
+                // Same degradation the scan path takes: an undecodable pick or an OOM on a huge
+                // frame must not escape the scope and take the draft down with it.
+                CapCheck.Allowed -> runCatching { attachReceipt(uri) }
                 is CapCheck.Blocked -> raiseUpsell("receipt_photos", "receipt photos", check)
             }
         }
@@ -274,6 +299,7 @@ class AddTransactionViewModel @Inject constructor(
     private suspend fun attachReceipt(uri: Uri): String {
         val imageId = UUID.randomUUID().toString()
         val localPath = withContext(Dispatchers.IO) { compressReceipt(uri, imageId) }
+        rememberUnsavedImage(localPath)
         mutate { state ->
             state.copy(
                 images = state.images + TransactionImage(
@@ -442,6 +468,17 @@ class AddTransactionViewModel @Inject constructor(
         if (path == null) saved.remove<String>(KEY_SCAN_TEMP_PATH) else saved[KEY_SCAN_TEMP_PATH] = path
     }
 
+    private fun rememberUnsavedImage(path: String) {
+        unsavedImagePaths += path
+        saved[KEY_UNSAVED_IMAGE_PATHS] = ArrayList(unsavedImagePaths)
+    }
+
+    private fun forgetUnsavedImage(path: String) {
+        if (unsavedImagePaths.remove(path)) {
+            saved[KEY_UNSAVED_IMAGE_PATHS] = ArrayList(unsavedImagePaths)
+        }
+    }
+
     private fun setScanPreview(path: String?) {
         if (path == null) saved.remove<String>(KEY_SCAN_PREVIEW) else saved[KEY_SCAN_PREVIEW] = path
         scan.update { it.copy(previewPath = path) }
@@ -472,6 +509,7 @@ class AddTransactionViewModel @Inject constructor(
             // the form — it points at the file just deleted, and its "view" tap has nothing left
             // to open.
             if (path == scan.value.previewPath) setScanPreview(null)
+            forgetUnsavedImage(path)
         }
         mutate { it.copy(images = it.images.filterNot { image -> image.id == imageId }) }
     }
@@ -557,8 +595,10 @@ class AddTransactionViewModel @Inject constructor(
             KEY_ID, KEY_IS_EDITING, KEY_TYPE, KEY_AMOUNT, KEY_ACCOUNT, KEY_TO_ACCOUNT,
             KEY_CATEGORY, KEY_NOTE, KEY_PRIVATE, KEY_DATE, KEY_IS_ADJUSTMENT, KEY_IS_SETTLEMENT, KEY_IMAGE_IDS,
             KEY_IMAGE_PATHS, KEY_IMAGE_URLS, KEY_PAID_FOR_PARTNER, KEY_AMOUNT_OWED, KEY_TRANSFER_FEE,
-            KEY_LINKED_FEE_ID, KEY_SCAN_TEMP_PATH, KEY_SCAN_PREVIEW,
+            KEY_LINKED_FEE_ID, KEY_SCAN_TEMP_PATH, KEY_SCAN_PREVIEW, KEY_UNSAVED_IMAGE_PATHS,
         ).forEach { saved.remove<Any>(it) }
+        // The transaction_images rows own the files from here on.
+        unsavedImagePaths.clear()
         existingTransferFeeId = null
         scanTempPath = null
         scan.value = ReceiptScanUiState()
@@ -626,6 +666,7 @@ class AddTransactionViewModel @Inject constructor(
         private const val KEY_LINKED_FEE_ID = "draft_linked_fee_id"
         private const val KEY_SCAN_TEMP_PATH = "draft_scan_temp_path"
         private const val KEY_SCAN_PREVIEW = "draft_scan_preview"
+        private const val KEY_UNSAVED_IMAGE_PATHS = "draft_unsaved_image_paths"
 
         private const val STOP_TIMEOUT_MS = 5_000L
     }
