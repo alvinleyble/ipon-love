@@ -6,8 +6,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
+import com.iponlove.app.feature.transactions.data.ReceiptFileStore
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
 import java.io.IOException
 import javax.inject.Inject
 
@@ -29,14 +29,14 @@ import javax.inject.Inject
  */
 class CompressReceiptUseCase @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val receiptFiles: ReceiptFileStore,
 ) {
     operator fun invoke(uri: Uri, imageId: String): String {
         val decoded = decodeSampled(uri) ?: throw IOException("Could not decode receipt image: $uri")
         val rotationDegrees = readRotationDegrees(uri)
         val oriented = applyRotation(decoded, rotationDegrees)
         val scaled = scaledDown(oriented)
-        val dir = File(context.filesDir, "receipts").also { it.mkdirs() }
-        val file = File(dir, "$imageId.jpg")
+        val file = receiptFiles.fileFor(imageId)
         file.outputStream().use { out ->
             scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
         }

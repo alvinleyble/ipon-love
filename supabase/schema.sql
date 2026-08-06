@@ -376,6 +376,50 @@ create table notifications (
     server_rev bigint
 );
 
+-- ---------- transaction_drafts (own-user-only parking area) ------------------
+-- An UNFINISHED transaction form, parked so a busy user can settle it later (ADR-0066).
+-- Deliberately NOT an `is_draft` flag on `transactions`: `type`/`amount`/`account_id` are
+-- `not null` there and TransactionValidator additionally demands amount > 0 + an account +
+-- a category — all four of which a draft may legitimately fail. The flag would have forced
+-- either permanently-nullable columns on the money table or placeholder junk values.
+--
+-- Because this is a separate table, money-math exclusion is BY CONSTRUCTION: there is no
+-- `WHERE is_draft = 0` predicate anywhere, and no query, calculator or partner view changed.
+--
+-- Own-user-only, the `notifications` shape: own-row RLS, NO partner redacting view (and none
+-- may be added), never replicated — so a partner can never see a draft structurally rather
+-- than by policy, and ADR-0004/0005/0011 need no amendment.
+--
+-- Every content column is nullable (a draft is a partial form). No FK on category_id /
+-- account_id / to_account_id, the same pull-order tolerance transfer_fee_transaction_id gets:
+-- a parked draft must survive its category being archived while it waits, and must not fail
+-- to land because a pulled batch arrived out of dependency order.
+--
+-- `id` is an ordinary random v4 uuid AND is the future transactions.id (the editor
+-- pre-generates it) — which is why promotion needs ORDERING, not atomicity: transaction
+-- first, retire the draft second; a re-run is an idempotent upsert of the same id.
+--
+-- receipt_count syncs; the photo does not. It stays a local file until promotion puts it on
+-- the transaction_images → Storage path, so a second device renders "📷 1 receipt — on your
+-- other device". The Room entity's local-only `localImageIds` is not a column here.
+create table transaction_drafts (
+    id            uuid primary key default gen_random_uuid(),          -- == the future transactions.id
+    user_id       uuid not null references users(id) on delete cascade,
+    type          transaction_type,                                    -- every content column nullable:
+    amount        numeric(14,2),                                       --   a draft is a partial form
+    category_id   uuid,                                                -- no FK, deliberately
+    account_id    uuid,                                                -- no FK, deliberately
+    to_account_id uuid,                                                -- no FK, deliberately
+    note          text,
+    date          timestamptz,
+    is_private    boolean not null default false,
+    receipt_count int not null default 0,                              -- photos held locally on the authoring device
+    created_at    timestamptz not null default now(),
+    updated_at    timestamptz not null default now(),
+    is_deleted    boolean not null default false,
+    server_rev    bigint
+);
+
 -- ---------- no private spend on a shared account (ADR-0018) -----------------
 -- A shared account's balance is shown to both partners, which is only computable
 -- because ALL its activity is non-private (the principled carve-out from ADR-0011).
@@ -419,6 +463,7 @@ create trigger trg_rev_transaction_images before insert or update on transaction
 create trigger trg_rev_savings_goals      before insert or update on savings_goals       for each row execute function set_server_rev();
 create trigger trg_rev_goal_contributions before insert or update on goal_contributions  for each row execute function set_server_rev();
 create trigger trg_rev_notifications      before insert or update on notifications       for each row execute function set_server_rev();
+create trigger trg_rev_transaction_drafts before insert or update on transaction_drafts   for each row execute function set_server_rev();
 
 -- ---------- Indexes (sync cursor + common queries) --------------------------
 -- Pull is "where server_rev > cursor order by server_rev", so every synced
@@ -438,6 +483,7 @@ create index idx_transaction_images_rev on transaction_images(server_rev);
 create index idx_savings_goals_rev        on savings_goals(server_rev);
 create index idx_goal_contributions_rev   on goal_contributions(server_rev);
 create index idx_notifications_rev        on notifications(server_rev);
+create index idx_transaction_drafts_rev   on transaction_drafts(server_rev);
 
 create index idx_accounts_user        on accounts(user_id);
 create index idx_accounts_couple      on accounts(couple_id);
@@ -459,6 +505,7 @@ create index idx_savings_goals_couple     on savings_goals(couple_id);
 create index idx_goal_contributions_goal  on goal_contributions(goal_id);
 create index idx_goal_contributions_user  on goal_contributions(user_id);
 create index idx_notifications_user       on notifications(user_id);
+create index idx_transaction_drafts_user  on transaction_drafts(user_id);
 
 -- ============================================================================
 --  Row Level Security
@@ -492,6 +539,7 @@ alter table transaction_images      enable row level security;
 alter table savings_goals           enable row level security;
 alter table goal_contributions      enable row level security;
 alter table notifications           enable row level security;
+alter table transaction_drafts      enable row level security;
 
 -- ---- users -----------------------------------------------------------------
 -- Same-couple read is fine: users rows carry no private content (just name +
@@ -633,6 +681,14 @@ create policy goal_contributions_delete on goal_contributions for delete
 -- RECIPIENT's own inbox, never shared out of the author's (ADR-0053). `for all`
 -- also covers the 60-day retention sweep's DELETE.
 create policy notifications_owner on notifications for all
+    using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- ---- transaction_drafts ----------------------------------------------------
+-- Own rows only, all verbs. Deliberately NO partner read of any kind and no
+-- redacting view: a draft is not shared spending (ADR-0011) and may be a
+-- half-typed wrong figure or a receipt for the partner's own gift (ADR-0066
+-- decision 3). This is what makes "a partner can never see a draft" structural.
+create policy transaction_drafts_owner on transaction_drafts for all
     using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- ============================================================================

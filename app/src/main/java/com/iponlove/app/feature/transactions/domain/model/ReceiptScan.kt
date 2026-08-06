@@ -5,20 +5,21 @@ import java.time.LocalDate
 
 /**
  * One recognised text line, reduced to just what the parser needs from ML Kit's `Text.Line`:
- * the string plus the two bounding-box figures merchant detection uses (ADR-0062 decision 4 —
- * "the largest text near the top, using ML Kit's bounding boxes").
+ * the string plus the bounding-box figures merchant detection (ADR-0062 decision 4 — "the largest
+ * text near the top") and the split-row merge (below) use.
  *
  * Deliberately a plain domain type, not ML Kit's own: it keeps
  * [ReceiptParser][com.iponlove.app.feature.transactions.domain.usecase.ReceiptParser] pure Kotlin
  * and JVM-testable, so the OCR call itself never has to be mocked. The Android-side adapter that
  * builds these lives in `data/ReceiptTextRecognizer`.
  *
- * [top] and [height] are in source-image pixels; only their relative values matter.
+ * [top], [height], and [left] are in source-image pixels; only their relative values matter.
  */
 data class RecognizedLine(
     val text: String,
     val top: Int,
     val height: Int,
+    val left: Int = 0,
 )
 
 /**

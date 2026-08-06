@@ -40,6 +40,7 @@ dev-installgradle.md
 dev-secrets.md
 store-listing.md
 .design_handoff_1e_playful_pop/
+.temp-personal-folder/
 
 # hook runtime state (ephemeral, per-session lock files)
 .claude/.hook-state/

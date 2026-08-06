@@ -28,6 +28,15 @@ data class AddTransactionUiState(
     val scan: ReceiptScanUiState = ReceiptScanUiState(),
 ) {
     val loading: Boolean get() = editor == null && !missing
+
+    /**
+     * Whether the `Save as draft` exit is offered (ADR-0066 decisions 11 + 1): **new transactions
+     * only** — drafting an edit would leave a shadow copy of a row that already counts in every
+     * balance — and only once there is something worth parking, so an untouched form can't mint an
+     * empty queue row.
+     */
+    val canSaveAsDraft: Boolean
+        get() = editor != null && !editor.isEditing && TransactionEditorReducer.hasDraftContent(editor)
 }
 
 /** Screen state for the receipt-scan flow (v1.7.3 Item 2, ADR-0062). */

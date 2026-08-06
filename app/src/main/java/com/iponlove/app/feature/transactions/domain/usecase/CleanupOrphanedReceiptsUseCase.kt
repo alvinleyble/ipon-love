@@ -1,9 +1,8 @@
 package com.iponlove.app.feature.transactions.domain.usecase
 
-import android.content.Context
+import com.iponlove.app.feature.drafts.domain.repository.TransactionDraftRepository
+import com.iponlove.app.feature.transactions.data.ReceiptFileStore
 import com.iponlove.app.feature.transactions.domain.repository.TransactionImageRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
 import javax.inject.Inject
 
 /**
@@ -18,15 +17,22 @@ import javax.inject.Inject
  * they look exactly like orphans. The camera hand-off makes a process death mid-draft routine —
  * without the guard, a restarted app would delete the restored draft's own photo. A file young
  * enough to belong to a live draft is left for the next cold start after it ages out.
+ *
+ * **Parked drafts are learned about here, in the caller, not in the predicate** (ADR-0066
+ * decision 6): a parked draft has no `transaction_images` row — it has no transaction — but it is
+ * a genuine record pointing at the file, so its local image ids simply join `knownIds`. The pure
+ * predicate below is untouched and its documented contract ("a file id with no matching row *at
+ * all*") still holds exactly. A draft pulled from another device carries no local ids and
+ * contributes nothing, which is correct: its files are not on this device either.
  */
 class CleanupOrphanedReceiptsUseCase @Inject constructor(
-    @ApplicationContext private val context: Context,
+    private val receiptFiles: ReceiptFileStore,
     private val repository: TransactionImageRepository,
+    private val draftRepository: TransactionDraftRepository,
 ) {
     suspend operator fun invoke(now: Long = System.currentTimeMillis()) {
-        val dir = File(context.filesDir, "receipts")
-        val files = dir.listFiles() ?: return
-        val knownIds = repository.allImageIds().toHashSet()
+        val files = receiptFiles.dir().listFiles() ?: return
+        val knownIds = (repository.allImageIds() + draftRepository.allLocalImageIds()).toHashSet()
         val diskIds = files.filter { isOldEnough(it.lastModified(), now) }
             .associateBy { it.nameWithoutExtension }
         for (id in orphanIds(diskIds.keys, knownIds)) {

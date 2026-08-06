@@ -114,7 +114,9 @@ import com.iponlove.app.feature.settings.presentation.SettingsCoupleScreen
 import com.iponlove.app.feature.subscription.presentation.SubscriptionScreen
 import com.iponlove.app.feature.subscription.presentation.SubscriptionViewModel.Companion.DEFAULT_SOURCE
 import com.iponlove.app.feature.subscription.presentation.SubscriptionViewModel.Companion.SOURCE_KEY
+import com.iponlove.app.feature.drafts.presentation.DraftsScreen
 import com.iponlove.app.feature.transactions.presentation.AddTransactionScreen
+import com.iponlove.app.feature.transactions.presentation.AddTransactionViewModel.Companion.DRAFT_ID_KEY
 import com.iponlove.app.feature.transactions.presentation.AddTransactionViewModel.Companion.TXN_ID_KEY
 import com.iponlove.app.feature.transactions.presentation.TransactionsScreen
 import kotlinx.coroutines.flow.first
@@ -139,6 +141,8 @@ private const val BETA_FEEDBACK_ROUTE = "beta_feedback"
 private const val UPCOMING_FEATURES_ROUTE = "upcoming_features"
 private const val ADD_TRANSACTION_ROUTE = "add_transaction"
 private const val EDIT_TRANSACTION_ROUTE = "edit_transaction"
+private const val DRAFTS_ROUTE = "drafts"
+private const val SETTLE_DRAFT_ROUTE = "settle_draft"
 private const val GOAL_EDITOR_ROUTE = "goal_editor"
 private const val GOAL_DETAIL_ROUTE = "goal_detail"
 
@@ -366,7 +370,17 @@ private fun IponAppContent(
                     TransactionsScreen(
                         onAddTransaction = { navController.navigate(ADD_TRANSACTION_ROUTE) },
                         onEditTransaction = { id -> navController.navigate("$EDIT_TRANSACTION_ROUTE/$id") },
+                        onOpenDrafts = { navController.navigate(DRAFTS_ROUTE) },
                         onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
+                    )
+                }
+                // The parking area is nested INSIDE Records (ADR-0066 decision 10 / ADR-0033):
+                // it is reached only from Records' pinned card, so its back stack belongs to that
+                // tab and re-tapping Records pops back out of it.
+                composable(DRAFTS_ROUTE) {
+                    DraftsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenDraft = { id -> navController.navigate("$SETTLE_DRAFT_ROUTE/$id") },
                     )
                 }
             }
@@ -556,6 +570,19 @@ private fun IponAppContent(
                     isPaired = state.isPaired,
                     onApply = navViewModel::applyConfig,
                     onBack = { navController.popBackStack() },
+                )
+            }
+            // Settling a draft is a NEW transaction, not an edit — so it reuses the add/edit form
+            // as its own standalone top-level route (same reasoning as ADD_TRANSACTION_ROUTE:
+            // reached across tabs, must not inherit a tab's reset-on-retap) and passes the draft
+            // id, which is also the id the promoted transaction will carry (ADR-0066 decision 5).
+            composable(
+                route = "$SETTLE_DRAFT_ROUTE/{$DRAFT_ID_KEY}",
+                arguments = listOf(navArgument(DRAFT_ID_KEY) { type = NavType.StringType }),
+            ) {
+                AddTransactionScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
                 )
             }
             composable(

@@ -16,8 +16,8 @@ class ReceiptParserTest {
 
     private val today = LocalDate.of(2026, 8, 5)
 
-    private fun line(text: String, top: Int = 0, height: Int = 20) =
-        RecognizedLine(text = text, top = top, height = height)
+    private fun line(text: String, top: Int = 0, height: Int = 20, left: Int = 0) =
+        RecognizedLine(text = text, top = top, height = height, left = left)
 
     private fun amountOf(vararg texts: String): BigDecimal? =
         ReceiptParser.parse(texts.mapIndexed { i, t -> line(t, top = i * 20) }, today).amount
@@ -145,6 +145,95 @@ class ReceiptParserTest {
         assertThat(result.isEmpty).isTrue()
     }
 
+    // --- Amount: split-row merge -----------------------------------------------------------------
+    // ML Kit splitting a `LABEL … amount` row into two lines when the gap between them is wide is
+    // confirmed against real scans (a 2026-08 on-device run against actual receipt photos), not a
+    // hypothetical — these four reproduce the real recognised-line shapes from that run (top/height
+    // are the real captured values; left is inferred from the label-left/value-right layout, which
+    // the diagnostic pass that produced this data didn't itself capture).
+
+    @Test
+    fun `a total split across two lines by a wide column gap is still read`() {
+        // Uncle John's (Robinson's) receipt: "TOTAL" and "P206.00" recognised as separate lines.
+        val amount = ReceiptParser.parse(
+            listOf(
+                line("P206.00", top = 481, height = 22, left = 420),
+                line("TOTAL", top = 491, height = 23, left = 0),
+                // "Total Itens: 3" (OCR mangled "Items"→"Itens", slipping past isCountLine) sits
+                // much later on the page — without the merge above, this was the only tier-1
+                // candidate, and the parser silently prefilled the item count instead of the total.
+                line("Total Itens: 3", top = 930, height = 29, left = 0),
+            ),
+            today,
+        ).amount
+        assertThat(amount).isEqualTo(BigDecimal("206.00"))
+    }
+
+    @Test
+    fun `a strong-keyword total split across two lines outranks a same-row subtotal`() {
+        // Jollibee receipt: "TOTAL DUE" and "180.00" recognised as separate lines.
+        val amount = ReceiptParser.parse(
+            listOf(
+                line("Subtotal PHP 180.00", top = 973, height = 44, left = 0),
+                line("TOTAL DUE", top = 1033, height = 35, left = 0),
+                line("180.00", top = 1052, height = 32, left = 480),
+                // Zero-Rated Sales further down: no keyword, so never a tier-1 candidate — but
+                // this exact line is what tier 2's blind fallback landed on before the merge fix,
+                // since "TOTAL DUE" and "180.00" apart meant tier 1 found nothing at all.
+                line("0.00", top = 1288, height = 32, left = 480),
+            ),
+            today,
+        ).amount
+        assertThat(amount).isEqualTo(BigDecimal("180.00"))
+    }
+
+    @Test
+    fun `a whole-peso total split across two lines is read, not left blank`() {
+        // Starbucks receipt: "Total Php" and "595" recognised as separate lines; this receipt
+        // never prints centavos, so before the merge fix tier 2's decimal-only fallback never
+        // matched anything and the amount came back blank.
+        val amount = ReceiptParser.parse(
+            listOf(
+                line("595", top = 897, height = 21, left = 400),
+                line("Total Php", top = 902, height = 23, left = 0),
+            ),
+            today,
+        ).amount
+        assertThat(amount).isEqualTo(BigDecimal("595"))
+    }
+
+    @Test
+    fun `a decimal point misread as a letter does not fragment the amount`() {
+        // Grillhouse (Manginasal) receipt: "TOTAL DUE" and "532.O0" (OCR misread the trailing
+        // zero's neighbor as a capital O) recognised as separate lines. Merged, the money regex
+        // finds two matches on the combined line — "532" and a stray "0" past the broken decimal
+        // point — and a plain last-match-wins would silently prefill 0.
+        val amount = ReceiptParser.parse(
+            listOf(
+                line("532.O0", top = 679, height = 20, left = 390),
+                line("TOTAL DUE", top = 680, height = 20, left = 95),
+            ),
+            today,
+        ).amount
+        assertThat(amount).isEqualTo(BigDecimal("532"))
+    }
+
+    @Test
+    fun `lines on genuinely different rows are never merged`() {
+        // A world apart vertically. If these wrongly merged into "TOTAL 3", tier 1 would prefill
+        // 3; kept separate, "TOTAL" has no money to carry and "3" has no keyword or decimal shape,
+        // so neither tier finds anything — proving the merge didn't fire rather than just happening
+        // to agree with a fallback.
+        val amount = ReceiptParser.parse(
+            listOf(
+                line("TOTAL", top = 0, height = 20, left = 0),
+                line("3", top = 400, height = 20, left = 300),
+            ),
+            today,
+        ).amount
+        assertThat(amount).isNull()
+    }
+
     // --- Date -----------------------------------------------------------------------------------
 
     private fun dateOf(text: String) = ReceiptParser.parse(listOf(line(text)), today)
@@ -262,5 +351,41 @@ class ReceiptParserTest {
             line("TOTAL 750.00", top = 400, height = 20),
         )
         assertThat(merchant).isEqualTo("Puregold")
+    }
+
+    // --- Merchant: confidence filter -------------------------------------------------------------
+
+    @Test
+    fun `a merged registration line is skipped in favor of the real header`() {
+        // Uncle John's receipt: an address line and a handwritten "Name:" fragment merge (the
+        // split-row fix above) into a line taller than the real header above it — but its colon
+        // marks it as a label line, not a shop name, so the header wins instead.
+        val merchant = merchantOf(
+            line("Uncle, John's", top = 108, height = 52, left = 0),
+            line("RIZAL 1870", top = 262, height = 34, left = 0),
+            line("Name: Asiagate Networks Inc", top = 276, height = 44, left = 200),
+            line("TOTAL 206.00", top = 700, height = 20),
+        )
+        assertThat(merchant).isEqualTo("Uncle, John's")
+    }
+
+    @Test
+    fun `a digit-heavy registration line without a colon is also skipped`() {
+        val merchant = merchantOf(
+            line("VAT REG TIN 000121242 00793", top = 0, height = 40),
+            line("Golden Arches Corporation", top = 50, height = 30),
+            line("TOTAL 695.00", top = 400, height = 20),
+        )
+        assertThat(merchant).isEqualTo("Golden Arches Corporation")
+    }
+
+    @Test
+    fun `nothing confident near the top leaves the merchant blank`() {
+        val merchant = merchantOf(
+            line("TIN: 123-456-789-000", top = 0, height = 40),
+            line("OR NO: 0000037904", top = 20, height = 36),
+            line("TOTAL 750.00", top = 400, height = 20),
+        )
+        assertThat(merchant).isNull()
     }
 }

@@ -34,6 +34,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Lock
@@ -49,13 +50,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -165,6 +170,7 @@ fun AddTransactionScreen(
             }
         },
         onSave = { viewModel.save(onBack) },
+        onSaveAsDraft = { viewModel.saveAsDraft(onBack) },
     )
 
     state.scan.failure?.let { failure ->
@@ -244,6 +250,7 @@ private fun AddTransactionContent(
     onScanTap: () -> Unit,
     onScanFromGalleryTap: () -> Unit,
     onSave: () -> Unit,
+    onSaveAsDraft: () -> Unit,
 ) {
     val editor = state.editor
     val colors = LocalPlayfulColors.current
@@ -266,6 +273,14 @@ private fun AddTransactionContent(
                 },
                 actions = {
                     if (editor != null) {
+                        // The three exits sit together: ← Cancel … Save as draft, Save. The draft
+                        // exit is an ICON, not a second text button — "Save as draft" spelled out
+                        // beside "Save" costs ~170dp of the action slot and truncates the title on
+                        // a 360dp screen. It reads as secondary to Save, which is correct, and
+                        // carries a long-press tooltip so the glyph is never the only explanation.
+                        if (!editor.isEditing) {
+                            SaveAsDraftAction(enabled = state.canSaveAsDraft, onClick = onSaveAsDraft)
+                        }
                         TextButton(onClick = onSave) { Text("Save") }
                     }
                 },
@@ -601,6 +616,39 @@ private fun EditorForm(
         }
     }
 }
+
+/**
+ * `Save as draft` — the parking exit (ADR-0066), sitting beside Save in the top bar so all three
+ * exits (← Cancel, park, Save) are in one place.
+ *
+ * Icon rather than a second text button, for room: "Save as draft" spelled out next to "Save"
+ * takes ~170dp of a 360dp bar and truncates "New transaction" to "New transactio…". The long-press
+ * tooltip (and the same string as `contentDescription`, so TalkBack reads it) keeps the glyph from
+ * being the only explanation.
+ *
+ * Disabled until there is something worth parking, so an untouched form can't mint an empty queue
+ * row; hidden outright while editing (decision 11), which the caller handles.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SaveAsDraftAction(enabled: Boolean, onClick: () -> Unit) {
+    val colors = LocalPlayfulColors.current
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        tooltip = { PlainTooltip { Text(SAVE_AS_DRAFT_LABEL) } },
+        state = rememberTooltipState(),
+    ) {
+        IconButton(onClick = onClick, enabled = enabled) {
+            Icon(
+                imageVector = Icons.Filled.BookmarkAdd,
+                contentDescription = SAVE_AS_DRAFT_LABEL,
+                tint = if (enabled) colors.accent else colors.textTertiary,
+            )
+        }
+    }
+}
+
+private const val SAVE_AS_DRAFT_LABEL = "Save as draft"
 
 /**
  * The two scan doors, side by side (ADR-0062 decision 3, changed 2026-08-04 from a single CTA
