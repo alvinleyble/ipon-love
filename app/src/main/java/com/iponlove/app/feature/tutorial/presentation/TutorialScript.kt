@@ -19,6 +19,7 @@ object TutorialTargets {
     const val MORE = "tutorial.more"
 
     // Solo module anchors
+    const val RECORDS_FAB = "tutorial.records.fab"
     const val RECURRING_CALENDAR = "tutorial.recurring.calendar"
     const val RECURRING_ADD = "tutorial.recurring.add"
     const val ANALYSIS_PERIOD = "tutorial.analysis.period"
@@ -102,10 +103,17 @@ object TutorialScript {
             ),
         ),
 
-        // The Records tour was retired in v1.7.1 Item 17 (its two steps were both anchored to the ⋮
-        // overflow's "Recurring rules" entry, which Item 17 removed as redundant once Recurring
-        // became its own top-level module) and its now-dead constant deleted in Item 20. Records
-        // having no tour is correct by design, not a gap — ADR-0059.
+        // The original Records tour was retired in v1.7.1 Item 17/20 (see TutorialTours.kt).
+        // Records is otherwise still deliberately tour-less per ADR-0059 — this one step exists
+        // only because the FAB wheel's scroll-to-switch gesture isn't inferable from looking at it.
+        TutorialTours.RECORDS_FAB_WHEEL to listOf(
+            TutorialStep(
+                targetKey = TutorialTargets.RECORDS_FAB,
+                title = "Scan a receipt",
+                text = "Swipe up on this button to switch it to the camera, or tap the small " +
+                    "📷 above it directly — no need to swipe first.",
+            ),
+        ),
 
         TutorialTours.RECURRING to listOf(
             TutorialStep(

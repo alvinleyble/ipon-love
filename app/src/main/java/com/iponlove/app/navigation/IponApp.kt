@@ -140,6 +140,13 @@ private const val LICENSES_ROUTE = "settings_licenses"
 private const val BETA_FEEDBACK_ROUTE = "beta_feedback"
 private const val UPCOMING_FEATURES_ROUTE = "upcoming_features"
 private const val ADD_TRANSACTION_ROUTE = "add_transaction"
+private const val AUTO_SCAN_ARG = "autoScan"
+
+/** Records' FAB-wheel 📷 action (Item 2 Slice 3) lands here to open straight into the camera —
+ *  same route, same gating (`AddTransactionScreen`'s existing `state.scan.locked` check), just
+ *  auto-triggered on arrival instead of waiting for a tap on the form's own scan button. */
+private fun addTransactionRoute(autoScan: Boolean): String =
+    if (autoScan) "$ADD_TRANSACTION_ROUTE?$AUTO_SCAN_ARG=true" else ADD_TRANSACTION_ROUTE
 private const val EDIT_TRANSACTION_ROUTE = "edit_transaction"
 private const val DRAFTS_ROUTE = "drafts"
 private const val SETTLE_DRAFT_ROUTE = "settle_draft"
@@ -368,7 +375,8 @@ private fun IponAppContent(
             navigation(startDestination = NavRegistry.RECORDS.route, route = NavRegistry.RECORDS.graphRoute()) {
                 composable(NavRegistry.RECORDS.route) {
                     TransactionsScreen(
-                        onAddTransaction = { navController.navigate(ADD_TRANSACTION_ROUTE) },
+                        onAddTransaction = { navController.navigate(addTransactionRoute(autoScan = false)) },
+                        onScanReceipt = { navController.navigate(addTransactionRoute(autoScan = true)) },
                         onEditTransaction = { id -> navController.navigate("$EDIT_TRANSACTION_ROUTE/$id") },
                         onOpenDrafts = { navController.navigate(DRAFTS_ROUTE) },
                         onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
@@ -553,10 +561,16 @@ private fun IponAppContent(
 
             // Add/Edit Transaction stays a standalone top-level route (ADR-0033 decision 2) — it's
             // reached from the global ⊕ button, so it must not inherit any tab's reset-on-retap.
-            composable(ADD_TRANSACTION_ROUTE) {
+            composable(
+                route = "$ADD_TRANSACTION_ROUTE?$AUTO_SCAN_ARG={$AUTO_SCAN_ARG}",
+                arguments = listOf(
+                    navArgument(AUTO_SCAN_ARG) { type = NavType.BoolType; defaultValue = false },
+                ),
+            ) { backStackEntry ->
                 AddTransactionScreen(
                     onBack = { navController.popBackStack() },
                     onOpenPremium = { source -> navController.navigate(subscriptionRoute(source)) },
+                    autoLaunchScan = backStackEntry.arguments?.getBoolean(AUTO_SCAN_ARG) ?: false,
                 )
             }
             // Navbar editor is also a standalone top-level route (V1.6.3 Item 6): nested inside the
