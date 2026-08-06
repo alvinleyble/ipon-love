@@ -3,8 +3,6 @@ package com.iponlove.app.feature.transactions.presentation
 import com.iponlove.app.core.ui.UpsellPrompt
 import com.iponlove.app.feature.accounts.domain.model.Account
 import com.iponlove.app.feature.categories.domain.model.Category
-import java.math.BigDecimal
-import java.time.Instant
 
 /** Screen state for the full-screen add/edit-transaction route. */
 data class AddTransactionUiState(
@@ -66,31 +64,6 @@ data class ReceiptScanUiState(
      * there is no copy to write, so there is no permission worth asking for.
      */
     val galleryCopyEnabled: Boolean = false,
-    /**
-     * The merchant whose history filled `Category` / `Account` — the caption's subject ("From your
-     * last SM Supermarket visit"). Null when nothing was inferred (ADR-0062 decision 5, Slice 2).
-     */
-    val inferredFrom: String? = null,
-    /** True while the inferred `Category` is still the one on the form — cleared the moment the
-     *  user picks their own, since the caption would then be describing a value that's gone. */
-    val categoryInferred: Boolean = false,
-    /** True while the inferred `Account` is still the one on the form. A wrong account corrupts a
-     *  balance where a wrong category only misfiles a chart, which is why both are captioned at
-     *  all rather than arriving silently (ADR-0062 Consequences). */
-    val accountInferred: Boolean = false,
-    /**
-     * An already-recorded transaction that looks like this scan (same amount, ±1 day). Drives an
-     * inline warning only — **Save is never blocked** (ADR-0062 Consequences): a legitimate second
-     * same-day expense is common, and a false positive that refused Save would be worse than the
-     * duplicate it prevented.
-     */
-    val duplicate: DuplicateScanWarning? = null,
-)
-
-/** The existing transaction a duplicate warning points at — enough to name it, nothing more. */
-data class DuplicateScanWarning(
-    val amount: BigDecimal,
-    val date: Instant,
 )
 
 /**

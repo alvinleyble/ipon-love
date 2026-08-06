@@ -78,28 +78,6 @@ class FakeTransactionDao : TransactionDao {
     override suspend fun activeOwnedBy(userId: String): List<TransactionEntity> =
         store.values.filter { it.userId == userId && !it.isDeleted }
 
-    override suspend fun recentOwnedExpensesWithNote(userId: String, limit: Int): List<TransactionEntity> =
-        store.values
-            .filter {
-                it.userId == userId && !it.isDeleted && it.type == TransactionType.EXPENSE &&
-                    !it.isSettlement && !it.isAdjustment && !it.note.isNullOrBlank()
-            }
-            .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
-            .take(limit)
-
-    override suspend fun ownedExpensesBetween(
-        userId: String,
-        startInclusive: Instant,
-        endExclusive: Instant,
-    ): List<TransactionEntity> =
-        store.values
-            .filter {
-                it.userId == userId && !it.isDeleted && it.type == TransactionType.EXPENSE &&
-                    !it.isSettlement && !it.isAdjustment &&
-                    it.date >= startInclusive && it.date < endExclusive
-            }
-            .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
-
     override suspend fun deleteById(id: String) {
         store.remove(id)
         changes.value++

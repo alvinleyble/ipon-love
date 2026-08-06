@@ -1,10 +1,10 @@
 package com.iponlove.app.feature.transactions.domain.usecase
 
 import android.net.Uri
-import com.iponlove.app.core.date.PH_ZONE
 import com.iponlove.app.feature.transactions.data.ReceiptTextRecognizer
 import com.iponlove.app.feature.transactions.domain.model.ReceiptScanResult
 import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 /**
@@ -23,9 +23,13 @@ class ScanReceiptUseCase @Inject constructor(
     suspend operator fun invoke(uri: Uri): ReceiptScanResult? {
         val lines = recognizer.recognize(uri)
         if (lines.isEmpty()) return null
+        return ReceiptParser.parse(lines, LocalDate.now(PH_ZONE))
+    }
+
+    private companion object {
         // The date bound is a PH-calendar judgement ("not in the future, not older than 18
         // months"), so it keys on PH-local today — not the device zone. Same reasoning as the
-        // frozen cross-platform contract §4's monthly aggregates; see [PH_ZONE].
-        return ReceiptParser.parse(lines, LocalDate.now(PH_ZONE))
+        // frozen cross-platform contract §4's monthly aggregates.
+        val PH_ZONE: ZoneId = ZoneId.of("Asia/Manila")
     }
 }
