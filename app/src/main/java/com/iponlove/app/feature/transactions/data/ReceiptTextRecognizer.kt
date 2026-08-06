@@ -67,6 +67,7 @@ class ReceiptTextRecognizer @Inject constructor(
                     text = line.text,
                     top = box?.top ?: 0,
                     height = box?.height() ?: 0,
+                    left = box?.left ?: 0,
                 )
             }
     }
