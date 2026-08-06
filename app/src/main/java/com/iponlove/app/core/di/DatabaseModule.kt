@@ -9,6 +9,7 @@ import com.iponlove.app.feature.accounts.data.local.AccountDao
 import com.iponlove.app.feature.budgets.data.local.BudgetDao
 import com.iponlove.app.feature.categories.data.local.CategoryDao
 import com.iponlove.app.feature.couple.data.local.CoupleDao
+import com.iponlove.app.feature.drafts.data.local.TransactionDraftDao
 import com.iponlove.app.feature.notes.data.local.NoteAttachmentDao
 import com.iponlove.app.feature.notes.data.local.NoteDao
 import com.iponlove.app.feature.notifications.data.local.NotificationDao
@@ -84,4 +85,8 @@ object DatabaseModule {
 
     @Provides
     fun notificationDao(database: IponDatabase): NotificationDao = database.notificationDao()
+
+    @Provides
+    fun transactionDraftDao(database: IponDatabase): TransactionDraftDao =
+        database.transactionDraftDao()
 }

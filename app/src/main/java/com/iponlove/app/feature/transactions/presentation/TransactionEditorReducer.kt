@@ -1,10 +1,13 @@
 package com.iponlove.app.feature.transactions.presentation
 
+import com.iponlove.app.feature.drafts.domain.model.TransactionDraft
 import com.iponlove.app.feature.transactions.domain.model.Transaction
+import com.iponlove.app.feature.transactions.domain.model.TransactionImage
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
 import com.iponlove.app.feature.transactions.domain.usecase.TransactionError
 import com.iponlove.app.feature.transactions.domain.usecase.TransactionValidator
 import java.math.BigDecimal
+import java.time.Instant
 
 /**
  * Pure state transitions and the final build/validate step for the transaction editor, kept
@@ -82,6 +85,75 @@ object TransactionEditorReducer {
 
     fun onTransferFee(state: TransactionEditorState, value: String): TransactionEditorState =
         state.copy(transferFeeText = value, transferFeeError = false)
+
+    /**
+     * True when there is something worth parking (ADR-0066): any field the user could have filled
+     * in, including a scanned receipt. An untouched form has nothing to park, so `Save as draft`
+     * stays disabled rather than minting an empty row the user would then have to delete.
+     *
+     * The date is deliberately excluded — it is pre-filled with today on every fresh form, so
+     * counting it would make every form look non-empty.
+     */
+    fun hasDraftContent(state: TransactionEditorState): Boolean =
+        state.amountText.isNotBlank() ||
+            state.note.isNotBlank() ||
+            state.categoryId != null ||
+            state.accountId != null ||
+            state.toAccountId != null ||
+            state.images.isNotEmpty()
+
+    /**
+     * The editor as a parked draft — the `Save as draft` exit (ADR-0066 decision 1). Unlike
+     * [build] this **never validates**: a draft that could pass `TransactionValidator` would not
+     * need to be a draft, so a blank amount / missing account / missing category all round-trip.
+     *
+     * [TransactionDraft.id] is the editor's pre-generated id, which is also the id the promoted
+     * transaction will carry — the identity that makes promotion need ordering, not atomicity
+     * (decision 5).
+     *
+     * Three fields are deliberately **not** persisted: `paidForPartner`, `amountOwedText` and
+     * `transferFeeText`. Each spawns linked rows in another feature (ADR-0019, ADR-0031) and none
+     * is meaningful until the transaction is real, so a draft round-trips them blank.
+     */
+    fun toDraft(state: TransactionEditorState, parkedAt: Instant): TransactionDraft {
+        val toAccountId = if (state.type == TransactionType.TRANSFER) state.toAccountId else null
+        val categoryId = if (state.type == TransactionType.TRANSFER) null else state.categoryId
+        return TransactionDraft(
+            id = state.id,
+            type = state.type,
+            amount = state.amountText.trim().toBigDecimalOrNull(),
+            categoryId = categoryId,
+            accountId = state.accountId,
+            toAccountId = toAccountId,
+            note = state.note.trim().ifBlank { null },
+            date = state.date,
+            isPrivate = state.isPrivate,
+            receiptCount = state.images.size,
+            localImageIds = state.images.map { it.id },
+            parkedAt = parkedAt,
+        )
+    }
+
+    /**
+     * A parked draft back in the editor. [images] is resolved by the caller (only files still on
+     * this device can be shown), and [isEditing] stays **false**: settling a draft creates a new
+     * transaction, so `Save as draft` remains available to re-park it and the "paid for partner"
+     * path stays open.
+     */
+    fun fromDraft(draft: TransactionDraft, images: List<TransactionImage>): TransactionEditorState =
+        TransactionEditorState(
+            id = draft.id,
+            isEditing = false,
+            type = draft.type ?: TransactionType.EXPENSE,
+            amountText = draft.amount?.toPlainString().orEmpty(),
+            accountId = draft.accountId,
+            toAccountId = draft.toAccountId,
+            categoryId = draft.categoryId,
+            note = draft.note.orEmpty(),
+            isPrivate = draft.isPrivate,
+            date = draft.date ?: Instant.now(),
+            images = images,
+        )
 
     /**
      * Validate the draft and, if valid, produce the transaction to save. [canPayForPartner] gates

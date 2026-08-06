@@ -19,6 +19,8 @@ import com.iponlove.app.feature.categories.data.local.CategoryDao
 import com.iponlove.app.feature.categories.data.local.CategoryEntity
 import com.iponlove.app.feature.couple.data.local.CoupleDao
 import com.iponlove.app.feature.couple.data.local.CoupleEntity
+import com.iponlove.app.feature.drafts.data.local.TransactionDraftDao
+import com.iponlove.app.feature.drafts.data.local.TransactionDraftEntity
 import com.iponlove.app.feature.notes.data.local.NoteAttachmentDao
 import com.iponlove.app.feature.notes.data.local.NoteAttachmentEntity
 import com.iponlove.app.feature.notes.data.local.NoteDao
@@ -67,8 +69,9 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AppConfigEntity::class,
         AnalyticsEventEntity::class,
         NotificationEntity::class,
+        TransactionDraftEntity::class,
     ],
-    version = 31,
+    version = 32,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 10, to = 11),
@@ -101,6 +104,8 @@ import com.iponlove.app.feature.user.data.local.UserEntity
         AutoMigration(from = 29, to = 30),
         // v31: transactions.isAdjustment (balance-correction ledger row, Item 13); default 0.
         AutoMigration(from = 30, to = 31),
+        // v32: transaction_drafts table auto-created (the parking area, v1.7.3 Item 8 / ADR-0066).
+        AutoMigration(from = 31, to = 32),
     ],
 )
 @TypeConverters(IponConverters::class)
@@ -121,6 +126,7 @@ abstract class IponDatabase : RoomDatabase() {
     abstract fun appConfigDao(): AppConfigDao
     abstract fun analyticsEventDao(): AnalyticsEventDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun transactionDraftDao(): TransactionDraftDao
 
     /**
      * Wipe every table — the local source of truth for one account. Called on sign-out and on

@@ -22,13 +22,19 @@ class NotificationTableSyncerTest {
     }
 
     /**
-     * The inbox is a leaf that nothing depends on, and it must never delay a financial row's
-     * push — so it sorts last in the FK order (ADR-0009 / ADR-0053).
+     * The inbox is a leaf that nothing depends on, and it must never delay a financial row's push
+     * — so it sorts after every table that carries money (ADR-0009 / ADR-0053).
+     *
+     * It is no longer *last*: `TRANSACTION_DRAFTS` was appended after it (contract §3.1 /
+     * ADR-0066) on the same argument, leaving ordinals 1–23 untouched. Asserted as "only drafts
+     * may follow it" so the pair stays pinned to the tail without either one claiming the slot.
      */
     @Test
-    fun sortsLastInTheFkOrder() {
+    fun sortsAfterEveryFinancialTable_withOnlyDraftsBehindIt() {
+        assertThat(SyncTable.entries.filter { it.ordinal > SyncTable.NOTIFICATIONS.ordinal })
+            .containsExactly(SyncTable.TRANSACTION_DRAFTS)
         assertThat(SyncTable.NOTIFICATIONS.ordinal)
-            .isEqualTo(SyncTable.entries.maxOf { it.ordinal })
+            .isGreaterThan(SyncTable.TRANSACTIONS.ordinal)
     }
 
     @Test

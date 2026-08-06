@@ -77,6 +77,7 @@ import com.iponlove.app.core.ui.onPlayfulSurface
 import com.iponlove.app.core.ui.parseHexColor
 import com.iponlove.app.core.ui.theme.LeafShapes
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
+import com.iponlove.app.feature.drafts.presentation.components.DraftsCard
 import com.iponlove.app.feature.recurring.presentation.components.ComingUpCard
 import com.iponlove.app.feature.recurring.presentation.components.PendingConfirmationsCard
 import com.iponlove.app.feature.transactions.domain.model.TransactionFilter
@@ -102,6 +103,7 @@ import com.iponlove.app.feature.widget.presentation.BalanceWidgetReceiver
 fun TransactionsScreen(
     onAddTransaction: () -> Unit,
     onEditTransaction: (String) -> Unit,
+    onOpenDrafts: () -> Unit = {},
     onOpenPremium: (source: String) -> Unit = {},
     viewModel: TransactionsViewModel = hiltViewModel(),
 ) {
@@ -111,6 +113,7 @@ fun TransactionsScreen(
         onSync = viewModel::sync,
         onAdd = onAddTransaction,
         onEdit = onEditTransaction,
+        onOpenDrafts = onOpenDrafts,
         onDelete = viewModel::delete,
         onPreviousMonth = viewModel::previousMonth,
         onNextMonth = viewModel::nextMonth,
@@ -137,6 +140,7 @@ private fun TransactionsContent(
     onSync: () -> Unit,
     onAdd: () -> Unit,
     onEdit: (String) -> Unit,
+    onOpenDrafts: () -> Unit = {},
     onDelete: (String) -> Unit,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
@@ -212,6 +216,13 @@ private fun TransactionsContent(
             // Confirm-on-arrival "To confirm" card (Item 37) — pinned above the month-scoped list
             // (pending is relative to today, not the viewed month) and self-hides when empty.
             PendingConfirmationsCard(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+            // The parking area's entry point AND its only reminder (ADR-0066 decision 10) — same
+            // pinned, self-hiding shape, and pinned for the same reason: a parked draft belongs to
+            // no month, so it must not sit inside the month-scoped list below.
+            DraftsCard(
+                onOpen = onOpenDrafts,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             // "Coming up" forecast preview (Item 37 Slice 2, premium) — next scheduled income +

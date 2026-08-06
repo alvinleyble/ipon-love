@@ -18,8 +18,13 @@ import com.iponlove.app.feature.categories.domain.model.CategoryType
 import com.iponlove.app.feature.categories.domain.usecase.ObserveCategoriesUseCase
 import com.iponlove.app.feature.couple.domain.model.CoupleMembers
 import com.iponlove.app.feature.couple.domain.usecase.ObserveCoupleMembersUseCase
+import com.iponlove.app.feature.drafts.domain.model.TransactionDraft
+import com.iponlove.app.feature.drafts.domain.usecase.GetDraftUseCase
+import com.iponlove.app.feature.drafts.domain.usecase.PromoteDraftUseCase
+import com.iponlove.app.feature.drafts.domain.usecase.SaveDraftUseCase
 import com.iponlove.app.feature.partnerdebt.domain.usecase.PaidOnBehalfUseCase
 import com.iponlove.app.feature.settings.domain.usecase.ObserveReceiptGalleryCopyEnabledUseCase
+import com.iponlove.app.feature.transactions.data.ReceiptFileStore
 import com.iponlove.app.feature.transactions.data.ReceiptScanFileStore
 import com.iponlove.app.feature.transactions.domain.model.ReceiptScanResult
 import com.iponlove.app.feature.transactions.domain.model.TransactionImage
@@ -79,6 +84,10 @@ class AddTransactionViewModel @Inject constructor(
     private val inferFromReceiptHistory: InferFromReceiptHistoryUseCase,
     private val findDuplicateScan: FindDuplicateScanUseCase,
     private val receiptScanFileStore: ReceiptScanFileStore,
+    private val receiptFiles: ReceiptFileStore,
+    private val getDraft: GetDraftUseCase,
+    private val saveDraft: SaveDraftUseCase,
+    private val promoteDraft: PromoteDraftUseCase,
     private val saveReceiptToGallery: SaveReceiptToGalleryUseCase,
     private val observeGalleryCopyEnabled: ObserveReceiptGalleryCopyEnabledUseCase,
     private val premiumGate: PremiumGate,
@@ -88,6 +97,13 @@ class AddTransactionViewModel @Inject constructor(
     private val saved = savedStateHandle
     private val argId: String? = savedStateHandle[TXN_ID_KEY]
     private val isEditing: Boolean = argId != null && argId != NEW
+
+    /**
+     * Set when the form was opened from the drafts list (ADR-0066). The draft's id becomes the
+     * editor's id — and therefore the promoted transaction's — so nothing else needs remembering:
+     * [promoteDraft] retires by that same id after the transaction lands.
+     */
+    private val argDraftId: String? = savedStateHandle[DRAFT_ID_KEY]
 
     private val editor = MutableStateFlow<TransactionEditorState?>(null)
     private val missing = MutableStateFlow(false)
@@ -195,6 +211,17 @@ class AddTransactionViewModel @Inject constructor(
                 editor.value = restored
                 existingTransferFeeId = saved[KEY_LINKED_FEE_ID]
             }
+            // Opened from the drafts list: hydrate the parked form back in. The photos come from
+            // this device's own files — a draft synced from another device carries none, and the
+            // list already told the user so ("on your other device", decision 4).
+            argDraftId != null -> viewModelScope.launch {
+                val draft = getDraft(argDraftId)
+                if (draft == null) {
+                    missing.value = true
+                } else {
+                    setEditor(TransactionEditorReducer.fromDraft(draft, draftImages(draft)))
+                }
+            }
             !isEditing -> setEditor(
                 TransactionEditorState(id = UUID.randomUUID().toString(), date = Instant.now()),
             )
@@ -244,6 +271,24 @@ class AddTransactionViewModel @Inject constructor(
         scanTempPath?.let { receiptScanFileStore.delete(it) }
         super.onCleared()
     }
+
+    /**
+     * A parked draft's photos, resolved back out of `filesDir/receipts`. Only files still on this
+     * device are shown, and they are deliberately **not** registered as this editor's unsaved
+     * images: the draft row owns them, so backing out of the form must leave them alone.
+     */
+    private fun draftImages(draft: TransactionDraft): List<TransactionImage> =
+        draft.localImageIds.mapIndexedNotNull { index, imageId ->
+            receiptFiles.pathIfPresent(imageId)?.let { path ->
+                TransactionImage(
+                    id = imageId,
+                    transactionId = draft.id,
+                    localPath = path,
+                    url = null,
+                    position = index,
+                )
+            }
+        }
 
     private fun sharedAccountIds(): Set<String> =
         latestAccounts.filter { it.isShared }.map { it.id }.toSet()
@@ -671,11 +716,47 @@ class AddTransactionViewModel @Inject constructor(
                 // Reconcile the draft's receipt images to transaction_images rows now that the
                 // parent transaction exists (deferred persistence — see SaveTransactionImagesUseCase).
                 saveTransactionImages(result.transaction.id, s.images)
+                // Promotion, second half: the transaction is written, so any parked draft under
+                // the SAME id is now redundant and retires (ADR-0066 decision 5). Ordering, not
+                // atomicity — a failure here leaves a stale queue row that re-settles as an
+                // idempotent upsert of this same id, so money can never double. A no-op for a
+                // transaction that was never parked.
+                promoteDraft(result.transaction.id)
                 writeGalleryCopy()
                 clearDraft()
                 Widgets.updateAll(context)
                 onDone()
             }
+        }
+    }
+
+    /**
+     * `Save as draft` — the third exit (ADR-0066), alongside Cancel and Save. Offered on **new**
+     * transactions only; drafting an edit would leave a shadow copy of a row that already counts
+     * in every balance (decision 11), which is why the screen hides it while editing.
+     *
+     * Nothing is validated: an amount-less, account-less, category-less form is exactly what a
+     * draft is for. The parked row carries the editor's pre-generated id, so settling it later
+     * writes a transaction under that same id.
+     *
+     * Two things happen here that also happen on Save, and both are deliberate:
+     *  - **The gallery copy is written** (amends ADR-0062 decision 7): draft-save is a commit for
+     *    that decision's purposes — its rejected case was *accidental* pollution from abandoned
+     *    scans, and parking a draft is the opposite, a deliberate act of keeping. This is also
+     *    what releases the full-resolution `cacheDir/scans` temp, so no draft ever holds one past
+     *    its own save and ADR-0062 decision 9's one-hour sweep needs no draft awareness at all.
+     *  - **[clearDraft] runs**, which hands ownership of the compressed receipt files from this
+     *    ViewModel to the parked row. Without it [onCleared] would delete the very photos the
+     *    draft was parked to keep.
+     */
+    fun saveAsDraft(onDone: () -> Unit) {
+        val s = editor.value ?: return
+        if (s.isEditing || !TransactionEditorReducer.hasDraftContent(s)) return
+        viewModelScope.launch {
+            saveDraft(TransactionEditorReducer.toDraft(s, parkedAt = Instant.now()))
+            writeGalleryCopy()
+            clearDraft()
+            onDone()
         }
     }
 
@@ -774,6 +855,7 @@ class AddTransactionViewModel @Inject constructor(
 
     companion object {
         const val TXN_ID_KEY = "txnId"
+        const val DRAFT_ID_KEY = "draftId"
         const val NEW = "new"
 
         private const val KEY_ID = "draft_id"
