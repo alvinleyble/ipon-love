@@ -62,6 +62,7 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -108,6 +109,7 @@ import java.time.ZoneOffset
 fun AddTransactionScreen(
     onBack: () -> Unit,
     onOpenPremium: (source: String) -> Unit = {},
+    autoLaunchScan: Boolean = false,
     viewModel: AddTransactionViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -142,6 +144,14 @@ fun AddTransactionScreen(
         } else {
             viewModel.onScanTap(launchCamera)
         }
+    }
+
+    // Records' FAB-wheel 📷 action (Item 2 Slice 3) lands here wanting the camera open
+    // immediately — same gating as the form's own "Scan receipt" button, just auto-fired once on
+    // arrival instead of waiting for a tap. Keyed on Unit, not autoLaunchScan, so a config change
+    // or recomposition never re-fires it mid-review.
+    LaunchedEffect(Unit) {
+        if (autoLaunchScan) startScan()
     }
 
     AddTransactionContent(

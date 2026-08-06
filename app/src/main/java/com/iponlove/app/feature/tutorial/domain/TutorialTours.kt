@@ -14,10 +14,13 @@ package com.iponlove.app.feature.tutorial.domain
 object TutorialTours {
     // Solo
     const val SHELL = "shell"
-    // RECORDS was deleted in v1.7.1 Item 20: Item 17 removed the ⋮ overflow both of its steps were
-    // anchored to, and under ADR-0059 Records needs no tour (nothing on it is uninferable). The
-    // orphan "records" left in existing seen-sets needs no migration — the gate is a Set<String>
-    // and an unknown member is never consulted.
+    // The original RECORDS tour was deleted in v1.7.1 Item 20 (Item 17 removed the ⋮ overflow both
+    // of its steps were anchored to) and Records went tour-less under ADR-0059. Item 2 Slice 3
+    // reopens that: the FAB wheel scrolling to switch its armed action is exactly the "not
+    // inferable from looking at it" bar ADR-0059 sets, per ADR-0062 decision 3. Deliberately a new
+    // id, not a reuse of the retired "records" — a seen-set that already contains the old, deleted
+    // tour's id must NOT suppress this unrelated one.
+    const val RECORDS_FAB_WHEEL = "records_fab_wheel"
     const val RECURRING = "recurring"
     const val ANALYSIS = "analysis"
     const val MANAGE = "manage"
