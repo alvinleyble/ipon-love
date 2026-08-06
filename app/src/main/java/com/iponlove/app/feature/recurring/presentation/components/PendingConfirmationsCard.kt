@@ -1,5 +1,11 @@
 package com.iponlove.app.feature.recurring.presentation.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -28,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +48,7 @@ import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.theme.LeafShapes
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
+import com.iponlove.app.core.ui.theme.LocalReducedMotion
 import com.iponlove.app.feature.recurring.domain.model.PendingConfirmation
 import com.iponlove.app.feature.recurring.presentation.PendingConfirmationsViewModel
 import com.iponlove.app.feature.transactions.domain.model.TransactionType
@@ -77,6 +86,9 @@ fun PendingConfirmationsCard(
     // every amount app-wide together (the row is just where the tap happens, not its own state).
     val privacyOn = LocalPrivacyMode.current
     val colors = LocalPlayfulColors.current
+    val reduced = LocalReducedMotion.current
+    val dur = if (reduced) 0 else 200
+    val chevronRotation by animateFloatAsState(if (state.collapsed) -90f else 0f, tween(dur), label = "pendingConfirmChevron")
 
     PlayfulCard(
         modifier = modifier.fillMaxWidth(),
@@ -85,7 +97,10 @@ fun PendingConfirmationsCard(
         contentPadding = 16.dp,
     ) {
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { viewModel.toggleCollapsed() },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     text = "To confirm (${state.items.size})",
                     style = MaterialTheme.typography.titleMedium,
@@ -93,25 +108,42 @@ fun PendingConfirmationsCard(
                     color = colors.textPrimary,
                     modifier = Modifier.weight(1f),
                 )
-                if (state.items.size > 1) {
-                    TextButton(onClick = viewModel::skipAll) { Text("Skip all") }
-                    TextButton(onClick = viewModel::confirmAll) { Text("Confirm all") }
-                }
-            }
-            Text(
-                text = "Recurring items that came due — record or skip each.",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textSecondary,
-            )
-            state.items.forEach { item ->
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = colors.hairline)
-                PendingRow(
-                    item = item,
-                    showSkip = item.occurrenceId in skippableIds,
-                    onTogglePrivacy = { viewModel.togglePrivacyMode(!privacyOn) },
-                    onConfirm = { override -> viewModel.confirm(item.ruleId, item.date, override) },
-                    onSkip = { viewModel.skip(item.ruleId, item.date) },
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (state.collapsed) "Expand" else "Collapse",
+                    tint = colors.textSecondary,
+                    modifier = Modifier.rotate(chevronRotation),
                 )
+            }
+            AnimatedVisibility(
+                visible = !state.collapsed,
+                enter = expandVertically(tween(dur)),
+                exit = shrinkVertically(tween(dur)),
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Recurring items that came due — record or skip each.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (state.items.size > 1) {
+                            TextButton(onClick = viewModel::skipAll) { Text("Skip all") }
+                            TextButton(onClick = viewModel::confirmAll) { Text("Confirm all") }
+                        }
+                    }
+                    state.items.forEach { item ->
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = colors.hairline)
+                        PendingRow(
+                            item = item,
+                            showSkip = item.occurrenceId in skippableIds,
+                            onTogglePrivacy = { viewModel.togglePrivacyMode(!privacyOn) },
+                            onConfirm = { override -> viewModel.confirm(item.ruleId, item.date, override) },
+                            onSkip = { viewModel.skip(item.ruleId, item.date) },
+                        )
+                    }
+                }
             }
         }
     }

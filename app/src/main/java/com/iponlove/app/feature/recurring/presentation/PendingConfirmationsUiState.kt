@@ -9,4 +9,5 @@ import com.iponlove.app.feature.recurring.domain.model.PendingConfirmation
  */
 data class PendingConfirmationsUiState(
     val items: List<PendingConfirmation> = emptyList(),
+    val collapsed: Boolean = false,
 )

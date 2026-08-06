@@ -10,9 +10,10 @@ import com.iponlove.app.feature.settings.domain.usecase.SetPrivacyModeUseCase
 import com.iponlove.app.feature.widget.presentation.Widgets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -39,14 +40,16 @@ class PendingConfirmationsViewModel @Inject constructor(
     private val setPrivacyMode: SetPrivacyModeUseCase,
 ) : ViewModel() {
 
+    private val collapsed = MutableStateFlow(false)
+
     val uiState: StateFlow<PendingConfirmationsUiState> =
-        observePendingConfirmations()
-            .map { PendingConfirmationsUiState(items = it) }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-                initialValue = PendingConfirmationsUiState(),
-            )
+        combine(observePendingConfirmations(), collapsed) { items, collapsed ->
+            PendingConfirmationsUiState(items = items, collapsed = collapsed)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            initialValue = PendingConfirmationsUiState(),
+        )
 
     /** Record this occurrence. [amountOverride] null = use the rule's template amount. */
     fun confirm(ruleId: String, date: LocalDate, amountOverride: BigDecimal?) {
@@ -79,6 +82,10 @@ class PendingConfirmationsViewModel @Inject constructor(
      *  Accounts/Analysis headers — writing through to the one DataStore flag, not a local reveal. */
     fun togglePrivacyMode(enabled: Boolean) {
         viewModelScope.launch { setPrivacyMode(enabled) }
+    }
+
+    fun toggleCollapsed() {
+        collapsed.value = !collapsed.value
     }
 
     private companion object {
