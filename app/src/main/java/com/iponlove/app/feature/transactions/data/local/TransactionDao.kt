@@ -132,6 +132,52 @@ interface TransactionDao {
     @Query("SELECT id FROM transactions WHERE recurringRuleId IS NOT NULL")
     fun observeRecurringOccurrenceIds(): Flow<List<String>>
 
+    /**
+     * The corpus receipt-scan inference matches a scanned merchant against (v1.7.3 Item 2 Slice 2,
+     * ADR-0062 decision 5): the user's **own** recent note-bearing expenses, most recent first.
+     *
+     * Four filters are all load-bearing. `userId = :userId` is decision 5's "own rows only" —
+     * replicated partner rows (ADR-0004) carry category/account ids that aren't usable on the
+     * user's own row anyway. Settlement and adjustment rows are excluded because they are not
+     * spending and carry no category (ADR-0019 #14 / ADR-0057). A blank note can never match a
+     * merchant, so it is dropped at the query rather than loaded and discarded. And [limit] bounds
+     * what a scan tap pulls into memory on the low-RAM devices this feature targets — a long
+     * history would otherwise be read in full for a suggestion.
+     */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE userId = :userId AND isDeleted = 0 AND type = 'EXPENSE'
+          AND isSettlement = 0 AND isAdjustment = 0
+          AND note IS NOT NULL AND TRIM(note) <> ''
+        ORDER BY date DESC, createdAt DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun recentOwnedExpensesWithNote(userId: String, limit: Int): List<TransactionEntity>
+
+    /**
+     * The user's own active expenses in a half-open instant window — the candidate set for the
+     * duplicate-scan warning (ADR-0062 Consequences). The window is deliberately wider than the
+     * ±1-day rule and the amount is not compared here: money is stored as a plain string, so
+     * `750` and `750.00` are unequal in SQL though equal in value. Both narrowings happen in
+     * [com.iponlove.app.feature.transactions.domain.usecase.ReceiptDuplicateDetector].
+     */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE userId = :userId AND isDeleted = 0 AND type = 'EXPENSE'
+          AND isSettlement = 0 AND isAdjustment = 0
+          AND date >= :startInclusive AND date < :endExclusive
+        ORDER BY date DESC, createdAt DESC
+        """,
+    )
+    suspend fun ownedExpensesBetween(
+        userId: String,
+        startInclusive: Instant,
+        endExclusive: Instant,
+    ): List<TransactionEntity>
+
     /** The user's own active rows, one-shot (Reset finances, ADR-0037) — every row here has
      *  [userId] set, so no couple-shared exclusion is needed beyond the equality filter. */
     @Query("SELECT * FROM transactions WHERE userId = :userId AND isDeleted = 0")

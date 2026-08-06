@@ -85,6 +85,21 @@ class TransactionRepositoryImpl @Inject constructor(
     override suspend fun getActiveTransactions(ids: Collection<String>): List<Transaction> =
         if (ids.isEmpty()) emptyList() else dao.getActiveByIds(ids.toList()).map { it.toDomain() }
 
+    // Both receipt-scan reads resolve userId per call rather than eagerly, like the flows above,
+    // and simply return nothing when signed out — a scan can't be in flight then anyway.
+    override suspend fun getOwnExpenseHistory(limit: Int): List<Transaction> {
+        val userId = currentUser.userIdOrNull() ?: return emptyList()
+        return dao.recentOwnedExpensesWithNote(userId, limit).map { it.toDomain() }
+    }
+
+    override suspend fun getOwnExpensesBetween(
+        startInclusive: Instant,
+        endExclusive: Instant,
+    ): List<Transaction> {
+        val userId = currentUser.userIdOrNull() ?: return emptyList()
+        return dao.ownedExpensesBetween(userId, startInclusive, endExclusive).map { it.toDomain() }
+    }
+
     override suspend fun countByCategory(categoryId: String): Int = dao.countByCategory(categoryId)
 
     override suspend fun countByAccount(accountId: String): Int = dao.countByAccount(accountId)

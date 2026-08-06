@@ -106,4 +106,41 @@ class TransactionRepositoryImplTest {
 
         assertThat(txns.map { it.id }).containsExactly("new", "old").inOrder()
     }
+
+    // ---- receipt-scan history reads (v1.7.3 Item 2 Slice 2, ADR-0062 decision 5) --------------
+
+    @Test
+    fun ownExpenseHistory_excludesPartnerRows_andRowsWithNothingToMatchOn() = runTest {
+        // Decision 5's "own rows only": a partner row (ADR-0004) carries category/account ids that
+        // aren't even usable on the user's own row, so it must never reach the matcher.
+        dao.store["mine"] = transactionEntity(id = "mine", note = "SM Supermarket")
+        dao.store["partner"] = transactionEntity(id = "partner", userId = "user-2", note = "SM Supermarket")
+        dao.store["blank"] = transactionEntity(id = "blank", note = " ")
+        dao.store["settled"] = transactionEntity(id = "settled", note = "Settlement", isSettlement = true)
+        dao.store["adjusted"] = transactionEntity(id = "adjusted", note = "Correction", isAdjustment = true)
+        dao.store["income"] = transactionEntity(id = "income", type = TransactionType.INCOME, note = "Payday")
+
+        assertThat(repository.getOwnExpenseHistory(500).map { it.id }).containsExactly("mine")
+    }
+
+    @Test
+    fun ownExpenseHistory_isCappedToTheMostRecentRows() = runTest {
+        repeat(5) { i ->
+            dao.store["t$i"] = transactionEntity(id = "t$i", note = "Shop", date = Instant.ofEpochMilli(1_000L * i))
+        }
+
+        assertThat(repository.getOwnExpenseHistory(2).map { it.id }).containsExactly("t4", "t3").inOrder()
+    }
+
+    @Test
+    fun ownExpensesBetween_isOwnedAndWindowed() = runTest {
+        dao.store["inside"] = transactionEntity(id = "inside", date = Instant.ofEpochMilli(5_000))
+        dao.store["before"] = transactionEntity(id = "before", date = Instant.ofEpochMilli(999))
+        dao.store["onEnd"] = transactionEntity(id = "onEnd", date = Instant.ofEpochMilli(9_000))
+        dao.store["partner"] = transactionEntity(id = "partner", userId = "user-2", date = Instant.ofEpochMilli(5_000))
+
+        val rows = repository.getOwnExpensesBetween(Instant.ofEpochMilli(1_000), Instant.ofEpochMilli(9_000))
+
+        assertThat(rows.map { it.id }).containsExactly("inside")
+    }
 }

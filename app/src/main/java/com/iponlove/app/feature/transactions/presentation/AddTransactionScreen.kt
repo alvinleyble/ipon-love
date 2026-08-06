@@ -87,6 +87,7 @@ import com.iponlove.app.core.ui.currencyGlyph
 import com.iponlove.app.core.ui.formatShortDate
 import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
+import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
@@ -385,6 +386,18 @@ private fun EditorForm(
             Spacer(Modifier.height(12.dp))
         }
 
+        state.scan.duplicate?.let { duplicate ->
+            // Warns, never blocks (ADR-0062 Consequences): Save stays fully enabled below, because
+            // two identical same-day expenses are ordinary and refusing one would be worse than
+            // the duplicate it prevented.
+            ScanHint(
+                text = "You already recorded ${money(duplicate.amount)} on " +
+                    "${formatShortDate(duplicate.date)}. Save anyway if this is a different one.",
+                tone = LocalPlayfulColors.current.semantic.negative,
+            )
+            Spacer(Modifier.height(12.dp))
+        }
+
         Column(Modifier.coachMarkTarget(TutorialTargets.TXN_TYPE)) {
             FieldLabel("Type")
             EntityChipRow(
@@ -408,6 +421,9 @@ private fun EditorForm(
 
         FieldLabel("Account")
         EntityChipRow(options = accountOptions, selectedId = editor.accountId, onSelect = onAccountChange)
+        if (state.scan.accountInferred) {
+            state.scan.inferredFrom?.let { InferredCaption(it) }
+        }
         Spacer(Modifier.height(16.dp))
 
         if (editor.type == TransactionType.TRANSFER) {
@@ -441,6 +457,9 @@ private fun EditorForm(
                 selectedId = editor.categoryId,
                 onSelect = onCategoryChange,
             )
+            if (state.scan.categoryInferred) {
+                state.scan.inferredFrom?.let { InferredCaption(it) }
+            }
         }
         Spacer(Modifier.height(16.dp))
 
@@ -679,7 +698,7 @@ private fun ScanPreview(path: String, onView: () -> Unit) {
 }
 
 @Composable
-private fun ScanHint(text: String) {
+private fun ScanHint(text: String, tone: Color = LocalPlayfulColors.current.accent) {
     val colors = LocalPlayfulColors.current
     Text(
         text,
@@ -687,8 +706,24 @@ private fun ScanHint(text: String) {
         color = colors.textSecondary,
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.accent.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
+            .background(tone.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
             .padding(10.dp),
+    )
+}
+
+/**
+ * The caption under an *inferred* field (ADR-0062 decision 4). Only Category and Account carry one:
+ * the three read fields are verifiable against the photo shown at the top of the form, while these
+ * two appear nowhere on the receipt — without a caption, a user comparing form to photo has no way
+ * to account for them.
+ */
+@Composable
+private fun InferredCaption(merchant: String) {
+    Text(
+        "From your last $merchant visit",
+        style = MaterialTheme.typography.bodySmall,
+        color = LocalPlayfulColors.current.textSecondary,
+        modifier = Modifier.padding(top = 4.dp),
     )
 }
 
