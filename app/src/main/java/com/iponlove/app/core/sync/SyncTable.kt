@@ -45,4 +45,9 @@ enum class SyncTable {
     // partner variant, never replicated). Last in the order because nothing depends on it
     // and it must never delay a financial row's push (ADR-0053).
     NOTIFICATIONS,
+    // Parked, unfinished transaction forms — an owned leaf, own-user-only (no partner variant,
+    // never replicated), and never a money row. Appended AFTER notifications so ordinals 1–23
+    // are unchanged (contract §3.1's booked amendment, ADR-0066): nothing depends on a draft, and
+    // it must never delay a financial row's push.
+    TRANSACTION_DRAFTS,
 }

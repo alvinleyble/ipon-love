@@ -56,6 +56,18 @@ class IponConverters {
     @TypeConverter
     fun stringToTransactionType(value: String?): TransactionType? = value?.let(TransactionType::valueOf)
 
+    /**
+     * A local-only id list (today: `transaction_drafts.localImageIds`, ADR-0066) as a
+     * comma-joined string. The members are UUIDs, so the separator can never occur inside one;
+     * an empty list round-trips through `""` rather than null, which keeps the column non-null.
+     */
+    @TypeConverter
+    fun stringListToString(value: List<String>?): String? = value?.joinToString(",")
+
+    @TypeConverter
+    fun stringToStringList(value: String?): List<String>? =
+        value?.split(",")?.filter { it.isNotBlank() }
+
     @TypeConverter
     fun recurringFrequencyToString(value: RecurringFrequency?): String? = value?.name
 
