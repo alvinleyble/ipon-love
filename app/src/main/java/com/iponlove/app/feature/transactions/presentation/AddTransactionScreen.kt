@@ -1,14 +1,9 @@
 package com.iponlove.app.feature.transactions.presentation
 
 import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,10 +32,6 @@ import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -48,7 +39,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
@@ -72,14 +62,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import com.iponlove.app.core.ui.CapReachedSheet
 import com.iponlove.app.core.ui.FullScreenImagePager
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -95,6 +83,12 @@ import com.iponlove.app.core.ui.icons.ACCOUNT_ICONS
 import com.iponlove.app.core.ui.icons.CATEGORY_ICONS
 import com.iponlove.app.core.ui.money
 import com.iponlove.app.core.ui.theme.LocalPlayfulColors
+import com.iponlove.app.feature.transactions.presentation.components.InferredCaption
+import com.iponlove.app.feature.transactions.presentation.components.ScanEntryRow
+import com.iponlove.app.feature.transactions.presentation.components.ScanFailedDialog
+import com.iponlove.app.feature.transactions.presentation.components.ScanHint
+import com.iponlove.app.feature.transactions.presentation.components.ScanPreview
+import com.iponlove.app.feature.transactions.presentation.components.needsLegacyGalleryPermission
 import com.iponlove.app.feature.tutorial.domain.TutorialTours
 import com.iponlove.app.feature.tutorial.presentation.TutorialTargets
 import com.iponlove.app.feature.categories.domain.model.CategoryType
@@ -198,44 +192,6 @@ fun AddTransactionScreen(
             onUpgrade = { onOpenPremium(viewModel.onUpsellUpgrade()) },
         )
     }
-}
-
-/** True only on API 26-28 with the legacy storage permission still ungranted. */
-private fun needsLegacyGalleryPermission(context: Context): Boolean =
-    Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        ) != PackageManager.PERMISSION_GRANTED
-
-/**
- * A failed read stays in the camera (ADR-0062 decision 8): retaking is both the actual fix for a
- * bad frame and one tap away. Falling through to a blank form was rejected — it makes typing the
- * path of least resistance exactly when a second photo would have worked.
- */
-@Composable
-private fun ScanFailedDialog(
-    failure: ReceiptScanFailure,
-    onRetake: () -> Unit,
-    onEnterManually: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onEnterManually,
-        title = { Text("Couldn't read that one") },
-        text = {
-            Text(
-                when (failure) {
-                    ReceiptScanFailure.NO_TEXT ->
-                        "Try again with the whole receipt in frame, in brighter light."
-                    ReceiptScanFailure.NOTHING_USABLE ->
-                        "We found some text but nothing we could use. Make sure the total is in " +
-                            "frame and the receipt is flat."
-                },
-            )
-        },
-        confirmButton = { TextButton(onClick = onRetake) { Text("Retake") } },
-        dismissButton = { TextButton(onClick = onEnterManually) { Text("Enter manually") } },
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -659,131 +615,6 @@ private fun SaveAsDraftAction(enabled: Boolean, onClick: () -> Unit) {
 }
 
 private const val SAVE_AS_DRAFT_LABEL = "Save as draft"
-
-/**
- * The two scan doors, side by side (ADR-0062 decision 3, changed 2026-08-04 from a single CTA
- * plus a chooser sheet — one less tap, and both routes are named).
- *
- * Both carry the same `Feature.RECEIPT_SCANNING` gate: the gallery leg is the same feature from a
- * different source, so gating only the camera would leave a free bypass. That leg is deliberately
- * full-width and labelled rather than demoted to an icon, because it carries the GCash/Maya/GrabPay
- * screenshot case — the cleanest, most reliable read this app's receipts get.
- */
-@Composable
-private fun ScanEntryRow(
-    scan: ReceiptScanUiState,
-    onScanTap: () -> Unit,
-    onScanFromGalleryTap: () -> Unit,
-) {
-    val colors = LocalPlayfulColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        ScanEntryButton(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Filled.PhotoCamera,
-            label = "Scan receipt",
-            locked = scan.locked,
-            enabled = !scan.inProgress,
-            onClick = onScanTap,
-        )
-        ScanEntryButton(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Filled.PhotoLibrary,
-            label = "From gallery",
-            locked = scan.locked,
-            enabled = !scan.inProgress,
-            onClick = onScanFromGalleryTap,
-        )
-    }
-    if (scan.inProgress) {
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "Reading receipt…",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textSecondary,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ScanEntryButton(
-    modifier: Modifier,
-    icon: ImageVector,
-    label: String,
-    locked: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val colors = LocalPlayfulColors.current
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier,
-        border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.5f)),
-        shape = RoundedCornerShape(12.dp),
-    ) {
-        Icon(
-            // The lock glyph only ever appears under enforcement; the gate ships dormant.
-            imageVector = if (locked) Icons.Filled.Lock else icon,
-            contentDescription = null,
-            tint = colors.accent,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(label, style = MaterialTheme.typography.labelLarge, color = colors.textPrimary)
-    }
-}
-
-/** The scanned receipt, shown large at the top of the form during review. */
-@Composable
-private fun ScanPreview(path: String, onView: () -> Unit) {
-    AsyncImage(
-        model = File(path),
-        contentDescription = "Scanned receipt",
-        contentScale = ContentScale.Crop,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(160.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onView),
-    )
-}
-
-@Composable
-private fun ScanHint(text: String, tone: Color = LocalPlayfulColors.current.accent) {
-    val colors = LocalPlayfulColors.current
-    Text(
-        text,
-        style = MaterialTheme.typography.bodySmall,
-        color = colors.textSecondary,
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(tone.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
-            .padding(10.dp),
-    )
-}
-
-/**
- * The caption under an *inferred* field (ADR-0062 decision 4). Only Category and Account carry one:
- * the three read fields are verifiable against the photo shown at the top of the form, while these
- * two appear nowhere on the receipt — without a caption, a user comparing form to photo has no way
- * to account for them.
- */
-@Composable
-private fun InferredCaption(merchant: String) {
-    Text(
-        "From your last $merchant visit",
-        style = MaterialTheme.typography.bodySmall,
-        color = LocalPlayfulColors.current.textSecondary,
-        modifier = Modifier.padding(top = 4.dp),
-    )
-}
 
 @Composable
 private fun FieldLabel(text: String) {

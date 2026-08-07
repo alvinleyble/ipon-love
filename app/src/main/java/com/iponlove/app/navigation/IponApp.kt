@@ -178,6 +178,8 @@ fun IponApp(
     navViewModel: NavbarViewModel = hiltViewModel(),
     deepLinkRoute: String? = null,
     onDeepLinkHandled: () -> Unit = {},
+    deepLinkUpsellSource: String? = null,
+    onUpsellDeepLinkHandled: () -> Unit = {},
     isColdStart: Boolean = false,
 ) {
     val state by navViewModel.uiState.collectAsState()
@@ -211,6 +213,8 @@ fun IponApp(
         navViewModel = navViewModel,
         deepLinkRoute = deepLinkRoute,
         onDeepLinkHandled = onDeepLinkHandled,
+        deepLinkUpsellSource = deepLinkUpsellSource,
+        onUpsellDeepLinkHandled = onUpsellDeepLinkHandled,
     )
 }
 
@@ -223,6 +227,8 @@ private fun IponAppContent(
     navViewModel: NavbarViewModel,
     deepLinkRoute: String? = null,
     onDeepLinkHandled: () -> Unit = {},
+    deepLinkUpsellSource: String? = null,
+    onUpsellDeepLinkHandled: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -276,6 +282,16 @@ private fun IponAppContent(
         val dest = deepLinkRoute?.let { NavRegistry.byId[it] } ?: return@LaunchedEffect
         openModule(dest)
         onDeepLinkHandled()
+    }
+
+    // The widget's Quick Add sheet has no NavController of its own, so a locked scan tap there
+    // hands its upsell source to MainActivity and lands here (v1.7.3 Item 14, ADR-0067 decision 4).
+    // Unlike the route above this is not a registry module — the paywall is a standalone route —
+    // so it navigates rather than switching tabs, pushing the paywall over wherever the user is.
+    LaunchedEffect(deepLinkUpsellSource) {
+        val source = deepLinkUpsellSource ?: return@LaunchedEffect
+        navController.navigate(subscriptionRoute(source))
+        onUpsellDeepLinkHandled()
     }
 
     // NavHost can't swap its start without rebuilding the graph (wiping the back stack), so the

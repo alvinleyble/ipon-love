@@ -103,6 +103,11 @@ class MainActivity : FragmentActivity() {
     // set from both onCreate (cold launch) and onNewIntent (singleTask — app already running).
     private val pendingWidgetRoute = MutableStateFlow<String?>(null)
 
+    // A one-shot paywall hand-off from the widget's Quick Add sheet (v1.7.3 Item 14, ADR-0067
+    // decision 4). QuickAddActivity has no NavController of its own, so a locked scan tap arrives
+    // here as an upsell *source* and IponApp navigates to subscriptionRoute(source) once mounted.
+    private val pendingUpsellSource = MutableStateFlow<String?>(null)
+
     @Inject lateinit var supabaseClient: SupabaseClient
     @Inject lateinit var materializeRecurringRules: MaterializeRecurringRulesUseCase
     @Inject lateinit var ensureCurrentUserRow: EnsureCurrentUserRowUseCase
@@ -133,6 +138,7 @@ class MainActivity : FragmentActivity() {
         }
         handleAuthDeepLink(intent)
         consumeWidgetRoute(intent)
+        consumeUpsellSource(intent)
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 appLockManager.cancelAutoLock()
@@ -305,10 +311,13 @@ class MainActivity : FragmentActivity() {
                                 LaunchedEffect(Unit) { Widgets.updateAll(applicationContext) }
                                 val form by authViewModel.form.collectAsState()
                                 val widgetRoute by pendingWidgetRoute.collectAsState()
+                                val upsellSource by pendingUpsellSource.collectAsState()
                                 IponApp(
                                     onSignOut = authViewModel::signOut,
                                     deepLinkRoute = widgetRoute,
                                     onDeepLinkHandled = { pendingWidgetRoute.value = null },
+                                    deepLinkUpsellSource = upsellSource,
+                                    onUpsellDeepLinkHandled = { pendingUpsellSource.value = null },
                                     isColdStart = coldStart,
                                 )
                                 if (form.signOutPendingConfirm) {
@@ -406,6 +415,7 @@ class MainActivity : FragmentActivity() {
         setIntent(intent)
         handleAuthDeepLink(intent)
         consumeWidgetRoute(intent)
+        consumeUpsellSource(intent)
     }
 
     /** Latch a widget-requested module route (once), stripping the extra so it can't re-fire on a
@@ -414,6 +424,14 @@ class MainActivity : FragmentActivity() {
         val route = intent.getStringExtra(EXTRA_START_ROUTE) ?: return
         intent.removeExtra(EXTRA_START_ROUTE)
         pendingWidgetRoute.value = route
+    }
+
+    /** Latch a widget-requested paywall hand-off (once), stripping the extra so a later Activity
+     *  recreation can't re-open the paywall over whatever the user navigated to since. */
+    private fun consumeUpsellSource(intent: Intent) {
+        val source = intent.getStringExtra(EXTRA_UPSELL_SOURCE) ?: return
+        intent.removeExtra(EXTRA_UPSELL_SOURCE)
+        pendingUpsellSource.value = source
     }
 
     private fun handleAuthDeepLink(intent: Intent) {
@@ -431,6 +449,15 @@ class MainActivity : FragmentActivity() {
     companion object {
         /** Intent extra: a [NavRegistry] module id to open on launch, set by a widget tap (Item 33). */
         const val EXTRA_START_ROUTE = "com.iponlove.app.extra.START_ROUTE"
+
+        /**
+         * Intent extra: an upsell *source* string to open the paywall with, set by a locked tap in
+         * the widget's Quick Add sheet (v1.7.3 Item 14, ADR-0067 decision 4). Distinct from
+         * [EXTRA_START_ROUTE], which only ever names a [NavRegistry] module — the paywall is a
+         * standalone route outside every module graph. Any future widget-originated premium
+         * touchpoint should reuse this rather than inventing another hand-off.
+         */
+        const val EXTRA_UPSELL_SOURCE = "com.iponlove.app.extra.UPSELL_SOURCE"
 
         /** [EXTRA_START_ROUTE] value for Manage (whose default sub-tab is Accounts). */
         const val ROUTE_MANAGE = "manage"
